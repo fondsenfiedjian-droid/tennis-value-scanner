@@ -44,7 +44,7 @@
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
     .best-bet{background:linear-gradient(135deg,#173b32,#142b2d);border:1px solid #347b5d;border-radius:16px;padding:14px;margin:0 0 12px}.best-bet-title{font-size:13px;font-weight:850;color:#9af0bd;letter-spacing:.02em}.best-bet-empty{font-size:13px;color:#c0d2c9;margin-top:7px;line-height:1.45}.best-bet-main{font-size:16px;font-weight:850;margin-top:8px;line-height:1.4}.best-bet-meta{font-size:12px;color:#c0d2c9;margin-top:6px;line-height:1.6}.best-bet-value{color:#9af0bd;font-weight:850}.match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
     .match-card{cursor:pointer;transition:border-color .15s,background .15s}.match-card:focus{outline:2px solid #75aef5;outline-offset:2px}.match-card.expanded{border-color:#5b91ca;background:#17263b}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.loading{text-align:center;padding:24px;color:var(--muted)}
-    .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}
+    .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}.data-freshness{margin-top:7px;padding:7px 8px;border-radius:8px;font-size:11px;line-height:1.45}.data-freshness.good{background:#123323;color:#9af0bd;border:1px solid #286547}.data-freshness.medium{background:#302817;color:#f5d99d;border:1px solid #6a5428}.data-freshness.limited{background:#351f25;color:#f2b7c0;border:1px solid #75404b}
     .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.stats-actions button{flex:1 1 130px;border:1px solid var(--line);background:#1b2a40;color:white;padding:11px;border-radius:10px}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
   </style>
@@ -376,7 +376,8 @@
         if(side&&Number.isFinite(value)&&value>1){if(side==='1')oddsA=value;else oddsB=value;}
       });
       const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const side=oddsSideForPlayer(o,a);return side?escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>':'';}).filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'"':'';
+      const oddsAgeMinutes=matched.length?Math.max(...matched.map(o=>(Date.now()-Date.parse(o.scrapedAt))/60000)):null;
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -635,6 +636,25 @@
     if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
     return true;
   }
+  function assessDataFreshness(ratingAsOfA,ratingAsOfB,oddsAgeMinutes,now=Date.now()){
+    const dates=[validRatingDate(ratingAsOfA),validRatingDate(ratingAsOfB)];
+    const ratingAges=dates.map(date=>date===null?null:Math.floor((now-Date.parse(date+'T00:00:00Z'))/86400000));
+    const ratingsKnown=ratingAges.every(age=>Number.isFinite(age)&&age>=0);
+    const maxRatingAge=ratingsKnown?Math.max(...ratingAges):null;
+    const oddsAge=Number(oddsAgeMinutes);
+    const oddsKnown=Number.isFinite(oddsAge)&&oddsAge>=0&&oddsAge<=90;
+    let level='limited',label='ограниченная';
+    if(ratingsKnown&&oddsKnown&&maxRatingAge<=14&&oddsAge<=30){level='good';label='высокая';}
+    else if(ratingsKnown&&oddsKnown&&maxRatingAge<=30&&oddsAge<=90){level='medium';label='средняя';}
+    const reasons=[];
+    if(!ratingsKnown)reasons.push('дата одного или обоих рейтингов неизвестна');
+    else if(maxRatingAge>30)reasons.push('рейтинги старше 30 дней');
+    else if(maxRatingAge>14)reasons.push('рейтинги старше 14 дней');
+    if(!oddsKnown)reasons.push('возраст коэффициента неизвестен или превышает 90 минут');
+    else if(oddsAge>30)reasons.push('коэффициент старше 30 минут');
+    if(!reasons.length)reasons.push('рейтинги не старше 14 дней, коэффициент не старше 30 минут');
+    return {level,label,details:reasons.join('; '),maxRatingAge,oddsAge:oddsKnown?oddsAge:null};
+  }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
     const box=$('#bestBet');
     if(!box)return;
@@ -689,7 +709,8 @@
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>';
+        const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,el.dataset.oddsAgeMinutes);
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
         renderBestBet(dayBets,checked,candidates.length,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
