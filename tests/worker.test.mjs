@@ -276,6 +276,9 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 3);
   assert.equal(readPredictionArchive().find(row => row.odds === 1.9).ev, 14);
+  result.ratingA = 1901;
+  savePredictionSnapshot(match, element, result);
+  assert.equal(readPredictionArchive().length, 4);
 });
 
 test("archive import validates records, merges duplicates, and keeps newest 600", () => {
