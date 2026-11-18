@@ -1338,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v55/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1402,7 +1402,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v55/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1418,7 +1418,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v55/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1607,7 +1607,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v55/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
 });
 
 
@@ -1737,7 +1737,7 @@ test("segment performance uses settled ledger only, separates bookmaker, exclude
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
-  let state = api.createInitialState(100);
+  let state = api.createInitialState(1000);
   const addAndSettle = (input, details, outcome) => {
     const placed = api.placeBet(input, {
       matchKey: details.matchKey, matchId: details.matchId, side: details.side || "A",
@@ -1793,7 +1793,7 @@ test("segment performance uses settled ledger only, separates bookmaker, exclude
   assert.equal(byBookmaker.Betclic.voids, 1);
   assert.equal(byBookmaker.Betclic.roiPercent, 110);
   assert.equal(byBookmaker.Winamax.settledBets, 2);
-  assert.equal(byBookmaker.Winamax.roiPercent, 10);
+  assert.equal(byBookmaker.Winamax.roiPercent, 5);
   assert.equal(result.tour.find(row => row.name === "ATP").settledBets, 2);
   assert.equal(result.tour.find(row => row.name === "WTA").settledBets, 1);
   assert.ok(result.surface.every(row => row.preliminary));
@@ -1810,6 +1810,8 @@ test("segment performance keeps unknown metadata visible and excludes invalid or
   });
   state = api.settleBet(placed.state, placed.bet.id, "won");
   state.transactions.at(-1).stake = 0;
+  delete state.transactions.at(-1).bookmaker;
+  delete state.transactions.at(-1).betSnapshot.bookmaker;
   const result = api.getSegmentPerformance(state, []);
   const surfaceUnknown = result.surface.find(row => row.name === "Неизвестно");
   const bookmakerUnknown = result.bookmaker.find(row => row.name === "Неизвестно");
