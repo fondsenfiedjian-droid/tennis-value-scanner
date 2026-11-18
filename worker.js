@@ -4,6 +4,8 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
+const APIFY_DATASET_ID = "ZBWihC1oYU8Pq9uBo";
+
 function response(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -32,8 +34,48 @@ export default {
         status: "ok",
         service: "tennis-value-api",
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
-        endpoints: ["/health", "/matches?status=upcoming", "/matches?status=live", "/predict"]
+        apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
+        endpoints: ["/health", "/matches?status=upcoming", "/matches?status=live", "/odds", "/predict"]
       });
+    }
+
+    if (path === "/odds") {
+      if (request.method !== "GET") {
+        return response({ error: "Method not allowed" }, 405);
+      }
+
+      if (!env.APIFY_TOKEN) {
+        return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
+      }
+
+      try {
+        const upstream = await fetch(
+          `https://api.apify.com/v2/datasets/${APIFY_DATASET_ID}/items?clean=true&format=json&limit=1000`,
+          {
+            headers: {
+              "Authorization": `Bearer ${env.APIFY_TOKEN}`,
+              "Accept": "application/json"
+            }
+          }
+        );
+
+        if (!upstream.ok) {
+          return response({
+            error: "Apify request failed",
+            upstreamStatus: upstream.status
+          }, upstream.status);
+        }
+
+        const items = await upstream.json();
+        return response({
+          source: "Apify Winamax dataset",
+          datasetId: APIFY_DATASET_ID,
+          count: Array.isArray(items) ? items.length : 0,
+          items
+        });
+      } catch (error) {
+        return response({ error: "Could not retrieve odds from Apify" }, 502);
+      }
     }
 
     if (path === "/matches") {
@@ -120,7 +162,7 @@ export default {
 
     return response({
       service: "tennis-value-api",
-      endpoints: ["/health", "/matches", "/predict"]
+      endpoints: ["/health", "/matches", "/odds", "/predict"]
     });
   }
 };
