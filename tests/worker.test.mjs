@@ -221,6 +221,16 @@ test("predict enforces the 16 KB limit using actual UTF-8 body bytes", async () 
   assert.match((await result.json()).error, /16 KB/);
 });
 
+test("predict returns precise Elo probabilities consistent with fair odds", async () => {
+  const result = await call("/predict", "POST", JSON.stringify({ ratingA: 1200, ratingB: 2000 }));
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.ok(body.probabilityExactA > 0 && body.probabilityExactA < 1);
+  assert.ok(Math.abs(body.probabilityExactA + body.probabilityExactB - 1) < 1e-12);
+  assert.equal(body.probabilityA, Number((body.probabilityExactA * 100).toFixed(2)));
+  assert.ok(Math.abs(body.fairOddsA - 1 / body.probabilityExactA) < 0.00051);
+});
+
 test("predict rejects a missing player ID pair", async () => {
   const result = await call("/predict", "POST", JSON.stringify({ playerIdA: "123", ratingB: 1700 }));
   assert.equal(result.status, 400);
@@ -307,6 +317,25 @@ test("frontend rejects malformed prediction payloads before display or caching",
   assert.equal(sandbox.validate({ ...valid, probabilityA: 100 }), false);
   assert.equal(sandbox.validate(null), false);
   assert.ok(frontendSource.includes("else localStorage.removeItem(cacheKey)"));
+});
+
+test("frontend validates precise Elo probabilities against fair odds without rounding drift", () => {
+  const start = frontendSource.indexOf("function isValidPredictionResult(");
+  const end = frontendSource.indexOf("async function loadPredictions(", start);
+  const sandbox = { Number, Math };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.validate = isValidPredictionResult;", sandbox);
+  const p = 1 / (1 + Math.pow(10, 2));
+  const exact = {
+    ratingA: 1200, ratingB: 2000,
+    probabilityA: Number((p * 100).toFixed(2)),
+    probabilityB: Number(((1 - p) * 100).toFixed(2)),
+    probabilityExactA: p, probabilityExactB: 1 - p,
+    fairOddsA: Number((1 / p).toFixed(3)),
+    fairOddsB: Number((1 / (1 - p)).toFixed(3))
+  };
+  assert.equal(sandbox.validate(exact), true);
+  assert.equal(sandbox.validate({ ...exact, probabilityExactB: exact.probabilityExactB - 0.01 }), false);
+  assert.equal(sandbox.validate({ ...exact, fairOddsA: 2 }), false);
 });
 
 test("daily best bet respects the configured minimum EV and odds floor", () => {
@@ -1296,7 +1325,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1360,7 +1389,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1376,7 +1405,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1565,7 +1594,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
 });
 
 
