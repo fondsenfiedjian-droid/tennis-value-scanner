@@ -137,6 +137,29 @@ test("calibration separates confident favourites from underdogs", () => {
 });
 
 
+test("calibration bins report sample-size tiers and approximate uncertainty intervals", () => {
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    rows.push({
+      tourney_date: "20250101",
+      tourney_id: "T",
+      match_num: String(i + 1),
+      winner_id: String(i * 2 + 1),
+      loser_id: String(i * 2 + 2),
+      score: "6-4 6-4",
+      surface: "Hard"
+    });
+  }
+  const bin = runBacktest(rows).calibration.elo.bins.find(item => item.matches === 40);
+  assert.ok(bin);
+  assert.equal(bin.sampleQuality, "limited");
+  assert.ok(Number.isFinite(bin.actualLower95));
+  assert.ok(Number.isFinite(bin.actualUpper95));
+  assert.ok(bin.actualLower95 <= bin.actual);
+  assert.ok(bin.actualUpper95 >= bin.actual);
+  assert.ok(bin.actualLower95 >= 0 && bin.actualUpper95 <= 100);
+});
+
 test("calibration details are separate from scalar metric summaries", () => {
   const report = runBacktest([
     { tourney_date: "20250101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" }
