@@ -1701,7 +1701,7 @@
     }
     const cached=pfePlayerStatsCache.get(id);
     const cachedTtl=cached?.value?.accessStatus==='available'?60*1000:
-      cached?.value?.accessStatus==='rate_limited'?Math.min(5*60*1000,Math.max(2000,Number(cached.value.retryAfterSeconds||30)*1000)):2*60*1000;
+      cached?.value?.accessStatus==='rate_limited'?Math.min(7*24*60*60*1000,Math.max(2000,Number(cached.value.retryAfterSeconds||30)*1000)):2*60*1000;
     if(cached&&Date.now()-cached.savedAt<cachedTtl)return cached.value;
     const task=(async()=>{
       try{
@@ -1709,13 +1709,21 @@
         const retryAfterHeader=response.headers?.get?.('Retry-After');
         const retryAfterText=String(retryAfterHeader||'').trim();
         const retryAfterDate=Date.parse(retryAfterText);
-        const retryAfterSeconds=/^\d+$/.test(retryAfterText)?Math.min(3600,Number(retryAfterText)):
-          Number.isFinite(retryAfterDate)&&retryAfterDate>Date.now()?Math.min(3600,Math.ceil((retryAfterDate-Date.now())/1000)):null;
+        const headerRetryAt=/^\d+$/.test(retryAfterText)?Date.now()+Number(retryAfterText)*1000:
+          Number.isFinite(retryAfterDate)&&retryAfterDate>Date.now()?retryAfterDate:null;
         let payload=null;
         try{payload=await response.json();}catch(error){}
+        const rateLimit=payload?.rateLimit&&typeof payload.rateLimit==='object'?payload.rateLimit:null;
+        const resetAt=typeof rateLimit?.resetsAt==='string'&&Number.isFinite(Date.parse(rateLimit.resetsAt))?Date.parse(rateLimit.resetsAt):null;
+        const abuseRetryAt=Number.isSafeInteger(rateLimit?.retryAtEpoch)&&rateLimit.retryAtEpoch>0?rateLimit.retryAtEpoch*1000:null;
+        const providerRetryAt=resetAt||abuseRetryAt;
+        const retryAtMs=providerRetryAt||headerRetryAt;
+        const retryAfterSeconds=retryAtMs?Math.min(7*24*60*60,Math.max(0,Math.ceil((retryAtMs-Date.now())/1000))):null;
         if(!response.ok||!payload||payload.accessStatus!=='available'||!payload.stats){
           return {accessStatus:payload?.accessStatus||'upstream_error',upstreamStatus:response.status,
-            retryAfterSeconds,recent:null,serve:null,error:payload?.error||null};
+            retryAfterSeconds,rateLimitScope:rateLimit?.scope||null,rateLimitError:rateLimit?.errorCode||null,
+            resetsAt:rateLimit?.resetsAt||null,retryAtEpoch:rateLimit?.retryAtEpoch||null,
+            recent:null,serve:null,error:payload?.error||null};
         }
         const stats=payload.stats;
         const sourcePlayerId=Number(stats?.player?.id);
@@ -1858,16 +1866,17 @@
         const pfeDisagreementLabel=Number.isFinite(pfeAssessment.disagreement)
           ?' · расхождение '+(pfeAssessment.disagreement*100).toFixed(2)+' п.п.':'';
         const profileStatusLabel=profile=>profile?.status==='ready_for_modeling'?'готов':profile?.status==='insufficient_sample'?'мало матчей':profile?.status==='partial'?'частичные данные':profile?.status==='invalid'?'ошибка данных':'нет данных';
-        const accessStatusLabel=status=>({
+        const accessStatusLabel=(status,profile)=>({
           available:'доступен',forbidden_or_plan_restricted:'отказ API / возможное ограничение тарифа',
           unauthorized:'ошибка авторизации',stats_not_found:'статистика не найдена',
-          player_merged:'ID игрока объединён с другой записью',rate_limited:'лимит запросов API; учитывайте Retry-After',
+          player_merged:'ID игрока объединён с другой записью',rate_limited:profile?.rateLimitScope==='day'?'дневная квота исчерпана':profile?.rateLimitError==='abuse_throttled'?'временная блокировка API':'лимит запросов API',
           invalid_player_or_doubles:'ID отклонён API или относится к парной команде',
           api_key_missing:'ключ API не настроен',invalid_payload:'неверный формат ответа',
           player_identity_mismatch:'не совпал ID игрока',invalid_player_id:'неверный ID игрока',
           upstream_error:'ошибка Live Tennis API',unavailable:'источник недоступен'
         })[status]||'нет данных';
-        const accessLabel='Доступ Live Tennis API: '+accessStatusLabel(pfePlayerA.accessStatus)+' / '+accessStatusLabel(pfePlayerB.accessStatus);
+        const retryHint=profile=>profile?.retryAfterSeconds>0?' (повтор после '+new Date(Date.now()+profile.retryAfterSeconds*1000).toLocaleString()+')':'';
+        const accessLabel='Доступ Live Tennis API: '+accessStatusLabel(pfePlayerA.accessStatus,pfePlayerA)+retryHint(pfePlayerA)+' / '+accessStatusLabel(pfePlayerB.accessStatus,pfePlayerB)+retryHint(pfePlayerB);
         const recentA=pfePlayerA.recent,recentB=pfePlayerB.recent;
         const serveA=pfePlayerA.serve,serveB=pfePlayerB.serve;
         const recentFormLabel='Форма PRO: '+profileStatusLabel(recentA)+' ('+(recentA?.sampleSize??0)+' матчей) / '+profileStatusLabel(recentB)+' ('+(recentB?.sampleSize??0)+' матчей)';
