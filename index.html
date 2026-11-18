@@ -672,16 +672,30 @@
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
-    const seen=new Set(merged.map(row=>[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|')));
-    let added=0;
+    const keyOf=row=>[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|');
+    const indexByKey=new Map(merged.map((row,index)=>[keyOf(row),index]));
+    let added=0,updated=0;
     for(const row of clean){
-      const key=[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|');
-      if(seen.has(key))continue;
-      seen.add(key);merged.push(row);added++;
+      const key=keyOf(row),existingIndex=indexByKey.get(key);
+      if(existingIndex===undefined){indexByKey.set(key,merged.length);merged.push(row);added++;continue;}
+      const existing=merged[existingIndex];
+      const oldVersion=existing.resultVersion!==null&&existing.resultVersion!==undefined&&Number.isSafeInteger(Number(existing.resultVersion))&&Number(existing.resultVersion)>=1?Number(existing.resultVersion):null;
+      const newVersion=row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null;
+      const hasOld=typeof existing.resultOutcome==='string';
+      const hasNew=typeof row.resultOutcome==='string';
+      const sameResult=existing.resultOutcome===row.resultOutcome&&Number(existing.resultWinner||0)===Number(row.resultWinner||0);
+      const acceptResult=hasNew&&(!hasOld||(newVersion!==null&&(oldVersion===null||newVersion>oldVersion))||
+        (newVersion===oldVersion&&sameResult&&Number(row.resultCheckedAt||0)>Number(existing.resultCheckedAt||0))||
+        (newVersion===null&&oldVersion===null&&sameResult&&Number(row.resultCheckedAt||0)>Number(existing.resultCheckedAt||0)));
+      if(acceptResult){
+        merged[existingIndex]={...existing,resultOutcome:row.resultOutcome,resultWinner:row.resultWinner,resultVersion:row.resultVersion,
+          resultCheckedAt:row.resultCheckedAt,resultStatus:row.resultStatus,resultRestatedAt:row.resultRestatedAt};
+        updated++;
+      }
     }
     merged.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
     const rows=limitPredictionArchive(merged);
-    return {rows,added,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
+    return {rows,added,updated,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
   function applyVerifiedMatchResult(rows, result, now=Date.now()){
     const id=Number(result?.id),winner=Number(result?.winner);
