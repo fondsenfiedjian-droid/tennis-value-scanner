@@ -996,6 +996,6 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
   assert.match(serviceWorkerSource, /tennis-value-static-v30/);
-  assert.match(serviceWorkerSource, /"\\.\\/winamax-import\\.js"/);
-  assert.match(serviceWorkerSource, /"\\.\\/bankroll\\.js"/);
+  assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
+  assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
