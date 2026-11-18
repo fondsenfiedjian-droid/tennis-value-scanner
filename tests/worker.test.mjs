@@ -869,8 +869,8 @@ test("result verification refuses completed matches without a valid winner or un
 test("archive applies only verified completed results and honours result revisions", () => {
   const { applyVerifiedMatchResult, archiveResultStats } = makeArchiveStore();
   const rows = [
-    { matchId: 123, matchKey: "123", side: "A", player:"Carlos Alcaraz", opponent:"Jannik Sinner", probability: 61, capturedAt: 100, resultVersion: 1 },
-    { matchId: 123, matchKey: "123", side: "B", player:"Jannik Sinner", opponent:"Carlos Alcaraz", probability: 39, capturedAt: 100, resultVersion: 1 },
+    { matchId: 123, matchKey: "123", side: "A", player:"Carlos Alcaraz", opponent:"Jannik Sinner", probability: 61, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultVersion: 1 },
+    { matchId: 123, matchKey: "123", side: "B", player:"Jannik Sinner", opponent:"Carlos Alcaraz", probability: 39, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultVersion: 1 },
     { matchId: 456, matchKey: "456", side: "A", probability: 70, capturedAt: 100 }
   ];
   const apiMatch = { id:123, players:{p1:{name:"Carlos Alcaraz"},p2:{name:"Jannik Sinner"}} };
@@ -891,11 +891,11 @@ test("archive applies only verified completed results and honours result revisio
 test("archive accuracy honours newer non-completed result versions and rejects conflicting predictions", () => {
   const { archiveResultStats } = makeArchiveStore();
   const rows = [
-    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
-    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 200, resultOutcome: "retired", resultWinner: 1, resultVersion: 2 },
-    { matchId: 889, matchKey: "889", side: "A", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
-    { matchId: 889, matchKey: "889", side: "B", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
-    { matchId: 890, matchKey: "890", side: "A", probability: null, capturedAt: null, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 200, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "retired", resultWinner: 1, resultVersion: 2 },
+    { matchId: 889, matchKey: "889", side: "A", probability: 60, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 889, matchKey: "889", side: "B", probability: 60, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 890, matchKey: "890", side: "A", probability: null, capturedAt: null, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
   ];
   const stats = archiveResultStats(rows);
   assert.equal(stats.settled, 0);
@@ -906,12 +906,46 @@ test("archive accuracy honours newer non-completed result versions and rejects c
 test("archive prediction accuracy gives exact 50 percent Elo ties half credit", () => {
   const { archiveResultStats } = makeArchiveStore();
   const rows = [
-    { matchId: 765, matchKey: "765", side: "A", probability: 50, capturedAt: 100, resultOutcome: "completed", resultWinner: 1 },
-    { matchId: 765, matchKey: "765", side: "B", probability: 50, capturedAt: 100, resultOutcome: "completed", resultWinner: 1 }
+    { matchId: 765, matchKey: "765", side: "A", probability: 50, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1 },
+    { matchId: 765, matchKey: "765", side: "B", probability: 50, capturedAt: 100, matchDate:"1970-01-01T00:00:01.000Z", resultOutcome: "completed", resultWinner: 1 }
   ];
   const stats = archiveResultStats(rows);
   assert.equal(stats.settled, 1);
   assert.equal(stats.accuracy, 50);
+});
+
+test("archive accuracy selects the latest coherent pre-match snapshot and ignores post-start forecasts", () => {
+  const { archiveResultStats } = makeArchiveStore();
+  const start=Date.parse("2026-11-20T12:00:00Z");
+  const date=new Date(start).toISOString();
+  const rows=[
+    {matchId:7001,side:"A",probability:60,capturedAt:start-60000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7001,side:"B",probability:40,capturedAt:start-60000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7001,side:"A",probability:30,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7001,side:"B",probability:70,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7001,side:"A",probability:99,capturedAt:start+1000,matchDate:date,captureStatus:"live",resultOutcome:"completed",resultWinner:1}
+  ];
+  const result=archiveResultStats(rows);
+  assert.equal(result.settled,1);
+  assert.equal(result.accuracy,0);
+  assert.equal(result.postStart,1);
+});
+
+test("archive accuracy does not combine sides from different capture times or accept malformed latest rows", () => {
+  const { archiveResultStats } = makeArchiveStore();
+  const start=Date.parse("2026-11-20T12:00:00Z"),date=new Date(start).toISOString();
+  const differentTimes=[
+    {matchId:7002,side:"A",probability:80,capturedAt:start-60000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7002,side:"B",probability:80,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1}
+  ];
+  const malformed=[
+    {matchId:7003,side:"A",probability:80,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1},
+    {matchId:7003,side:"B",probability:null,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1}
+  ];
+  assert.equal(archiveResultStats(differentTimes).settled,1);
+  assert.equal(archiveResultStats(differentTimes).accuracy,100);
+  assert.equal(archiveResultStats(malformed).settled,0);
+  assert.equal(archiveResultStats(malformed).ambiguous,1);
 });
 
 test("archive rejects conflicting results at the same version and unversioned regressions", () => {
