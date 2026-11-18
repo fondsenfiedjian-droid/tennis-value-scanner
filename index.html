@@ -42,7 +42,7 @@
     .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:8px;align-items:center;background:#17253a;padding:10px;border-radius:10px;font-size:13px}
     .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#1b2a40;color:white;font-weight:700}.actions .primary{background:#16834e;border-color:#16834e}
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
-    .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
+    .best-bet{background:linear-gradient(135deg,#173b32,#142b2d);border:1px solid #347b5d;border-radius:16px;padding:14px;margin:0 0 12px}.best-bet-title{font-size:13px;font-weight:850;color:#9af0bd;letter-spacing:.02em}.best-bet-empty{font-size:13px;color:#c0d2c9;margin-top:7px;line-height:1.45}.best-bet-main{font-size:16px;font-weight:850;margin-top:8px;line-height:1.4}.best-bet-meta{font-size:12px;color:#c0d2c9;margin-top:6px;line-height:1.6}.best-bet-value{color:#9af0bd;font-weight:850}.match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
     .match-card{cursor:pointer;transition:border-color .15s,background .15s}.match-card:focus{outline:2px solid #75aef5;outline-offset:2px}.match-card.expanded{border-color:#5b91ca;background:#17263b}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.loading{text-align:center;padding:24px;color:var(--muted)}
     .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}
     .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.stats-actions button{flex:1 1 130px;border:1px solid var(--line);background:#1b2a40;color:white;padding:11px;border-radius:10px}
@@ -78,8 +78,9 @@
   </div>
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
+  <div id="bestBet" class="best-bet" aria-live="polite"><div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
-  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые три матча с доступными ID игроков. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
+  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые три матча с коэффициентом от 1.90 и доступными ID игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
 <div class="stats-view" id="statsView">
@@ -361,7 +362,7 @@
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
-      const minOdds=Number($('#minOdds').value||1.5);
+      const minOdds=Math.max(1.9,Number($('#minOdds').value||1.5));
       const maxOdds=Number($('#maxOdds').value||5);
       const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
       const matched=(winnerEnabled?oddsForMatch(m):[]).filter(o=>{
@@ -634,13 +635,31 @@
     if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
     return true;
   }
+  function renderBestBet(bets,scanned,totalCandidates,failed=0){
+    const box=$('#bestBet');
+    if(!box)return;
+    const best=bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&x.odds>=1.9).sort((a,b)=>b.ev-a.ev)[0];
+    const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
+    if(!best){
+      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет положительной ставки с коэффициентом от 1.90.':'Нет подходящих матчей с коэффициентом от 1.90.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      return;
+    }
+    const d=matchDate(best.match);
+    const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
+    const tournament=best.match.tournament_name||best.match.tournament||best.match.event_name||best.match.competition||'Турнир не указан';
+    box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · Winamax <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.</div>';
+  }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
     const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
-      return a&&b&&a.id&&b.id&&document.getElementById('model-'+i)?.hasAttribute('data-player-a');
+      const el=document.getElementById('model-'+i);
+      const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9);
+      return a&&b&&a.id&&b.id&&eligibleOdds&&el?.hasAttribute('data-player-a');
     }).slice(0,3);
-    let positive=0,checked=0;
+    const dayBets=[];
+    renderBestBet(dayBets,0,candidates.length);
+    let positive=0,checked=0,failed=0;
     for(const {m,i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
       const idA=el.dataset.playerA,idB=el.dataset.playerB;
@@ -659,6 +678,9 @@
         if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
+        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),ev:result.evA,match:m};
+        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),ev:result.evB,match:m};
+        for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result);
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
@@ -669,16 +691,19 @@
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>';
         checked++;
+        renderBestBet(dayBets,checked,candidates.length,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
         if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
       }catch(err){
         if(renderId!==predictionRenderId)return;
-        el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
+        failed++;el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
+        renderBestBet(dayBets,checked,candidates.length,failed);
       }
     }
     if(renderId!==predictionRenderId)return;
     $('#valueCount').textContent=positive;
     if(!candidates.length)$('#valueCount').textContent='0';
+    renderBestBet(dayBets,checked,candidates.length,failed);
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   let autoRefreshTimer=null;
