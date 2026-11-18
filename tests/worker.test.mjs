@@ -814,7 +814,7 @@ test("concurrent predictions share in-flight player profile requests", async () 
 
 test("bankroll backup restore can replace a corrupt stored record after explicit confirmation", () => {
   assert.match(frontendSource, /function restoreBankrollBackup\(state\)/);
-  assert.match(frontendSource, /TVSBankroll\.parseBackup\(JSON\.parse\(localStorage\.getItem\(BANKROLL_KEY\)\)\)/);
+  assert.match(frontendSource, /TVSBankroll\.parseBackup\(JSON\.parse\(localStorage\.getItem\(bankrollStorageKey\(\)\)\)\)/);
   assert.match(frontendSource, /if\(restoreBankrollBackup\(restored\)\)renderBankroll\(\)/);
   assert.ok(frontendSource.includes("Текущие записи будут заменены."));
 });
@@ -822,7 +822,8 @@ test("bankroll backup restore can replace a corrupt stored record after explicit
 test("bankroll dashboard is connected to navigation and uses a separate versioned store", () => {
   assert.ok(frontendSource.includes('id="bankrollView"'));
   assert.ok(frontendSource.includes('id="navBankroll"'));
-  assert.ok(frontendSource.includes("const BANKROLL_KEY='tvs-bankroll-v1'"));
+  assert.ok(frontendSource.includes("const BANKROLL_VIRTUAL_KEY='tvs-bankroll-v1'"));
+  assert.ok(frontendSource.includes("const BANKROLL_ACTUAL_KEY='tvs-bankroll-actual-v1'"));
   assert.ok(frontendSource.includes("TVSBankroll.recommendPortfolio"));
   assert.ok(frontendSource.includes("TVSBankroll.reconcilePortfolioPlan"));
   assert.ok(frontendSource.includes("data-plan-stake"));
