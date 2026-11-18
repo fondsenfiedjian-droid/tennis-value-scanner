@@ -26,6 +26,8 @@ export function adaptScannerArchiveRows(rows) {
     const odds = number(row.odds);
     const probability = number(row.probability);
     const id = String(row.matchId || row.matchKey || "").trim();
+    const tour = String(row.tour || "").trim().toLowerCase();
+    const surface = String(row.surface || "").trim();
     if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
         start === null || !Number.isFinite(captured) || captured <= 0 ||
         !["A", "B"].includes(side) || !validOdds(odds) ||
@@ -34,11 +36,14 @@ export function adaptScannerArchiveRows(rows) {
       continue;
     }
     const key = id + "|" + captured;
-    if (!groups.has(key)) groups.set(key, { id, start, captured, winner: winnerNumber === 1 ? "A" : "B", sides: {} });
+    if (!groups.has(key)) groups.set(key, { id, start, captured, winner: winnerNumber === 1 ? "A" : "B", tour, surface, sides: {} });
     const group = groups.get(key);
-    if (group.start !== start || group.winner !== (winnerNumber === 1 ? "A" : "B")) {
-      throw new Error("Conflicting result or match date in archive for " + id);
+    if (group.start !== start || group.winner !== (winnerNumber === 1 ? "A" : "B") ||
+        (group.tour && tour && group.tour !== tour) || (group.surface && surface && group.surface !== surface)) {
+      throw new Error("Conflicting result, date, tour or surface in archive for " + id);
     }
+    if (!group.tour) group.tour = tour;
+    if (!group.surface) group.surface = surface;
     if (group.sides[side]) {
       const previous = group.sides[side];
       if (previous.odds !== odds || previous.probability !== probability) {
@@ -55,6 +60,8 @@ export function adaptScannerArchiveRows(rows) {
     adapted.push({
       match_id: group.id,
       match_start: new Date(group.start).toISOString(),
+      tour: group.tour,
+      surface: group.surface,
       odds_captured_at: new Date(group.captured).toISOString(),
       player_a: a.player,
       player_b: b.player,
@@ -153,6 +160,18 @@ export function simulateBankrollStrategies(selections, options = {}) {
   };
 }
 
+function buildBankrollBreakdown(selections, field, startingBankroll) {
+  const groups = new Map();
+  for (const selection of selections) {
+    const key = String(selection[field] || "unknown").trim().toLowerCase() || "unknown";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(selection);
+  }
+  return Object.fromEntries([...groups.entries()].map(([key, group]) => [
+    key, simulateBankrollStrategies(group, { startingBankroll, skipBreakdowns: true })
+  ]));
+}
+
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
@@ -172,6 +191,8 @@ export function runOddsBacktest(rows, options = {}) {
     const oddsA = number(row.odds_a), oddsB = number(row.odds_b);
     const probabilityA = number(row.probability_a);
     const winner = String(row.winner ?? "").trim().toUpperCase();
+    const tour = String(row.tour ?? "").trim().toLowerCase();
+    const surface = String(row.surface ?? "").trim();
     if (!id || start === null || captured === null || !validOdds(oddsA) || !validOdds(oddsB) ||
         !Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1 ||
         !["A", "B"].includes(winner) || captured > start) {
@@ -185,10 +206,13 @@ export function runOddsBacktest(rows, options = {}) {
       continue;
     }
     const existing = matches.get(id);
-    if (existing && (existing.start !== start || existing.playerA !== playerA || existing.playerB !== playerB || existing.winner !== winner)) {
+    if (existing && (existing.start !== start || existing.playerA !== playerA || existing.playerB !== playerB || existing.winner !== winner ||
+        (existing.tour && tour && existing.tour !== tour) || (existing.surface && surface && existing.surface !== surface))) {
       throw new Error("Conflicting match metadata for match_id " + id);
     }
-    if (!matches.has(id)) matches.set(id, { id, start, playerA, playerB, winner, snapshots: [] });
+    if (!matches.has(id)) matches.set(id, { id, start, playerA, playerB, winner, tour, surface, snapshots: [] });
+    if (!matches.get(id).tour) matches.get(id).tour = tour;
+    if (!matches.get(id).surface) matches.get(id).surface = surface;
     matches.get(id).snapshots.push({ captured, oddsA, oddsB, probabilityA, row: index });
   }
 
@@ -216,7 +240,7 @@ export function runOddsBacktest(rows, options = {}) {
         : null;
       if (clv !== null) { clvTotal += clv; clvCount++; }
       bets.push({
-        matchId: match.id, matchStart: new Date(match.start).toISOString(), side: candidate.side, player: candidate.player,
+        matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
         odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
         expectedValue: Number((ev * 100).toFixed(2)),
         winner: match.winner, won: candidate.outcome, stake,
