@@ -402,7 +402,7 @@ export function runOddsBacktest(rows, options = {}) {
       const date = String(value ?? "").trim();
       if (!date) { ratingDateCounts.missing++; continue; }
       ratingDateCounts.provided++;
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z")) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z")) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date) {
         ratingDateCounts.invalid++;
         continue;
       }
