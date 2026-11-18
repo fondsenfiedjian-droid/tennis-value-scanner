@@ -188,6 +188,10 @@
     <div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="bankMaxDrawdown">—</div></div>
   </div>
   <div class="panel">
+    <div class="section-head"><h2>CLV — качество цены</h2><span class="muted">сравнение с закрытием</span></div>
+    <div class="archive-list" id="bankClvStats"><div class="panel empty">Пока недостаточно данных.</div></div>
+  </div>
+  <div class="panel">
     <div class="section-head"><h2>Результаты по букмекерам</h2><span class="muted">фактический журнал</span></div>
   <div class="archive-list" id="bankBookmakerStats"><div class="panel empty">Пока нет записанных ставок.</div></div>
   </div>
@@ -1038,6 +1042,11 @@
     $('#bankCurrentDrawdown').textContent=formatEuro(summary.currentDrawdown)+' · '+summary.currentDrawdownPercent.toFixed(2)+'%';
     $('#bankMaxDrawdown').textContent=formatEuro(summary.maxDrawdown)+' · '+summary.maxDrawdownPercent.toFixed(2)+'%';
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
+    const clv=TVSBankroll.getClvSummary(state,readPredictionArchive());
+    const clvAverage=clv.averageClvPercent===null?'—':(clv.averageClvPercent>0?'+':'')+clv.averageClvPercent.toFixed(2)+'%';
+    $('#bankClvStats').innerHTML=clv.sampleSize
+      ?'<div class="archive-item"><b>Средний CLV: '+clvAverage+'</b><div class="archive-meta">Сопоставлено ставок: '+clv.sampleSize+' · положительный '+clv.positive+' · отрицательный '+clv.negative+' · без изменения '+clv.neutral+'</div><div class="archive-meta">Покрытие архива: '+clv.coveragePercent.toFixed(1)+'% · без подходящей котировки: '+clv.missingCount+'</div><div class="archive-meta">Сравнение только с тем же букмекером и исходом, по последней записи за 6 часов до начала матча. Это предварительный CLV-прокси, а не официальный closing line.</div></div>'
+      :'<div class="panel empty">CLV пока не рассчитан: нужны ставки с ID матча и временем начала, а также архивные котировки того же букмекера в последние 6 часов до матча. Отсутствующие данные не считаются нулевым CLV.</div>';
     const bookmakerStats=TVSBankroll.getBookmakerSummary(state);
     $('#bankBookmakerStats').innerHTML=bookmakerStats.length?bookmakerStats.map(item=>{
       const profitClass=item.profit>0?'model-positive':item.profit<0?'model-negative':'';
@@ -1310,7 +1319,7 @@
       const rawId=bet.match.id??bet.match.match_id??bet.match.event_id;
       const matchKey=rawId!==undefined&&rawId!==null?'id:'+String(rawId):[bet.player,bet.opponent].sort().join('|')+'|'+(matchDateValue?matchDateValue.toISOString():'');
       const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
-      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel};
+      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,matchDate:matchDateValue?matchDateValue.toISOString():null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel};
     })):{suggestions:[],totalStake:0};
     const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+escapeHtml(item.bookmaker||'Winamax')+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
     const stakeWord=portfolio.suggestions.length===1?'ставка':portfolio.suggestions.length<5?'ставки':'ставок';
