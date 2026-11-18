@@ -694,7 +694,12 @@
     const next=rows.map(row=>{
       if(Number(row.matchId)!==id)return row;
       const oldVersion=Number.isSafeInteger(Number(row.resultVersion))?Number(row.resultVersion):null;
-      if(oldVersion!==null&&version!==null&&version<oldVersion)return row;
+      const oldOutcome=typeof row.resultOutcome==='string'?row.resultOutcome:null;
+      const oldWinner=[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null;
+      const nextWinner=[1,2].includes(winner)?winner:null;
+      if(oldVersion!==null&&(version===null||version<oldVersion))return row;
+      if(oldOutcome!==null&&version===oldVersion&&(outcome!==oldOutcome||nextWinner!==oldWinner))return row;
+      if(oldOutcome!==null&&oldVersion===null&&version===null&&(outcome!==oldOutcome||nextWinner!==oldWinner))return row;
       const nextRow={...row,resultCheckedAt:now};
       if(settled){
         nextRow.resultOutcome=outcome||'cancelled';
