@@ -21,7 +21,7 @@ function makeArchiveStore(seed = [], options = {}) {
   const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage, flushArchiveWrites };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -361,6 +361,20 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("archive waits for IndexedDB transaction before reporting it flushed", async () => {
+  const indexedDB = makeFakeIndexedDB();
+  const store = makeArchiveStore([], { indexedDB });
+  await store.initializeArchiveStorage();
+  const row = { matchKey: "durable", side: "A", player: "A", opponent: "B",
+    odds: 2.2, probability: 52, ev: 14.4, capturedAt: 1800000000001 };
+  const saved = store.persistPredictionArchive([row]);
+  assert.equal(saved.saved, 1);
+  const flushed = await store.flushArchiveWrites();
+  assert.equal(flushed.ok, true);
+  assert.equal(indexedDB.state.records.length, 1);
+  assert.equal(indexedDB.state.records[0].matchKey, "durable");
 });
 
 test("IndexedDB migration is repeatable and preserves legacy snapshots", async () => {
