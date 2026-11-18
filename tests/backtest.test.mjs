@@ -38,3 +38,21 @@ test("later dates use only earlier results and produce valid metric ranges", () 
   assert.ok(report.metrics.elo.logLoss > 0);
   assert.equal(report.metrics.combined.matches, 2);
 });
+
+test("evaluation window uses earlier matches as warm-up without scoring them", () => {
+  const report = runBacktest([
+    { tourney_date: "20240101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20240102", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20240103", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Clay" }
+  ], { evaluationStart: "20240102", evaluationEnd: "20240103" });
+  assert.equal(report.matches, 3);
+  assert.equal(report.warmupMatches, 1);
+  assert.equal(report.evaluatedMatches, 2);
+  assert.equal(report.metrics.elo.matches, 2);
+});
+
+test("evaluation window rejects impossible and reversed dates", () => {
+  const rows = [{ tourney_date: "20240101", winner_id: "1", loser_id: "2", score: "6-4", surface: "Hard" }];
+  assert.throws(() => runBacktest(rows, { evaluationStart: "20240230" }), /Invalid evaluationStart/);
+  assert.throws(() => runBacktest(rows, { evaluationStart: "20240103", evaluationEnd: "20240102" }), /must not be after/);
+});
