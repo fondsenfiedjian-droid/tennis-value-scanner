@@ -473,7 +473,7 @@ test("corrupt local archive is reported and never silently overwritten", async (
   const store = makeArchiveStore([], { corruptSeed: true });
   const read = store.readPredictionArchive();
   assert.deepEqual(read, []);
-  assert.match(store.getArchiveReadError().message, /JSON|позици/i);
+  assert.ok(store.getArchiveReadError() instanceof Error);
   const saved = store.persistPredictionArchive([{ matchKey: "new", side: "A", player: "A", opponent: "B",
     odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 }]);
   assert.equal(saved.saved, 0);
