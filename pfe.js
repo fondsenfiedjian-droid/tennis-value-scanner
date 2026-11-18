@@ -93,8 +93,9 @@
         // A correlated component contributes its strongest model weight, not the sum.
         weight: Math.max(...usable.map(member => member.weight)),
         modelIds: usable.map(member => member.id),
+        // Models in one dependency component may share errors; do not assume their uncertainty cancels independently.
         uncertainty: usable.every(member => member.uncertainty !== null)
-          ? Math.sqrt(usable.reduce((sum, member) => sum + Math.pow(member.uncertainty * member.weight, 2), 0)) / totalWeight
+          ? usable.reduce((sum, member) => sum + member.uncertainty * member.weight, 0) / totalWeight
           : null
       });
     }
