@@ -370,6 +370,9 @@ export default {
       if (hasIdA && hasIdB) {
         const playerIdA = String(body.playerIdA).trim();
         const playerIdB = String(body.playerIdB).trim();
+        if (playerIdA === playerIdB) {
+          return response({ error: "Player IDs must identify two different players" }, 400);
+        }
         if (playerIdA.length > 128 || playerIdB.length > 128) {
           return response({ error: "Player IDs must not exceed 128 characters" }, 400);
         }
