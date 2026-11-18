@@ -751,9 +751,10 @@
       if(authoritative[0].resultOutcome!=='completed'){excluded++;continue;}
       const winners=new Set(authoritative.map(row=>Number(row.resultWinner)));
       if(winners.size!==1||![1,2].includes(Number(authoritative[0].resultWinner))){ambiguous++;continue;}
-      const predictionRows=group.filter(row=>Number.isFinite(Number(row.capturedAt))&&
-        Number.isFinite(Number(row.probability))&&Number(row.probability)>=0&&Number(row.probability)<=100&&
-        ['A','B'].includes(row.side));
+      const predictionRows=group.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&
+        row.probability!==null&&row.probability!==undefined&&row.probability!==''&&
+        Number.isFinite(Number(row.capturedAt))&&Number.isFinite(Number(row.probability))&&
+        Number(row.probability)>=0&&Number(row.probability)<=100&&['A','B'].includes(row.side));
       if(!predictionRows.length){ambiguous++;continue;}
       const latestCapture=Math.max(...predictionRows.map(row=>Number(row.capturedAt)));
       const latestPredictions=predictionRows.filter(row=>Number(row.capturedAt)===latestCapture).map(row=>{
