@@ -44,7 +44,7 @@ These are quota and resilience safeguards, not guarantees that a bookmaker price
 
 ## Prediction archive
 
-The frontend stores local snapshots of each priced player outcome (odds, Elo probability, estimated EV, match, and capture time) on the current device. Repeated snapshots with unchanged odds, probability and Elo rating metadata within ten minutes are suppressed; the archive keeps at most 600 entries and can be exported as CSV. The archive is device-local and is not synchronized across devices. Imported EV values are recalculated from the stored odds and probability rather than trusted from the backup. Its EV summaries are estimates, not verified win/loss or profit statistics.
+The frontend stores local snapshots of each priced player outcome (odds, Elo probability, estimated EV, match, and capture time) on the current device. Repeated snapshots with unchanged odds, probability and Elo rating metadata within ten minutes are suppressed. The archive can retain up to 3,000 entries; when storage is constrained it retries with smaller limits, prioritizing verified completed results over pending snapshots. CSV export supports historical analysis, while JSON backup and import allow the device-local archive to be moved or restored. The archive is not synchronized across devices, so export backups regularly before clearing browser data or reinstalling the app. Imported EV values are recalculated from stored odds and probability rather than trusted from the backup. Its EV summaries are estimates, not verified win/loss or profit statistics.
 
 ## Probability and value calculations
 
