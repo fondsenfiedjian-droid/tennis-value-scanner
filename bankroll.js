@@ -28,7 +28,7 @@
     if (!state || typeof state !== "object" || state.version !== VERSION ||
         !Number.isFinite(state.initialBankroll) || state.initialBankroll <= 0 ||
         !Number.isFinite(state.balance) || state.balance < -0.001 ||
-        !Array.isArray(state.openBets) || !Array.isArray(state.transactions)) {
+        !Array.isArray(state.openBets) || !Array.isArray(state.transactions) ||\n        (state.pendingPlan !== undefined && state.pendingPlan !== null && (!state.pendingPlan || typeof state.pendingPlan !== "object" || typeof state.pendingPlan.id !== "string" || !Array.isArray(state.pendingPlan.suggestions)))) {
       throw new Error("Повреждённые или неподдерживаемые данные банкролла.");
     }
     const ids = new Set();
@@ -66,7 +66,7 @@
 
   function cloneState(state) {
     validateState(state);
-    return JSON.parse(JSON.stringify(state));
+    const copy = JSON.parse(JSON.stringify(state));\n    if (copy.pendingPlan === undefined) copy.pendingPlan = null;\n    return copy;
   }
 
   function totalOpenStake(state) {
@@ -189,6 +189,63 @@
       remainingBalance: simulated.balance,
       remainingExposure: totalOpenStake(simulated)
     };
+  }
+
+  function savePortfolioPlan(input, suggestions) {
+    const state = cloneState(input);
+    if (state.pendingPlan) throw new Error("Сначала подтвердите или отмените уже сохранённый план портфеля.");
+    if (!Array.isArray(suggestions) || !suggestions.length) throw new Error("Нет ставок для планирования.");
+    const seen = new Set();
+    const clean = suggestions.map(item => {
+      const probability = Number(item.probability), odds = Number(item.odds), stake = roundMoney(Number(item.stake));
+      const matchKey = String(item.matchKey || item.match || "").trim();
+      if (!matchKey || seen.has(matchKey) || !Number.isFinite(probability) || probability <= 0 || probability >= 1 ||
+          !Number.isFinite(odds) || odds <= 1 || !Number.isFinite(stake) || stake < 0.01) {
+        throw new Error("План содержит некорректную или повторную ставку.");
+      }
+      seen.add(matchKey);
+      return {
+        matchKey, matchId: Number.isSafeInteger(Number(item.matchId)) && Number(item.matchId) > 0 ? Number(item.matchId) : null,
+        match: String(item.match || "").slice(0, 200), player: String(item.player || "").slice(0, 100),
+        opponent: String(item.opponent || "").slice(0, 100), bookmaker: String(item.bookmaker || "Winamax").slice(0, 60),
+        side: item.side === "A" || item.side === "B" ? item.side : null,
+        probability, odds, stake, ev: (probability * odds - 1) * 100,
+        freshnessLevel: item.freshnessLevel === "good" ? "good" : "medium"
+      };
+    });
+    state.pendingPlan = {
+      id: "plan-" + makeId(), createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      suggestions: clean, totalStake: roundMoney(clean.reduce((sum, item) => sum + item.stake, 0))
+    };
+    validateState(state);
+    return state;
+  }
+
+  function confirmPortfolioPlan(input, planId) {
+    let state = cloneState(input);
+    const plan = state.pendingPlan;
+    if (!plan || plan.id !== planId) throw new Error("План портфеля не найден. Обновите данные.");
+    if (!Number.isFinite(Date.parse(plan.expiresAt)) || Date.parse(plan.expiresAt) <= Date.now()) {
+      state.pendingPlan = null;
+      throw new Error("План устарел (срок действия 15 минут). Пересчитайте портфель по актуальным коэффициентам.");
+    }
+    const placed = [];
+    for (const item of plan.suggestions) {
+      const result = placeBet(state, item);
+      state = result.state;
+      placed.push(result.bet);
+    }
+    state.pendingPlan = null;
+    validateState(state);
+    return { state, bets: placed };
+  }
+
+  function cancelPortfolioPlan(input, planId) {
+    const state = cloneState(input);
+    if (!state.pendingPlan || state.pendingPlan.id !== planId) throw new Error("План портфеля не найден.");
+    state.pendingPlan = null;
+    return state;
   }
 
   function appendTransaction(state, transaction) {
@@ -375,5 +432,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
