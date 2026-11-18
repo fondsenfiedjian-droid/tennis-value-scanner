@@ -422,7 +422,10 @@
         side: item.side === "A" || item.side === "B" ? item.side : null,
         probability, odds, stake, ev: (probability * odds - 1) * 100,
         matchDate: typeof item.matchDate === "string" && Number.isFinite(Date.parse(item.matchDate)) ? new Date(item.matchDate).toISOString() : null,
-        freshnessLevel: item.freshnessLevel === "good" ? "good" : "medium"
+        freshnessLevel: item.freshnessLevel === "good" ? "good" : "medium",
+        surface: typeof item.surface === "string" ? item.surface.slice(0, 40) : "",
+        tour: ["atp", "wta", "challenger", "itf", "juniors"].includes(String(item.tour || "").toLowerCase()) ? String(item.tour).toLowerCase() : "",
+        tournament: typeof item.tournament === "string" ? item.tournament.slice(0, 160) : ""
       };
     });
     state.pendingPlan = {
