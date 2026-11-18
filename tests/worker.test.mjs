@@ -373,6 +373,8 @@ test("daily best bet respects the configured minimum EV and odds floor", () => {
 
 test("daily best bet has its own persisted odds threshold setting and does not reuse the general odds filter", () => {
   assert.ok(frontendSource.includes('id="bestBetMinOdds"'));
+  assert.ok(frontendSource.includes('min="1.50" max="15" step="1" value="1.50"'));
+  assert.ok(frontendSource.includes("bestBetMinOdds<1.5||bestBetMinOdds>15"));
   assert.ok(frontendSource.includes("'minEv','minOdds','maxOdds','bestBetMinOdds'"));
   assert.ok(frontendSource.includes("selectBestBet(bets,minEv,bestBetMinOdds)"));
   assert.ok(frontendSource.includes("Не меняет EV, вероятность модели или размер ставки"));
