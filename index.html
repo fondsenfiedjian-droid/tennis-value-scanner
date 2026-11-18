@@ -1700,15 +1700,19 @@
       return {accessStatus:'invalid_player_id',recent:null,serve:null};
     }
     const cached=pfePlayerStatsCache.get(id);
-    if(cached&&Date.now()-cached.savedAt<(cached.value?.accessStatus==='available'?60*1000:2*60*1000))return cached.value;
+    const cachedTtl=cached?.value?.accessStatus==='available'?60*1000:
+      cached?.value?.accessStatus==='rate_limited'?Math.min(5*60*1000,Math.max(2000,Number(cached.value.retryAfterSeconds||30)*1000)):2*60*1000;
+    if(cached&&Date.now()-cached.savedAt<cachedTtl)return cached.value;
     const task=(async()=>{
       try{
         const response=await fetch(API+'/player-stats?id='+encodeURIComponent(id));
+        const retryAfterHeader=response.headers?.get?.('Retry-After');
+        const retryAfterSeconds=/^\\d+$/.test(String(retryAfterHeader||''))?Math.min(3600,Number(retryAfterHeader)):null;
         let payload=null;
         try{payload=await response.json();}catch(error){}
         if(!response.ok||!payload||payload.accessStatus!=='available'||!payload.stats){
           return {accessStatus:payload?.accessStatus||'upstream_error',upstreamStatus:response.status,
-            recent:null,serve:null,error:payload?.error||null};
+            retryAfterSeconds,recent:null,serve:null,error:payload?.error||null};
         }
         const stats=payload.stats;
         const sourcePlayerId=Number(stats?.player?.id);
