@@ -71,6 +71,20 @@ export function runBacktest(matches, options = {}) {
   if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
+  const byYear = new Map(), bySurface = new Map();
+  const addMetric = (bucket, probability) => {
+    bucket.n++;
+    bucket.brier += (probability - 1) ** 2;
+    bucket.logLoss -= Math.log(Math.max(1e-15, probability));
+    bucket.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
+  };
+  const formatMetrics = bucket => Object.fromEntries(Object.entries(bucket).map(([name, value]) => [name, {
+    matches: value.n,
+    brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
+    logLoss: value.n ? Number((value.logLoss / value.n).toFixed(5)) : null,
+    accuracy: value.n ? Number((value.correct / value.n * 100).toFixed(2)) : null
+  }]));
+  const makeMetricBucket = () => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
   const clean = matches.map(row => {
     const date = dateKey(row.tourney_date);
     const winner = String(row.winner_id ?? ""), loser = String(row.loser_id ?? "");
@@ -119,13 +133,15 @@ export function runBacktest(matches, options = {}) {
       };
       const insideEvaluationWindow = (!evaluationStart || date >= evaluationStart) && (!evaluationEnd || date <= evaluationEnd);
       if (insideEvaluationWindow) {
+        const year = date.slice(0, 4);
+        if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
+        const surfaceKey = match.surface ?? "Unknown";
+        if (!bySurface.has(surfaceKey)) bySurface.set(surfaceKey, makeMetricBucket());
         for (const [name, delta] of Object.entries(features)) {
           const probability = sigmoid(1500 + delta, 1500);
-          const metric = totals[name];
-          metric.n++;
-          metric.brier += (probability - 1) ** 2;
-          metric.logLoss -= Math.log(Math.max(1e-15, probability));
-          metric.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
+          addMetric(totals[name], probability);
+          addMetric(byYear.get(year)[name], probability);
+          addMetric(bySurface.get(surfaceKey)[name], probability);
         }
       }
       updates.push(match);
@@ -171,12 +187,11 @@ export function runBacktest(matches, options = {}) {
     evaluationEnd,
     evaluatedMatches,
     warmupMatches: evaluationStart ? uniqueClean.filter(match => match.date < evaluationStart).length : 0,
-    metrics: Object.fromEntries(Object.entries(totals).map(([name, value]) => [name, {
-      matches: value.n,
-      brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
-      logLoss: value.n ? Number((value.logLoss / value.n).toFixed(5)) : null,
-      accuracy: value.n ? Number((value.correct / value.n * 100).toFixed(2)) : null
-    }]))
+    metrics: formatMetrics(totals),
+    breakdowns: {
+      byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
+      bySurface: Object.fromEntries([...bySurface.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
+    }
   };
 }
 
