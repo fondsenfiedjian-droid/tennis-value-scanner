@@ -123,8 +123,10 @@ test("player stats endpoint validates IDs and returns read-only API data with ac
     requestedHeaders = options.headers;
     return new Response(JSON.stringify({ player: { id: 123 }, records: { recent: [] } }), { status: 200 });
   };
-  const invalid = await call("/player-stats?id=../secret");
-  assert.equal(invalid.status, 400);
+  for (const invalidId of ["../secret", "abc", "0", "9007199254740992", "1234567890123456"]) {
+    const invalid = await call("/player-stats?id=" + encodeURIComponent(invalidId));
+    assert.equal(invalid.status, 400, "reject invalid player ID " + invalidId);
+  }
   const result = await call("/player-stats?id=123");
   assert.equal(result.status, 200);
   const payload = await result.json();
