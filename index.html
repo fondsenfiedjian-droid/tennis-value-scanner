@@ -617,6 +617,18 @@
       alert('Импорт завершён. Добавлено: '+result.added+'. Пропущено некорректных записей: '+result.ignored+'. В архиве хранится до 600 последних записей.');
     }catch(error){alert('Не удалось импортировать архив: '+error.message);}
   };
+  function isValidPredictionResult(result){
+    if(!result||typeof result!=='object'||Array.isArray(result))return false;
+    const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
+    const probabilityA=Number(result.probabilityA),probabilityB=Number(result.probabilityB);
+    const fairOddsA=Number(result.fairOddsA),fairOddsB=Number(result.fairOddsB);
+    if(![ratingA,ratingB].every(v=>Number.isFinite(v)&&v>0&&v<=5000))return false;
+    if(![probabilityA,probabilityB].every(v=>Number.isFinite(v)&&v>0&&v<100))return false;
+    if(Math.abs(probabilityA+probabilityB-100)>0.02)return false;
+    if(![fairOddsA,fairOddsB].every(v=>Number.isFinite(v)&&v>1&&v<=1000))return false;
+    if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
+    return true;
+  }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
     const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
@@ -631,11 +643,12 @@
       let result=null;
       try{
         const cached=localStorage.getItem(cacheKey);
-        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000))result=item.data;}
+        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data))result=item.data;else localStorage.removeItem(cacheKey);}
         if(!result){
           const res=await fetch(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
           result=await res.json();
           if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
+          if(!isValidPredictionResult(result))throw new Error('Сервер вернул некорректный прогноз');
           localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
         }
         if(renderId!==predictionRenderId)return;
