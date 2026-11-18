@@ -848,7 +848,7 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
 
 test("portfolio proposals do not debit bankroll until the user confirms manual bookmaker placement", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const initial = api.createInitialState(100);
   const portfolio = api.recommendPortfolio(initial, [{
