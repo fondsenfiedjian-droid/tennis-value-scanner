@@ -88,7 +88,12 @@
     const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
     const today = new Date().toDateString();
     const dailyStaked = state.transactions.filter(tx => tx.type === "stake" && new Date(tx.at).toDateString() === today).reduce((s, tx) => s + tx.amount, 0);
-    const settledStake = state.transactions.filter(tx => tx.type === "settlement").reduce((s, tx) => s + Number(tx.stake || 0), 0);
+    const settlements = state.transactions.filter(tx => tx.type === "settlement");
+    const settledStake = settlements.filter(tx => tx.outcome !== "void").reduce((s, tx) => s + Number(tx.stake || 0), 0);
+    const voidedStake = settlements.filter(tx => tx.outcome === "void").reduce((s, tx) => s + Number(tx.stake || 0), 0);
+    const voidedBets = settlements.filter(tx => tx.outcome === "void").length;
+    const manualSettledBets = settlements.filter(tx => tx.source !== "verified").length;
+    const verifiedSettledBets = settlements.filter(tx => tx.source === "verified").length;
     const profit = realizedProfit(state);
     const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
     const totalOutflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, -tx.balanceDelta), 0);
@@ -100,6 +105,11 @@
       totalStaked: roundMoney(totalStaked),
       dailyStaked: roundMoney(dailyStaked),
       settledStake: roundMoney(settledStake),
+      voidedStake: roundMoney(voidedStake),
+      voidedBets,
+      manualSettledBets,
+      verifiedSettledBets,
+      settledBets: settlements.length,
       roiPercent: settledStake > 0 ? roundMoney(profit / settledStake * 100) : null,
       deposits: roundMoney(deposits),
       withdrawals: roundMoney(withdrawals),
