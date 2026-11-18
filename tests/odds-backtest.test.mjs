@@ -188,3 +188,27 @@ test("flat one-euro benchmark obeys the live two-percent per-bet cap on small ba
   assert.equal(report.strategies.flat1Euro.endingBankroll, 21.6);
   assert.match(report.methodology, /capped at 2%/);
 });
+
+
+test("odds backtest excludes stale snapshots by default and reports snapshot age", () => {
+  const rows = [
+    { ...base, match_id: "fresh", odds_captured_at: "2025-01-01T11:30:00Z" },
+    { ...base, match_id: "stale", odds_captured_at: "2024-12-30T11:59:00Z" }
+  ];
+  const report = runOddsBacktest(rows);
+  assert.equal(report.matches, 1);
+  assert.equal(report.staleSnapshots, 1);
+  assert.equal(report.rejectedSnapshots, 1);
+  assert.equal(report.snapshotAgeMinutes.count, 1);
+  assert.equal(report.snapshotAgeMinutes.min, 30);
+  assert.equal(report.selections[0].entrySnapshotAgeMinutes, 30);
+  assert.equal(report.selections[0].closingSnapshotAgeMinutes, 30);
+});
+
+test("odds backtest allows an explicit wider snapshot age and validates the option", () => {
+  const row = { ...base, odds_captured_at: "2024-12-30T11:59:00Z" };
+  const report = runOddsBacktest([row], { maxSnapshotAgeMinutes: 3000 });
+  assert.equal(report.matches, 1);
+  assert.equal(report.staleSnapshots, 0);
+  assert.throws(() => runOddsBacktest([], { maxSnapshotAgeMinutes: -1 }), /maxSnapshotAgeMinutes/);
+});
