@@ -239,6 +239,7 @@ test("prediction archive and CSV export remain connected to the UI", () => {
   assert.ok(frontendSource.includes('id="statsView"'));
   assert.ok(frontendSource.includes("savePredictionSnapshot(m,el,result)"));
   assert.ok(frontendSource.includes("tennis-value-archive.csv"));
+  assert.ok(frontendSource.includes("'ratingAsOf'"));
 });
 
 test("archive stores both priced player outcomes with calculated EV", () => {
@@ -280,7 +281,7 @@ test("archive suppresses identical snapshots but records changed odds", () => {
 test("archive import validates records, merges duplicates, and keeps newest 600", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
-    odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800 };
+    odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800, ratingAsOf: "not-a-date" };
   const result = mergePredictionArchive([row], [row,
     { ...row, matchKey: "m2", capturedAt: 2000, ev: 999 },
     { ...row, odds: 1, matchKey: "bad" }]);
@@ -288,6 +289,7 @@ test("archive import validates records, merges duplicates, and keeps newest 600"
   assert.equal(result.ignored, 1);
   assert.equal(result.rows.length, 2);
   assert.equal(result.rows.find(item => item.matchKey === "m2").ev, 8);
+  assert.equal(result.rows.find(item => item.matchKey === "m2").ratingAsOf, null);
   const many = Array.from({ length: 605 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
   const capped = mergePredictionArchive([], many);
   assert.equal(capped.rows.length, 600);
