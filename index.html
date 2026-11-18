@@ -77,7 +77,7 @@
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
-  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые пять матчей с доступными ID игроков. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
+  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые три матча с доступными ID игроков. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
 <div class="bottom"><div class="nav">
@@ -185,7 +185,7 @@
     const byTour=all.filter(m=>tours.includes(String(m.tour||'').toLowerCase()));
     const filtered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны');
-    $('#matchCount').textContent=all.length;
+    $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>Матчей на выбранную дату не найдено</strong><div class="muted">Попробуй вкладку «Завтра» или обнови данные.</div></div>';return;}
     list.innerHTML=filtered.map((m,i)=>{
