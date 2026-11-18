@@ -141,6 +141,7 @@
     scheduleAutoRefresh();
     close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
+    if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
   function extractMatches(payload){
@@ -208,7 +209,12 @@
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
-      const matched=oddsForMatch(m);
+      const minOdds=Number($('#minOdds').value||1.5);
+      const maxOdds=Number($('#maxOdds').value||5);
+      const matched=oddsForMatch(m).filter(o=>{
+        const value=Number(o.oddsDecimal);
+        return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
+      });
       let oddsA=null,oddsB=null;
       matched.forEach(o=>{
         const names=String(o.eventName||'').split(/\s+-\s+/);
@@ -218,7 +224,7 @@
         const value=Number(o.oddsDecimal);
         if(Number.isFinite(value)&&value>1){if(isP1)oddsA=value;else oddsB=value;}
       });
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\s+-\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\s+-\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
       const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
