@@ -199,6 +199,10 @@
   <div class="archive-list" id="bankBookmakerStats"><div class="panel empty">Пока нет записанных ставок.</div></div>
   </div>
   <div class="panel">
+    <div class="section-head"><h2>Концентрация открытого риска</h2><span class="muted">диагностика портфеля</span></div>
+    <div class="archive-list" id="bankExposureConcentration"><div class="panel empty">Нет открытых ставок для анализа.</div></div>
+  </div>
+  <div class="panel">
     <b>Операции с деньгами</b>
     <div class="field"><label for="bankAmount">Сумма, €</label><input id="bankAmount" type="number" min="0.01" max="1000000" step="0.01" placeholder="Например, 20"></div>
     <div class="actions"><button id="bankDeposit" class="primary">Пополнить</button><button id="bankWithdraw">Снять</button></div>
@@ -1254,6 +1258,14 @@
       const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
       return '<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Прибыль: <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span> · ROI '+roi+'</div><div class="archive-meta">Выигрыши '+item.wins+' · проигрыши '+item.losses+' · возвраты '+item.voids+' · рассчитано ставок '+item.settledBets+'</div><div class="archive-meta">Оборот без возвратов '+formatEuro(item.totalStaked)+' · возвращено '+formatEuro(item.voidedStake)+' · открыто '+item.openBets+' на '+formatEuro(item.openStake)+'</div></div>';
     }).join(''):'<div class="panel empty">Пока нет записанных ставок по букмекерам.</div>';
+    const exposure=TVSBankroll.getExposureConcentration(state);
+    const exposureRows=(title,items)=>'<div class="archive-item"><b>'+title+'</b>'+items.map(item=>{
+      const warning=item.highConcentration?' · высокая концентрация':'';
+      return '<div class="archive-meta">'+escapeHtml(item.name)+': '+formatEuro(item.stake)+' · '+item.sharePercent.toFixed(1)+'% · ставок '+item.bets+warning+'</div>';
+    }).join('')+'</div>';
+    $('#bankExposureConcentration').innerHTML=exposure.totalOpenStake
+      ?exposureRows('По букмекерам',exposure.byBookmaker)+exposureRows('По участникам матчей',exposure.byPlayer)+'<div class="archive-meta">'+escapeHtml(exposure.note)+'</div>'
+      :'<div class="panel empty">Нет открытых ставок для анализа.</div>';
     $('#bankTxCount').textContent=state.transactions.length+' операций · результаты: '+summary.verifiedSettledBets+' по API, '+summary.manualSettledBets+' вручную';
     const pendingPlan=state.pendingPlan;
     $('#bankPendingPlan').innerHTML=pendingPlan
