@@ -470,6 +470,11 @@
     });
     return {rows:next,updated};
   }
+  function stampResultCheck(rows, matchId, now=Date.now()){
+    const id=Number(matchId);
+    if(!Number.isSafeInteger(id)||id<=0)return rows;
+    return rows.map(row=>Number(row.matchId)===id?{...row,resultCheckedAt:now}:row);
+  }
   function archiveResultStats(rows){
     const latest=new Map();
     for(const row of rows){
@@ -536,10 +541,18 @@
           if(res.ok&&updated.updated){
             localStorage.setItem(ARCHIVE_KEY,JSON.stringify(updated.rows));
             checked++;if(['completed','retired','walkover','default','abandoned','unresolved'].includes(result.outcome)||result.status==='cancelled')settled++;
-          }else if(res.status===429){errors++;break;}
-          else if(res.status===404){const stamped=current.map(row=>Number(row.matchId)===id?{...row,resultCheckedAt:Date.now()}:row);localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stamped));checked++;}
-          else errors++;
-        }catch(error){errors++;}
+          }else if(res.status===429){
+            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(current,id,Date.now())));
+            errors++;break;
+          }else{
+            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(current,id,Date.now())));
+            if(res.status===404)checked++;else errors++;
+          }
+        }catch(error){
+          const latest=readPredictionArchive();
+          localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(latest,id,Date.now())));
+          errors++;
+        }
       }
       renderArchive();
       alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
