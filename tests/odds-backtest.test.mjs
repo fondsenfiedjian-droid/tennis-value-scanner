@@ -212,3 +212,10 @@ test("odds backtest allows an explicit wider snapshot age and validates the opti
   assert.equal(report.staleSnapshots, 0);
   assert.throws(() => runOddsBacktest([], { maxSnapshotAgeMinutes: -1 }), /maxSnapshotAgeMinutes/);
 });
+
+
+test("odds backtest rejects timezone-less timestamps instead of using machine locale", () => {
+  const report = runOddsBacktest([{ ...base, match_start: "2025-01-01T12:00:00", odds_captured_at: "2025-01-01T10:00:00Z" }]);
+  assert.equal(report.matches, 0);
+  assert.equal(report.rejectedSnapshots, 1);
+});
