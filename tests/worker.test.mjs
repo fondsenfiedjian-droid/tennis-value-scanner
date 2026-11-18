@@ -273,6 +273,8 @@ test("prediction archive and CSV export remain connected to the UI", () => {
   assert.ok(frontendSource.includes('id="statsView"'));
   assert.ok(frontendSource.includes("savePredictionSnapshot(m,el,result)"));
   assert.ok(frontendSource.includes("tennis-value-archive.csv"));
+  assert.ok(frontendSource.includes("createArchiveBackup(rows)"));
+  assert.ok(frontendSource.includes("readArchiveBackup(payload)"));
   assert.ok(frontendSource.includes("'ratingAsOf'"));
 });
 
@@ -313,6 +315,23 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("archive backup v2 detects corruption and preserves legacy v1 compatibility", () => {
+  const { createArchiveBackup, readArchiveBackup } = makeArchiveStore();
+  const records = [{ matchKey: "m1", side: "A", capturedAt: 123 }];
+  const backup = createArchiveBackup(records, "2026-11-18T12:00:00.000Z");
+  assert.equal(backup.version, 2);
+  assert.equal(backup.recordCount, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(readArchiveBackup(backup).records)), records);
+  assert.equal(readArchiveBackup(backup).legacy, false);
+  const corrupted = { ...backup, records: [{ ...records[0], odds: 2.1 }] };
+  assert.throws(() => readArchiveBackup(corrupted), /checksum/i);
+  assert.throws(() => readArchiveBackup({ ...backup, recordCount: 99 }), /Количество записей/);
+  assert.throws(() => readArchiveBackup({ ...backup, version: 77 }), /не поддерживается/);
+  const legacy = readArchiveBackup({ format: "tennis-value-scanner-archive", version: 1, records });
+  assert.equal(legacy.legacy, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(legacy.records)), records);
 });
 
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
