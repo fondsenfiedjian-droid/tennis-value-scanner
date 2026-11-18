@@ -693,7 +693,7 @@ test("probability calibration places exact bucket boundaries and computes proper
     capturedAt:start-1000, matchDate:new Date(start).toISOString(), resultOutcome:"completed", resultWinner:winner });
   const result = archiveProbabilityCalibration([make(1,55,1),make(2,100,2),make(3,0,2)]);
   assert.equal(result.sampleSize,3);
-  assert.deepEqual(result.buckets.map(bucket=>[bucket.lower,bucket.upper,bucket.count]),[[0,5,1],[55,60,1],[95,100,1]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.buckets.map(bucket=>[bucket.lower,bucket.upper,bucket.count]))),[[0,5,1],[55,60,1],[95,100,1]]);
   assert.ok(Math.abs(result.brierScore-(0.2025+1+0)/3)<1e-12);
   assert.ok(Number.isFinite(result.logLoss));
 });
