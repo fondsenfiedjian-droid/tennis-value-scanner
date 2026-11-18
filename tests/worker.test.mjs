@@ -938,7 +938,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1002,7 +1002,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1018,7 +1018,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1077,4 +1077,30 @@ test("bankroll UI displays per-bookmaker ledger results without merging imported
   assert.match(frontendSource, /TVSBankroll\.getBookmakerSummary\(state\)/);
   assert.match(frontendSource, /Результаты по букмекерам/);
   assert.match(frontendSource, /фактический журнал/);
+});
+
+
+test("prediction archive records bookmaker identity and keeps odds histories separate", () => {
+  const { readPredictionArchive, savePredictionSnapshot, archiveOddsMovement, mergePredictionArchive } = makeArchiveStore();
+  const match = { id: 987, tournament_name: "ATP Test" };
+  const element = { dataset: {
+    nameA: "Player A", nameB: "Player B", playerA: "1", playerB: "2",
+    oddsA: "2.10", oddsB: "1.80", bookmakerA: "Winamax", bookmakerB: "Betclic"
+  }};
+  savePredictionSnapshot(match, element, { probabilityA: 55, probabilityB: 45, ratingA: 1800, ratingB: 1750 });
+  const rows = readPredictionArchive();
+  assert.equal(rows.find(row => row.side === "A").bookmaker, "Winamax");
+  assert.equal(rows.find(row => row.side === "B").bookmaker, "Betclic");
+  const imported = mergePredictionArchive([], rows).rows;
+  assert.equal(imported.find(row => row.side === "B").bookmaker, "Betclic");
+  const movement = archiveOddsMovement([
+    { matchId: 987, side: "A", bookmaker: "Winamax", odds: 2.1, capturedAt: 100 },
+    { matchId: 987, side: "A", bookmaker: "Winamax", odds: 1.9, capturedAt: 200 },
+    { matchId: 987, side: "A", bookmaker: "Betclic", odds: 2.3, capturedAt: 100 },
+    { matchId: 987, side: "A", bookmaker: "Betclic", odds: 2.4, capturedAt: 200 }
+  ]);
+  assert.equal(movement.comparable, 2);
+  assert.equal(movement.shortened, 1);
+  assert.equal(movement.drifted, 1);
+  assert.match(frontendSource, /String\(row\.bookmaker\|\|''\)/);
 });
