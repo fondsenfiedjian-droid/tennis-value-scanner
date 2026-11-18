@@ -32,6 +32,20 @@ test("odds backtest uses earliest pre-match price, flat stakes and reports ROI",
   assert.notEqual(report.averageClosingLineValuePercent, null);
 });
 
+test("odds backtest selects only the highest-EV side per match", () => {
+  const report = runOddsBacktest([{
+    ...base,
+    odds_captured_at: "2025-01-01T10:00:00Z",
+    odds_a: "2.20",
+    odds_b: "2.20",
+    probability_a: "0.50"
+  }], { minEv: 0.03, minOdds: 1.9 });
+  assert.equal(report.bets, 1);
+  assert.equal(report.selections.length, 1);
+  assert.equal(report.selections[0].side, "A");
+  assert.equal(report.selections[0].expectedValue, 10);
+});
+
 test("odds backtest ignores post-start and malformed snapshots", () => {
   const rows = [
     { ...base, odds_captured_at: "2025-01-01T12:01:00Z" },
