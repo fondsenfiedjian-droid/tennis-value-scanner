@@ -151,6 +151,7 @@
     <div class="panel"><div class="muted">Коэффициент не изменился</div><div class="stat-num" id="archiveOddsUnchanged">0</div></div>
     <div class="panel"><div class="muted">Конфликтные снимки</div><div class="stat-num" id="archiveOddsConflicts">0</div></div>
   </div>
+  <div id="archiveOddsByBookmaker" class="archive-meta"></div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
@@ -841,28 +842,32 @@
       const odds=Number(row.odds),capturedAt=Number(row.capturedAt);
       const matchKey=String(row.matchId||row.matchKey||'');
       if(!matchKey||!['A','B'].includes(row.side)||!Number.isFinite(odds)||odds<=1||!Number.isFinite(capturedAt))continue;
-      const key=matchKey+'|'+row.side+'|'+String(row.bookmaker||'');
+      const bookmaker=typeof row.bookmaker==='string'&&row.bookmaker.trim()?row.bookmaker.trim():'Не указан';
+      const key=matchKey+'|'+row.side+'|'+bookmaker;
       if(!groups.has(key))groups.set(key,[]);
-      groups.get(key).push({odds,capturedAt});
+      groups.get(key).push({odds,capturedAt,bookmaker});
     }
     let shortened=0,drifted=0,unchanged=0,comparable=0,conflicting=0;
+    const byBookmaker={};
+    const statsFor=name=>byBookmaker[name]||(byBookmaker[name]={shortened:0,drifted:0,unchanged:0,comparable:0,conflicting:0});
     for(const snapshots of groups.values()){
+      const bookmaker=snapshots[0].bookmaker,provider=statsFor(bookmaker);
       const byTime=new Map();
       let hasConflict=false;
       for(const snapshot of snapshots){
         if(byTime.has(snapshot.capturedAt)&&byTime.get(snapshot.capturedAt)!==snapshot.odds){hasConflict=true;break;}
         byTime.set(snapshot.capturedAt,snapshot.odds);
       }
-      if(hasConflict){conflicting++;continue;}
+      if(hasConflict){conflicting++;provider.conflicting++;continue;}
       const ordered=[...byTime.entries()].sort((a,b)=>a[0]-b[0]).map(([capturedAt,odds])=>({capturedAt,odds}));
       if(ordered.length<2)continue;
       const first=ordered[0].odds,last=ordered[ordered.length-1].odds;
-      comparable++;
-      if(last<first)shortened++;
-      else if(last>first)drifted++;
-      else unchanged++;
+      comparable++;provider.comparable++;
+      if(last<first){shortened++;provider.shortened++;}
+      else if(last>first){drifted++;provider.drifted++;}
+      else{unchanged++;provider.unchanged++;}
     }
-    return {shortened,drifted,unchanged,comparable,conflicting};
+    return {shortened,drifted,unchanged,comparable,conflicting,byBookmaker};
   }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
@@ -881,6 +886,8 @@
     $('#archiveOddsDrifted').textContent=movement.drifted;
     $('#archiveOddsUnchanged').textContent=movement.unchanged;
     $('#archiveOddsConflicts').textContent=movement.conflicting;
+    const providerMovement=Object.entries(movement.byBookmaker||{}).map(([name,item])=>name+': снижение '+item.shortened+', рост '+item.drifted+', без изменений '+item.unchanged+', сопоставимо '+item.comparable).join(' · ');
+    $('#archiveOddsByBookmaker').textContent=providerMovement?'Движение коэффициентов по букмекерам: '+providerMovement:'';
     $('#archiveUpdated').textContent=archiveReadError?'Локальный архив повреждён · импортируй JSON-копию':(rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'');
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
