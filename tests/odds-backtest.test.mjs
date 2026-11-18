@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runOddsBacktest } from "../scripts/odds-backtest.mjs";
+import { adaptScannerArchiveRows, runOddsBacktest } from "../scripts/odds-backtest.mjs";
+import { parseCsv } from "../scripts/backtest.mjs";
 
 const base = {
   match_id: "m1",
@@ -53,4 +54,24 @@ test("odds backtest rejects conflicting results for one match ID", () => {
     { ...base, odds_captured_at: "2025-01-01T10:00:00Z" },
     { ...base, odds_captured_at: "2025-01-01T11:00:00Z", winner: "B" }
   ]), /Conflicting match metadata/);
+});
+
+test("scanner semicolon CSV archive is paired into pre-match snapshots and settled outcomes", () => {
+  const csv = [
+    "capturedAt;matchDate;matchId;player;opponent;side;odds;probability;resultOutcome;resultWinner",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;Player A;Player B;A;2.20;50;completed;1",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;Player B;Player A;B;1.80;50;completed;1",
+    "1735729200000;2025-01-01T12:00:00.000Z;77;Player A;Player B;A;2.00;50;completed;1",
+    "1735729200000;2025-01-01T12:00:00.000Z;77;Player B;Player A;B;1.90;50;completed;1",
+    "1735725600000;2025-01-01T12:00:00.000Z;88;Other A;Other B;A;2.10;50;retired;1"
+  ].join("\\n");
+  const parsed = parseCsv(csv, { delimiter: ";" });
+  const adapted = adaptScannerArchiveRows(parsed);
+  assert.equal(adapted.rows.length, 2);
+  assert.equal(adapted.ignored, 2);
+  assert.equal(adapted.rows[0].probability_a, 0.5);
+  const report = runOddsBacktest(adapted.rows, { minEv: 0.03, minOdds: 1.9 });
+  assert.equal(report.matches, 1);
+  assert.equal(report.bets, 1);
+  assert.equal(report.selections[0].odds, 2.2);
 });
