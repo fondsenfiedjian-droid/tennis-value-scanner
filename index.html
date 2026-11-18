@@ -159,6 +159,16 @@
 <div class="stats-view" id="bankrollView">
   <h1>Банкролл</h1>
   <div class="muted">Финансовый журнал ставок. Суммы в евро. Деньги букмекеру не отправляются. Реальные ставки размещаются вручную.</div>
+  <div class="panel">
+    <div class="field"><label for="bankrollMode">Финансовый контур</label><select id="bankrollMode"><option value="virtual">Виртуальный банкролл · симуляция</option><option value="actual">Фактический банкролл · реальные ставки</option></select></div>
+    <div class="muted" id="bankrollModeDescription">Виртуальный журнал для проверки стратегии. Не отражает деньги на счёте Winamax.</div>
+  </div>
+  <div class="panel" id="actualBankrollSetup" hidden>
+    <b>Создание фактического банкролла</b>
+    <div class="muted">Укажите текущую сумму, выделенную для ставок. Она не будет считаться пополнением Winamax автоматически.</div>
+    <div class="field"><label for="actualBankrollInitial">Начальная сумма, €</label><input id="actualBankrollInitial" type="number" min="0.01" max="100000000" step="0.01" placeholder="Например, 50"></div>
+    <button id="actualBankrollCreate" class="primary">Создать фактический журнал</button>
+  </div>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Свободный баланс</div><div class="stat-num" id="bankBalance">—</div></div>
     <div class="panel"><div class="muted">В открытых ставках</div><div class="stat-num" id="bankOpenStake">—</div></div>
@@ -188,6 +198,7 @@
   <div class="archive-list" id="bankOpenList"><div class="panel empty">Открытых ставок пока нет.</div></div>
   <div class="section-head"><h2>История приходов и расходов</h2><span class="muted" id="bankTxCount"></span></div>
   <div class="archive-list" id="bankTransactions"><div class="panel empty">Операций пока нет.</div></div>
+  <div class="foot">Экспорт и резервная копия относятся только к выбранному финансовому контуру. Переключение режимов не смешивает журналы.</div>
   <div class="foot">Просадка считается по реализованному результату ставок относительно исторического пика. Пополнения и снятия не маскируют доходность. Показатель информационный и не блокирует ставки.</div>
   <div class="notice">Начальный банк — 100 €. Базовые ограничения: не более 2% капитала на одну ставку и не более 8% суммарно в открытых ставках и не более 8% оборота за день. Размер рекомендации рассчитывается по четверти критерия Келли. Это ограничение риска, а не гарантия сохранности капитала.</div>
 </div>
@@ -851,23 +862,52 @@
       return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
-  const BANKROLL_KEY='tvs-bankroll-v1';
+  const BANKROLL_VIRTUAL_KEY='tvs-bankroll-v1';
+  const BANKROLL_ACTUAL_KEY='tvs-bankroll-actual-v1';
+  const BANKROLL_MODE_KEY='tvs-bankroll-mode-v1';
+  let bankrollMode=localStorage.getItem(BANKROLL_MODE_KEY)==='actual'?'actual':'virtual';
   let bankrollState=null,bankrollLoadError=null;
+  function bankrollStorageKey(){return bankrollMode==='actual'?BANKROLL_ACTUAL_KEY:BANKROLL_VIRTUAL_KEY;}
+  function updateBankrollModeUi(){
+    const actual=bankrollMode==='actual';
+    $('#bankrollMode').value=bankrollMode;
+    $('#bankrollModeDescription').textContent=actual?'Отдельный журнал фактических ставок. Суммы и результаты вносятся после ручных действий в Winamax.':'Виртуальный журнал для проверки стратегии. Не отражает деньги на счёте Winamax.';
+    $('#actualBankrollSetup').hidden=!(actual&&!localStorage.getItem(BANKROLL_ACTUAL_KEY));
+  }
+  $('#bankrollMode').value=bankrollMode;
+  $('#bankrollMode').onchange=()=>{
+    bankrollMode=$('#bankrollMode').value==='actual'?'actual':'virtual';
+    try{localStorage.setItem(BANKROLL_MODE_KEY,bankrollMode);}catch(error){alert('Не удалось сохранить выбранный режим: '+error.message);}
+    bankrollState=null;bankrollLoadError=null;updateBankrollModeUi();renderBankroll();
+  };
+  $('#actualBankrollCreate').onclick=()=>{
+    try{
+      if(localStorage.getItem(BANKROLL_ACTUAL_KEY)){alert('Фактический журнал уже существует.');updateBankrollModeUi();return;}
+      const amount=Number($('#actualBankrollInitial').value);
+      const state=TVSBankroll.createInitialState(amount);
+      const serialized=JSON.stringify(TVSBankroll.serializeBackup(state));
+      localStorage.setItem(BANKROLL_ACTUAL_KEY,serialized);
+      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(BANKROLL_ACTUAL_KEY)));
+      if(JSON.stringify(verified)!==JSON.stringify(state))throw new Error('Контрольная проверка фактического журнала не пройдена.');
+      bankrollState=verified;bankrollLoadError=null;$('#actualBankrollInitial').value='';updateBankrollModeUi();renderBankroll();
+    }catch(error){alert('Не удалось создать фактический журнал: '+error.message);}
+  };
   function formatEuro(value){return Number(value).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});}
   function readBankrollState(){
     if(bankrollState)return bankrollState;
     if(bankrollLoadError)return null;
     try{
-      const raw=localStorage.getItem(BANKROLL_KEY);
+      const raw=localStorage.getItem(bankrollStorageKey());
+      if(!raw&&bankrollMode==='actual'){bankrollLoadError=null;return null;}
       bankrollState=raw?TVSBankroll.parseBackup(JSON.parse(raw)):TVSBankroll.createInitialState(100);
-      if(!raw)localStorage.setItem(BANKROLL_KEY,JSON.stringify(TVSBankroll.serializeBackup(bankrollState)));
+      if(!raw)localStorage.setItem(bankrollStorageKey(),JSON.stringify(TVSBankroll.serializeBackup(bankrollState)));
       return bankrollState;
     }catch(error){bankrollLoadError=error;return null;}
   }
   function persistBankrollState(state){
     try{
       TVSBankroll.validateState(state);
-      const currentRaw=localStorage.getItem(BANKROLL_KEY);
+      const currentRaw=localStorage.getItem(bankrollStorageKey());
       if(bankrollState){
         if(!currentRaw)throw new Error('Запись банкролла изменилась или была удалена в другой вкладке. Обнови страницу перед новой операцией.');
         const current=TVSBankroll.parseBackup(JSON.parse(currentRaw));
@@ -875,7 +915,7 @@
       }else if(currentRaw){
         throw new Error('Банкролл уже существует в хранилище. Обнови страницу перед сохранением.');
       }
-      localStorage.setItem(BANKROLL_KEY,JSON.stringify(TVSBankroll.serializeBackup(state)));
+      localStorage.setItem(bankrollStorageKey(),JSON.stringify(TVSBankroll.serializeBackup(state)));
       bankrollState=state;bankrollLoadError=null;return true;
     }catch(error){alert('Не удалось сохранить банкролл: '+error.message);return false;}
   }
@@ -883,8 +923,8 @@
     try{
       TVSBankroll.validateState(state);
       const serialized=JSON.stringify(TVSBankroll.serializeBackup(state));
-      localStorage.setItem(BANKROLL_KEY,serialized);
-      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(BANKROLL_KEY)));
+      localStorage.setItem(bankrollStorageKey(),serialized);
+      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(bankrollStorageKey())));
       if(JSON.stringify(verified)!==JSON.stringify(state))throw new Error('Контрольная проверка восстановленных данных не пройдена.');
       bankrollState=verified;bankrollLoadError=null;return true;
     }catch(error){alert('Не удалось восстановить банкролл: '+error.message);return false;}
@@ -896,10 +936,19 @@
       if(expiry.expired&&persistBankrollState(expiry.state))state=expiry.state;
     }
     if(!state){
+      if(bankrollMode==='actual'&&!bankrollLoadError){
+        updateBankrollModeUi();
+        $('#bankBalance').textContent='Не создан';
+        $('#bankOpenStake').textContent='—';$('#bankEquity').textContent='—';
+        $('#bankOpenList').innerHTML='<div class="panel empty">Фактический журнал ещё не создан. Укажи начальную сумму выше.</div>';
+        $('#bankPendingPlan').innerHTML='<div class="panel empty">Сначала создай фактический журнал.</div>';
+        return;
+      }
       $('#bankBalance').textContent='Ошибка';
       $('#bankOpenList').innerHTML='<div class="panel empty">Данные банкролла не загружены: '+escapeHtml(bankrollLoadError?.message||'неизвестная ошибка')+'. Они не были перезаписаны. Восстанови резервную копию.</div>';
       return;
     }
+    updateBankrollModeUi();
     const summary=TVSBankroll.getSummary(state);
     $('#bankBalance').textContent=formatEuro(summary.balance);
     $('#bankOpenStake').textContent=formatEuro(summary.openStake);
