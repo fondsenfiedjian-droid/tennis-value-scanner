@@ -41,6 +41,7 @@
     .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:8px;align-items:center;background:#17253a;padding:10px;border-radius:10px;font-size:13px}
     .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#1b2a40;color:white;font-weight:700}.actions .primary{background:#16834e;border-color:#16834e}
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
+    .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}.loading{text-align:center;padding:24px;color:var(--muted)}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
   </style>
 </head>
@@ -48,7 +49,7 @@
 <div class="app">
   <header>
     <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
-    <div class="status">ИНТЕРФЕЙС · DEMO</div>
+    <div class="status">РАСПИСАНИЕ ПОДКЛЮЧЕНО</div>
   </header>
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
@@ -73,12 +74,8 @@
   </div>
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
-  <div class="panel empty">
-    <div class="empty-icon">🎾</div>
-    <strong>Данные ещё не загружены</strong>
-    <div class="muted">Нажми «Обновить данные» после подключения источника коэффициентов.</div>
-  </div>
-  <div class="notice"><b>Важно:</b> сейчас это рабочий макет интерфейса. Реальные матчи и коэффициенты не подставляются. Подключение Apify и расчёт EV будут следующим этапом.</div>
+  <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
+  <div class="notice"><b>Важно:</b> сейчас загружается расписание матчей. Коэффициенты Winamax и расчёт положительного EV ещё не подключены.</div>
 </div>
 
 <div class="bottom"><div class="nav">
@@ -126,9 +123,62 @@
     localStorage.setItem('tvs-settings',JSON.stringify(data)); close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
   };
-  $('#refreshBtn').onclick=()=>alert('Источник данных ещё не подключён. Следующий этап — безопасное подключение Apify через сервер.');
-  $('#navMatches').onclick=()=>alert('Список матчей появится после подключения источника расписания.');
-  $('#navStats').onclick=()=>alert('Статистика и история ставок будут подключены на следующем этапе.');
+  const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  function extractMatches(payload){
+    if(Array.isArray(payload)) return payload.filter(x=>x&&typeof x==='object'&&x.players);
+    if(!payload||typeof payload!=='object') return [];
+    for(const key of ['matches','data','results','events']){
+      if(payload[key]!==undefined){const found=extractMatches(payload[key]);if(found.length)return found;}
+    }
+    return [];
+  }
+  function playerName(p){
+    if(!p||typeof p!=='object') return 'Игрок не указан';
+    return p.name||p.full_name||p.display_name||[p.first_name,p.last_name].filter(Boolean).join(' ')||p.player_name||'Игрок не указан';
+  }
+  function matchDate(m){
+    const raw=m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date||m.live_at;
+    if(!raw)return null;
+    const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
+  }
+  function renderMatches(all){
+    const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
+    const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
+    const filtered=all.filter(m=>{const d=matchDate(m);if(!d)return true;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
+    $('#matchCount').textContent=all.length;
+    $('#valueCount').textContent='—';
+    if(!filtered.length){list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>Матчей на выбранную дату не найдено</strong><div class="muted">Попробуй вкладку «Завтра» или обнови данные.</div></div>';return;}
+    list.innerHTML=filtered.map(m=>{
+      const p=m.players||{};const a=playerName(p.p1||m.player1);const b=playerName(p.p2||m.player2);
+      const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
+      const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
+      const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
+      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
+    }).join('');
+  }
+  function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+  async function loadMatches(){
+    const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
+    $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
+    try{
+      const res=await fetch(API+'/matches?status=upcoming&limit=100',{cache:'no-store'});
+      const payload=await res.json();
+      if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
+      const matches=extractMatches(payload);
+      if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
+      window.cachedMatches=matches;
+      renderMatches(matches);
+      $('#filterSummary').textContent='Источник: Live Tennis API';
+    }catch(err){
+      $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
+      $('#matchCount').textContent='—';
+    }finally{btn.disabled=false;btn.textContent='↻  ОБНОВИТЬ ДАННЫЕ';}
+  }
+  $('#refreshBtn').onclick=loadMatches;
+  document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
+  $('#navMatches').onclick=loadMatches;
+  $('#navStats').onclick=()=>alert('Статистика появится после подключения коэффициентов и расчёта EV.');
+  loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
 </body>
