@@ -786,6 +786,8 @@ test("archive tracks opening-to-latest odds movement per match side", () => {
   assert.equal(movement.unchanged, 2);
   assert.equal(movement.comparable, 4);
   assert.equal(movement.conflicting, 1);
+  assert.equal(movement.byBookmaker["Не указан"].shortened, 1);
+  assert.equal(movement.byBookmaker["Не указан"].drifted, 1);
 });
 
 
@@ -938,7 +940,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v37/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1002,7 +1004,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v37/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1018,7 +1020,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v36/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v37/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1105,4 +1107,18 @@ test("prediction archive records bookmaker identity and keeps odds histories sep
   assert.equal(movement.shortened, 1);
   assert.equal(movement.drifted, 1);
   assert.match(frontendSource, /String\(row\.bookmaker\|\|''\)/);
+});
+
+
+test("archive odds movement exposes provider-level comparison counts", () => {
+  const { archiveOddsMovement } = makeArchiveStore();
+  const movement = archiveOddsMovement([
+    { matchId: 91, side: "A", bookmaker: "Winamax", odds: 2.2, capturedAt: 100 },
+    { matchId: 91, side: "A", bookmaker: "Winamax", odds: 2.0, capturedAt: 200 },
+    { matchId: 91, side: "A", bookmaker: "Betclic", odds: 2.4, capturedAt: 100 },
+    { matchId: 91, side: "A", bookmaker: "Betclic", odds: 2.5, capturedAt: 200 }
+  ]);
+  assert.equal(movement.byBookmaker.Winamax.shortened, 1);
+  assert.equal(movement.byBookmaker.Betclic.drifted, 1);
+  assert.match(frontendSource, /archiveOddsByBookmaker/);
 });
