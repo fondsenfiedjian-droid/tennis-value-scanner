@@ -88,6 +88,31 @@
     return roundMoney(state.transactions.reduce((sum, tx) => sum + (tx.type === "settlement" ? Number(tx.profit || 0) : 0), 0));
   }
 
+  function calculateDrawdown(state) {
+    const settlements = state.transactions.filter(tx => tx.type === "settlement").slice().sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    let performanceBank = state.initialBankroll;
+    let peak = performanceBank;
+    let maxDrawdown = 0;
+    let maxDrawdownPercent = 0;
+    let currentDrawdown = 0;
+    let currentDrawdownPercent = 0;
+    for (const tx of settlements) {
+      performanceBank = roundMoney(performanceBank + Number(tx.profit || 0));
+      if (performanceBank > peak) peak = performanceBank;
+      const drawdown = roundMoney(Math.max(0, peak - performanceBank));
+      const percent = peak > 0 ? drawdown / peak * 100 : 0;
+      if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+      if (percent > maxDrawdownPercent) maxDrawdownPercent = percent;
+      currentDrawdown = drawdown;
+      currentDrawdownPercent = percent;
+    }
+    return {
+      currentDrawdown: roundMoney(currentDrawdown),
+      currentDrawdownPercent: roundMoney(currentDrawdownPercent),
+      maxDrawdown: roundMoney(maxDrawdown),
+      maxDrawdownPercent: roundMoney(maxDrawdownPercent)
+    };
+  }
   function getSummary(state) {
     validateState(state);
     const deposits = state.transactions.filter(tx => tx.type === "deposit" && tx.id !== "initial").reduce((s, tx) => s + tx.amount, 0);
@@ -102,6 +127,7 @@
     const manualSettledBets = settlements.filter(tx => tx.source !== "verified").length;
     const verifiedSettledBets = settlements.filter(tx => tx.source === "verified").length;
     const profit = realizedProfit(state);
+    const drawdown = calculateDrawdown(state);
     const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
     const totalOutflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, -tx.balanceDelta), 0);
     return {
@@ -110,6 +136,7 @@
       equity: bankrollEquity(state),
       initialBankroll: roundMoney(state.initialBankroll),
       realizedProfit: profit,
+      ...drawdown,
       totalStaked: roundMoney(totalStaked),
       dailyStaked: roundMoney(dailyStaked),
       settledStake: roundMoney(settledStake),
