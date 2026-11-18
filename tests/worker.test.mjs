@@ -2134,6 +2134,8 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.bestOf = explicitMatchBestOf;", sandbox);
   assert.equal(sandbox.bestOf({ best_of: 3 }), 3);
   assert.equal(sandbox.bestOf({ match_format: "Best of 5" }), 5);
+  assert.equal(sandbox.bestOf({ format: "BO3" }), 3);
+  assert.equal(sandbox.bestOf({ format: "BO5" }), 5);
   assert.equal(sandbox.bestOf({ match_format: "BO3" }), 3);
   assert.equal(sandbox.bestOf({}), null);
   assert.ok(frontendSource.includes("fetch(API+'/player-stats?id='+encodeURIComponent(id))"));
