@@ -154,3 +154,49 @@ test("manual settlements are not silently overwritten by later API results", () 
   assert.equal(reconciled.state.balance, 102.2);
   assert.equal(bank.realizedProfit(reconciled.state), 2.2);
 });
+
+test("daily turnover cap remains consumed after an earlier bet is settled", () => {
+  let state = bank.createInitialState(100);
+  for (let index = 0; index < 4; index++) {
+    const placed = bank.placeBet(state, {
+      probability: 0.9, odds: 3, stake: 2, match: "Match " + index
+    });
+    state = placed.state;
+  }
+  assert.equal(bank.getSummary(state).openStake, 8);
+  assert.equal(bank.getSummary(state).dailyStaked, 8);
+  state = bank.settleBet(state, state.openBets[0].id, "lost");
+  assert.equal(bank.getSummary(state).openStake, 6);
+  assert.equal(bank.getSummary(state).dailyStaked, 8);
+  const next = bank.recommendStake(state, 0.9, 3);
+  assert.equal(next.eligible, false);
+  assert.match(next.reason, /лимит риска/);
+});
+
+test("portfolio selects the highest recomputed EV, not a stale supplied EV field", () => {
+  const state = bank.createInitialState(100);
+  const portfolio = bank.recommendPortfolio(state, [
+    { matchKey: "same-match", match: "A - B", player: "A", opponent: "B", probability: 0.6, odds: 2.0, ev: 999 },
+    { matchKey: "same-match", match: "A - B", player: "B", opponent: "A", probability: 0.7, odds: 2.2, ev: -999 }
+  ]);
+  assert.equal(portfolio.suggestions.length, 1);
+  assert.equal(portfolio.suggestions[0].player, "B");
+  assert.equal(portfolio.suggestions[0].ev, 54);
+});
+
+test("portfolio respects total exposure and does not duplicate the same match", () => {
+  const state = bank.createInitialState(100);
+  const portfolio = bank.recommendPortfolio(state, [
+    { matchKey: "one", player: "A", opponent: "B", probability: 0.9, odds: 3 },
+    { matchKey: "one", player: "B", opponent: "A", probability: 0.9, odds: 3 },
+    { matchKey: "two", player: "C", opponent: "D", probability: 0.9, odds: 3 },
+    { matchKey: "three", player: "E", opponent: "F", probability: 0.9, odds: 3 },
+    { matchKey: "four", player: "G", opponent: "H", probability: 0.9, odds: 3 },
+    { matchKey: "five", player: "I", opponent: "J", probability: 0.9, odds: 3 }
+  ]);
+  assert.equal(portfolio.suggestions.length, 4);
+  assert.equal(portfolio.totalStake, 8);
+  assert.equal(portfolio.remainingExposure, 8);
+  assert.equal(portfolio.remainingBalance, 92);
+  assert.equal(new Set(portfolio.suggestions.map(item => item.matchKey)).size, 4);
+});
