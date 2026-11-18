@@ -300,7 +300,7 @@
     let winsA = 0, totalGames = 0, totalSets = 0;
     const scorelines = new Map();
     for (let i = 0; i < iterations; i++) {
-      let setsA = 0, setsB = 0, firstServerA = true, games = 0;
+      let setsA = 0, setsB = 0, firstServerA = random() < 0.5, games = 0;
       const setScores = [];
       while (setsA < setsToWin && setsB < setsToWin) {
         const set = simulateSet(pA, pB, firstServerA, random);
