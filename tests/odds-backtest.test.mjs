@@ -46,6 +46,33 @@ test("odds backtest selects only the highest-EV side per match", () => {
   assert.equal(report.selections[0].expectedValue, 10);
 });
 
+test("odds backtest reports confidence intervals and transparent odds buckets", () => {
+  const rows = [
+    { ...base, match_id: "ci-win", odds_captured_at: "2025-01-01T10:00:00Z", odds_a: "2.20", odds_b: "1.80", probability_a: "0.50", winner: "A" },
+    { ...base, match_id: "ci-loss", match_start: "2025-01-02T12:00:00Z", odds_captured_at: "2025-01-02T10:00:00Z", odds_a: "2.20", odds_b: "1.80", probability_a: "0.50", winner: "B" }
+  ];
+  const report = runOddsBacktest(rows, { minEv: 0.03, minOdds: 1.9, stake: 1 });
+  assert.equal(report.statisticalSummary.bets, 2);
+  assert.equal(report.statisticalSummary.roiPercent, 10);
+  assert.equal(report.statisticalSummary.roiConfidence95Percent.method, "t-approximation");
+  assert.equal(report.statisticalSummary.sampleAssessment, "very-small");
+  assert.ok(report.statisticalSummary.roiConfidence95Percent.lower < 10);
+  assert.ok(report.statisticalSummary.roiConfidence95Percent.upper > 10);
+  assert.equal(report.statisticalSummary.hitRateConfidence95Percent.lowerPercent, 9.45);
+  assert.equal(report.byOddsRange[0].bets, 2);
+  assert.equal(report.byOddsRange[0].roiPercent, 10);
+  assert.equal(report.byOddsRange[1].bets, 0);
+  assert.equal(report.byOddsRange[1].roiPercent, null);
+});
+
+test("empty odds backtest reports unavailable intervals instead of zero profitability", () => {
+  const report = runOddsBacktest([]);
+  assert.equal(report.statisticalSummary.roiPercent, null);
+  assert.equal(report.statisticalSummary.roiConfidence95Percent, null);
+  assert.equal(report.statisticalSummary.sampleAssessment, "no-data");
+  assert.ok(report.byOddsRange.every(bucket => bucket.roiPercent === null));
+});
+
 test("odds backtest ignores post-start and malformed snapshots", () => {
   const rows = [
     { ...base, odds_captured_at: "2025-01-01T12:01:00Z" },
