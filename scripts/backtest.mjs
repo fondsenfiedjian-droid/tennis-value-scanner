@@ -91,7 +91,7 @@ export function runBacktest(matches, options = {}) {
         metric.n++;
         metric.brier += (probability - 1) ** 2;
         metric.logLoss -= Math.log(Math.max(1e-15, probability));
-        if (probability >= 0.5) metric.correct++;
+        metric.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
       }
       updates.push(match);
     }
