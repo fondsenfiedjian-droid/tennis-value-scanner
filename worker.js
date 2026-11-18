@@ -351,7 +351,10 @@ export default {
           status: 200,
           headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=60" }
         }));
-        return response(payload);
+        return response(payload, 200, {
+          "Cache-Control": "public, max-age=60",
+          "X-Data-Cache": "MISS"
+        });
       } catch {
         return response({ error: "Could not retrieve player statistics", playerId, accessStatus: "unavailable" }, 502);
       }
