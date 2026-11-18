@@ -397,12 +397,12 @@ export function runOddsBacktest(rows, options = {}) {
     ? snapshotCounts[Math.floor((snapshotCounts.length - 1) / 2)] : null;
   const ratingDateCounts = { provided: 0, missing: 0, invalid: 0, beforeMatchDate: 0, sameMatchDate: 0, afterMatchDate: 0 };
   for (const row of rows) {
-    const values = [row.rating_as_of_a, row.rating_as_of_b].filter(value => value !== undefined);
+    const values = [row.rating_as_of_a, row.rating_as_of_b];
     for (const value of values) {
       const date = String(value ?? "").trim();
       if (!date) { ratingDateCounts.missing++; continue; }
       ratingDateCounts.provided++;
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z"))) {
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z")) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date) {
         ratingDateCounts.invalid++;
         continue;
       }
