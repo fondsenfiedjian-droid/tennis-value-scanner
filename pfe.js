@@ -14,9 +14,19 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function normalizeDependencyGroups(row, id) {
+    const supplied = Array.isArray(row?.dependencyGroups)
+      ? row.dependencyGroups
+      : [row?.dependencyGroup];
+    const groups = [...new Set(supplied
+      .filter(value => typeof value === "string" && value.trim())
+      .map(value => value.trim()))];
+    return groups.length ? groups : [id];
+  }
+
   function fusePredictions(predictions, options = {}) {
     const rows = Array.isArray(predictions) ? predictions : [];
-    const groups = new Map();
+    const accepted = [];
     const seenIds = new Set();
     const rejected = [];
     for (const row of rows) {
@@ -27,8 +37,6 @@
         continue;
       }
       seenIds.add(id);
-      const dependencyGroup = typeof row.dependencyGroup === "string" && row.dependencyGroup.trim()
-        ? row.dependencyGroup.trim() : id;
       const quality = row.quality === undefined ? 1 : Number(row.quality);
       const calibratedWeight = row.calibratedWeight === undefined ? 1 : Number(row.calibratedWeight);
       if (!Number.isFinite(quality) || quality < 0 || quality > 1 ||
@@ -36,23 +44,53 @@
         rejected.push({ id, reason: "invalid_weight_or_quality" });
         continue;
       }
-      const weight = quality * calibratedWeight;
-      if (!groups.has(dependencyGroup)) groups.set(dependencyGroup, []);
-      groups.get(dependencyGroup).push({
-        id, probability, weight, quality,
+      accepted.push({
+        id, probability, quality, weight: quality * calibratedWeight,
+        dependencyGroups: normalizeDependencyGroups(row, id),
         uncertainty: Number.isFinite(Number(row.uncertainty)) && Number(row.uncertainty) >= 0 && Number(row.uncertainty) <= 0.5
           ? Number(row.uncertainty) : null
       });
     }
 
+    // Connected components prevent indirect overlap from being counted as independent evidence.
+    const parent = accepted.map((_, index) => index);
+    const find = index => {
+      while (parent[index] !== index) {
+        parent[index] = parent[parent[index]];
+        index = parent[index];
+      }
+      return index;
+    };
+    const unite = (a, b) => {
+      const rootA = find(a), rootB = find(b);
+      if (rootA !== rootB) parent[rootB] = rootA;
+    };
+    const firstByDependency = new Map();
+    accepted.forEach((model, index) => {
+      for (const dependency of model.dependencyGroups) {
+        if (firstByDependency.has(dependency)) unite(index, firstByDependency.get(dependency));
+        else firstByDependency.set(dependency, index);
+      }
+    });
+
+    const components = new Map();
+    accepted.forEach((model, index) => {
+      const root = find(index);
+      if (!components.has(root)) components.set(root, []);
+      components.get(root).push(model);
+    });
+
     const independent = [];
-    for (const [dependencyGroup, members] of groups) {
+    for (const members of components.values()) {
       const usable = members.filter(member => member.weight > 0);
       if (!usable.length) continue;
       const totalWeight = usable.reduce((sum, member) => sum + member.weight, 0);
+      const dependencies = [...new Set(usable.flatMap(member => member.dependencyGroups))].sort();
       independent.push({
-        dependencyGroup,
+        dependencyGroup: dependencies.join(" + "),
+        dependencyGroups: dependencies,
         probability: usable.reduce((sum, member) => sum + member.probability * member.weight, 0) / totalWeight,
+        // A correlated component contributes its strongest model weight, not the sum.
         weight: Math.max(...usable.map(member => member.weight)),
         modelIds: usable.map(member => member.id),
         uncertainty: usable.every(member => member.uncertainty !== null)
@@ -146,16 +184,16 @@
 
 
   const MODEL_REGISTRY = Object.freeze([
-    { id: "general-elo-v2", name: "Общий Elo", category: "rating", dependencyGroup: "elo-ratings", status: "active", currentlyIntegrated: true, requires: ["player Elo ratings"] },
-    { id: "surface-elo", name: "Elo покрытия", category: "rating", dependencyGroup: "elo-ratings", status: "planned", currentlyIntegrated: false, requires: ["surface-specific player ratings"] },
-    { id: "serve-return", name: "Подача и приём", category: "point-model", dependencyGroup: "serve-return-stats", status: "planned", currentlyIntegrated: false, requires: ["verified serve and return statistics"] },
-    { id: "recent-form", name: "Недавняя форма", category: "form", dependencyGroup: "recent-match-results", status: "planned", currentlyIntegrated: false, requires: ["timestamped recent match results"] },
-    { id: "physical-load", name: "Физическая нагрузка", category: "physical", dependencyGroup: "match-load", status: "planned", currentlyIntegrated: false, requires: ["verified match duration and schedule"] },
-    { id: "market-consensus", name: "Рыночная оценка", category: "market", dependencyGroup: "bookmaker-market", status: "planned", currentlyIntegrated: false, requires: ["same-bookmaker two-sided odds"] }
+    { id: "general-elo-v2", name: "Общий Elo", category: "rating", dependencyGroup: "elo-ratings", dependencyGroups: ["elo-ratings"], status: "active", currentlyIntegrated: true, requires: ["player Elo ratings"] },
+    { id: "surface-elo", name: "Elo покрытия", category: "rating", dependencyGroup: "elo-ratings", dependencyGroups: ["elo-ratings"], status: "planned", currentlyIntegrated: false, requires: ["surface-specific player ratings"] },
+    { id: "serve-return", name: "Подача и приём", category: "point-model", dependencyGroup: "serve-return-stats", dependencyGroups: ["serve-return-stats"], status: "planned", currentlyIntegrated: false, requires: ["verified serve and return statistics"] },
+    { id: "recent-form", name: "Недавняя форма", category: "form", dependencyGroup: "recent-match-results", dependencyGroups: ["recent-match-results", "elo-ratings"], status: "planned", currentlyIntegrated: false, requires: ["timestamped recent match results"] },
+    { id: "physical-load", name: "Физическая нагрузка", category: "physical", dependencyGroup: "match-load", dependencyGroups: ["match-load", "recent-match-results"], status: "planned", currentlyIntegrated: false, requires: ["verified match duration and schedule"] },
+    { id: "market-consensus", name: "Рыночная оценка", category: "market", dependencyGroup: "bookmaker-market", dependencyGroups: ["bookmaker-market"], status: "planned", currentlyIntegrated: false, requires: ["same-bookmaker two-sided odds"] }
   ]);
 
   function getModelRegistry() {
-    return MODEL_REGISTRY.map(model => ({ ...model, requires: model.requires.slice() }));
+    return MODEL_REGISTRY.map(model => ({ ...model, requires: model.requires.slice(), dependencyGroups: model.dependencyGroups.slice() }));
   }
 
   function scorePredictions(records) {
