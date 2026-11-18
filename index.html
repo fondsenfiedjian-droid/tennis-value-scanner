@@ -200,6 +200,14 @@
       <div class="panel"><div class="muted">Самая длинная серия поражений</div><div class="stat-num" id="bankLongestLossStreak">—</div></div>
       <div class="panel"><div class="muted">Profit Factor</div><div class="stat-num" id="bankProfitFactor">—</div></div>
     </div>
+    <div class="section-head"><h3>Разброс и зависимость от крупных выигрышей</h3></div>
+    <div class="stats">
+      <div class="panel"><div class="muted">Средний результат на ставку</div><div class="stat-num" id="bankMeanReturn">—</div></div>
+      <div class="panel"><div class="muted">Медианный результат</div><div class="stat-num" id="bankMedianReturn">—</div></div>
+      <div class="panel"><div class="muted">Стандартное отклонение</div><div class="stat-num" id="bankReturnDeviation">—</div></div>
+      <div class="panel"><div class="muted">Доля трёх крупнейших выигрышей</div><div class="stat-num" id="bankTopWinsShare">—</div></div>
+    </div>
+    <div class="archive-meta" id="bankOutcomeDispersionNote">Показатели нормированы на размер каждой ставки. Доля крупнейших выигрышей показывает концентрацию валовой прибыли, а прибыль без них — насколько результат зависит от этих выигрышей.</div>
     <div class="archive-meta" id="bankOutcomeSequenceNote">Возвраты не прерывают серии. Неизвестные и некорректные результаты исключаются. Profit Factor = валовая прибыль / валовые потери. Это статистика результатов, а не ограничение ставок.</div>
   </div>
   <div class="panel">
@@ -1312,6 +1320,18 @@
     $('#bankOutcomeSequenceNote').textContent='Рассчитано ставок: '+sequence.settledBets+' · исключено некорректных исходов: '+sequence.excluded+
       ' · валовая прибыль '+formatEuro(sequence.grossProfit)+' · валовые потери '+formatEuro(sequence.grossLoss)+
       '. Возвраты не прерывают серии. Profit Factor = валовая прибыль / валовые потери. Показатели диагностические и не меняют размеры ставок.';
+    const dispersion=summary.outcomeDispersion;
+    const formatPercent=value=>value===null?'—':(value>0?'+':'')+value.toFixed(2)+'%';
+    $('#bankMeanReturn').textContent=formatPercent(dispersion.meanReturnPercent);
+    $('#bankMedianReturn').textContent=formatPercent(dispersion.medianReturnPercent);
+    $('#bankReturnDeviation').textContent=dispersion.returnStdDevPercent===null?'—':dispersion.returnStdDevPercent.toFixed(2)+' п.п.';
+    $('#bankTopWinsShare').textContent=dispersion.topThreeWinSharePercent===null?'—':dispersion.topThreeWinSharePercent.toFixed(1)+'%';
+    $('#bankOutcomeDispersionNote').textContent='Выборка '+dispersion.sampleSize+' ставок · крупнейший выигрыш '+
+      (dispersion.largestWin===null?'—':formatEuro(dispersion.largestWin))+' · крупнейший проигрыш '+
+      (dispersion.largestLoss===null?'—':formatEuro(dispersion.largestLoss))+' · прибыль без трёх крупнейших выигрышей '+
+      formatEuro(dispersion.netProfitWithoutTopThreeWins)+' · возвраты '+dispersion.voids+' · исключено '+dispersion.excluded+
+      '. Среднее, медиана и отклонение рассчитаны по прибыли относительно суммы каждой отдельной ставки.';
+
 
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
     const clv=TVSBankroll.getClvSummary(state,readPredictionArchive());
