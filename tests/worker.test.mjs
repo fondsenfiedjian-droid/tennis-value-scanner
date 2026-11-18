@@ -41,7 +41,7 @@ function makeFakeIndexedDB(options = {}) {
           if (name === "records") return {
             getAll() {
               const request = { result: [] };
-              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); });
+              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); request.onsuccess?.(); });
               return request;
             },
             clear() { state.records = []; },
@@ -406,6 +406,21 @@ test("IndexedDB retains the full archive when the localStorage backup is full", 
   await store.flushArchiveWrites();
   assert.equal(indexedDB.state.records.length, 350);
   assert.equal(store.readPredictionArchive().length, 350);
+});
+
+test("queued archive writes merge stale snapshots instead of dropping earlier tab records", async () => {
+  const indexedDB = makeFakeIndexedDB();
+  const store = makeArchiveStore([], { indexedDB });
+  await store.initializeArchiveStorage();
+  const rowA = { matchKey: "tab-a", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000100 };
+  const rowB = { matchKey: "tab-b", side: "B", player: "B", opponent: "A",
+    odds: 2.1, probability: 52, ev: 9.2, capturedAt: 1800000000200 };
+  store.persistPredictionArchive([rowA]);
+  store.persistPredictionArchive([rowB]);
+  const flushed = await store.flushArchiveWrites();
+  assert.equal(flushed.ok, true);
+  assert.deepEqual(indexedDB.state.records.map(row => row.matchKey).sort(), ["tab-a", "tab-b"]);
 });
 
 test("archive waits for IndexedDB transaction before reporting it flushed", async () => {
@@ -810,7 +825,7 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
 });
 
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v21/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v22/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
