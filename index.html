@@ -54,7 +54,7 @@
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
   <div class="tabs" role="tablist">
-    <button class="tab active" data-day="today">Сегодня</button>
+    <button class="tab active" data-day="all">Все матчи</button>
     <button class="tab" data-day="tomorrow">Завтра</button>
   </div>
 
@@ -104,10 +104,10 @@
   const $ = s => document.querySelector(s);
   const now = new Date();
   $('#dateText').textContent = now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
-  let selectedDay = 'today';
+  let selectedDay = 'all';
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===btn));
-    selectedDay=btn.dataset.day; $('#dayTitle').textContent=selectedDay==='today'?'Сегодня':'Завтра';
+    selectedDay=btn.dataset.day; $('#dayTitle').textContent=selectedDay==='all'?'Все предстоящие матчи':'Завтра';
     const d=new Date(); if(selectedDay==='tomorrow') d.setDate(d.getDate()+1);
     $('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
   }));
@@ -160,7 +160,7 @@
   function renderMatches(all){
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
-    const filtered=all.filter(m=>{const d=matchDate(m);if(!d)return true;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
+    const filtered=selectedDay==='all'?all:all.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     $('#matchCount').textContent=all.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>Матчей на выбранную дату не найдено</strong><div class="muted">Попробуй вкладку «Завтра» или обнови данные.</div></div>';return;}
@@ -170,7 +170,7 @@
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const matched=oddsForMatch(m);
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>escapeHtml(o.outcome==='home'?'1':'2')+' <b>'+escapeHtml(o.oddsDecimal)+'</b>').join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\\s+-\\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
       return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
     }).join('');
   }
