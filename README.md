@@ -30,7 +30,7 @@ Base URL: `https://tennis-value-api.fonds-enfiedjian.workers.dev`
 
 POST JSON may contain either both `playerIdA` and `playerIdB`, or neither. With player IDs, the Worker retrieves the player profiles and extracts Elo ratings. Without IDs, supply `ratingA` and `ratingB` for a manual test.
 
-Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ratings must be greater than 0 and no greater than 5000. POST bodies are limited to 16 KB.
+Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ratings must be greater than 0 and no greater than 5000. POST bodies are limited to 16 KB measured in actual UTF-8 bytes; the Worker does not rely on the caller's `Content-Length` header.
 
 ## Caching
 
