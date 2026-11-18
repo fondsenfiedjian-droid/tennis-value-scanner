@@ -879,7 +879,7 @@
       if(!groups.has(key))groups.set(key,[]);
       groups.get(key).push(row);
     }
-    let hits=0,settled=0,ambiguous=0,excluded=0;
+    let hits=0,settled=0,ambiguous=0,excluded=0,postStart=0,missingStart=0;
     for(const group of groups.values()){
       const versions=group.map(row=>Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):0);
       const latestVersion=Math.max(...versions);
@@ -889,25 +889,39 @@
       if(authoritative[0].resultOutcome!=='completed'){excluded++;continue;}
       const winners=new Set(authoritative.map(row=>Number(row.resultWinner)));
       if(winners.size!==1||![1,2].includes(Number(authoritative[0].resultWinner))){ambiguous++;continue;}
-      const predictionRows=group.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&
-        row.probability!==null&&row.probability!==undefined&&row.probability!==''&&
-        Number.isFinite(Number(row.capturedAt))&&Number.isFinite(Number(row.probability))&&
-        Number(row.probability)>=0&&Number(row.probability)<=100&&['A','B'].includes(row.side));
-      if(!predictionRows.length){ambiguous++;continue;}
-      const latestCapture=Math.max(...predictionRows.map(row=>Number(row.capturedAt)));
-      const latestPredictions=predictionRows.filter(row=>Number(row.capturedAt)===latestCapture).map(row=>{
+      const sideRows=group.filter(row=>['A','B'].includes(row.side));
+      const matchDates=sideRows.map(row=>Date.parse(row.matchDate)).filter(value=>Number.isFinite(value)&&value>0);
+      if(!matchDates.length){missingStart++;ambiguous++;continue;}
+      // Use the earliest known scheduled start: a later schedule revision must not
+      // turn a post-start forecast into a pre-match prediction.
+      const matchStart=Math.min(...matchDates);
+      const timedRows=sideRows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&
+        Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
+      const eligible=timedRows.filter(row=>{
+        if(typeof row.captureStatus==='string'&&row.captureStatus&&row.captureStatus!=='upcoming')return false;
+        return Number(row.capturedAt)<matchStart;
+      });
+      if(timedRows.some(row=>Number(row.capturedAt)>=matchStart||
+        (typeof row.captureStatus==='string'&&row.captureStatus&&row.captureStatus!=='upcoming')))postStart++;
+      if(!eligible.length){ambiguous++;continue;}
+      const latestCapture=Math.max(...eligible.map(row=>Number(row.capturedAt)));
+      const latest=eligible.filter(row=>Number(row.capturedAt)===latestCapture);
+      const latestPredictions=latest.map(row=>{
+        if(row.probability===null||row.probability===undefined||row.probability==='')return undefined;
         const probability=Number(row.probability);
+        if(!Number.isFinite(probability)||probability<0||probability>100)return undefined;
         if(Math.abs(probability-50)<1e-9)return null;
         const predictedSide=probability>50?row.side:(row.side==='A'?'B':'A');
         return predictedSide==='A'?1:2;
       });
+      if(latestPredictions.some(value=>value===undefined)){ambiguous++;continue;}
       const predictedWinners=new Set(latestPredictions.filter(value=>value!==null));
       if(predictedWinners.size>1||(predictedWinners.size===1&&latestPredictions.includes(null))){ambiguous++;continue;}
       settled++;
       if(predictedWinners.size===0)hits+=0.5;
       else if([...predictedWinners][0]===Number(authoritative[0].resultWinner))hits++;
     }
-    return {settled,accuracy:settled?hits/settled*100:null,ambiguous,excluded};
+    return {settled,accuracy:settled?hits/settled*100:null,ambiguous,excluded,postStart,missingStart};
   }
   function archiveOddsMovement(rows){
     const groups=new Map();
