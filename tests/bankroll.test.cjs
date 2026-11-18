@@ -118,6 +118,20 @@ test("a revised non-standard result reverses payout and reopens the bet for manu
   assert.equal(repeated.state.openBets.length, 1);
 });
 
+test("non-standard result version is reported as an update and blocks same-version auto-settlement", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654399, side: "A", match: "A - B"
+  });
+  const retired = bank.settleVerifiedResults(placed.state, [verifiedRow(7654399, "retired", null, 3)]);
+  assert.equal(retired.updated, 1);
+  assert.equal(retired.metadataUpdated.length, 1);
+  assert.equal(retired.state.openBets[0].lastResultVersion, 3);
+  const contradictory = bank.settleVerifiedResults(retired.state, [verifiedRow(7654399, "completed", 1, 3)]);
+  assert.equal(contradictory.updated, 0);
+  assert.equal(contradictory.state.openBets.length, 1);
+  assert.equal(contradictory.state.balance, 98);
+});
+
 test("conflicting official winners at the same result version are not auto-settled", () => {
   const placed = bank.placeBet(bank.createInitialState(100), {
     probability: 0.6, odds: 2.1, stake: 2, matchId: 7654323, side: "A"
