@@ -327,7 +327,7 @@ test("prediction archive and CSV export remain connected to the UI", () => {
 
 test("archive stores both priced player outcomes with calculated EV", () => {
   const { readPredictionArchive, savePredictionSnapshot } = makeArchiveStore();
-  const match = { id: 123, tournament_name: "ATP Finals" };
+  const match = { id: 123, tournament_name: "ATP Finals", tour: "ATP", surface: "Hard" };
   const element = { dataset: {
     nameA: "Ben Shelton", nameB: "Rafael Jodar",
     playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10"
@@ -338,6 +338,8 @@ test("archive stores both priced player outcomes with calculated EV", () => {
   });
   const rows = readPredictionArchive();
   assert.equal(rows.length, 2);
+  assert.equal(rows[0].tour, "atp");
+  assert.equal(rows[0].surface, "Hard");
   assert.equal(rows.find(row => row.side === "A").matchId, 123);
   assert.equal(rows.find(row => row.side === "A").ev, 8);
   assert.equal(rows.find(row => row.side === "B").ev, -16);
