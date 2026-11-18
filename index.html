@@ -1302,7 +1302,7 @@
       return '<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Прибыль: <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span> · ROI '+roi+'</div><div class="archive-meta">Выигрыши '+item.wins+' · проигрыши '+item.losses+' · возвраты '+item.voids+' · рассчитано ставок '+item.settledBets+'</div><div class="archive-meta">Оборот без возвратов '+formatEuro(item.totalStaked)+' · возвращено '+formatEuro(item.voidedStake)+' · открыто '+item.openBets+' на '+formatEuro(item.openStake)+'</div></div>';
     }).join(''):'<div class="panel empty">Пока нет записанных ставок по букмекерам.</div>';
     const segmentPerformance=TVSBankroll.getSegmentPerformance(state,readPredictionArchive());
-    const segmentLabels={surface:'Покрытие',tour:'Категория турнира',bookmaker:'Букмекер'};
+    const segmentLabels={surface:'Покрытие',tour:'Категория турнира',bookmaker:'Букмекер',oddsBand:'Коэффициенты при размещении',evBand:'Ожидаемый EV при размещении'};
     $('#bankSegmentPerformance').innerHTML=Object.entries(segmentPerformance).map(([key,items])=>{
       const rows=items.map(item=>{
         const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
