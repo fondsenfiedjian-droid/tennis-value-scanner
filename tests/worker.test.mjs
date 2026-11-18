@@ -1122,3 +1122,50 @@ test("archive odds movement exposes provider-level comparison counts", () => {
   assert.equal(movement.byBookmaker.Betclic.drifted, 1);
   assert.match(frontendSource, /archiveOddsByBookmaker/);
 });
+
+
+test("CLV uses the latest same-bookmaker pre-match quote and never substitutes another provider", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey: "clv-match-1", matchId: 501, side: "A", matchDate: "2026-11-20T18:00:00.000Z",
+    match: "Player A — Player B", player: "Player A", opponent: "Player B",
+    bookmaker: "Winamax", probability: 0.62, odds: 2.1, stake: 2
+  });
+  const placedAt = Date.parse(placed.bet.placedAt);
+  const archive = [
+    { matchId: 501, side: "A", bookmaker: "Betclic", odds: 1.7, capturedAt: placedAt + 60000 },
+    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.95, capturedAt: placedAt + 120000 },
+    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.9, capturedAt: Date.parse("2026-11-20T17:30:00.000Z") },
+    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.5, capturedAt: Date.parse("2026-11-20T18:01:00.000Z") }
+  ];
+  const summary = api.getClvSummary(placed.state, archive);
+  assert.equal(summary.sampleSize, 1);
+  assert.equal(summary.missingCount, 0);
+  assert.equal(summary.matched[0].closingOdds, 1.9);
+  assert.equal(summary.averageClvPercent, 10.53);
+  assert.equal(summary.positive, 1);
+});
+
+test("CLV reports missing data instead of inventing zero and requires match timing", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey: "clv-match-no-close", matchId: 502, side: "B",
+    match: "Player C — Player D", bookmaker: "Winamax",
+    probability: 0.62, odds: 2.1, stake: 2
+  });
+  const summary = api.getClvSummary(placed.state, []);
+  assert.equal(summary.sampleSize, 0);
+  assert.equal(summary.missingCount, 1);
+  assert.equal(summary.averageClvPercent, null);
+  assert.equal(summary.coveragePercent, 0);
+});
+
+test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
+  assert.ok(frontendSource.includes('id="bankClvStats"'));
+  assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
+  assert.match(serviceWorkerSource, /tennis-value-static-v38/);
+});
