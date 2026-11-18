@@ -193,6 +193,21 @@
   function normalizePlayer(s){
     return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
+  function tournamentCompatible(matchName,oddsName){
+    const normalizeTournament=value=>{
+      let name=normalizePlayer(value);
+      if(name.includes('roland garros')||name.includes('french open'))return 'roland garros';
+      if(name.includes('us open')||name.includes('united states open'))return 'us open';
+      if(name.includes('australian open'))return 'australian open';
+      if(name.includes('wimbledon'))return 'wimbledon';
+      return name;
+    };
+    const a=normalizeTournament(matchName),b=normalizeTournament(oddsName);
+    if(!a||!b)return true;
+    if(a===b)return true;
+    const tokensA=a.split(' '),tokensB=new Set(b.split(' '));
+    return tokensA.some(token=>token.length>2&&tokensB.has(token));
+  }
   function oddsForMatch(m){
     const p=m.players||{};
     const a=normalizePlayer(playerName(p.p1||m.player1));
@@ -213,9 +228,8 @@
       const eventParts=String(o.eventName||'').split(/\s+-\s+/);
       if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
       if(!((home===a&&away===b)||(home===b&&away===a)))return false;
-      // Tournament labels differ between providers (for example, "ATP Finals"
-      // vs "Nitto ATP Finals"). Player pair, event ID and start time are the
-      // primary identity checks; do not reject a valid market on label wording.
+      // Allow provider suffixes/aliases, but reject clearly unrelated tournaments.
+      if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
       const value=Number(o.oddsDecimal);
