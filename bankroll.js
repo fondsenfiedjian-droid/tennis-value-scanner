@@ -251,6 +251,19 @@
         if (n < 10) return "5–9.99%";
         if (n < 15) return "10–14.99%";
         return "15%+";
+      } },
+      probabilityBand: { label: "Вероятность модели", normalize: value => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0 || n >= 1) return null;
+        const percent = n * 100;
+        if (percent < 50) return "Ниже 50%";
+        if (percent < 55) return "50–54.99%";
+        if (percent < 60) return "55–59.99%";
+        if (percent < 65) return "60–64.99%";
+        if (percent < 70) return "65–69.99%";
+        if (percent < 75) return "70–74.99%";
+        if (percent < 80) return "75–79.99%";
+        return "80%+";
       } }
     };
     const output = {};
@@ -268,7 +281,8 @@
         if (tx.type !== "settlement") continue;
         const snapshot = tx.betSnapshot && typeof tx.betSnapshot === "object" ? tx.betSnapshot : {};
         let rawValue = key === "oddsBand" ? (snapshot.odds ?? tx.actualOdds) :
-          key === "evBand" ? (snapshot.ev ?? tx.ev) : tx[key] ?? snapshot[key];
+          key === "evBand" ? (snapshot.ev ?? tx.ev) :
+          key === "probabilityBand" ? snapshot.probability : tx[key] ?? snapshot[key];
         if ((key === "surface" || key === "tour") && !dimension.normalize(rawValue)) {
           const matchId = Number(tx.matchId ?? snapshot.matchId);
           const side = tx.side ?? snapshot.side;
