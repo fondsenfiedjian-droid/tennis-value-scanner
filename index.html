@@ -935,7 +935,7 @@
         catch(error){alert(error.message);}
       };
     }
-    $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
+    $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+(bet.plannedStake!==null&&bet.plannedStake!==undefined?' · план '+formatEuro(bet.plannedStake)+' @ '+Number(bet.plannedOdds).toFixed(2):'')+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
     const labels={deposit:'Пополнение',withdrawal:'Снятие',stake:'Ставка',settlement:'Расчёт ставки',settlement_reversed:'Расчёт отменён после исправления результата',settlement_reversal:'Возврат при пересмотре результата'};
     $('#bankTransactions').innerHTML=state.transactions.slice().reverse().slice(0,50).map(tx=>'<div class="archive-item"><b>'+escapeHtml(labels[tx.type]||tx.type)+'</b><div class="'+(tx.balanceDelta>=0?'model-positive':'model-negative')+'">'+(tx.balanceDelta>0?'+':'')+formatEuro(tx.balanceDelta)+'</div><div class="archive-meta">'+escapeHtml(tx.note||tx.outcome||'')+' · '+escapeHtml(new Date(tx.at).toLocaleString('ru-RU'))+'</div></div>').join('')||'<div class="panel empty">Операций пока нет.</div>';
     $('#bankOpenList').querySelectorAll('[data-bank-settle]').forEach(button=>button.onclick=()=>{
@@ -990,7 +990,7 @@
   };
   $('#bankExportCsv').onclick=()=>{
     const state=readBankrollState();if(!state){alert('Банкролл недоступен.');return;}
-    const columns=['at','type','amount','balanceDelta','stake','profit','outcome','source','betId','matchId','side','resultVersion','note','betSnapshot'];
+    const columns=['at','type','amount','balanceDelta','stake','profit','outcome','source','betId','matchId','side','resultVersion','plannedStake','plannedOdds','actualStake','actualOdds','note','betSnapshot'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
       if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
