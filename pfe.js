@@ -231,6 +231,113 @@
     };
   }
 
+  function simulateServiceGame(pointWinA, pointWinB, serverA, random) {
+    let pointsA = 0, pointsB = 0;
+    while (true) {
+      const probabilityA = serverA ? pointWinA : 1 - pointWinB;
+      if (random() < probabilityA) pointsA++;
+      else pointsB++;
+      if ((pointsA >= 4 || pointsB >= 4) && Math.abs(pointsA - pointsB) >= 2) return pointsA > pointsB;
+    }
+  }
+
+  function simulateTiebreak(pointWinA, pointWinB, firstServerA, random) {
+    let pointsA = 0, pointsB = 0, pointIndex = 0;
+    while (true) {
+      const serverA = pointIndex === 0
+        ? firstServerA
+        : Math.floor((pointIndex - 1) / 2) % 2 === 0 ? !firstServerA : firstServerA;
+      const probabilityA = serverA ? pointWinA : 1 - pointWinB;
+      if (random() < probabilityA) pointsA++;
+      else pointsB++;
+      pointIndex++;
+      if ((pointsA >= 7 || pointsB >= 7) && Math.abs(pointsA - pointsB) >= 2) return pointsA > pointsB;
+    }
+  }
+
+  function simulateSet(pointWinA, pointWinB, firstServerA, random) {
+    let gamesA = 0, gamesB = 0, serverA = firstServerA;
+    while (true) {
+      if (gamesA === 6 && gamesB === 6) {
+        const firstTiebreakServerA = serverA;
+        const winnerA = simulateTiebreak(pointWinA, pointWinB, firstTiebreakServerA, random);
+        if (winnerA) gamesA++;
+        else gamesB++;
+        return {
+          winnerA, gamesA, gamesB, totalGames: gamesA + gamesB,
+          nextSetFirstServerA: !firstTiebreakServerA, tiebreak: true
+        };
+      }
+      const winnerA = simulateServiceGame(pointWinA, pointWinB, serverA, random);
+      if (winnerA) gamesA++;
+      else gamesB++;
+      serverA = !serverA;
+      if ((gamesA >= 6 || gamesB >= 6) && Math.abs(gamesA - gamesB) >= 2) {
+        return {
+          winnerA: gamesA > gamesB, gamesA, gamesB, totalGames: gamesA + gamesB,
+          nextSetFirstServerA: (gamesA + gamesB) % 2 === 0 ? firstServerA : !firstServerA,
+          tiebreak: false
+        };
+      }
+    }
+  }
+
+  // Point-by-point Monte Carlo with standard advantage games and a 7-point tiebreak at 6-6.
+  // It is a scenario model, not a live score feed or an automatically trusted match probability.
+  function runMatchMonteCarlo(pointWinA, pointWinB, options = {}) {
+    const pA = Number(pointWinA), pB = Number(pointWinB);
+    const bestOf = options.bestOf === undefined ? 3 : Number(options.bestOf);
+    if (![pA, pB].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      return { status: "invalid", reason: "invalid_point_probabilities", iterations: 0 };
+    }
+    if (![3, 5].includes(bestOf)) {
+      return { status: "invalid", reason: "unsupported_match_format", iterations: 0 };
+    }
+    const iterations = Number.isInteger(options.iterations) ? clamp(options.iterations, 100, 100000) : 10000;
+    const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 20261118;
+    const random = createRandom(seed);
+    const setsToWin = bestOf === 3 ? 2 : 3;
+    let winsA = 0, totalGames = 0, totalSets = 0;
+    const scorelines = new Map();
+    for (let i = 0; i < iterations; i++) {
+      let setsA = 0, setsB = 0, firstServerA = true, games = 0;
+      const setScores = [];
+      while (setsA < setsToWin && setsB < setsToWin) {
+        const set = simulateSet(pA, pB, firstServerA, random);
+        if (set.winnerA) setsA++;
+        else setsB++;
+        games += set.totalGames;
+        setScores.push(set.gamesA + "-" + set.gamesB);
+        firstServerA = set.nextSetFirstServerA;
+      }
+      if (setsA > setsB) winsA++;
+      totalGames += games;
+      totalSets += setsA + setsB;
+      const key = setsA + "-" + setsB + " (" + setScores.join(", ") + ")";
+      scorelines.set(key, (scorelines.get(key) || 0) + 1);
+    }
+    const probabilityA = winsA / iterations;
+    const z = 1.96, denominator = 1 + z * z / iterations;
+    const center = (probabilityA + z * z / (2 * iterations)) / denominator;
+    const margin = z * Math.sqrt(probabilityA * (1 - probabilityA) / iterations +
+      z * z / (4 * iterations * iterations)) / denominator;
+    const topScorelines = [...scorelines.entries()]
+      .map(([score, count]) => ({ score, count, probability: count / iterations }))
+      .sort((a, b) => b.count - a.count || a.score.localeCompare(b.score))
+      .slice(0, 8);
+    return {
+      status: "scenario",
+      iterations, seed, bestOf, setsToWin,
+      probabilityA, probabilityB: 1 - probabilityA,
+      confidenceInterval95A: [Math.max(0, center - margin), Math.min(1, center + margin)],
+      averageTotalGames: totalGames / iterations,
+      averageSets: totalSets / iterations,
+      topScorelines,
+      assumptions: ["constant_point_probabilities", "standard_advantage_scoring", "7_point_tiebreak_at_6_all", "alternating_service_order", "no_fatigue_or_injury_adjustment"],
+      note: "Симуляция розыгрышей при постоянных вероятностях очка на подаче. Результат сценарный и не заменяет проверенную модель матча."
+    };
+  }
+
   function quantile(values, q) {
     if (!values.length) return null;
     const sorted = values.slice().sort((a, b) => a - b);
@@ -574,5 +681,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, runMatchMonteCarlo, buildModelHistoryRecords, evaluateModelHistory };
 });
