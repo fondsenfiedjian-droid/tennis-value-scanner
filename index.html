@@ -266,6 +266,7 @@
     <div class="field"><label for="minEv">Минимальный EV, %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="1000" step="0.1" value="5.00"></div>
+    <div class="field"><label for="bestBetMinOdds">Минимальный коэффициент для «Ставки дня»</label><input id="bestBetMinOdds" type="number" min="1.01" max="100" step="0.05" value="1.90"><small class="muted">Отдельный порог отбора. Не меняет EV, вероятность модели или размер ставки.</small></div>
     <div class="field"><label>Турниры</label><div class="checkgrid">
       <label class="check"><input type="checkbox" data-tour="atp" checked> ATP</label><label class="check"><input type="checkbox" data-tour="wta" checked> WTA</label>
       <label class="check"><input type="checkbox" data-tour="challenger" checked> Challenger</label><label class="check"><input type="checkbox" data-tour="itf" checked> ITF</label>
@@ -320,7 +321,7 @@
     return [0,30,60,180].includes(minutes)?minutes:60;
   }
   const saved=readSettings();
-  ['minEv','minOdds','maxOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
   let savedTours=Array.isArray(saved.tours)?saved.tours:null;
@@ -336,16 +337,18 @@
   tourChecks.forEach(input=>input.addEventListener('change',()=>{saveTours();if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#saveSettings').onclick=()=>{
     const minEv=Number($('#minEv').value),minOdds=Number($('#minOdds').value),maxOdds=Number($('#maxOdds').value);
+    const bestBetMinOdds=Number($('#bestBetMinOdds').value);
     const refreshRate=Number($('#refreshRate').value);
     if(!Number.isFinite(minEv)||minEv<0||minEv>100||
        !Number.isFinite(minOdds)||minOdds<1.9||minOdds>100||
        !Number.isFinite(maxOdds)||maxOdds<minOdds||maxOdds>100||
+       !Number.isFinite(bestBetMinOdds)||bestBetMinOdds<1.01||bestBetMinOdds>100||
        ![0,30,60,180].includes(refreshRate)){
       alert('Проверь настройки: EV должен быть от 0 до 100%, минимальный коэффициент — от 1.90 до 100, максимальный — не меньше минимального и не больше 100.');
       return;
     }
     const data=readSettings();
-    ['minEv','minOdds','maxOdds'].forEach(id=>data[id]=$('#'+id).value);
+    ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
     data.tours=selectedTours();
     try{
@@ -1650,10 +1653,11 @@
   function freshnessStakeMultiplier(level){
     return level==='good'?1:level==='medium'?0.5:0;
   }
-  function selectBestBet(bets,minEv=3){
+  function selectBestBet(bets,minEv=3,minOdds=1.9){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
+    const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.01,Number(minOdds)):1.9;
     const freshnessRank={good:2,medium:1};
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=1.9&&
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&
       ['good','medium'].includes(x.freshnessLevel))
       .sort((a,b)=>b.ev-a.ev||freshnessRank[b.freshnessLevel]-freshnessRank[a.freshnessLevel]||b.odds-a.odds)[0]||null;
   }
@@ -1662,11 +1666,13 @@
     if(!box)return;
     const configuredMinEv=Number($('#minEv').value);
     const minEv=Number.isFinite(configuredMinEv)?Math.max(0,configuredMinEv):3;
-    const best=selectBestBet(bets,minEv);
+    const configuredBestBetMinOdds=Number(readSettings().bestBetMinOdds);
+    const bestBetMinOdds=Number.isFinite(configuredBestBetMinOdds)?Math.max(1.01,configuredBestBetMinOdds):1.9;
+    const best=selectBestBet(bets,minEv,bestBetMinOdds);
     box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
-      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет ставки с коэффициентом от 1.90 и EV не ниже '+minEv.toFixed(1)+'%.':'Нет подходящих матчей с коэффициентом от 1.90.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет ставки с коэффициентом от '+bestBetMinOdds.toFixed(2)+' и EV не ниже '+minEv.toFixed(1)+'%.':'Нет подходящих матчей с коэффициентом от '+bestBetMinOdds.toFixed(2)+'.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
       return;
     }
     const d=matchDate(best.match);
