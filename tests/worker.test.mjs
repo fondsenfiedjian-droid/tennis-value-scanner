@@ -2176,6 +2176,34 @@ test("PFE registry exposes active and planned models with explicit dependency gr
   assert.equal(sandbox.pfe.getModelRegistry()[0].requires.includes("mutated"), false);
 });
 
+test("PFE builds one immutable pre-match history observation per model and match from verified archive rows", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const base = {
+    model: "general-elo-v2", matchId: 7101, probability: 64, side: "A",
+    player: "Player A", opponent: "Player B", playerId: 11, opponentId: 22,
+    capturedAt: Date.parse("2025-01-01T10:00:00Z"),
+    matchDate: "2025-01-01T12:00:00Z", captureStatus: "upcoming",
+    resultOutcome: "completed", resultWinner: 1, resultCheckedAt: Date.parse("2025-01-02T10:00:00Z"),
+    modelVersion: "2"
+  };
+  const result = sandbox.pfe.buildModelHistoryRecords([
+    base,
+    { ...base, capturedAt: Date.parse("2025-01-01T10:30:00Z"), probability: 67 },
+    { ...base, matchId: 7102, capturedAt: Date.parse("2025-01-01T12:00:00Z") },
+    { ...base, matchId: 7103, resultOutcome: "unresolved" },
+    { ...base, matchId: 7104, captureStatus: "live" },
+    { ...base, matchId: 7105, side: "B" }
+  ]);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].probability, 0.64);
+  assert.equal(result.records[0].outcome, 1);
+  assert.equal(result.records[0].playerId, 11);
+  assert.equal(result.records[0].modelVersion, "2");
+  assert.equal(result.rejected.length, 4);
+});
+
 test("PFE history evaluation uses chronological holdout and neutral weights for small samples", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
