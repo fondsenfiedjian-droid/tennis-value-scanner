@@ -2721,7 +2721,7 @@ test("prediction card shows the registered PFE model count without claiming plan
 test("PFE does not understate uncertainty inside correlated dependency groups", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const result = sandbox.pfe.fusePredictions([
     { id: "model-a", probability: 0.62, dependencyGroup: "shared-source", uncertainty: 0.1 },
     { id: "model-b", probability: 0.66, dependencyGroup: "shared-source", uncertainty: 0.2 }
