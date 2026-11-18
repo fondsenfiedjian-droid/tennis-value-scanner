@@ -694,13 +694,17 @@ test("archive tracks opening-to-latest odds movement per match side", () => {
     { matchId: 2, side: "A", odds: 1.70, capturedAt: 200 },
     { matchId: 3, side: "A", odds: 1.50, capturedAt: 100 },
     { matchId: 4, side: "A", odds: 2.10, capturedAt: 100 },
-    { matchId: 4, side: "A", odds: 2.10, capturedAt: 200 }
+    { matchId: 4, side: "A", odds: 2.10, capturedAt: 200 },
+    { matchId: 5, side: "A", odds: 2.00, capturedAt: 100 },
+    { matchId: 5, side: "A", odds: 2.05, capturedAt: 100 },
+    { matchId: 5, side: "A", odds: 2.10, capturedAt: 200 }
   ];
   const movement = archiveOddsMovement(rows);
   assert.equal(movement.shortened, 1);
   assert.equal(movement.drifted, 1);
   assert.equal(movement.unchanged, 2);
   assert.equal(movement.comparable, 4);
+  assert.equal(movement.conflicting, 1);
 });
 
 
