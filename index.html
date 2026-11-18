@@ -489,7 +489,7 @@
         if(side&&Number.isFinite(value)&&value>1){if(side==='1')oddsA=value;else oddsB=value;}
       });
       const bookmakerName=matched.length?String(matched[0].bookmaker||'Winamax').trim():'Winamax';
-      const bookmakerTag='<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>';
+      const bookmakerTag=matched.length?'<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>':'';
       const oddsHtml=matched.length?'<div class="match-bottom"><b>'+escapeHtml(bookmakerName)+':</b> '+matched.map(o=>{const side=oddsSideForPlayer(o,a);return side?escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>':'';}).filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
       const oddsObservedAt=Date.now();
       const oddsAgeMinutes=matched.length?Math.max(...matched.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
