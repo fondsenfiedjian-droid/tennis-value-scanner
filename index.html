@@ -1767,13 +1767,18 @@
         const pfeHistoryEvaluation=TVSPFE.evaluateModelHistory(pfeHistory.records);
         const pfeEloHistory=pfeHistoryEvaluation.models.find(model=>model.modelId==='general-elo-v2');
         const pfeHistoryLabel=pfeEloHistory?.status==='validated'?'вес-кандидат '+pfeEloHistory.calibratedWeight.toFixed(2)+' · валидация '+pfeEloHistory.validation.sampleSize+' матчей':'вес нейтральный · недостаточно проверенной истории';
-        const pfeAssessment=TVSPFE.fusePredictions([{
+        const pfeModels=[{
           id:'general-elo-v2',dependencyGroup:'elo-ratings',
           probability:Number(result.probabilityExactA??result.probabilityA/100),
           quality:result.ratingQualityA?.status==='invalid'?0.1:result.ratingQualityA?.status==='review'?0.6:1
-        }]);
-        const pfeLabel=pfeAssessment.status==='provisional'?'предварительно · одна независимая модель':
-          pfeAssessment.status==='conflict'?'обнаружено расхождение':'согласованный прогноз';
+        }];
+        if(marketContext&&Number.isFinite(currentOddsAge)&&currentOddsAge<=90)pfeModels.push({
+          id:'market-consensus',dependencyGroup:'bookmaker-market',
+          probability:marketContext.marketProbabilityA/100,quality:1
+        });
+        const pfeAssessment=TVSPFE.fusePredictions(pfeModels);
+        const pfeLabel=pfeAssessment.status==='provisional'?'предварительно · недостаточно независимых источников':
+          pfeAssessment.status==='conflict'?'обнаружено расхождение Elo и рынка':'Elo и рынок согласуются';
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br><small>Кандидатный вес не применяется к объединению автоматически. Пока доступна только модель Elo: PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Monte Carlo-стресс-тест будет информативен после подключения независимых моделей и оценки их неопределённости.</small></div>';
         checked++;
