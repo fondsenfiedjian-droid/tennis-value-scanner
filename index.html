@@ -183,26 +183,47 @@
     const a=normalizePlayer(playerName(p.p1||m.player1));
     const b=normalizePlayer(playerName(p.p2||m.player2));
     if(!a||!b||a===b)return [];
-    return cachedOdds.filter(o=>{
-      if(!o||!['home','away'].includes(String(o.outcome||'').toLowerCase()))return false;
-      const names=String(o.eventName||'').split(/\s+-\s+/);
-      if(names.length!==2)return false;
-      const x=normalizePlayer(names[0]),y=normalizePlayer(names[1]);
-      return Boolean(x&&y)&&((x===a&&y===b)||(x===b&&y===a));
+    const matchStart=matchDate(m);
+    if(!matchStart)return [];
+    const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
+    const candidates=cachedOdds.filter(o=>{
+      if(!o||String(o.bookmaker||'').toLowerCase()!=='winamax')return false;
+      if(String(o.bookmakerCountry||'').toUpperCase()!=='FR')return false;
+      if(String(o.sport||'').toLowerCase()!=='tennis')return false;
+      if(String(o.marketType||'').toLowerCase()!=='match_winner')return false;
+      if(o.line!==null&&o.line!==undefined&&o.line!=='')return false;
+      if(!o.eventId||!['home','away'].includes(String(o.outcome||'').toLowerCase()))return false;
+      const home=normalizePlayer(o.homeTeam),away=normalizePlayer(o.awayTeam);
+      if(!home||!away||home===away)return false;
+      const eventParts=String(o.eventName||'').split(/\s+-\s+/);
+      if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
+      if(!((home===a&&away===b)||(home===b&&away===a)))return false;
+      if(tournament&&normalizePlayer(o.competition)!==tournament)return false;
+      const eventStart=new Date(o.startTime);
+      if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
+      const value=Number(o.oddsDecimal);
+      return Number.isFinite(value)&&value>1;
     });
+    const eventIds=[...new Set(candidates.map(o=>String(o.eventId)))];
+    if(eventIds.length!==1)return [];
+    const latestByOutcome={};
+    candidates.forEach(o=>{
+      const side=String(o.outcome).toLowerCase();
+      const current=latestByOutcome[side];
+      const timestamp=Date.parse(o.scrapedAt)||0;
+      if(!current||timestamp>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=o;
+    });
+    return Object.values(latestByOutcome);
   }
   function oddsSideForPlayer(o,playerA){
-    const names=String(o?.eventName||'').split(/\s+-\s+/);
-    if(names.length!==2)return null;
-    const first=normalizePlayer(names[0]);
-    const second=normalizePlayer(names[1]);
+    const home=normalizePlayer(o?.homeTeam);
+    const away=normalizePlayer(o?.awayTeam);
     const a=normalizePlayer(playerA);
-    if(!first||!second||!a)return null;
-    const homeIsPlayerA=first===a;
-    if(!homeIsPlayerA&&second!==a)return null;
+    if(!home||!away||!a)return null;
     const outcome=String(o.outcome||'').toLowerCase();
-    if(outcome!=='home'&&outcome!=='away')return null;
-    return (outcome==='home')===homeIsPlayerA?'1':'2';
+    if(a===home)return outcome==='home'?'1':outcome==='away'?'2':null;
+    if(a===away)return outcome==='away'?'1':outcome==='home'?'2':null;
+    return null;
   }
   function normalizeTour(value){
     const tour=String(value??'').trim().toLowerCase();
