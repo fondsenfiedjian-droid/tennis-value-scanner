@@ -37,11 +37,13 @@ function makeFakeIndexedDB(options = {}) {
     transaction(names, mode) {
       const tx = {
         error: null,
+        aborted: false,
+        abort() { this.aborted = true; },
         objectStore(name) {
           if (name === "records") return {
             getAll() {
               const request = { result: [] };
-              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); request.onsuccess?.(); });
+              setTimeout(() => { request.result = state.records.map(row => ({ ...row })); request.onsuccess?.(); }, 0);
               return request;
             },
             clear() { state.records = []; },
@@ -50,14 +52,14 @@ function makeFakeIndexedDB(options = {}) {
           return {
             get(key) {
               const request = { result: undefined };
-              Promise.resolve().then(() => { request.result = state.meta.get(key); });
+              setTimeout(() => { request.result = state.meta.get(key); request.onsuccess?.(); }, 0);
               return request;
             },
             put(value, key) { state.meta.set(key, value); }
           };
         }
       };
-      Promise.resolve().then(() => Promise.resolve().then(() => tx.oncomplete?.()));
+      setTimeout(() => { if (!tx.aborted) tx.oncomplete?.(); }, 1);
       return tx;
     }
   };
