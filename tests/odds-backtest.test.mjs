@@ -386,6 +386,10 @@ test("archive coverage reports date span, bookmaker, tours, surfaces and snapsho
   const coverage = runOddsBacktest(rows).archiveCoverage;
   assert.equal(coverage.uniqueMatches, 2);
   assert.equal(coverage.validSnapshots, 3);
+  assert.deepEqual(coverage.ratingDateCoverage, {
+    provided: 0, missing: 6, invalid: 0, beforeMatchDate: 0, sameMatchDate: 0, afterMatchDate: 0,
+    note: "ratingAsOf is a calendar-date provenance hint, not proof that the probability was calculated before the odds snapshot or match start. Same-day dates have unknown intraday ordering."
+  });
   assert.equal(coverage.matchDateRange.from, "2025-01-01T12:00:00.000Z");
   assert.equal(coverage.matchDateRange.to, "2025-01-03T12:00:00.000Z");
   assert.deepEqual(coverage.bookmakers, ["winamax"]);
