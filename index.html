@@ -409,7 +409,7 @@
     for(const entry of entries){
       if(!Number.isFinite(entry.odds)||entry.odds<=1||!Number.isFinite(entry.probability))continue;
       const ev=(entry.probability/100*entry.odds-1)*100;
-      const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&now-Number(row.capturedAt)<10*60*1000);
+      const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
       archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
       changed=true;
