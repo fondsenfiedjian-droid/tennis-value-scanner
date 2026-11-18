@@ -971,6 +971,8 @@ test("Winamax CSV parser normalizes French amounts and avoids duplicate imports"
   assert.equal(parsed.records[0].odds, 2.1);
   assert.equal(parsed.records[0].profit, 2.75);
   assert.equal(parsed.records[0].outcome, "won");
+  assert.equal(parsed.records[0].bookmaker, "Winamax");
+  assert.ok(parsed.records[0].externalKey.startsWith("winamax:"));
   assert.equal(parsed.records[1].outcome, "lost");
   const merged = api.mergeImportedHistory([], parsed.records);
   assert.equal(merged.added, 2);
@@ -981,6 +983,9 @@ test("Winamax CSV parser normalizes French amounts and avoids duplicate imports"
   assert.equal(summary.settledBets, 2);
   assert.equal(summary.totalStaked, 3.5);
   assert.equal(summary.profit, 1.75);
+  const byBookmaker = api.summarizeByBookmaker(merged.rows);
+  assert.equal(byBookmaker.Winamax.settledBets, 2);
+  assert.equal(byBookmaker.Winamax.profit, 1.75);
 });
 
 test("Winamax importer is isolated from the financial ledger and validates preview before import", () => {
@@ -992,6 +997,8 @@ test("Winamax importer is isolated from the financial ledger and validates previ
   assert.ok(frontendSource.includes('id="bankWinamaxImport"'));
   assert.ok(frontendSource.includes('<script src="./winamax-import.js"></script>'));
   assert.ok(frontendSource.includes('renderWinamaxHistory();'));
+  assert.ok(frontendSource.includes('class="bookmaker-tag"'));
+  assert.ok(frontendSource.includes("matched[0].bookmaker||'Winamax'"));
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
