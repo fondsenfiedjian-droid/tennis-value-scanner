@@ -520,16 +520,18 @@ test("strict quote provenance rejects missing, future and stale source timestamp
     { ...valid, match_id: "quote-missing", quote_a_captured_at: undefined },
     { ...valid, match_id: "quote-after-observation", quote_b_captured_at: "2025-01-01T09:59:00Z" },
     { ...valid, match_id: "quote-after-model", quote_a_captured_at: "2025-01-01T09:59:30Z", quote_a_observed_at: "2025-01-01T09:59:40Z" },
-    { ...valid, match_id: "quote-stale", quote_a_captured_at: "2025-01-01T08:00:00Z", quote_a_observed_at: "2025-01-01T09:58:10Z" }
+    { ...valid, match_id: "quote-stale", quote_a_captured_at: "2025-01-01T08:00:00Z", quote_a_observed_at: "2025-01-01T09:58:10Z" },
+    { ...valid, match_id: "quote-side-skew", quote_a_captured_at: "2025-01-01T09:00:00Z", quote_a_observed_at: "2025-01-01T09:58:10Z" }
   ];
   const report = runOddsBacktest(rows, { thresholdSensitivity: false });
   assert.equal(report.matches, 1);
-  assert.equal(report.rejectedSnapshots, 4);
+  assert.equal(report.rejectedSnapshots, 5);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.provided, 4);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.missing, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterObservation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterModelCalculation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.staleAtObservation, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.sideSkew, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.acceptedSides, 2);
 });
 
