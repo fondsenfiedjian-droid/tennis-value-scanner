@@ -476,6 +476,23 @@ test("archive merge preserves official result status and restatement metadata", 
   assert.equal(merged.resultRestatedAt, "2026-11-18T10:00:00Z");
 });
 
+test("archive import merges newer official result metadata into an identical snapshot", () => {
+  const { mergePredictionArchive } = makeArchiveStore();
+  const original = { matchKey: "merge-result", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 60, ev: 20, capturedAt: 1000, resultOutcome: null, resultVersion: null };
+  const verified = { ...original, resultOutcome: "completed", resultWinner: 1, resultVersion: 2, resultCheckedAt: 3000 };
+  const merged = mergePredictionArchive([original], [verified]);
+  assert.equal(merged.added, 0);
+  assert.equal(merged.updated, 1);
+  assert.equal(merged.rows.length, 1);
+  assert.equal(merged.rows[0].resultOutcome, "completed");
+  assert.equal(merged.rows[0].resultWinner, 1);
+  assert.equal(merged.rows[0].resultVersion, 2);
+  const stale = mergePredictionArchive(merged.rows, [{ ...verified, resultWinner: 2, resultVersion: 1 }]);
+  assert.equal(stale.updated, 0);
+  assert.equal(stale.rows[0].resultWinner, 1);
+});
+
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
