@@ -252,7 +252,7 @@
       const result = verifiedResultForMatch(rows, bet.matchId);
       if (!result) continue;
       const previousVersion = Number.isSafeInteger(bet.lastResultVersion) ? bet.lastResultVersion : null;
-      if (result.version !== null && previousVersion !== null && result.version <= previousVersion) continue;
+      if (previousVersion !== null && (result.version === null || result.version <= previousVersion)) continue;
       if (result.outcome !== "completed") {
         if (result.version !== null) bet.lastResultVersion = result.version;
         continue;
