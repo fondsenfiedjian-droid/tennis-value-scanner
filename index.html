@@ -403,6 +403,9 @@
     const tokensA=tokens(a),tokensB=new Set(tokens(b));
     return tokensA.some(token=>tokensB.has(token));
   }
+  const ODDS_PROVIDER_REGISTRY=Object.freeze({
+    winamax:{label:'Winamax',country:'FR',enabled:true}
+  });
   function oddsForMatch(m){
     const p=m.players||{};
     const a=normalizePlayer(playerName(p.p1||m.player1));
@@ -412,8 +415,9 @@
     if(!matchStart)return [];
     const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
     const candidates=cachedOdds.filter(o=>{
-      if(!o||String(o.bookmaker||'').toLowerCase()!=='winamax')return false;
-      if(String(o.bookmakerCountry||'').toUpperCase()!=='FR')return false;
+      const provider=String(o?.bookmaker||'').trim().toLowerCase();
+      const config=ODDS_PROVIDER_REGISTRY[provider];
+      if(!config||!config.enabled||String(o.bookmakerCountry||'').toUpperCase()!==config.country)return false;
       if(String(o.sport||'').toLowerCase()!=='tennis')return false;
       if(String(o.marketType||'').toLowerCase()!=='match_winner')return false;
       if(o.line!==null&&o.line!==undefined&&o.line!=='')return false;
@@ -423,7 +427,6 @@
       const eventParts=String(o.eventName||'').split(/\s+-\s+/);
       if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
       if(!((home===a&&away===b)||(home===b&&away===a)))return false;
-      // Allow provider suffixes/aliases, but reject clearly unrelated tournaments.
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
@@ -432,16 +435,24 @@
       const value=Number(o.oddsDecimal);
       return Number.isFinite(value)&&value>1;
     });
-    const eventIds=[...new Set(candidates.map(o=>String(o.eventId)))];
-    if(eventIds.length!==1)return [];
-    const latestByOutcome={};
-    candidates.forEach(o=>{
-      const side=String(o.outcome).toLowerCase();
-      const current=latestByOutcome[side];
-      const timestamp=Date.parse(o.scrapedAt)||0;
-      if(!current||timestamp>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=o;
-    });
-    return Object.values(latestByOutcome);
+    // Event IDs are bookmaker-specific: never require two providers to share one.
+    const groups=new Map();
+    for(const quote of candidates){
+      const key=String(quote.bookmaker).trim().toLowerCase()+'|'+String(quote.eventId);
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(quote);
+    }
+    const selected=[];
+    for(const quotes of groups.values()){
+      const latestByOutcome={};
+      for(const quote of quotes){
+        const side=String(quote.outcome).toLowerCase();
+        const current=latestByOutcome[side];
+        if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=quote;
+      }
+      if(latestByOutcome.home&&latestByOutcome.away)selected.push(...Object.values(latestByOutcome));
+    }
+    return selected;
   }
   function oddsSideForPlayer(o,playerA){
     const home=normalizePlayer(o?.homeTeam);
@@ -482,18 +493,19 @@
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
       });
-      let oddsA=null,oddsB=null;
-      matched.forEach(o=>{
-        const side=oddsSideForPlayer(o,a);
-        const value=Number(o.oddsDecimal);
-        if(side&&Number.isFinite(value)&&value>1){if(side==='1')oddsA=value;else oddsB=value;}
-      });
-      const bookmakerName=matched.length?String(matched[0].bookmaker||'Winamax').trim():'Winamax';
-      const bookmakerTag=matched.length?'<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>':'';
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>'+escapeHtml(bookmakerName)+':</b> '+matched.map(o=>{const side=oddsSideForPlayer(o,a);return side?escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>':'';}).filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
+      const bestQuoteForSide=side=>matched.filter(o=>oddsSideForPlayer(o,a)===side).sort((x,y)=>Number(y.oddsDecimal)-Number(x.oddsDecimal))[0]||null;
+      const quoteA=bestQuoteForSide('1'),quoteB=bestQuoteForSide('2');
+      const oddsA=quoteA?Number(quoteA.oddsDecimal):null,oddsB=quoteB?Number(quoteB.oddsDecimal):null;
+      const bookmakerA=quoteA?String(quoteA.bookmaker||'').trim():'';
+      const bookmakerB=quoteB?String(quoteB.bookmaker||'').trim():'';
+      const providers=[...new Set([bookmakerA,bookmakerB].filter(Boolean))];
+      const bookmakerName=providers.join(' / ');
+      const bookmakerTag=providers.length?'<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>':'';
+      const oddsHtml=matched.length?'<div class="match-bottom">'+[quoteA?'<b>1</b> '+escapeHtml(bookmakerA)+' <b>'+oddsA.toFixed(2)+'</b>':'',quoteB?'<b>2</b> '+escapeHtml(bookmakerB)+' <b>'+oddsB.toFixed(2)+'</b>':''].filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
       const oddsObservedAt=Date.now();
-      const oddsAgeMinutes=matched.length?Math.max(...matched.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
+      const selectedQuotes=[quoteA,quoteB].filter(Boolean);
+      const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -1282,10 +1294,10 @@
       const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
       return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel};
     })):{suggestions:[],totalStake:0};
-    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
+    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+escapeHtml(item.bookmaker||'Winamax')+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
     const stakeWord=portfolio.suggestions.length===1?'ставка':portfolio.suggestions.length<5?'ставки':'ставок';
     const stakeAction=portfolio.suggestions.length?'<br><b>План портфеля: '+portfolio.suggestions.length+' '+stakeWord+' · всего '+formatEuro(portfolio.totalStake)+'</b><br>'+portfolioLines+'<br><button id="addPortfolioToBank" class="chip on" style="margin-top:9px">Сохранить план портфеля</button>':'<br><span class="model-muted">Сейчас нет ставок, прошедших лимиты банка, минимальный EV и проверку свежести данных.</span>';
-    box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · Winamax <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.'+stakeAction+'</div>';
+    box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · '+escapeHtml(best.bookmaker||'Winamax')+' <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.'+stakeAction+'</div>';
     const addButton=$('#addPortfolioToBank');
     if(addButton)addButton.onclick=()=>addPortfolioToBankroll(portfolio.suggestions);
   }
@@ -1332,8 +1344,8 @@
         if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
-        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),ev:result.evA,match:m};
-        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),ev:result.evB,match:m};
+        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityA),ev:result.evA,match:m};
+        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityB),ev:result.evB,match:m};
         for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result);
         await flushArchiveWrites();
