@@ -790,7 +790,7 @@
     if(typeof payload.checksum!=='string'||payload.checksum!==archiveChecksum(payload.records))throw new Error('Контрольная сумма не совпадает. Файл повреждён или изменён');
     return {records:payload.records,legacy:false};
   }
-  function savePredictionSnapshot(match,el,result){
+  function savePredictionSnapshot(match,el,result,modelCalculatedAt=null){
     const playerA=el.dataset.nameA||result.playerA||'Игрок 1';
     const playerB=el.dataset.nameB||result.playerB||'Игрок 2';
     const matchPlayers=match.players||{};
@@ -820,7 +820,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&String(row.bookmaker||'')===entry.bookmaker&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,captureStatus,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',modelVersion:'2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,captureStatus,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',modelVersion:'2',modelCalculatedAt:Number.isFinite(Number(modelCalculatedAt))&&Number(modelCalculatedAt)>0?Number(modelCalculatedAt):null,capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -854,7 +854,7 @@
         resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
         resultStatus:typeof row.resultStatus==='string'?row.resultStatus.slice(0,80):null,
         resultRestatedAt:typeof row.resultRestatedAt==='string'?row.resultRestatedAt:null,
-        model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,capturedAt};
+        model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,modelCalculatedAt:Number.isFinite(Number(row.modelCalculatedAt))&&Number(row.modelCalculatedAt)>0?Number(row.modelCalculatedAt):null,capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
     const keyOf=row=>[row.matchKey,row.side,String(row.bookmaker||''),row.capturedAt,row.odds,row.probability].join('|');
@@ -864,6 +864,7 @@
       const key=keyOf(row),existingIndex=indexByKey.get(key);
       if(existingIndex===undefined){indexByKey.set(key,merged.length);merged.push(row);added++;continue;}
       const existing=merged[existingIndex];
+      if(Number(existing.modelCalculatedAt||0)!==Number(row.modelCalculatedAt||0)||existing.captureStatus!==row.captureStatus)throw new Error('Конфликт времени расчёта модели или статуса снимка в резервной копии');
       const oldVersion=existing.resultVersion!==null&&existing.resultVersion!==undefined&&Number.isSafeInteger(Number(existing.resultVersion))&&Number(existing.resultVersion)>=1?Number(existing.resultVersion):null;
       const newVersion=row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null;
       const hasOld=typeof existing.resultOutcome==='string';
@@ -1577,7 +1578,7 @@
     await archiveStorageReady;
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
+    const columns=['capturedAt','modelCalculatedAt','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
       if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))cell="'"+cell;
@@ -1847,16 +1848,17 @@
       const el=document.getElementById('model-'+i);if(!el)continue;
       const idA=el.dataset.playerA,idB=el.dataset.playerB;
       const cacheKey='tvs-elo-v3-'+(el.dataset.surface||'unknown')+'-'+idA+'-'+idB;
-      let result=null;
+      let result=null,modelCalculatedAt=null;
       try{
         const cached=localStorage.getItem(cacheKey);
-        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data))result=item.data;else localStorage.removeItem(cacheKey);}
+        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data)){result=item.data;modelCalculatedAt=Number(item.savedAt);}else localStorage.removeItem(cacheKey);}
         if(!result){
           const res=await fetch(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,surface:el.dataset.surface||"",oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
           result=await res.json();
           if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
           if(!isValidPredictionResult(result))throw new Error('Сервер вернул некорректный прогноз');
-          localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
+          modelCalculatedAt=Date.now();
+          localStorage.setItem(cacheKey,JSON.stringify({savedAt:modelCalculatedAt,data:result}));
         }
         if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?((result.probabilityExactA??result.probabilityA/100)*Number(el.dataset.oddsA)-1)*100:null;
@@ -1864,7 +1866,7 @@
         const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),ev:result.evA,match:m};
         const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),ev:result.evB,match:m};
         for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
-        savePredictionSnapshot(m,el,result);
+        savePredictionSnapshot(m,el,result,modelCalculatedAt);
         await flushArchiveWrites();
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
