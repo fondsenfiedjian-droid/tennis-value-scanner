@@ -213,7 +213,7 @@ export default {
         service: "tennis-value-api",
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/odds", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/predict"]
       });
     }
 
@@ -289,6 +289,55 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    if (path === "/player-stats") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const playerId = url.searchParams.get("id") || "";
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(playerId)) {
+        return response({ error: "id must be a valid player identifier" }, 400);
+      }
+      try {
+        // Player statistics change more often than profile ratings; cache successful responses for six hours.
+        const cache = caches.default;
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-stats/" + encodeURIComponent(playerId));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        });
+        let stats;
+        try { stats = await upstream.json(); }
+        catch { stats = null; }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "forbidden_or_plan_restricted"
+            : upstream.status === 401 ? "unauthorized" : upstream.status === 404 ? "stats_not_found" : "upstream_error";
+          return response({
+            error: "Live Tennis player statistics request failed",
+            playerId,
+            accessStatus,
+            upstreamStatus: upstream.status
+          }, upstream.status);
+        }
+        if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
+          return response({ error: "Live Tennis returned an invalid player statistics payload", playerId, accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = { playerId, source: "Live Tennis API /players/{id}/stats", accessStatus: "available", stats };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" }
+        }));
+        return response(payload);
+      } catch {
+        return response({ error: "Could not retrieve player statistics", playerId, accessStatus: "unavailable" }, 502);
       }
     }
 
@@ -606,7 +655,7 @@ export default {
 
     return response({
       service: "tennis-value-api",
-      endpoints: ["/health", "/matches", "/odds", "/predict"]
+      endpoints: ["/health", "/matches", "/player-stats", "/odds", "/predict"]
     });
   }
 };
