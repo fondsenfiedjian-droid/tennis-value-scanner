@@ -747,23 +747,46 @@ test("probability calibration rejects conflicting latest snapshots and counts du
   assert.equal(result.ambiguous,1);
 });
 
+test("result verification rejects mismatched match IDs, missing player identity and swapped players", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const rows=[
+    {matchId:321,side:"A",player:"Player One",opponent:"Player Two"},
+    {matchId:321,side:"B",player:"Player Two",opponent:"Player One"}
+  ];
+  const valid={id:321,players:{p1:{name:"Player One"},p2:{name:"Player Two"}},outcome:"completed",winner:1,result_version:1};
+  assert.equal(applyVerifiedMatchResult(rows,{...valid,id:322}).updated,0);
+  assert.equal(applyVerifiedMatchResult(rows,{...valid,players:{p1:{name:"Player One"}}}).updated,0);
+  assert.equal(applyVerifiedMatchResult(rows,{...valid,players:{p1:{name:"Player Two"},p2:{name:"Player One"}}}).updated,0);
+  assert.equal(applyVerifiedMatchResult(rows,valid).updated,2);
+});
+
+test("result verification refuses completed matches without a valid winner or unknown outcomes", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const rows=[{matchId:654,side:"A",player:"Player One",opponent:"Player Two"}];
+  const base={id:654,players:{p1:{name:"Player One"},p2:{name:"Player Two"}}};
+  assert.equal(applyVerifiedMatchResult(rows,{...base,outcome:"completed",winner:null}).updated,0);
+  assert.equal(applyVerifiedMatchResult(rows,{...base,outcome:"mystery",winner:1}).updated,0);
+  assert.equal(applyVerifiedMatchResult(rows,{...base,outcome:"unresolved",winner:null}).rows[0].resultOutcome,"unresolved");
+});
+
 test("archive applies only verified completed results and honours result revisions", () => {
   const { applyVerifiedMatchResult, archiveResultStats } = makeArchiveStore();
   const rows = [
-    { matchId: 123, matchKey: "123", side: "A", probability: 61, capturedAt: 100, resultVersion: 1 },
-    { matchId: 123, matchKey: "123", side: "B", probability: 39, capturedAt: 100, resultVersion: 1 },
+    { matchId: 123, matchKey: "123", side: "A", player:"Carlos Alcaraz", opponent:"Jannik Sinner", probability: 61, capturedAt: 100, resultVersion: 1 },
+    { matchId: 123, matchKey: "123", side: "B", player:"Jannik Sinner", opponent:"Carlos Alcaraz", probability: 39, capturedAt: 100, resultVersion: 1 },
     { matchId: 456, matchKey: "456", side: "A", probability: 70, capturedAt: 100 }
   ];
-  const ignoredRevision = applyVerifiedMatchResult(rows, { id: 123, status: "completed", outcome: "completed", winner: 2, result_version: 0 }, 500);
+  const apiMatch = { id:123, players:{p1:{name:"Carlos Alcaraz"},p2:{name:"Jannik Sinner"}} };
+  const ignoredRevision = applyVerifiedMatchResult(rows, { ...apiMatch, status: "completed", outcome: "completed", winner: 2, result_version: 0 }, 500);
   assert.equal(ignoredRevision.rows[0].resultWinner, undefined);
-  const applied = applyVerifiedMatchResult(rows, { id: 123, status: "completed", outcome: "completed", winner: 1, result_version: 2 }, 600);
+  const applied = applyVerifiedMatchResult(rows, { ...apiMatch, status: "completed", outcome: "completed", winner: 1, result_version: 2 }, 600);
   assert.equal(applied.updated, 2);
   assert.equal(applied.rows[0].resultOutcome, "completed");
   assert.equal(applied.rows[0].resultWinner, 1);
   const stats = archiveResultStats(applied.rows);
   assert.equal(stats.settled, 1);
   assert.equal(stats.accuracy, 100);
-  const withdrawn = applyVerifiedMatchResult(applied.rows, { id: 123, status: "completed", outcome: "retired", winner: 1, result_version: 3 }, 700);
+  const withdrawn = applyVerifiedMatchResult(applied.rows, { ...apiMatch, status: "completed", outcome: "retired", winner: 1, result_version: 3 }, 700);
   assert.equal(withdrawn.rows[0].resultOutcome, "retired");
   assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
@@ -1087,7 +1110,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1151,7 +1174,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1167,7 +1190,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1314,7 +1337,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
 });
 
 
