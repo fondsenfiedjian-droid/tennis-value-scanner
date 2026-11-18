@@ -5,6 +5,24 @@ import vm from "node:vm";
 
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const frontendSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const archiveStart = frontendSource.indexOf("const ARCHIVE_KEY=");
+const archiveEnd = frontendSource.indexOf("function renderArchive()", archiveStart);
+const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
+function makeArchiveStore() {
+  const data = {};
+  const localStorage = {
+    getItem: key => data[key] ?? null,
+    setItem: (key, value) => { data[key] = value; }
+  };
+  const sandbox = { localStorage, Date, Math, Number, String, JSON,
+    matchDate: () => new Date("2026-11-20T12:00:00Z") };
+  vm.runInNewContext(
+    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot };",
+    sandbox
+  );
+  return sandbox.archiveFns;
+}
+
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
 const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
 vm.runInNewContext(
@@ -135,4 +153,37 @@ test("prediction archive and CSV export remain connected to the UI", () => {
   assert.ok(frontendSource.includes('id="statsView"'));
   assert.ok(frontendSource.includes("savePredictionSnapshot(m,el,result)"));
   assert.ok(frontendSource.includes("tennis-value-archive.csv"));
+});
+
+test("archive stores both priced player outcomes with calculated EV", () => {
+  const { readPredictionArchive, savePredictionSnapshot } = makeArchiveStore();
+  const match = { id: "match-123", tournament_name: "ATP Finals" };
+  const element = { dataset: {
+    nameA: "Ben Shelton", nameB: "Rafael Jodar",
+    playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10"
+  }};
+  savePredictionSnapshot(match, element, {
+    probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800
+  });
+  const rows = readPredictionArchive();
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find(row => row.side === "A").ev, 8);
+  assert.equal(rows.find(row => row.side === "B").ev, -16);
+});
+
+test("archive suppresses identical snapshots but records changed odds", () => {
+  const { readPredictionArchive, savePredictionSnapshot } = makeArchiveStore();
+  const match = { id: "match-456" };
+  const element = { dataset: {
+    nameA: "Player A", nameB: "Player B", playerA: "1", playerB: "2",
+    oddsA: "1.80", oddsB: "2.10"
+  }};
+  const result = { probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800 };
+  savePredictionSnapshot(match, element, result);
+  savePredictionSnapshot(match, element, result);
+  assert.equal(readPredictionArchive().length, 2);
+  element.dataset.oddsA = "1.90";
+  savePredictionSnapshot(match, element, result);
+  assert.equal(readPredictionArchive().length, 3);
+  assert.equal(readPredictionArchive().find(row => row.odds === 1.9).ev, 14);
 });
