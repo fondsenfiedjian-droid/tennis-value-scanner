@@ -153,3 +153,44 @@ test("cumulative daily stake turnover remains capped after earlier bets settle",
   assert.ok(bank.getSummary(state).dailyStaked <= 8);
   assert.equal(bank.recommendStake(state, 0.6, 2.1).eligible, false);
 });
+
+test("recalculates a settled bet when official result version changes", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 321, side: "A"
+  });
+  const first = bank.settleVerifiedResults(placed.state, [
+    { matchId: 321, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]);
+  assert.equal(first.state.balance, 102.2);
+  const corrected = bank.settleVerifiedResults(first.state, [
+    { matchId: 321, resultOutcome: "completed", resultWinner: 2, resultVersion: 2 }
+  ]);
+  assert.equal(corrected.corrected.length, 1);
+  assert.equal(corrected.state.balance, 98);
+  assert.equal(bank.realizedProfit(corrected.state), -2);
+  assert.equal(bank.validateState(corrected.state), corrected.state);
+});
+
+test("reopens a bet after a revised retirement status and settles a later completed version", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 654, side: "A"
+  });
+  const first = bank.settleVerifiedResults(placed.state, [
+    { matchId: 654, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]);
+  const reopened = bank.settleVerifiedResults(first.state, [
+    { matchId: 654, resultOutcome: "retired", resultWinner: 1, resultVersion: 2 }
+  ]);
+  assert.equal(reopened.reopened.length, 1);
+  assert.equal(reopened.state.openBets.length, 1);
+  assert.equal(reopened.state.balance, 98);
+  assert.equal(bank.bankrollEquity(reopened.state), 100);
+  const completed = bank.settleVerifiedResults(reopened.state, [
+    { matchId: 654, resultOutcome: "completed", resultWinner: 1, resultVersion: 3 }
+  ]);
+  assert.equal(completed.settled.length, 1);
+  assert.equal(completed.state.openBets.length, 0);
+  assert.equal(completed.state.balance, 102.2);
+  assert.equal(bank.realizedProfit(completed.state), 2.2);
+  assert.equal(bank.validateState(completed.state), completed.state);
+});
