@@ -767,6 +767,14 @@
   function persistBankrollState(state){
     try{
       TVSBankroll.validateState(state);
+      const currentRaw=localStorage.getItem(BANKROLL_KEY);
+      if(bankrollState){
+        if(!currentRaw)throw new Error('Запись банкролла изменилась или была удалена в другой вкладке. Обнови страницу перед новой операцией.');
+        const current=TVSBankroll.parseBackup(JSON.parse(currentRaw));
+        if(JSON.stringify(current)!==JSON.stringify(bankrollState))throw new Error('Банкролл уже изменён в другой вкладке. Обнови страницу: текущая операция не сохранена, чтобы не потерять записи.');
+      }else if(currentRaw){
+        throw new Error('Банкролл уже существует в хранилище. Обнови страницу перед сохранением.');
+      }
       localStorage.setItem(BANKROLL_KEY,JSON.stringify(TVSBankroll.serializeBackup(state)));
       bankrollState=state;bankrollLoadError=null;return true;
     }catch(error){alert('Не удалось сохранить банкролл: '+error.message);return false;}
