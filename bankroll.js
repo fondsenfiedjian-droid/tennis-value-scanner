@@ -41,10 +41,13 @@
       }
       ids.add(bet.id);
     }
+    let ledgerBalance = 0;
     for (const tx of state.transactions) {
       if (!tx || typeof tx.id !== "string" || !Number.isFinite(tx.amount) || tx.amount < 0 ||
           !Number.isFinite(tx.balanceDelta)) throw new Error("В журнале найдена некорректная операция.");
+      ledgerBalance += tx.balanceDelta;
     }
+    if (Math.abs(roundMoney(ledgerBalance) - state.balance) > 0.01) throw new Error("Баланс не совпадает с суммой операций журнала.");
     return state;
   }
 
@@ -128,8 +131,8 @@
     const odds = Number(bet.odds);
     const recommendation = recommendStake(state, probability, odds, bet.options || {});
     const requested = bet.stake === undefined ? recommendation.stake : roundMoney(Number(bet.stake));
-    if (!recommendation.eligible && bet.stake === undefined) throw new Error(recommendation.reason);
-    if (!Number.isFinite(requested) || requested < 0.01 || requested > state.balance) throw new Error("Размер ставки превышает свободный баланс или некорректен.");
+    if (!recommendation.eligible) throw new Error(recommendation.reason);
+    if (!Number.isFinite(requested) || requested < 0.01 || requested > state.balance || requested > recommendation.stake) throw new Error("Размер ставки превышает рекомендуемый лимит или свободный баланс.");
     const exposureLimit = roundMoney(bankrollEquity(state) * (bet.options?.maxExposurePercent ?? DEFAULTS.maxExposurePercent) / 100);
     if (totalOpenStake(state) + requested > exposureLimit + 0.001) throw new Error("Ставка превышает общий лимит открытого риска.");
     const id = "bet-" + makeId();
