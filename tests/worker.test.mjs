@@ -5,12 +5,12 @@ import vm from "node:vm";
 
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
-const sandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
+const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
+vm.runInNewContext(
   helperSource + "\nglobalThis.testHelpers = { findElo, eloProbability, response };",
-  helperSource + "\\nglobalThis.testHelpers = { findElo, eloProbability, response };",
-  sandbox
+  helperSandbox
 );
-const { findElo, eloProbability, response } = sandbox.testHelpers;
+const { findElo, eloProbability, response } = helperSandbox.testHelpers;
 
 const workerSandbox = {
   Response, Request, URL, Set, Object, Number, Math, JSON, Date, Promise, encodeURIComponent,
@@ -23,6 +23,7 @@ vm.runInNewContext(
 );
 const worker = workerSandbox.worker;
 const env = { LIVE_TENNIS_API_KEY: "test-key", APIFY_TOKEN: "test-token" };
+
 async function call(path, method = "GET", body = undefined) {
   const request = new Request("https://worker.test" + path, {
     method,
