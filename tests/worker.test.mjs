@@ -653,3 +653,12 @@ test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", 
   assert.match(frontendSource, /id="minOdds" type="number" min="1\.90" max="100" step="0\.05" value="1\.90"/);
   assert.match(frontendSource, /Math\.max\(1\.9,Number\(\$\('#minOdds'\)\.value\|\|1\.5\)\)/);
 });
+
+
+test("prediction scanner reuses all fresh cached candidates and caps only uncached API lookups", () => {
+  assert.match(frontendSource, /const allCandidates=matches\.map/);
+  assert.match(frontendSource, /const cachedCandidates=\[\],uncachedCandidates=\[\]/);
+  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,3\)\]/);
+  assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
+  assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed\)/);
+});
