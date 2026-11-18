@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+const frontendSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
 const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
 vm.runInNewContext(
@@ -120,4 +121,16 @@ test("matches rejects reversed date ranges", async () => {
 test("matches rejects unsupported HTTP methods", async () => {
   const result = await call("/matches", "POST", "{}");
   assert.equal(result.status, 405);
+});
+
+test("frontend inline JavaScript parses without syntax errors", () => {
+  const match = frontendSource.match(/<script>([\\s\\S]*?)<\\/script>/);
+  assert.ok(match, "inline application script should exist");
+  assert.doesNotThrow(() => new Function(match[1]));
+});
+
+test("prediction archive and CSV export remain connected to the UI", () => {
+  assert.ok(frontendSource.includes('id="statsView"'));
+  assert.ok(frontendSource.includes("savePredictionSnapshot(m,el,result)"));
+  assert.ok(frontendSource.includes("tennis-value-archive.csv"));
 });
