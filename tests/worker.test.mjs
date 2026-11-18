@@ -17,7 +17,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats };",
+    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, stampResultCheck };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -265,4 +265,13 @@ test("auto-refresh setting is normalized and restored from persisted settings", 
   assert.match(frontendSource, /data\.refreshRate=refreshRate/);
   assert.match(frontendSource, /normalizeRefreshRate\(readSettings\(\)\.refreshRate\)/);
   assert.match(frontendSource, /window\.addEventListener\('pageshow'/);
+});
+
+test("failed result lookups receive a cooldown timestamp without changing other matches", () => {
+  const { stampResultCheck } = makeArchiveStore();
+  const rows = [{ matchId: 123, resultCheckedAt: 10 }, { matchId: 456, resultCheckedAt: 20 }];
+  const stamped = stampResultCheck(rows, 123, 999);
+  assert.equal(stamped[0].resultCheckedAt, 999);
+  assert.equal(stamped[1].resultCheckedAt, 20);
+  assert.equal(stampResultCheck(rows, 0, 999), rows);
 });
