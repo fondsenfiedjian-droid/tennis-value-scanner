@@ -40,7 +40,9 @@
           !Number.isFinite(bet.probability) || bet.probability <= 0 || bet.probability >= 1 ||
           typeof bet.placedAt !== "string" || !Number.isFinite(Date.parse(bet.placedAt)) ||
           (bet.matchId !== null && bet.matchId !== undefined && (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0)) ||
-          (bet.matchId && !["A", "B"].includes(bet.side)) ||\n          (bet.plannedStake !== undefined && bet.plannedStake !== null && (!Number.isFinite(bet.plannedStake) || bet.plannedStake < 0)) ||\n          (bet.plannedOdds !== undefined && bet.plannedOdds !== null && (!Number.isFinite(bet.plannedOdds) || bet.plannedOdds <= 1))) {
+          (bet.matchId && !["A", "B"].includes(bet.side)) ||
+          (bet.plannedStake !== undefined && bet.plannedStake !== null && (!Number.isFinite(bet.plannedStake) || bet.plannedStake < 0)) ||
+          (bet.plannedOdds !== undefined && bet.plannedOdds !== null && (!Number.isFinite(bet.plannedOdds) || bet.plannedOdds <= 1))) {
         throw new Error("В журнале найдена некорректная открытая ставка.");
       }
       ids.add(bet.id);
