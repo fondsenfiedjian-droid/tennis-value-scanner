@@ -214,3 +214,25 @@ test("favourite recalibration validation trains on the prior year and scores the
   assert.equal(validation.calibrator.intercept, 0);
   assert.equal(scoreFavouriteCalibration([{ probability: 0.5, outcome: 0.5 }]).brier, 0);
 });
+
+
+test("half-win Elo ties retain uncertainty in calibration intervals", () => {
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    rows.push({
+      tourney_date: "20250101",
+      tourney_id: "T",
+      match_num: String(i + 1),
+      winner_id: String(i * 2 + 1),
+      loser_id: String(i * 2 + 2),
+      score: "6-4 6-4",
+      surface: "Hard"
+    });
+  }
+  const bin = runBacktest(rows).calibration.elo.bins.find(item => item.matches === 40);
+  assert.ok(bin);
+  assert.equal(bin.actual, 50);
+  assert.ok(bin.actualLower95 < 50);
+  assert.ok(bin.actualUpper95 > 50);
+  assert.ok(bin.actualUpper95 - bin.actualLower95 > 25);
+});
