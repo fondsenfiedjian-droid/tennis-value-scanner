@@ -14,7 +14,7 @@ const ratingDateStart = frontendSource.indexOf("function validRatingDate(");
 const ratingDateEnd = frontendSource.indexOf("function isValidPredictionResult(", ratingDateStart);
 const ratingDateSource = frontendSource.slice(ratingDateStart, ratingDateEnd);
 function makeArchiveStore(seed = [], options = {}) {
-  const data = { 'tvs-prediction-archive-v1': JSON.stringify(seed) };
+  const data = { 'tvs-prediction-archive-v1': options.corruptSeed ? '{broken-json' : JSON.stringify(seed) };
   const localStorage = {
     getItem: key => data[key] ?? null,
     setItem: (key, value) => { if(options.failWrites)throw new Error('QuotaExceededError'); data[key] = value; }
@@ -22,7 +22,7 @@ function makeArchiveStore(seed = [], options = {}) {
   const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage, flushArchiveWrites };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -467,6 +467,18 @@ test("archive memory cache remains readable when localStorage quota is exhausted
   const returned = store.readPredictionArchive();
   returned[0].player = "mutated";
   assert.equal(store.readPredictionArchive()[0].player, "A");
+});
+
+test("corrupt local archive is reported and never silently overwritten", async () => {
+  const store = makeArchiveStore([], { corruptSeed: true });
+  const read = store.readPredictionArchive();
+  assert.deepEqual(read, []);
+  assert.match(store.getArchiveReadError().message, /JSON|позици/i);
+  const saved = store.persistPredictionArchive([{ matchKey: "new", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 }]);
+  assert.equal(saved.saved, 0);
+  assert.ok(saved.error);
+  assert.match(store.getArchiveReadError().message, /JSON|позици/i);
 });
 
 test("archive keeps the legacy localStorage copy when IndexedDB is unavailable", async () => {
