@@ -270,3 +270,19 @@ test("odds backtest keeps bookmaker provenance in selections", () => {
   }]);
   assert.equal(report.selections[0].bookmaker, "winamax");
 });
+
+test("odds backtest deduplicates identical snapshots captured at the same instant", () => {
+  const row = { ...base, odds_captured_at: "2025-01-01T10:00:00Z" };
+  const report = runOddsBacktest([row, { ...row }]);
+  assert.equal(report.matches, 1);
+  assert.equal(report.bets, 1);
+  assert.equal(report.selections[0].entrySnapshotAgeMinutes, 120);
+});
+
+test("odds backtest rejects conflicting prices at the same snapshot timestamp", () => {
+  assert.throws(() => runOddsBacktest([
+    { ...base, odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, odds_captured_at: "2025-01-01T10:00:00Z", odds_a: "2.35" }
+  ]), /Conflicting duplicate timestamp snapshot/);
+});
+
