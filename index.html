@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101827">
+  <meta name="theme-color" content="#080808">
   <title>Tennis Value Scanner</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -47,6 +47,37 @@
     .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}.data-freshness{margin-top:7px;padding:7px 8px;border-radius:8px;font-size:11px;line-height:1.45}.data-freshness.good{background:#123323;color:#9af0bd;border:1px solid #286547}.data-freshness.medium{background:#302817;color:#f5d99d;border:1px solid #6a5428}.data-freshness.limited{background:#351f25;color:#f2b7c0;border:1px solid #75404b}
     .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.stats-actions button{flex:1 1 130px;border:1px solid var(--line);background:#1b2a40;color:white;padding:11px;border-radius:10px}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
+  
+    /* Approved black / terracotta / chrome visual system */
+    :root{--bg:#080808;--panel:#11100f;--panel2:#191513;--line:#655b56;--muted:#b5aaa4;--text:#f5f1ee;--green:#35d07f;--blue:#c77a5b;--amber:#d89a78;--terra:#c66b49;--terra-bright:#e1845d;--chrome:#a9a6a3}
+    body{background:radial-gradient(ellipse at 50% -20%,#2a1711 0,#100d0b 34%,#070707 75%);color:var(--text)}
+    .status{border-color:#426b52;color:#8fe0a9;background:#102218}
+    .tabs{background:#0b0a09;border-color:#554b46}
+    .tab.active{background:linear-gradient(135deg,#9d4e34,#c66b49 55%,#713923);color:#fff7f2;box-shadow:inset 0 1px #f2b69a55,0 3px 14px #9c4b302b}
+    .panel,.match-card,.archive-item{background:linear-gradient(145deg,#191615,#0e0d0c 72%);border-color:#625954;box-shadow:inset 0 1px #ffffff12,0 7px 20px #0008}
+    .refresh,.actions .primary{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border:1px solid #d18a6d;color:#fff8f4;box-shadow:0 7px 22px #a94e302d,inset 0 1px #ffd1b155}
+    .linkbtn{color:#e08a68}
+    .chip{background:#191412;border-color:#66564e;color:#e0d5ce}
+    .chip.on{background:#3a2119;border-color:#bd6848;color:#f0b094}
+    .notice{border-color:#80523e;background:#241610;color:#e6c0ad}
+    .bottom{background:#080808ed;border-top:1px solid #716760}
+    .nav button.active{color:#e1845d;background:#321d16}
+    .modal{background:linear-gradient(145deg,#1b1715,#0d0c0b);border-color:#756960}
+    input[type=number],select,.check{background:#100e0d;border-color:#62564f;color:var(--text)}
+    .actions button,.stats-actions button{background:#211815;border-color:#68574e;color:#f5eee9}
+    .best-bet{background:linear-gradient(145deg,#1d120e,#090909 65%);border:1px solid transparent;border-radius:17px;padding:14px;margin:0 0 12px;position:relative;box-shadow:inset 0 1px #fff4,0 8px 24px #0009}
+    .best-bet:before{content:"";position:absolute;inset:0;padding:1px;border-radius:inherit;background:linear-gradient(135deg,#eee9e4,#77716d 18%,#c66b49 48%,#514944 72%,#e2dcd7);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+    .best-bet-title{color:#e1845d;letter-spacing:.08em}
+    .best-bet-empty,.best-bet-meta{color:#c9bdb6}
+    .best-bet-value{color:#e1845d}
+    .match-card.expanded{border-color:#c66b49;background:linear-gradient(145deg,#281912,#15100e)}
+    .match-card:focus{outline:2px solid #c66b49}
+    .model-result{background:#100e0d;border-color:#625149}
+    .model-result strong{color:#e7a083}
+    .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
+    .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
+    .stats-actions button:focus,.actions button:focus,.chip:focus{outline:2px solid #d47b58;outline-offset:2px}
+
   </style>
 </head>
 <body>
