@@ -1666,3 +1666,40 @@ test("prediction UI warns about unusual Elo without suppressing the calculation"
   assert.match(frontendSource, /Проверка Elo/);
   assert.match(frontendSource, /Значения не исключены автоматически/);
 });
+
+test("prediction reliability is transparent, excludes unavailable calibration and never claims win probability", () => {
+  const start = frontendSource.indexOf("function assessPredictionReliability(");
+  const end = frontendSource.indexOf("function freshnessStakeMultiplier(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.assess = assessPredictionReliability;", sandbox);
+  const assess = sandbox.assess;
+  const base = {
+    freshness: { level: "good", details: "fresh" },
+    ratingQualityA: { status: "plausible" }, ratingQualityB: { status: "plausible" },
+    ratingQualityGap: "normal", oddsKnown: true, matchDateKnown: true,
+    bookmakerKnown: true, probabilitiesValid: true, calibration: { sampleSize: 12, brierScore: 0.14 }
+  };
+  const preliminary = assess(base);
+  assert.equal(preliminary.score, 80);
+  assert.equal(preliminary.maxScore, 80);
+  assert.equal(preliminary.calibrationIncluded, false);
+  assert.ok(preliminary.reasons.some(reason => reason.includes("не менее 30")));
+  const calibrated = assess({ ...base, calibration: { sampleSize: 40, brierScore: 0.17 } });
+  assert.equal(calibrated.score, 100);
+  assert.equal(calibrated.maxScore, 100);
+  assert.equal(calibrated.calibrationIncluded, true);
+  assert.equal(calibrated.tier, "высокая");
+  const weak = assess({
+    ...base, freshness: { level: "limited", details: "stale" },
+    ratingQualityA: { status: "review" }, ratingQualityB: { status: "invalid" },
+    ratingQualityGap: "review", oddsKnown: false, matchDateKnown: false,
+    bookmakerKnown: false, probabilitiesValid: false,
+    calibration: { sampleSize: 35, brierScore: 0.31 }
+  });
+  assert.equal(weak.score, 13);
+  assert.equal(weak.maxScore, 100);
+  assert.equal(weak.tier, "ограниченная");
+  assert.ok(weak.reasons.length >= 4);
+  assert.match(frontendSource, /не вероятность победы и не рекомендация по размеру ставки/);
+});
