@@ -56,24 +56,40 @@ function findElo(profile) {
   return null;
 }
 
-async function getPlayerProfile(playerId, apiKey) {
-  // Elo profiles are effectively static for this model; cache them for seven days.
-  const cache = caches.default;
-  const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-profile/" + encodeURIComponent(playerId));
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached.json();
+const playerProfileInflight = new Map();
 
-  const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId), {
-    headers: { "X-API-Key": apiKey, "Accept": "application/json" }
-  });
-  if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
-  const profile = await res.json();
-  const cacheResponse = new Response(JSON.stringify(profile), {
-    status: 200,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=604800" }
-  });
-  await cache.put(cacheKey, cacheResponse);
-  return profile;
+async function getPlayerProfile(playerId, apiKey) {
+  // Share concurrent cache misses inside this Worker isolate to avoid duplicate quota use.
+  const key = String(playerId);
+  const pending = playerProfileInflight.get(key);
+  if (pending) return pending;
+
+  const task = (async () => {
+    // Elo profiles are effectively static for this model; cache them for seven days.
+    const cache = caches.default;
+    const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-profile/" + encodeURIComponent(key));
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached.json();
+
+    const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
+      headers: { "X-API-Key": apiKey, "Accept": "application/json" }
+    });
+    if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
+    const profile = await res.json();
+    const cacheResponse = new Response(JSON.stringify(profile), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=604800" }
+    });
+    await cache.put(cacheKey, cacheResponse);
+    return profile;
+  })();
+
+  playerProfileInflight.set(key, task);
+  try {
+    return await task;
+  } finally {
+    if (playerProfileInflight.get(key) === task) playerProfileInflight.delete(key);
+  }
 }
 
 export default {
