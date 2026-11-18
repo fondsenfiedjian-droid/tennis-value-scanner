@@ -721,8 +721,8 @@
     el.dataset.surface=surface;
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
-      {side:'A',player:playerA,opponent:playerB,playerId:playerIdA,opponentId:playerIdB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityA),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
-      {side:'B',player:playerB,opponent:playerA,playerId:playerIdB,opponentId:playerIdA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityB),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
+      {side:'A',player:playerA,opponent:playerB,playerId:playerIdA,opponentId:playerIdB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
+      {side:'B',player:playerB,opponent:playerA,playerId:playerIdB,opponentId:playerIdA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
     ];
     let changed=false;
     for(const entry of entries){
@@ -1467,7 +1467,13 @@
     if(![probabilityA,probabilityB].every(v=>Number.isFinite(v)&&v>0&&v<100))return false;
     if(Math.abs(probabilityA+probabilityB-100)>0.02)return false;
     if(![fairOddsA,fairOddsB].every(v=>Number.isFinite(v)&&v>1&&v<=1000))return false;
-    if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
+    const exactA=result.probabilityExactA,exactB=result.probabilityExactB;
+    if(exactA!==undefined||exactB!==undefined){
+      if(![exactA,exactB].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>0&&v<1))return false;
+      if(Math.abs(exactA+exactB-1)>1e-10)return false;
+      if(Math.abs(probabilityA-exactA*100)>0.0051||Math.abs(probabilityB-exactB*100)>0.0051)return false;
+      if(Math.abs(fairOddsA-1/exactA)>0.0011||Math.abs(fairOddsB-1/exactB)>0.0011)return false;
+    }else if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
     return true;
   }
   function currentOddsAgeMinutes(initialAge,observedAt,now=Date.now()){
@@ -1576,10 +1582,10 @@
           localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
         }
         if(renderId!==predictionRenderId)return;
-        result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
-        result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
-        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityA),ev:result.evA,match:m};
-        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityB),ev:result.evB,match:m};
+        result.evA=el.dataset.oddsA?((result.probabilityExactA??result.probabilityA/100)*Number(el.dataset.oddsA)-1)*100:null;
+        result.evB=el.dataset.oddsB?((result.probabilityExactB??result.probabilityB/100)*Number(el.dataset.oddsB)-1)*100:null;
+        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA??result.probabilityA/100),ev:result.evA,match:m};
+        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityExactB??result.probabilityB/100),ev:result.evB,match:m};
         for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result);
         await flushArchiveWrites();
