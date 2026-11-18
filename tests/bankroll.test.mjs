@@ -44,6 +44,7 @@ test("winning, losing and void settlements update balance and realized profit co
   assert.equal(won.balance, 102.2);
   assert.equal(bank.realizedProfit(won), 2.2);
   assert.equal(bank.getSummary(won).totalStaked, 2);
+  assert.equal(bank.getSummary(won).settledStake, 2);
   assert.equal(bank.getSummary(won).roiPercent, 110);
   const lost = bank.settleBet(placed.state, placed.bet.id, "lost");
   assert.equal(lost.balance, 98);
