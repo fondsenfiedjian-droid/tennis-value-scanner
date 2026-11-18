@@ -455,7 +455,7 @@
         transaction.resultVersion = result.version;
         appendTransaction(state, {
           id: "tx-" + makeId(), type: "settlement_reversal", amount: oldPayout,
-          balanceDelta: -oldPayout, betId: transaction.betId,
+          balanceDelta: -oldPayout, betId: transaction.betId, bookmaker: transaction.bookmaker || snapshot.bookmaker || "Winamax",
           note: "Отменён предыдущий расчёт после исправления результата"
         });
         appendTransaction(state, {
@@ -476,7 +476,7 @@
         state.openBets.push({ ...snapshot, lastResultVersion: result.version, status: "open" });
         appendTransaction(state, {
           id: "tx-" + makeId(), type: "settlement_reversal", amount: oldPayout,
-          balanceDelta: -oldPayout, betId: transaction.betId,
+          balanceDelta: -oldPayout, betId: transaction.betId, bookmaker: transaction.bookmaker || snapshot.bookmaker || "Winamax",
           note: "Официальный результат изменён; ставка открыта повторно"
         });
         reopened.push({ betId: transaction.betId, matchId: transaction.matchId });
