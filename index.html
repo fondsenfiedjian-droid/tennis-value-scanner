@@ -147,7 +147,8 @@
     body[data-skin="olive"] .stats-actions button:focus,
     body[data-skin="olive"] .actions button:focus,
     body[data-skin="olive"] .chip:focus{outline-color:#f0c75e}
-\n  </style>
+
+  </style>
 </head>
 <body>
 <div class="app">
@@ -311,7 +312,8 @@
 
 <div class="modal-back" id="settingsModal">
   <div class="modal">
-    <h2>Настройки сканера</h2>\n    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
+    <h2>Настройки сканера</h2>
+    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV, %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="1000" step="0.1" value="5.00"></div>
@@ -369,7 +371,16 @@
     const minutes=Number(value);
     return [0,30,60,180].includes(minutes)?minutes:60;
   }
-  const saved=readSettings();\n  let activeSkin=saved.skin==='olive'?'olive':'black';\n  function applySkin(skin){\n    const selected=skin==='olive'?'olive':'black';\n    document.body.dataset.skin=selected;\n    const themeColor=document.querySelector('meta[name=\"theme-color\"]');\n    if(themeColor)themeColor.content=selected==='olive'?'#626744':'#080808';\n  }\n  applySkin(activeSkin);\n  $('#skinSelect').value=activeSkin;
+  const saved=readSettings();
+  let activeSkin=saved.skin==='olive'?'olive':'black';
+  function applySkin(skin){
+    const selected=skin==='olive'?'olive':'black';
+    document.body.dataset.skin=selected;
+    const themeColor=document.querySelector('meta[name=\"theme-color\"]');
+    if(themeColor)themeColor.content=selected==='olive'?'#626744':'#080808';
+  }
+  applySkin(activeSkin);
+  $('#skinSelect').value=activeSkin;
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
@@ -398,7 +409,8 @@
     }
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
-    data.refreshRate=refreshRate;\n    data.skin=$('#skinSelect').value==='olive'?'olive':'black';
+    data.refreshRate=refreshRate;
+    data.skin=$('#skinSelect').value==='olive'?'olive':'black';
     data.tours=selectedTours();
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
