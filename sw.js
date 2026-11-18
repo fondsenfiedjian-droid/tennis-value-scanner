@@ -1,5 +1,5 @@
-const CACHE_NAME = "tennis-value-static-v2";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+const CACHE_NAME = "tennis-value-static-v3";
+const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./bankroll.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
