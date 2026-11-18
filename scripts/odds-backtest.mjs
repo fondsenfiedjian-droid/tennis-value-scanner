@@ -70,7 +70,7 @@ export function adaptScannerArchiveRows(rows) {
   const adapted = [];
   for (const group of groups.values()) {
     const a = group.sides.A, b = group.sides.B;
-    if (!a || !b || !a.player || !b.player || a.player === b.player) { ignored++; continue; }
+    if (!a || !b || !a.player || !b.player || a.player === b.player || Math.abs(a.quoteCapturedAt - b.quoteCapturedAt) > 30 * 60 * 1000) { ignored++; continue; }
     adapted.push({
       match_id: group.id,
       bookmaker: group.bookmaker,
@@ -264,7 +264,7 @@ export function runOddsBacktest(rows, options = {}) {
   const matches = new Map();
   let rejectedSnapshots = 0, staleSnapshots = 0;
   const modelTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterOddsCapture: 0, atOrAfterMatchStart: 0, nonUpcomingStatus: 0 };
-  const quoteTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterObservation: 0, afterModelCalculation: 0, staleAtObservation: 0, acceptedSides: 0 };
+  const quoteTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterObservation: 0, afterModelCalculation: 0, staleAtObservation: 0, sideSkew: 0, acceptedSides: 0 };
   const acceptedSnapshotAges = [];
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
@@ -301,11 +301,12 @@ export function runOddsBacktest(rows, options = {}) {
         if (observedA < quoteA || observedB < quoteB) quoteTimestampCoverage.afterObservation++;
         if (modelCalculated !== null && (quoteA > modelCalculated || quoteB > modelCalculated || observedA > modelCalculated || observedB > modelCalculated)) quoteTimestampCoverage.afterModelCalculation++;
         if (observedA - quoteA > 90*60*1000 || observedB - quoteB > 90*60*1000) quoteTimestampCoverage.staleAtObservation++;
-        if (observedA >= quoteA && observedB >= quoteB && modelCalculated !== null && quoteA <= modelCalculated && quoteB <= modelCalculated && observedA <= modelCalculated && observedB <= modelCalculated && observedA-quoteA <= 90*60*1000 && observedB-quoteB <= 90*60*1000) quoteTimestampCoverage.acceptedSides += 2;
+        if (Math.abs(quoteA - quoteB) > 30*60*1000) quoteTimestampCoverage.sideSkew++;
+        if (observedA >= quoteA && observedB >= quoteB && modelCalculated !== null && quoteA <= modelCalculated && quoteB <= modelCalculated && observedA <= modelCalculated && observedB <= modelCalculated && observedA-quoteA <= 90*60*1000 && observedB-quoteB <= 90*60*1000 && Math.abs(quoteA-quoteB) <= 30*60*1000) quoteTimestampCoverage.acceptedSides += 2;
       }
     }
     if (captureStatus && captureStatus !== 'upcoming') modelTimestampCoverage.nonUpcomingStatus++;
-    if (!quoteFieldsProvided || [quoteA,quoteB,observedA,observedB].some(value => value === null) || observedA < quoteA || observedB < quoteB || quoteA > modelCalculated || quoteB > modelCalculated || observedA > modelCalculated || observedB > modelCalculated || observedA-quoteA > 90*60*1000 || observedB-quoteB > 90*60*1000 ||
+    if (!quoteFieldsProvided || [quoteA,quoteB,observedA,observedB].some(value => value === null) || observedA < quoteA || observedB < quoteB || quoteA > modelCalculated || quoteB > modelCalculated || observedA > modelCalculated || observedB > modelCalculated || observedA-quoteA > 90*60*1000 || observedB-quoteB > 90*60*1000 || Math.abs(quoteA-quoteB) > 30*60*1000 ||
         !id || start === null || captured === null || modelCalculated === null || modelCalculated >= captured || modelCalculated >= start ||
         (captureStatus && captureStatus !== 'upcoming') || !validOdds(oddsA) || !validOdds(oddsB) ||
         !Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1 ||
@@ -469,7 +470,7 @@ export function runOddsBacktest(rows, options = {}) {
   const archiveCoverage = {
     uniqueMatches: archiveMatches.length,
     quoteTimestampProvenance: { ...quoteTimestampCoverage, acceptedSnapshots: acceptedSnapshotAges.length,
-      note: "Strict cohort requires each side's source scrapedAt timestamp and browser observation time. Source timestamp <= observation <= model calculation <= archive capture; source quote must be no older than 90 minutes at observation. Missing or contradictory quote timestamps are excluded." },
+      note: "Strict cohort requires each side's source scrapedAt timestamp and browser observation time. Source timestamp <= observation <= model calculation <= archive capture; source quote must be no older than 90 minutes at observation, and the two sides must be within 30 minutes of each other. Missing or contradictory quote timestamps are excluded." },
     modelProbabilityProvenance: { ...modelTimestampCoverage, acceptedSnapshots: acceptedSnapshotAges.length,
       note: "Strict cohort only: model_calculated_at must include a timezone and be strictly earlier than odds_captured_at and match_start. If capture_status is present it must be upcoming. Missing or ambiguous legacy timestamps are excluded, not inferred." },
     ratingDateCoverage: {
