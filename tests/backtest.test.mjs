@@ -56,3 +56,17 @@ test("evaluation window rejects impossible and reversed dates", () => {
   assert.throws(() => runBacktest(rows, { evaluationStart: "20240230" }), /Invalid evaluationStart/);
   assert.throws(() => runBacktest(rows, { evaluationStart: "20240103", evaluationEnd: "20240102" }), /must not be after/);
 });
+
+test("CSV parser strips a UTF-8 BOM from the first header", () => {
+  assert.deepEqual(parseCsv('\uFEFFtourney_date,winner_id,loser_id\n20240101,1,2\n'), [
+    { tourney_date: "20240101", winner_id: "1", loser_id: "2" }
+  ]);
+});
+
+test("backtest reports and ignores duplicate tournament match rows", () => {
+  const row = { tourney_date: "20240101", tourney_id: "2024-A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" };
+  const report = runBacktest([row, { ...row }]);
+  assert.equal(report.matches, 1);
+  assert.equal(report.duplicateRows, 1);
+  assert.equal(report.metrics.elo.matches, 1);
+});
