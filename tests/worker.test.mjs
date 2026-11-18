@@ -326,7 +326,7 @@ test("archive backup v2 detects corruption and preserves legacy v1 compatibility
   assert.deepEqual(JSON.parse(JSON.stringify(readArchiveBackup(backup).records)), records);
   assert.equal(readArchiveBackup(backup).legacy, false);
   const corrupted = { ...backup, records: [{ ...records[0], odds: 2.1 }] };
-  assert.throws(() => readArchiveBackup(corrupted), /checksum/i);
+  assert.throws(() => readArchiveBackup(corrupted), /Контрольная сумма/);
   assert.throws(() => readArchiveBackup({ ...backup, recordCount: 99 }), /Количество записей/);
   assert.throws(() => readArchiveBackup({ ...backup, version: 77 }), /не поддерживается/);
   const legacy = readArchiveBackup({ format: "tennis-value-scanner-archive", version: 1, records });
