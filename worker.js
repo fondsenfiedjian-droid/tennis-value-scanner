@@ -56,6 +56,45 @@ function findElo(profile) {
   return null;
 }
 
+
+function extractRatingAsOf(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  const candidates = [
+    profile?.stats?.ratings_as_of, profile?.stats?.ratingsAsOf,
+    profile?.ratings_as_of, profile?.ratingsAsOf,
+    profile?.stats?.elo_updated_at, profile?.stats?.eloUpdatedAt,
+    profile?.elo_updated_at, profile?.eloUpdatedAt
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string") {
+      const clean = value.trim();
+      if (!clean) continue;
+      const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(clean);
+      const isoLike = /^\d{4}-\d{2}-\d{2}T/.test(clean);
+      if (!dateOnly && !isoLike) continue;
+      const parsed = Date.parse(clean);
+      if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+    } else if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      const millis = value < 1e12 ? value * 1000 : value;
+      if (millis <= 8640000000000000) return new Date(millis).toISOString();
+    }
+  }
+  return null;
+}
+
+function assessRatingFreshness(asOf, now = Date.now()) {
+  if (!asOf) return { status: "unknown", ageDays: null };
+  const timestamp = Date.parse(asOf);
+  if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60 * 1000) {
+    return { status: "invalid", ageDays: null };
+  }
+  const ageDays = Math.max(0, Math.floor((now - timestamp) / 86400000));
+  return {
+    status: ageDays <= 14 ? "fresh" : ageDays <= 30 ? "recent" : "stale",
+    ageDays
+  };
+}
+
 function normalizeSurface(value) {
   const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (surface.includes("clay") || surface.includes("terre battue") || surface.includes("грунт")) return "clay";
@@ -535,8 +574,10 @@ export default {
         ratingTypeB: hasIdB ? selectedB.type : "manual",
         surface: hasIdA ? (selectedA.surface || null) : null,
         source,
-        ratingsAsOfA: profileA?.stats?.ratings_as_of || profileA?.ratings_as_of || null,
-        ratingsAsOfB: profileB?.stats?.ratings_as_of || profileB?.ratings_as_of || null,
+        ratingsAsOfA: extractRatingAsOf(profileA),
+        ratingsAsOfB: extractRatingAsOf(profileB),
+        ratingFreshnessA: assessRatingFreshness(extractRatingAsOf(profileA)),
+        ratingFreshnessB: assessRatingFreshness(extractRatingAsOf(profileB)),
         note: source === "manual-test" ? "Manual test ratings; not player data." : (selectedA.type === "surface" && selectedB.type === "surface" ? "Probabilities use surface-specific Elo ratings." : "At least one surface-specific rating is unavailable; overall Elo fallback used. Model does not account for injuries or recent form.")
       });
     }
