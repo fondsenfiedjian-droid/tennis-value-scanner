@@ -78,3 +78,17 @@ test("rejects corrupt states, inconsistent balances and invalid bet parameters",
   assert.equal(bank.recommendStake(bank.createInitialState(100), 0, 2).eligible, false);
   assert.throws(() => bank.placeBet(bank.createInitialState(100), { probability: 0.6, odds: 2.1, stake: 2.01 }), /рекомендуемый лимит/);
 });
+
+test("portfolio allocator distributes stakes across distinct matches within aggregate exposure cap", () => {
+  const state = bank.createInitialState(100);
+  const portfolio = bank.recommendPortfolio(state, [
+    { matchKey: "m1", player: "A", opponent: "B", probability: 0.65, odds: 2.1, ev: 36.5 },
+    { matchKey: "m2", player: "C", opponent: "D", probability: 0.62, odds: 2.0, ev: 24 },
+    { matchKey: "m1", player: "B", opponent: "A", probability: 0.6, odds: 2.2, ev: 32 }
+  ]);
+  assert.equal(portfolio.suggestions.length, 2);
+  assert.equal(portfolio.totalStake, 4);
+  assert.ok(portfolio.remainingExposure <= 8);
+  assert.equal(portfolio.suggestions[0].matchKey, "m1");
+  assert.equal(portfolio.suggestions[1].matchKey, "m2");
+});
