@@ -101,12 +101,13 @@ The API's completed-match LIST endpoint is a paid History feature; this implemen
 
 ## Historical model backtest (offline)
 
-A dependency-free chronological backtest is available for Jeff Sackmann-style ATP/WTA match CSV files. Download the relevant CSV files separately; the raw datasets are intentionally not copied into this repository.
+A dependency-free chronological backtest is available for Jeff Sackmann-style ATP/WTA match CSV files. Download the relevant CSV files separately from the [Jeff Sackmann ATP archive](https://github.com/Aneeshers/tennis-sackmann-archive/tree/main/atp) or [WTA archive](https://github.com/Aneeshers/tennis-sackmann-archive/tree/main/wta); the raw datasets are intentionally not copied into this repository. The archive mirror reports ATP/WTA files through June 2026, so it is historical research data rather than a current live feed. Run ATP and WTA separately: player IDs are not assumed to be globally unique across tours.
 
 Run it with Node.js 22:
 
 ```sh
-node scripts/backtest.mjs --from 20240101 --to 20251231 path/to/atp_matches_2022.csv path/to/atp_matches_2023.csv path/to/atp_matches_2024.csv path/to/atp_matches_2025.csv
+node scripts/backtest.mjs --from 20240101 --to 20251231 data/atp_matches_2022.csv data/atp_matches_2023.csv data/atp_matches_2024.csv data/atp_matches_2025.csv
+node scripts/backtest.mjs --from 20240101 --to 20251231 data/wta_matches_2022.csv data/wta_matches_2023.csv data/wta_matches_2024.csv data/wta_matches_2025.csv
 ```
 
 The files before `--from` are used only to build historical ratings, surface records, recent form and head-to-head history. They are warm-up data and do not contribute to the reported metrics. The optional `--to` sets the final evaluation date. Dates use the dataset's `YYYYMMDD` format.
