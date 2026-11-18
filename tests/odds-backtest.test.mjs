@@ -101,9 +101,9 @@ test("odds backtest rejects conflicting results for one match ID", () => {
 
 test("scanner semicolon CSV archive is paired into pre-match snapshots and settled outcomes", () => {
   const csv = [
-    "capturedAt;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;resultOutcome;resultWinner",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;completed;1",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;completed;1",
+    "capturedAt;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
     "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;completed;1",
     "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;completed;1",
     "1735725600000;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
@@ -115,6 +115,8 @@ test("scanner semicolon CSV archive is paired into pre-match snapshots and settl
   assert.equal(adapted.rows[0].probability_a, 0.5);
   assert.equal(adapted.rows[0].tour, "atp");
   assert.equal(adapted.rows[0].surface, "Hard");
+  assert.equal(adapted.rows[0].rating_as_of_a, "2024-12-31");
+  assert.equal(adapted.rows[0].rating_as_of_b, "2025-01-01");
   const report = runOddsBacktest(adapted.rows, { minEv: 0.03, minOdds: 1.9 });
   assert.equal(report.matches, 1);
   assert.equal(report.bets, 1);
