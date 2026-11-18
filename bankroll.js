@@ -173,6 +173,8 @@
       id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,
       match: String(bet.match || "").slice(0, 200), player: String(bet.player || "").slice(0, 100),
       opponent: String(bet.opponent || "").slice(0, 100), bookmaker: String(bet.bookmaker || "Winamax").slice(0, 60),
+      matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
+      side: bet.side === "A" || bet.side === "B" ? bet.side : null,
       placedAt: new Date().toISOString(), status: "open"
     };
     state.balance = roundMoney(state.balance - requested);
@@ -195,6 +197,25 @@
     return state;
   }
 
+  function settleVerifiedResults(input, archiveRows) {
+    let state = cloneState(input);
+    const settled = [];
+    const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    for (const bet of [...state.openBets]) {
+      if (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0 || !["A", "B"].includes(bet.side)) continue;
+      const verified = rows.filter(row => Number(row.matchId) === bet.matchId &&
+        row.resultOutcome === "completed" && [1, 2].includes(Number(row.resultWinner)));
+      if (!verified.length) continue;
+      const winners = new Set(verified.map(row => Number(row.resultWinner)));
+      if (winners.size !== 1) continue;
+      const winner = [...winners][0];
+      const outcome = (bet.side === "A" ? 1 : 2) === winner ? "won" : "lost";
+      state = settleBet(state, bet.id, outcome);
+      settled.push({ betId: bet.id, matchId: bet.matchId, outcome });
+    }
+    return { state, settled };
+  }
+
   function makeId() {
     return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
@@ -210,5 +231,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, addDeposit, addWithdrawal, placeBet, settleBet, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
