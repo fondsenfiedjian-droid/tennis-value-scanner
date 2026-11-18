@@ -1458,6 +1458,24 @@
     const parsed=Date.parse(value+'T00:00:00Z');
     return Number.isFinite(parsed)&&new Date(parsed).toISOString().slice(0,10)===value?value:null;
   }
+  function calculateMarketContext(oddsA,oddsB,bookmakerA,bookmakerB,probabilityA,probabilityB){
+    const a=Number(oddsA),b=Number(oddsB),pA=Number(probabilityA),pB=Number(probabilityB);
+    const providerA=String(bookmakerA||'').trim(),providerB=String(bookmakerB||'').trim();
+    if(!providerA||!providerB||providerA.toLocaleLowerCase()!==providerB.toLocaleLowerCase()||
+      !Number.isFinite(a)||a<=1||!Number.isFinite(b)||b<=1||
+      !Number.isFinite(pA)||pA<=0||pA>=1||!Number.isFinite(pB)||pB<=0||pB>=1)return null;
+    const impliedA=1/a,impliedB=1/b,total=impliedA+impliedB;
+    if(!Number.isFinite(total)||total<=0)return null;
+    const marketA=impliedA/total,marketB=impliedB/total;
+    return {
+      bookmaker:providerA,
+      marginPercent:(total-1)*100,
+      marketProbabilityA:marketA*100,
+      marketProbabilityB:marketB*100,
+      edgeA:(pA-marketA)*100,
+      edgeB:(pB-marketB)*100
+    };
+  }
   function isValidPredictionResult(result){
     if(!result||typeof result!=='object'||Array.isArray(result))return false;
     const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
@@ -1592,6 +1610,11 @@
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
         const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
+        const marketContext=calculateMarketContext(el.dataset.oddsA,el.dataset.oddsB,el.dataset.bookmakerA,el.dataset.bookmakerB,result.probabilityExactA??result.probabilityA/100,result.probabilityExactB??result.probabilityB/100);
+        const marketLabel=marketContext
+          ?'<div class="archive-meta">Рынок '+escapeHtml(marketContext.bookmaker)+': маржа '+fmt(marketContext.marginPercent)+'% · без маржи '+fmt(marketContext.marketProbabilityA)+'% / '+fmt(marketContext.marketProbabilityB)+'% · перевес модели '+(marketContext.edgeA>=0?'+':'')+fmt(marketContext.edgeA)+' / '+(marketContext.edgeB>=0?'+':'')+fmt(marketContext.edgeB)+' п.п.</div>'
+          :'';
+
         const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
@@ -1599,7 +1622,7 @@
         const currentOddsAge=currentOddsAgeMinutes(el.dataset.oddsAgeMinutes,el.dataset.oddsObservedAt);
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,currentOddsAge);
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
