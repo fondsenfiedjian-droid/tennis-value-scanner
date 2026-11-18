@@ -94,8 +94,8 @@
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1" max="100" step="0.05" value="1.50"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="1000" step="0.1" value="5.00"></div>
     <div class="field"><label>Турниры</label><div class="checkgrid">
-      <label class="check"><input type="checkbox" checked> ATP</label><label class="check"><input type="checkbox" checked> WTA</label>
-      <label class="check"><input type="checkbox" checked> Challenger</label><label class="check"><input type="checkbox"> ITF</label>
+      <label class="check"><input type="checkbox" data-tour="atp" checked> ATP</label><label class="check"><input type="checkbox" data-tour="wta" checked> WTA</label>
+      <label class="check"><input type="checkbox" data-tour="challenger" checked> Challenger</label><label class="check"><input type="checkbox" data-tour="itf" checked> ITF</label>
     </div></div>
     <div class="field"><label for="refreshRate">Автообновление</label><select id="refreshRate"><option value="0">Выключено</option><option value="30">Каждые 30 минут</option><option value="60" selected>Каждый час</option><option value="180">Каждые 3 часа</option></select></div>
     <div class="foot">Настройки сохраняются на этом устройстве. Автообновление начнёт работать после подключения серверного источника данных.</div>
@@ -120,6 +120,13 @@
   modal.addEventListener('click',e=>{if(e.target===modal)close()});
   const saved=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
   ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  const tourChecks=[...document.querySelectorAll('[data-tour]')];
+  let savedTours=null;
+  try{savedTours=JSON.parse(localStorage.getItem('tvs-tours')||'null');}catch(e){}
+  if(Array.isArray(savedTours))tourChecks.forEach(input=>input.checked=savedTours.includes(input.dataset.tour));
+  function selectedTours(){return tourChecks.filter(input=>input.checked).map(input=>input.dataset.tour);}
+  function saveTours(){localStorage.setItem('tvs-tours',JSON.stringify(selectedTours()));}
+  tourChecks.forEach(input=>input.addEventListener('change',()=>{saveTours();if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#saveSettings').onclick=()=>{
     const data={}; ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>data[id]=$('#'+id).value);
     localStorage.setItem('tvs-settings',JSON.stringify(data)); close();
@@ -145,6 +152,18 @@
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
   let cachedOdds = [];
+  try{const raw=localStorage.getItem('tvs-odds-cache');if(raw){const item=JSON.parse(raw);if(Array.isArray(item.odds))cachedOdds=item.odds;}}catch(e){}
+  async function loadOdds(){
+    try{
+      const res=await fetch(API+'/odds');
+      const payload=await res.json();
+      if(!res.ok)throw new Error(payload.error||('Winamax API: '+res.status));
+      if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
+      cachedOdds=payload.items;
+      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:Date.now(),odds:cachedOdds}));
+      return true;
+    }catch(err){return false;}
+  }
   function normalizePlayer(s){
     return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
@@ -162,7 +181,10 @@
   function renderMatches(all){
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
-    const filtered=selectedDay==='all'?all:all.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
+    const tours=selectedTours();
+    const byTour=all.filter(m=>tours.includes(String(m.tour||'').toLowerCase()));
+    const filtered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
+    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны');
     $('#matchCount').textContent=all.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>Матчей на выбранную дату не найдено</strong><div class="muted">Попробуй вкладку «Завтра» или обнови данные.</div></div>';return;}
@@ -175,14 +197,14 @@
       const matched=oddsForMatch(m);
       let oddsA=null,oddsB=null;
       matched.forEach(o=>{
-        const names=String(o.eventName||'').split(/\\s+-\\s+/);
+        const names=String(o.eventName||'').split(/\s+-\s+/);
         if(names.length!==2)return;
         const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);
         const isP1=(o.outcome==='home')===homeIsP1;
         const value=Number(o.oddsDecimal);
         if(Number.isFinite(value)&&value>1){if(isP1)oddsA=value;else oddsB=value;}
       });
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\\s+-\\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\s+-\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
       const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
@@ -238,33 +260,29 @@
     $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
     let saved=null;
     try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
+    const oddsUpdated=await loadOdds();
     try{
-      // Reuse recent data for fifteen minutes; if the API is rate-limited, show the last saved data.
+      // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
-        cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds))cachedOdds=saved.odds;
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
-        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов';
+        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
-      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=50');
+      const res=await fetch(API+'/matches?status=upcoming&draw=singles&limit=200');
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
       if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
-      try{
-        const oddsRes=await fetch(API+'/odds');
-        const oddsPayload=await oddsRes.json();
-        if(oddsRes.ok&&Array.isArray(oddsPayload.items))cachedOdds=oddsPayload.items;
-      }catch(oddsError){}
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
-      $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов';
+      $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
-        cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds))cachedOdds=saved.odds;
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
-        $('#filterSummary').textContent='Сохранённые данные · API: '+err.message;
+        $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
         $('#matchCount').textContent='—';
