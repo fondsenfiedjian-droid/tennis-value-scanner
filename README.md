@@ -98,3 +98,19 @@ Archive backups: export a versioned JSON backup from the archive view and import
 The archive can check up to 10 older archived matches per run using the FREE single-match detail endpoint `GET /matches/{matchId}`. The app waits at least three hours after scheduled start and rate-limits repeat checks per match to 30 minutes. Only API results with `outcome: "completed"` and a valid `winner` are counted in model hit-rate statistics. Retirements, walkovers, defaults, abandoned and unresolved matches are recorded separately and excluded from accuracy. Result revisions are tracked with `result_version`, so a newer official correction replaces an older stored result. Matches without a stored Live Tennis API match ID cannot be reconciled automatically. The displayed accuracy compares the model's last archived favourite for each match with the official winner; it is a prediction hit rate, not betting ROI or proof of profit. It is calculated only after verified full matches and excludes withdrawals and other non-standard outcomes. The archive also compares the first and latest saved odds for each match side and counts price shortening and drifting. This is descriptive market movement only; it does not establish that a bet was placed or that value was realized.
 
 The API's completed-match LIST endpoint is a paid History feature; this implementation deliberately uses individual match lookups for IDs already held in the local archive instead of polling the paid history listing.
+
+## Historical model backtest (offline)
+
+A dependency-free chronological backtest is available for Jeff Sackmann-style ATP/WTA match CSV files. Download the relevant CSV files separately; the raw datasets are intentionally not copied into this repository.
+
+Run it with Node.js 22:
+
+```sh
+node scripts/backtest.mjs path/to/atp_matches_2024.csv path/to/atp_matches_2025.csv
+```
+
+The report compares five exploratory candidates: overall Elo, a surface-Elo blend, Elo plus recent form, Elo plus head-to-head, and a combined variant. It reports Brier score, log loss and winner-pick accuracy. Lower Brier score and log loss are better; accuracy alone is not a calibration metric, and none of these metrics represents betting profit or ROI.
+
+The evaluation is chronological. Every match on a given tournament date is predicted using only state from earlier dates; that date's results are applied only after all predictions for that date. The script excludes invalid player IDs/dates and walkovers, retirements, defaults and abandoned matches. Surface and form features use only previously observed results. The candidate weights are deliberately exploratory and are not automatically copied into the live prediction model. Compare results across multiple seasons and tours before considering any production change.
+
+Data licensing matters: the commonly used Sackmann archive is distributed under CC BY-NC-SA 4.0. Check the source repository's current license and attribution requirements before use or redistribution; the non-commercial restriction may not permit commercial use. Treat older CSVs as historical backtest data, not a live feed.
