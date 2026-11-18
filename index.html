@@ -584,18 +584,18 @@
           const current=readPredictionArchive();
           const updated=applyVerifiedMatchResult(current,result,Date.now());
           if(res.ok&&updated.updated){
-            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(updated.rows));
+            persistPredictionArchive(updated.rows);
             checked++;if(['completed','retired','walkover','default','abandoned','unresolved'].includes(result.outcome)||result.status==='cancelled')settled++;
           }else if(res.status===429){
-            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(current,id,Date.now())));
+            persistPredictionArchive(stampResultCheck(current,id,Date.now()));
             errors++;break;
           }else{
-            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(current,id,Date.now())));
+            persistPredictionArchive(stampResultCheck(current,id,Date.now()));
             if(res.status===404)checked++;else errors++;
           }
         }catch(error){
           const latest=readPredictionArchive();
-          localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stampResultCheck(latest,id,Date.now())));
+          persistPredictionArchive(stampResultCheck(latest,id,Date.now()));
           errors++;
         }
       }
