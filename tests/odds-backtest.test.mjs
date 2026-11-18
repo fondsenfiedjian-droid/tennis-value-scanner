@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptScannerArchiveRows, runOddsBacktest } from "../scripts/odds-backtest.mjs";
+import { adaptScannerArchiveRows, runOddsBacktest, simulateBankrollStrategies } from "../scripts/odds-backtest.mjs";
 import { parseCsv } from "../scripts/backtest.mjs";
 
 const base = {
@@ -74,4 +74,43 @@ test("scanner semicolon CSV archive is paired into pre-match snapshots and settl
   assert.equal(report.matches, 1);
   assert.equal(report.bets, 1);
   assert.equal(report.selections[0].odds, 2.2);
+});
+
+test("bankroll strategy simulation compares fixed, percentage and quarter-Kelly staking", () => {
+  const selections = Array.from({ length: 5 }, (_, index) => ({
+    matchId: "m" + index,
+    matchStart: "2025-01-0" + (index + 1) + "T12:00:00Z",
+    odds: 2,
+    modelProbability: 0.6,
+    expectedValue: 20,
+    winner: "A",
+    won: true
+  }));
+  const report = simulateBankrollStrategies(selections, { startingBankroll: 100 });
+  assert.equal(report.startingBankroll, 100);
+  assert.equal(report.distinctMatches, 5);
+  assert.equal(report.strategies.flat1Euro.endingBankroll, 105);
+  assert.equal(report.strategies.bankroll1Percent.endingBankroll, 105.1);
+  assert.equal(report.strategies.bankroll2Percent.endingBankroll, 110.41);
+  assert.equal(report.strategies.quarterKelly.endingBankroll, 110.41);
+  assert.equal(report.strategies.quarterKelly.bets, 5);
+});
+
+test("bankroll simulation limits same-day open exposure and skips duplicate match sides", () => {
+  const selections = Array.from({ length: 6 }, (_, index) => ({
+    matchId: "same-day-" + index,
+    matchStart: "2025-01-01T12:00:00Z",
+    odds: 2,
+    modelProbability: 0.6,
+    expectedValue: 20 + index,
+    winner: "B",
+    won: false
+  }));
+  selections.push({ ...selections[0], side: "B", expectedValue: 99 });
+  const report = simulateBankrollStrategies(selections, { startingBankroll: 100 });
+  assert.equal(report.distinctMatches, 6);
+  assert.equal(report.strategies.bankroll2Percent.bets, 4);
+  assert.equal(report.strategies.bankroll2Percent.totalStaked, 8);
+  assert.equal(report.strategies.bankroll2Percent.endingBankroll, 92);
+  assert.equal(report.strategies.bankroll2Percent.maxDrawdownPercent, 8);
 });
