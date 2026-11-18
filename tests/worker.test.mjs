@@ -2172,6 +2172,8 @@ test("live prediction cards connect the Elo estimate to PFE without changing the
   assert.ok(frontendSource.includes("TVSPFE.fusePredictions(pfeModels)"));
   assert.ok(frontendSource.includes("marketContext.marketProbabilityA/100"));
   assert.ok(frontendSource.includes("currentOddsAge<=90"));
+  assert.ok(frontendSource.includes("pfeAssessment.disagreement"));
+  assert.ok(frontendSource.includes("pfeSourceLabels"));
   assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
   assert.ok(frontendSource.includes("PFE не меняет исходную вероятность, EV или размер ставки"));
 });
