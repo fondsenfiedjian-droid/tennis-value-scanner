@@ -532,3 +532,26 @@ test("strict quote provenance rejects missing, future and stale source timestamp
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.staleAtObservation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.acceptedSides, 2);
 });
+
+
+test("scanner archive pairs both sides only within the same bookmaker", () => {
+  const row = (matchId, bookmaker, side, player, opponent, odds) => ({
+    capturedAt: "1735725600000", modelCalculatedAt: "1735725599000",
+    quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000",
+    captureStatus: "upcoming", matchDate: "2025-01-01T12:00:00.000Z",
+    matchId, bookmaker, tour: "atp", surface: "Hard", player, opponent, side,
+    odds, probability: "50", resultOutcome: "completed", resultWinner: "1"
+  });
+  const rows = [
+    row("cross-provider", "Winamax", "A", "Player A", "Player B", "2.20"),
+    row("cross-provider", "Betclic", "B", "Player B", "Player A", "1.80"),
+    row("paired-two-providers", "Winamax", "A", "Player A", "Player B", "2.20"),
+    row("paired-two-providers", "Winamax", "B", "Player B", "Player A", "1.80"),
+    row("paired-two-providers", "Betclic", "A", "Player A", "Player B", "2.25"),
+    row("paired-two-providers", "Betclic", "B", "Player B", "Player A", "1.75")
+  ];
+  const adapted = adaptScannerArchiveRows(rows);
+  assert.equal(adapted.rows.length, 2);
+  assert.equal(adapted.ignored, 2);
+  assert.deepEqual(adapted.rows.map(item => item.bookmaker).sort(), ["betclic", "winamax"]);
+});
