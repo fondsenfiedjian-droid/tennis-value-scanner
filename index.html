@@ -1854,6 +1854,8 @@
         const accessStatusLabel=status=>({
           available:'доступен',forbidden_or_plan_restricted:'отказ API / возможное ограничение тарифа',
           unauthorized:'ошибка авторизации',stats_not_found:'статистика не найдена',
+          player_merged:'ID игрока объединён с другой записью',rate_limited:'лимит запросов API; учитывайте Retry-After',
+          invalid_player_or_doubles:'ID отклонён API или относится к парной команде',
           api_key_missing:'ключ API не настроен',invalid_payload:'неверный формат ответа',
           player_identity_mismatch:'не совпал ID игрока',invalid_player_id:'неверный ID игрока',
           upstream_error:'ошибка Live Tennis API',unavailable:'источник недоступен'
