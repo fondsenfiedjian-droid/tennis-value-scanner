@@ -178,7 +178,7 @@
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
     $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
     try{
-      const res=await fetch(API+'/matches?status=upcoming&limit=100',{cache:'no-store'});
+      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=100',{cache:'no-store'});
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
