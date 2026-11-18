@@ -177,19 +177,32 @@
     const holdB = calculateHoldProbability(pointWinB);
     const tiebreakA = calculateTiebreakWinProbability(pointWinA, pointWinB, firstServerA);
     const memo = new Map();
+    const empty = () => ({ aRegularSame: 0, bRegularSame: 0, aRegularOther: 0, bRegularOther: 0, aTiebreak: 0, bTiebreak: 0 });
     const solve = (gamesA, gamesB) => {
-      if (gamesA >= 6 && gamesA - gamesB >= 2) return { aRegular: 1, bRegular: 0, aTiebreak: 0, bTiebreak: 0 };
-      if (gamesB >= 6 && gamesB - gamesA >= 2) return { aRegular: 0, bRegular: 1, aTiebreak: 0, bTiebreak: 0 };
-      if (gamesA === 6 && gamesB === 6) return { aRegular: 0, bRegular: 0, aTiebreak: tiebreakA, bTiebreak: 1 - tiebreakA };
+      const totalGames = gamesA + gamesB;
+      if (gamesA >= 6 && gamesA - gamesB >= 2) {
+        const result = empty();
+        result[totalGames % 2 === 0 ? "aRegularSame" : "aRegularOther"] = 1;
+        return result;
+      }
+      if (gamesB >= 6 && gamesB - gamesA >= 2) {
+        const result = empty();
+        result[totalGames % 2 === 0 ? "bRegularSame" : "bRegularOther"] = 1;
+        return result;
+      }
+      if (gamesA === 6 && gamesB === 6) {
+        const result = empty();
+        result.aTiebreak = tiebreakA;
+        result.bTiebreak = 1 - tiebreakA;
+        return result;
+      }
       const key = gamesA + ":" + gamesB;
       if (memo.has(key)) return memo.get(key);
-      const serverA = (gamesA + gamesB) % 2 === 0 ? firstServerA : !firstServerA;
+      const serverA = totalGames % 2 === 0 ? firstServerA : !firstServerA;
       const gameWinA = serverA ? holdA : 1 - holdB;
       const won = solve(gamesA + 1, gamesB), lost = solve(gamesA, gamesB + 1);
-      const result = {};
-      for (const field of ["aRegular", "bRegular", "aTiebreak", "bTiebreak"]) {
-        result[field] = gameWinA * won[field] + (1 - gameWinA) * lost[field];
-      }
+      const result = empty();
+      for (const field of Object.keys(result)) result[field] = gameWinA * won[field] + (1 - gameWinA) * lost[field];
       memo.set(key, result);
       return result;
     };
@@ -237,8 +250,10 @@
       if (memo.has(key)) return memo.get(key);
       const set = outcomes[firstServerA ? 0 : 1];
       const result =
-        set.aRegular * solve(setsA + 1, setsB, firstServerA) +
-        set.bRegular * solve(setsA, setsB + 1, firstServerA) +
+        set.aRegularSame * solve(setsA + 1, setsB, firstServerA) +
+        set.bRegularSame * solve(setsA, setsB + 1, firstServerA) +
+        set.aRegularOther * solve(setsA + 1, setsB, !firstServerA) +
+        set.bRegularOther * solve(setsA, setsB + 1, !firstServerA) +
         set.aTiebreak * solve(setsA + 1, setsB, !firstServerA) +
         set.bTiebreak * solve(setsA, setsB + 1, !firstServerA);
       memo.set(key, result);
@@ -246,15 +261,15 @@
     };
     const probabilityStartingA = solve(0, 0, true);
     const probabilityStartingB = solve(0, 0, false);
-    const setProbabilityA = (outcomes[0].aRegular + outcomes[0].aTiebreak +
-      outcomes[1].aRegular + outcomes[1].aTiebreak) / 2;
+    const setProbabilityA = (outcomes[0].aRegularSame + outcomes[0].aRegularOther + outcomes[0].aTiebreak +
+      outcomes[1].aRegularSame + outcomes[1].aRegularOther + outcomes[1].aTiebreak) / 2;
     return {
       status: "provisional",
       probabilityA: clamp((probabilityStartingA + probabilityStartingB) / 2, 0, 1),
       setProbabilityA, bestOf, setsToWin,
       firstServerProbabilities: { startA: probabilityStartingA, startB: probabilityStartingB },
       assumptions: ["standard_advantage_scoring", "tiebreak_at_6_all", "service_order_continues_between_sets", "randomized_initial_server", "no_fatigue_or_injury_adjustment"],
-      note: "Расчёт учитывает переход подачи между сетами, включая правило приёма после тай-брейка. Не учитывает усталость, травмы, смену условий и изменение вероятностей по ходу матча."
+      note: "Расчёт учитывает переход подачи между сетами с учётом длины обычного сета и правила приёма после тай-брейка. Не учитывает усталость, травмы, смену условий и изменение вероятностей по ходу матча."
     };
   }
 
