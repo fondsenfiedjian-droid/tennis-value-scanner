@@ -12,8 +12,8 @@ const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
 const ratingDateStart = frontendSource.indexOf("function validRatingDate(");
 const ratingDateEnd = frontendSource.indexOf("function isValidPredictionResult(", ratingDateStart);
 const ratingDateSource = frontendSource.slice(ratingDateStart, ratingDateEnd);
-function makeArchiveStore() {
-  const data = {};
+function makeArchiveStore(seed = []) {
+  const data = { 'tvs-prediction-archive-v1': JSON.stringify(seed) };
   const localStorage = {
     getItem: key => data[key] ?? null,
     setItem: (key, value) => { data[key] = value; }
@@ -21,7 +21,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -315,6 +315,16 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("archive keeps the legacy localStorage copy when IndexedDB is unavailable", async () => {
+  const legacy = [{ matchKey: "legacy-match", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 }];
+  const store = makeArchiveStore(legacy);
+  const result = await store.initializeArchiveStorage();
+  assert.equal(result.mode, "local");
+  assert.equal(store.readPredictionArchive().length, 1);
+  assert.equal(store.readPredictionArchive()[0].matchKey, "legacy-match");
 });
 
 test("archive backup v2 detects corruption and preserves legacy v1 compatibility", () => {
