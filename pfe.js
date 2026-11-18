@@ -377,6 +377,50 @@
     };
   }
 
+  function deriveServeReturnMatchInputs(profileA, profileB, options = {}) {
+    const maxDisagreement = Number.isFinite(Number(options.maxDisagreement))
+      ? clamp(Number(options.maxDisagreement), 0.01, 0.3) : 0.08;
+    if (!profileA || !profileB || profileA.status !== "ready_for_modeling" || profileB.status !== "ready_for_modeling") {
+      return { status: "insufficient_data", playerA: null, playerB: null, reason: "both_profiles_must_be_ready" };
+    }
+    if (!Number.isSafeInteger(profileA.playerId) || !Number.isSafeInteger(profileB.playerId) || profileA.playerId === profileB.playerId) {
+      return { status: "invalid", playerA: null, playerB: null, reason: "player_identity_mismatch" };
+    }
+    const pointWin = (serving, returning) => {
+      const firstIn = serving?.firstServeIn?.pct;
+      const firstWon = serving?.firstServePointsWon?.pct;
+      const secondWon = serving?.secondServePointsWon?.pct;
+      const returnFirstWon = returning?.firstServeReturnPointsWon?.pct;
+      const returnSecondWon = returning?.secondServeReturnPointsWon?.pct;
+      const values = [firstIn, firstWon, secondWon, returnFirstWon, returnSecondWon];
+      if (!values.every(value => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100)) return null;
+      const firstShare = firstIn / 100;
+      const direct = firstShare * (firstWon / 100) + (1 - firstShare) * (secondWon / 100);
+      const opponentReturnCrossCheck = firstShare * (1 - returnFirstWon / 100) +
+        (1 - firstShare) * (1 - returnSecondWon / 100);
+      const disagreement = Math.abs(direct - opponentReturnCrossCheck);
+      return {
+        directServeEstimate: direct,
+        opponentReturnCrossCheck,
+        disagreement,
+        servicePointWin: disagreement <= maxDisagreement ? (direct + opponentReturnCrossCheck) / 2 : null
+      };
+    };
+    const a = pointWin(profileA.metrics, profileB.metrics);
+    const b = pointWin(profileB.metrics, profileA.metrics);
+    if (!a || !b) return { status: "insufficient_data", playerA: null, playerB: null, reason: "required_point_metrics_missing" };
+    const status = a.disagreement > maxDisagreement || b.disagreement > maxDisagreement ? "review" : "ready_for_score_simulation";
+    return {
+      status,
+      playerA: { playerId: profileA.playerId, ...a },
+      playerB: { playerId: profileB.playerId, ...b },
+      maxDisagreement,
+      note: status === "review"
+        ? "Собственные показатели подачи и показатели приёма соперника расходятся; входы нельзя использовать без проверки."
+        : "Подготовлены оценки вероятности выигрыша очка на своей подаче. Это ещё не вероятность победы в матче."
+    };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -430,5 +474,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, buildModelHistoryRecords, evaluateModelHistory };
 });
