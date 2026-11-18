@@ -133,11 +133,12 @@
     return [];
   }
   function playerName(p){
+    if(typeof p==='string') return p;
     if(!p||typeof p!=='object') return 'Игрок не указан';
     return p.name||p.full_name||p.display_name||[p.first_name,p.last_name].filter(Boolean).join(' ')||p.player_name||'Игрок не указан';
   }
   function matchDate(m){
-    const raw=m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date||m.live_at;
+    const raw=m.scheduled_time||m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date||m.live_at;
     if(!raw)return null;
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
