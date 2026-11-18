@@ -2958,3 +2958,14 @@ test("PFE does not understate uncertainty inside correlated dependency groups", 
   assert.ok(Math.abs(result.groups[0].uncertainty - 0.15) < 1e-12);
   assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
 });
+\n
+test("settings provide a persistent app-wide switch between black and olive skins", () => {
+  assert.ok(frontendSource.includes('id="skinSelect"'));
+  assert.ok(frontendSource.includes('value="black"'));
+  assert.ok(frontendSource.includes('value="olive"'));
+  assert.ok(frontendSource.includes("saved.skin==='olive'?'olive':'black'"));
+  assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
+  assert.ok(frontendSource.includes("data.skin=$('#skinSelect').value==='olive'?'olive':'black'"));
+  assert.ok(frontendSource.includes('body[data-skin="olive"]'));
+  assert.ok(frontendSource.includes('#626744'));
+});
