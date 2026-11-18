@@ -938,7 +938,7 @@
     const columns=['at','type','amount','balanceDelta','stake','profit','outcome','source','betId','matchId','side','resultVersion','note','betSnapshot'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
-      if(typeof value==='string'&&/^[\\s]*[=+\\-@]/.test(cell))cell="'"+cell;
+      if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
       return '"'+cell.replace(/"/g,'""')+'"';
     };
     const csv='\\uFEFF'+[columns.join(';'),...state.transactions.map(tx=>columns.map(key=>quote(tx[key])).join(';'))].join('\\n');
