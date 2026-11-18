@@ -935,9 +935,13 @@
   };
   $('#bankExportCsv').onclick=()=>{
     const state=readBankrollState();if(!state){alert('Банкролл недоступен.');return;}
-    const columns=['at','type','amount','balanceDelta','profit','outcome','betId','note'];
-    const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
-    const csv='\uFEFF'+[columns.join(';'),...state.transactions.map(tx=>columns.map(key=>quote(tx[key])).join(';'))].join('\n');
+    const columns=['at','type','amount','balanceDelta','stake','profit','outcome','source','betId','matchId','side','resultVersion','note','betSnapshot'];
+    const quote=value=>{
+      let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
+      if(typeof value==='string'&&/^[\\s]*[=+\\-@]/.test(cell))cell="'"+cell;
+      return '"'+cell.replace(/"/g,'""')+'"';
+    };
+    const csv='\\uFEFF'+[columns.join(';'),...state.transactions.map(tx=>columns.map(key=>quote(tx[key])).join(';'))].join('\\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
     const link=document.createElement('a');link.href=url;link.download='tennis-value-bankroll-ledger.csv';link.click();URL.revokeObjectURL(url);
   };
