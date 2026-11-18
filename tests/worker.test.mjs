@@ -603,6 +603,20 @@ test("archive applies only verified completed results and honours result revisio
   assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
 
+test("archive accuracy honours newer non-completed result versions and rejects conflicting predictions", () => {
+  const { archiveResultStats } = makeArchiveStore();
+  const rows = [
+    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 888, matchKey: "888", side: "A", probability: 60, capturedAt: 200, resultOutcome: "retired", resultWinner: 1, resultVersion: 2 },
+    { matchId: 889, matchKey: "889", side: "A", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 889, matchKey: "889", side: "B", probability: 60, capturedAt: 100, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ];
+  const stats = archiveResultStats(rows);
+  assert.equal(stats.settled, 0);
+  assert.equal(stats.excluded, 1);
+  assert.equal(stats.ambiguous, 1);
+});
+
 test("archive prediction accuracy gives exact 50 percent Elo ties half credit", () => {
   const { archiveResultStats } = makeArchiveStore();
   const rows = [
