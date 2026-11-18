@@ -6,7 +6,7 @@
   "use strict";
 
   const VERSION = 1;
-  const DEFAULTS = Object.freeze({ maxStakePercent: 2, maxExposurePercent: 8, kellyFraction: 0.25, minEv: 3, minOdds: 1.9 });
+  const DEFAULTS = Object.freeze({ maxStakePercent: 2, maxExposurePercent: 8, maxDailyStakePercent: 8, kellyFraction: 0.25, minEv: 3, minOdds: 1.9 });
 
   function roundMoney(value) {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -73,6 +73,8 @@
     const deposits = state.transactions.filter(tx => tx.type === "deposit").reduce((s, tx) => s + tx.amount, 0);
     const withdrawals = state.transactions.filter(tx => tx.type === "withdrawal").reduce((s, tx) => s + tx.amount, 0);
     const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
+    const today = new Date().toDateString();
+    const dailyStaked = state.transactions.filter(tx => tx.type === "stake" && new Date(tx.at).toDateString() === today).reduce((s, tx) => s + tx.amount, 0);
     const settledStake = state.transactions.filter(tx => tx.type === "settlement").reduce((s, tx) => s + Number(tx.stake || 0), 0);
     const profit = realizedProfit(state);
     const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
@@ -83,6 +85,7 @@
       equity: bankrollEquity(state),
       realizedProfit: profit,
       totalStaked: roundMoney(totalStaked),
+      dailyStaked: roundMoney(dailyStaked),
       settledStake: roundMoney(settledStake),
       roiPercent: settledStake > 0 ? roundMoney(profit / settledStake * 100) : null,
       deposits: roundMoney(deposits),
@@ -106,12 +109,17 @@
     const maxStake = roundMoney(equity * cfg.maxStakePercent / 100);
     const maxExposure = roundMoney(equity * cfg.maxExposurePercent / 100);
     const remainingExposure = Math.max(0, roundMoney(maxExposure - totalOpenStake(state)));
+    const today = new Date().toDateString();
+    const dailyStaked = state.transactions.filter(tx => tx.type === "stake" && new Date(tx.at).toDateString() === today)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const maxDailyStake = roundMoney(equity * cfg.maxDailyStakePercent / 100);
+    const remainingDailyStake = Math.max(0, roundMoney(maxDailyStake - dailyStaked));
     const b = price - 1, q = 1 - p;
     const fullKelly = Math.max(0, (b * p - q) / b);
     const kellyStake = equity * fullKelly * cfg.kellyFraction;
-    const stake = roundMoney(Math.min(maxStake, remainingExposure, state.balance, kellyStake));
-    if (stake < 0.01) return { eligible: false, reason: "Недостаточно свободного банка или исчерпан лимит риска.", stake: 0, ev, fullKelly };
-    return { eligible: true, reason: "Допущена к ставке по заданным лимитам риска.", stake, ev, fullKelly, maxStake, remainingExposure };
+    const stake = roundMoney(Math.min(maxStake, remainingExposure, remainingDailyStake, state.balance, kellyStake));
+    if (stake < 0.01) return { eligible: false, reason: "Недостаточно свободного банка или исчерпан дневной/общий лимит риска.", stake: 0, ev, fullKelly };
+    return { eligible: true, reason: "Допущена к ставке по заданным лимитам риска.", stake, ev, fullKelly, maxStake, remainingExposure, remainingDailyStake };
   }
 
   function recommendPortfolio(input, candidates, options = {}) {
