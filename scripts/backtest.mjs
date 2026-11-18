@@ -76,7 +76,8 @@ export function runBacktest(matches, options = {}) {
       const formA = (historyA.reduce((sum, item) => sum + (item.won ? 1 : 0), 0) + 2) / (historyA.length + 4);
       const formB = (historyB.reduce((sum, item) => sum + (item.won ? 1 : 0), 0) + 2) / (historyB.length + 4);
       const h = h2h.get(pairKey(match.winner, match.loser)) ?? { a: 0, b: 0 };
-      const lowerIdWonDiff = h.a - h.b;\n      const h2hDiff = (Number(match.winner) < Number(match.loser) ? lowerIdWonDiff : -lowerIdWonDiff) / (h.a + h.b + 4);
+      const lowerIdWonDiff = h.a - h.b;
+      const h2hDiff = (Number(match.winner) < Number(match.loser) ? lowerIdWonDiff : -lowerIdWonDiff) / (h.a + h.b + 4);
       const features = {
         elo: ra - rb,
         surface: useSurface ? 0.7 * (ra - rb) + 0.3 * (surfaceA - surfaceB) : ra - rb,
