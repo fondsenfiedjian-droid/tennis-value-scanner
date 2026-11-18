@@ -208,6 +208,42 @@
     })).sort((a, b) => b.totalStaked - a.totalStaked || a.bookmaker.localeCompare(b.bookmaker, "ru"));
   }
 
+  function getExposureConcentration(state) {
+    validateState(state);
+    const totalOpenStake = roundMoney(state.openBets.reduce((sum, bet) => sum + bet.stake, 0));
+    const bookmakerGroups = new Map();
+    const playerGroups = new Map();
+    let unclassifiedStake = 0;
+    const add = (groups, rawName, stake) => {
+      const name = typeof rawName === "string" ? rawName.trim().slice(0, 80) : "";
+      if (!name) return false;
+      const key = name.toLocaleLowerCase();
+      const group = groups.get(key) || { name, stake: 0, bets: 0 };
+      group.stake += stake;
+      group.bets += 1;
+      groups.set(key, group);
+      return true;
+    };
+    for (const bet of state.openBets) {
+      add(bookmakerGroups, bet.bookmaker || "Не указан", bet.stake);
+      const participants = new Set([bet.player, bet.opponent]
+        .filter(name => typeof name === "string" && name.trim())
+        .map(name => name.trim().toLocaleLowerCase()));
+      if (!participants.size) unclassifiedStake += bet.stake;
+      for (const participant of participants) add(playerGroups, participant, bet.stake);
+    }
+    const format = groups => [...groups.values()].map(group => ({
+      name: group.name, stake: roundMoney(group.stake), bets: group.bets,
+      sharePercent: totalOpenStake > 0 ? roundMoney(group.stake / totalOpenStake * 100) : 0,
+      highConcentration: totalOpenStake > 0 && group.stake / totalOpenStake >= 0.5
+    })).sort((a, b) => b.stake - a.stake || a.name.localeCompare(b.name, "ru"));
+    return {
+      totalOpenStake, byBookmaker: format(bookmakerGroups), byPlayer: format(playerGroups),
+      unclassifiedStake: roundMoney(unclassifiedStake),
+      note: "Экспозиция по игрокам пересекается: одна ставка учитывается у обоих участников. Это диагностический показатель, а не доказанная статистическая корреляция."
+    };
+  }
+
   function recommendStake(state, probability, odds, options = {}) {
     validateState(state);
     const p = Number(probability), price = Number(odds);
@@ -629,5 +665,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getClvSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
