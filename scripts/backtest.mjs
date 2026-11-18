@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 export function parseCsv(text) {
+  text = text.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false;
   for (let i = 0; i < text.length; i++) {
@@ -60,14 +61,24 @@ export function runBacktest(matches, options = {}) {
     const score = String(row.score ?? "");
     if (!date || !validId(winner) || !validId(loser) || winner === loser || /\b(?:W\/O|RET|ABD|DEF|DEFAULT)\b/i.test(score)) return null;
     const surface = ["Hard", "Clay", "Grass", "Carpet"].includes(row.surface) ? row.surface : null;
-    return { date, winner, loser, surface };
+    return { date, winner, loser, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? "") };
   }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
+  const seenMatches = new Set();
+  const uniqueClean = clean.filter(match => {
+    const key = match.tourneyId && match.matchNum
+      ? match.tourneyId + ":" + match.matchNum
+      : match.date + ":" + pairKey(match.winner, match.loser) + ":" + (match.surface ?? "unknown");
+    if (seenMatches.has(key)) return false;
+    seenMatches.add(key);
+    return true;
+  });
+
   let index = 0;
-  while (index < clean.length) {
-    const date = clean[index].date;
+  while (index < uniqueClean.length) {
+    const date = uniqueClean[index].date;
     const day = [];
-    while (index < clean.length && clean[index].date === date) day.push(clean[index++]);
+    while (index < uniqueClean.length && uniqueClean[index].date === date) day.push(uniqueClean[index++]);
 
     const updates = [];
     for (const match of day) {
@@ -136,12 +147,14 @@ export function runBacktest(matches, options = {}) {
 
   const evaluatedMatches = totals.elo.n;
   return {
-    matches: clean.length,
+    matches: uniqueClean.length,
     excluded: matches.length - clean.length,
+    duplicateRows: clean.length - uniqueClean.length,
+    unknownSurfaceMatches: uniqueClean.filter(match => match.surface == null).length,
     evaluationStart,
     evaluationEnd,
     evaluatedMatches,
-    warmupMatches: evaluationStart ? clean.filter(match => match.date < evaluationStart).length : 0,
+    warmupMatches: evaluationStart ? uniqueClean.filter(match => match.date < evaluationStart).length : 0,
     metrics: Object.fromEntries(Object.entries(totals).map(([name, value]) => [name, {
       matches: value.n,
       brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
