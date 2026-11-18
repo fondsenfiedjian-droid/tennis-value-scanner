@@ -434,3 +434,34 @@ test("archive coverage counts closing snapshots even when a match has no qualify
   assert.equal(report.archiveCoverage.matchesWithQualifyingClosingSnapshot, 2);
   assert.equal(report.archiveCoverage.matchesWithoutQualifyingClosingSnapshot, 0);
 });
+
+
+test("scanner archive rejects duplicate side snapshots with conflicting rating provenance", () => {
+  const rows = [
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
+      tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-30", resultOutcome: "completed", resultWinner: "1" },
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
+      tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
+      tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" }
+  ];
+  assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
+});
+
+test("scanner archive rejects duplicate side snapshots with conflicting player identity", () => {
+  const rows = [
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
+      tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
+      tour: "atp", surface: "Hard", player: "Wrong Player", opponent: "Player B", side: "A",
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
+      tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" }
+  ];
+  assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
+});
