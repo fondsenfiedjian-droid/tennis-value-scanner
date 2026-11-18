@@ -45,6 +45,7 @@
     .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
     .match-card{cursor:pointer;transition:border-color .15s,background .15s}.match-card:focus{outline:2px solid #75aef5;outline-offset:2px}.match-card.expanded{border-color:#5b91ca;background:#17263b}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.loading{text-align:center;padding:24px;color:var(--muted)}
     .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}
+    .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px}.stats-actions button{flex:1;border:1px solid var(--line);background:#1b2a40;color:white;padding:11px;border-radius:10px}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
   </style>
 </head>
@@ -81,8 +82,22 @@
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые три матча с доступными ID игроков. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
+<div class="stats-view" id="statsView">
+  <h1>Архив прогнозов</h1>
+  <div class="muted">Снимки вероятностей и коэффициентов в момент проверки. Это история оценок модели, не подтверждённая статистика выигрышей.</div>
+  <div class="stats" style="margin-top:16px">
+    <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
+    <div class="panel"><div class="muted">С положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
+    <div class="panel"><div class="muted">Средний EV</div><div class="stat-num" id="archiveAvgEv">—</div></div>
+    <div class="panel"><div class="muted">Средний коэффициент</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
+  </div>
+  <div class="stats-actions"><button id="archiveExport">Экспорт CSV</button></div>
+  <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
+  <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
+</div>
+
 <div class="bottom"><div class="nav">
-  <button class="active"><b>⌂</b>Главная</button>
+  <button id="navHome" class="active"><b>⌂</b>Главная</button>
   <button id="navMatches"><b>🎾</b>Матчи</button>
   <button id="navStats"><b>▥</b>Статистика</button>
   <button id="navSettings"><b>⚙</b>Настройки</button>
@@ -343,6 +358,70 @@
     });
     loadPredictions(filtered);
   }
+
+  const ARCHIVE_KEY='tvs-prediction-archive-v1';
+  function readPredictionArchive(){
+    try{const rows=JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'):[];}
+    catch(e){return [];}
+  }
+  function savePredictionSnapshot(match,el,result){
+    const playerA=el.dataset.nameA||result.playerA||'Игрок 1';
+    const playerB=el.dataset.nameB||result.playerB||'Игрок 2';
+    const date=matchDate(match);
+    const matchKey=String(match.id||match.match_id||match.event_id||[el.dataset.playerA,el.dataset.playerB,date?date.toISOString():''].join('-'));
+    const tournament=match.tournament_name||match.tournament||match.event_name||match.competition||'';
+    const archive=readPredictionArchive(),now=Date.now();
+    const entries=[
+      {side:'A',player:playerA,opponent:playerB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),rating:Number(result.ratingA)},
+      {side:'B',player:playerB,opponent:playerA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),rating:Number(result.ratingB)}
+    ];
+    let changed=false;
+    for(const entry of entries){
+      if(!Number.isFinite(entry.odds)||entry.odds<=1||!Number.isFinite(entry.probability))continue;
+      const ev=(entry.probability/100*entry.odds-1)*100;
+      const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&now-Number(row.capturedAt)<10*60*1000);
+      if(duplicate)continue;
+      archive.push({matchKey,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,model:'general-elo-v2',capturedAt:now});
+      changed=true;
+    }
+    if(changed){
+      archive.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
+      try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(archive.slice(-600)));}catch(e){}
+    }
+  }
+  function renderArchive(){
+    const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
+    const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
+    $('#archiveCount').textContent=rows.length;
+    $('#archivePositive').textContent=rows.filter(row=>Number(row.ev)>0).length;
+    $('#archiveAvgEv').textContent=avg('ev')===null?'—':avg('ev').toFixed(2)+'%';
+    $('#archiveAvgOdds').textContent=avg('odds')===null?'—':avg('odds').toFixed(2);
+    $('#archiveUpdated').textContent=rows.length?'хранится до 600 записей':'';
+    const list=$('#archiveList');
+    if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
+    list.innerHTML=rows.slice(0,50).map(row=>{
+      const when=new Date(Number(row.capturedAt)),ev=Number(row.ev);
+      return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div><div class="archive-meta">'+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
+    }).join('');
+  }
+  function showMain(){
+    $('.app').style.display='block';$('#statsView').style.display='none';
+    $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
+  }
+  function showStats(){
+    $('.app').style.display='none';$('#statsView').style.display='block';
+    $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
+    renderArchive();
+  }
+  $('#archiveExport').onclick=()=>{
+    const rows=readPredictionArchive();
+    if(!rows.length){alert('Архив пока пуст.');return;}
+    const columns=['capturedAt','matchDate','tournament','player','opponent','side','odds','probability','ev','rating','model'];
+    const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+    const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const link=document.createElement('a');link.href=url;link.download='tennis-value-archive.csv';link.click();URL.revokeObjectURL(url);
+  };
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
     const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
@@ -350,7 +429,7 @@
       return a&&b&&a.id&&b.id&&document.getElementById('model-'+i)?.hasAttribute('data-player-a');
     }).slice(0,3);
     let positive=0,checked=0;
-    for(const {i} of candidates){
+    for(const {m,i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
       const idA=el.dataset.playerA,idB=el.dataset.playerB;
       const cacheKey='tvs-elo-v2-'+idA+'-'+idB;
@@ -367,6 +446,7 @@
         if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
+        savePredictionSnapshot(m,el,result);
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
         const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
@@ -447,7 +527,9 @@
   $('#refreshBtn').onclick=loadMatches;
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navMatches').onclick=loadMatches;
-  $('#navStats').onclick=()=>alert('Статистика появится после подключения коэффициентов и расчёта EV.');
+  $('#navHome').onclick=showMain;
+  $('#navMatches').onclick=()=>{showMain();loadMatches();};
+  $('#navStats').onclick=showStats;
   scheduleAutoRefresh();
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
