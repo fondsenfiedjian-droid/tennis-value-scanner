@@ -134,6 +134,96 @@
     return clamp(beforeDeuce + reachDeuce * winFromDeuce, 0, 1);
   }
 
+  function calculateTiebreakWinProbability(pointWinA, pointWinB, firstServerA = true) {
+    const pA = Number(pointWinA), pB = Number(pointWinB);
+    if (![pA, pB].every(value => Number.isFinite(value) && value >= 0 && value <= 1) ||
+        typeof firstServerA !== "boolean") return null;
+    const pointProbability = pointIndex => {
+      const phase = pointIndex % 4;
+      const serverA = phase === 0 || phase === 3 ? firstServerA : !firstServerA;
+      return serverA ? pA : 1 - pB;
+    };
+    const deuce = phase => {
+      const x1 = pointProbability(phase), x2 = pointProbability(phase + 1);
+      const winBoth = x1 * x2;
+      const loseBoth = (1 - x1) * (1 - x2);
+      const split = x1 * (1 - x2) + (1 - x1) * x2;
+      return { winBoth, split, loseBoth };
+    };
+    const d0 = deuce(0), d2 = deuce(2);
+    const denominator = 1 - d0.split * d2.split;
+    const deuce0 = denominator > 0
+      ? (d0.winBoth + d0.split * d2.winBoth) / denominator
+      : 0.5;
+    const deuce2 = d2.winBoth + d2.split * deuce0;
+    const memo = new Map();
+    const solve = (a, b) => {
+      if (a >= 7 && a - b >= 2) return 1;
+      if (b >= 7 && b - a >= 2) return 0;
+      const nextPoint = a + b;
+      if (a === b && a >= 6) return nextPoint % 4 === 0 ? deuce0 : deuce2;
+      const key = a + ":" + b;
+      if (memo.has(key)) return memo.get(key);
+      const probability = pointProbability(nextPoint);
+      const result = probability * solve(a + 1, b) + (1 - probability) * solve(a, b + 1);
+      memo.set(key, result);
+      return result;
+    };
+    return clamp(solve(0, 0), 0, 1);
+  }
+
+  function calculateSetWinProbability(pointWinA, pointWinB, firstServerA = true) {
+    const pA = Number(pointWinA), pB = Number(pointWinB);
+    if (![pA, pB].every(value => Number.isFinite(value) && value >= 0 && value <= 1) ||
+        typeof firstServerA !== "boolean") return null;
+    const holdA = calculateHoldProbability(pA);
+    const holdB = calculateHoldProbability(pB);
+    const tiebreak = calculateTiebreakWinProbability(pA, pB, firstServerA);
+    const memo = new Map();
+    const solve = (gamesA, gamesB) => {
+      if (gamesA >= 6 && gamesA - gamesB >= 2) return 1;
+      if (gamesB >= 6 && gamesB - gamesA >= 2) return 0;
+      if (gamesA === 6 && gamesB === 6) return tiebreak;
+      const totalGames = gamesA + gamesB;
+      const serverA = totalGames % 2 === 0 ? firstServerA : !firstServerA;
+      const gameWinA = serverA ? holdA : 1 - holdB;
+      const key = gamesA + ":" + gamesB;
+      if (memo.has(key)) return memo.get(key);
+      const result = gameWinA * solve(gamesA + 1, gamesB) + (1 - gameWinA) * solve(gamesA, gamesB + 1);
+      memo.set(key, result);
+      return result;
+    };
+    return clamp(solve(0, 0), 0, 1);
+  }
+
+  function calculateMatchWinProbability(pointWinA, pointWinB, options = {}) {
+    const bestOf = options.bestOf === undefined ? 3 : Number(options.bestOf);
+    if (![3, 5].includes(bestOf)) return { status: "invalid", probabilityA: null, reason: "unsupported_match_format" };
+    const firstA = calculateSetWinProbability(pointWinA, pointWinB, true);
+    const firstB = calculateSetWinProbability(pointWinA, pointWinB, false);
+    if (firstA === null || firstB === null) return { status: "invalid", probabilityA: null, reason: "invalid_point_probabilities" };
+    // Average first-server order per set; full between-set service order and fatigue are not modeled.
+    const setProbability = (firstA + firstB) / 2;
+    const setsToWin = bestOf === 3 ? 2 : 3;
+    let probabilityA = 0;
+    for (let winsA = setsToWin; winsA <= bestOf; winsA++) {
+      const winsB = bestOf - winsA;
+      let combinations = 1;
+      for (let index = 1; index <= winsB; index++) {
+        combinations *= (setsToWin - 1 + index) / index;
+      }
+      probabilityA += combinations * Math.pow(setProbability, winsA) * Math.pow(1 - setProbability, winsB);
+    }
+    return {
+      status: "provisional",
+      probabilityA: clamp(probabilityA, 0, 1),
+      setProbabilityA: setProbability,
+      bestOf, setsToWin,
+      assumptions: ["standard_advantage_scoring", "tiebreak_at_6_all", "no_fatigue_or_injury_adjustment", "average_first_server_order_per_set"],
+      note: "Предварительная аналитическая модель по вероятностям очка. Не учитывает усталость, травмы, смену условий и зависимость вероятностей от счёта."
+    };
+  }
+
   function createRandom(seed) {
     let state = (Number(seed) >>> 0) || 0x9e3779b9;
     return function () {
@@ -485,5 +575,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, buildModelHistoryRecords, evaluateModelHistory };
 });
