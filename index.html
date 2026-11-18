@@ -199,6 +199,11 @@
   <div class="archive-list" id="bankBookmakerStats"><div class="panel empty">Пока нет записанных ставок.</div></div>
   </div>
   <div class="panel">
+    <div class="section-head"><h2>Доходность по сегментам</h2><span class="muted">только рассчитанные реальные ставки</span></div>
+    <div class="archive-list" id="bankSegmentPerformance"><div class="panel empty">Пока нет рассчитанных ставок для сегментного анализа.</div></div>
+    <div class="archive-meta">ROI = прибыль / сумма выигравших и проигравших ставок. Возвраты исключены из оборота и показаны отдельно. При выборке меньше 30 ставок результат предварительный. Неизвестные покрытие и турнир не определяются предположительно.</div>
+  </div>
+  <div class="panel">
     <div class="section-head"><h2>Концентрация открытого риска</h2><span class="muted">диагностика портфеля</span></div>
     <div class="archive-list" id="bankExposureConcentration"><div class="panel empty">Нет открытых ставок для анализа.</div></div>
   </div>
@@ -1296,6 +1301,16 @@
       const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
       return '<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Прибыль: <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span> · ROI '+roi+'</div><div class="archive-meta">Выигрыши '+item.wins+' · проигрыши '+item.losses+' · возвраты '+item.voids+' · рассчитано ставок '+item.settledBets+'</div><div class="archive-meta">Оборот без возвратов '+formatEuro(item.totalStaked)+' · возвращено '+formatEuro(item.voidedStake)+' · открыто '+item.openBets+' на '+formatEuro(item.openStake)+'</div></div>';
     }).join(''):'<div class="panel empty">Пока нет записанных ставок по букмекерам.</div>';
+    const segmentPerformance=TVSBankroll.getSegmentPerformance(state,readPredictionArchive());
+    const segmentLabels={surface:'Покрытие',tour:'Категория турнира',bookmaker:'Букмекер'};
+    $('#bankSegmentPerformance').innerHTML=Object.entries(segmentPerformance).map(([key,items])=>{
+      const rows=items.map(item=>{
+        const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
+        const profitClass=item.profit>0?'model-positive':item.profit<0?'model-negative':'';
+        return '<div class="archive-item"><b>'+escapeHtml(item.name)+'</b><div>ROI '+roi+' · прибыль <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span></div><div class="archive-meta">Рассчитано ставок '+item.settledBets+' · выиграно '+item.wins+' · проиграно '+item.losses+' · возвраты '+item.voids+' · исключено '+item.excluded+'</div><div class="archive-meta">Оборот '+formatEuro(item.settledStake)+' · возвращено '+formatEuro(item.voidedStake)+(item.preliminary?' · предварительная выборка (меньше 30)':'')+'</div></div>';
+      }).join('');
+      return '<div class="archive-item"><b>'+segmentLabels[key]+'</b>'+rows+'</div>';
+    }).join('')||'<div class="panel empty">Пока нет рассчитанных ставок для сегментного анализа.</div>';
     const exposure=TVSBankroll.getExposureConcentration(state);
     const exposureRows=(title,items)=>'<div class="archive-item"><b>'+title+'</b>'+items.map(item=>{
       const warning=item.highConcentration?' · высокая концентрация':'';
@@ -1618,7 +1633,7 @@
       const rawId=bet.match.id??bet.match.match_id??bet.match.event_id;
       const matchKey=rawId!==undefined&&rawId!==null?'id:'+String(rawId):[bet.player,bet.opponent].sort().join('|')+'|'+(matchDateValue?matchDateValue.toISOString():'');
       const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
-      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,matchDate:matchDateValue?matchDateValue.toISOString():null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel};
+      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,matchDate:matchDateValue?matchDateValue.toISOString():null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel,surface:String(bet.match.surface||bet.match.court||bet.match.court_name||''),tour:normalizeTour(bet.match.tour||bet.match.tour_type)||'',tournament:String(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'')};
     })):{suggestions:[],totalStake:0};
     const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+escapeHtml(item.bookmaker||'Winamax')+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
     const stakeWord=portfolio.suggestions.length===1?'ставка':portfolio.suggestions.length<5?'ставки':'ставок';
