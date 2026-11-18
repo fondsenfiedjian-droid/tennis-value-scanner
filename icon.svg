@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#101827"/>
-  <circle cx="256" cy="256" r="170" fill="#b7e36a" stroke="#f3f6fb" stroke-width="12"/>
-  <path d="M111 170c88 35 167 114 202 231M401 170c-88 35-167 114-202 231" fill="none" stroke="#101827" stroke-width="13" stroke-linecap="round"/>
-  <path d="M256 70v372" stroke="#f3f6fb" stroke-width="5" opacity=".18"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#21130f"/><stop offset=".55" stop-color="#090909"/><stop offset="1" stop-color="#342017"/></linearGradient>
+    <radialGradient id="ball" cx="32%" cy="24%" r="78%"><stop stop-color="#f0a17d"/><stop offset=".32" stop-color="#c66b49"/><stop offset=".72" stop-color="#8f432e"/><stop offset="1" stop-color="#3d2119"/></radialGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".22" stop-color="#77716d"/><stop offset=".48" stop-color="#f1e8e2"/><stop offset=".72" stop-color="#77716d"/><stop offset="1" stop-color="#e9e2dd"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="180" fill="url(#ball)" stroke="url(#chrome)" stroke-width="13"/>
+  <path d="M105 166c86 38 157 112 191 237M407 166c-86 38-157 112-191 237" fill="none" stroke="#f4e7df" stroke-width="17" stroke-linecap="round" opacity=".9"/>
+  <path d="M105 166c86 38 157 112 191 237M407 166c-86 38-157 112-191 237" fill="none" stroke="#6c3425" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="194" fill="none" stroke="#c66b49" stroke-width="3" opacity=".65"/>
 </svg>
