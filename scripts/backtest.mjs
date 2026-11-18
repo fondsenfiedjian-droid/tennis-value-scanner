@@ -72,32 +72,28 @@ export function fitLogisticCalibration(observations, options = {}) {
     Number.isFinite(item.outcome) && item.outcome >= 0 && item.outcome <= 1
   ).map(item => ({ x: logit(item.probability), y: item.outcome }));
   if (rows.length < minMatches) return null;
+  // Favourite calibration must preserve the 50% anchor: a level-rated match
+  // cannot become a sub-50% favourite merely because of a fitted intercept.
   const penalty = Number.isFinite(options.penalty) && options.penalty >= 0 ? options.penalty : 0.01;
-  let intercept = 0, slope = 1;
+  let slope = 1;
   for (let iteration = 0; iteration < 60; iteration++) {
-    let g0 = -penalty * intercept;
-    let g1 = -penalty * (slope - 1);
-    let h00 = penalty, h01 = 0, h11 = penalty;
+    let gradient = -penalty * (slope - 1);
+    let curvature = penalty;
     for (const row of rows) {
-      const fitted = logistic(intercept + slope * row.x);
+      const fitted = logistic(slope * row.x);
       const weight = fitted * (1 - fitted);
-      const residual = row.y - fitted;
-      g0 += residual;
-      g1 += residual * row.x;
-      h00 += weight;
-      h01 += weight * row.x;
-      h11 += weight * row.x * row.x;
+      gradient += (row.y - fitted) * row.x;
+      curvature += weight * row.x * row.x;
     }
-    const determinant = h00 * h11 - h01 * h01;
-    if (!Number.isFinite(determinant) || determinant < 1e-12) return null;
-    const step0 = (g0 * h11 - g1 * h01) / determinant;
-    const step1 = (g1 * h00 - g0 * h01) / determinant;
-    intercept += step0;
-    slope += step1;
-    if (!Number.isFinite(intercept) || !Number.isFinite(slope)) return null;
-    if (Math.max(Math.abs(step0), Math.abs(step1)) < 1e-8) break;
+    if (!Number.isFinite(curvature) || curvature < 1e-12) return null;
+    const step = gradient / curvature;
+    slope += step;
+    if (!Number.isFinite(slope)) return null;
+    if (Math.abs(step) < 1e-8) break;
   }
-  return { matches: rows.length, intercept: Number(intercept.toFixed(6)), slope: Number(slope.toFixed(6)) };
+  // Keep the correction monotonic and avoid unstable extreme transformations.
+  slope = Math.min(3, Math.max(0.2, slope));
+  return { matches: rows.length, intercept: 0, slope: Number(slope.toFixed(6)) };
 }
 
 export function scoreFavouriteCalibration(observations) {
