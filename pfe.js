@@ -628,6 +628,125 @@
     };
   }
 
+  function buildMarketHistoryRecords(archiveRows) {
+    const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    const byMatch = new Map();
+    const rejected = [];
+    const parseTime = value => typeof value === "number" ? value : Date.parse(value);
+    const normalizeName = value => typeof value === "string"
+      ? value.normalize("NFKD").replace(/\\p{M}/gu, "").toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim()
+      : "";
+    for (const row of rows) {
+      const matchId = String(row?.matchId ?? "").trim();
+      const bookmaker = typeof row?.bookmaker === "string" ? row.bookmaker.trim() : "";
+      const side = row?.side;
+      const odds = Number(row?.odds);
+      const capturedAt = parseTime(row?.capturedAt);
+      const matchStart = Date.parse(row?.matchDate);
+      if (!matchId || !Number.isSafeInteger(Number(matchId)) || Number(matchId) <= 0 ||
+          !bookmaker || !["A", "B"].includes(side) || !Number.isFinite(odds) || odds <= 1 ||
+          !Number.isFinite(capturedAt) || !Number.isFinite(matchStart) || capturedAt >= matchStart ||
+          (row?.captureStatus && row.captureStatus !== "upcoming")) continue;
+      if (!byMatch.has(matchId)) byMatch.set(matchId, new Map());
+      const providers = byMatch.get(matchId);
+      const providerKey = bookmaker.toLocaleLowerCase();
+      if (!providers.has(providerKey)) providers.set(providerKey, { bookmaker, quotes: new Map() });
+      const provider = providers.get(providerKey);
+      const timestampKey = String(capturedAt);
+      if (!provider.quotes.has(timestampKey)) provider.quotes.set(timestampKey, { capturedAt, A: [], B: [] });
+      provider.quotes.get(timestampKey)[side].push(row);
+    }
+
+    const records = [];
+    for (const [matchId, providers] of byMatch) {
+      const providerProbabilities = [];
+      const providerNames = [];
+      let latestCapture = 0, selectedIdentity = null, selectedResult = null, rejectionReason = null;
+      for (const provider of providers.values()) {
+        const timestamps = [...provider.quotes.values()].sort((a, b) => b.capturedAt - a.capturedAt);
+        let selected = null;
+        for (const quote of timestamps) {
+          if (!quote.A.length || !quote.B.length) continue;
+          const oddsA = [...new Set(quote.A.map(row => Number(row.odds)))];
+          const oddsB = [...new Set(quote.B.map(row => Number(row.odds)))];
+          if (oddsA.length !== 1 || oddsB.length !== 1) {
+            rejectionReason = "ambiguous_same_time_quote";
+            selected = null;
+            break;
+          }
+          const rowA = quote.A[0], rowB = quote.B[0];
+          const identityA = [normalizeName(rowA.player), normalizeName(rowA.opponent)];
+          const identityB = [normalizeName(rowB.opponent), normalizeName(rowB.player)];
+          if (!identityA[0] || !identityA[1] || identityA[0] === identityA[1] ||
+              identityA[0] !== identityB[0] || identityA[1] !== identityB[1]) {
+            rejectionReason = "player_identity_mismatch";
+            selected = null;
+            break;
+          }
+          if (rowA.resultOutcome !== "completed" || rowB.resultOutcome !== "completed" ||
+              ![1, 2].includes(Number(rowA.resultWinner)) ||
+              Number(rowA.resultWinner) !== Number(rowB.resultWinner) ||
+              !Number.isFinite(Number(rowA.resultCheckedAt)) || Number(rowA.resultCheckedAt) <= 0 ||
+              !Number.isFinite(Number(rowB.resultCheckedAt)) || Number(rowB.resultCheckedAt) <= 0) {
+            rejectionReason = "result_not_verified";
+            selected = null;
+            break;
+          }
+          if (selectedIdentity && (selectedIdentity[0] !== identityA[0] || selectedIdentity[1] !== identityA[1])) {
+            rejectionReason = "cross_bookmaker_identity_mismatch";
+            selected = null;
+            break;
+          }
+          const impliedA = 1 / oddsA[0], impliedB = 1 / oddsB[0];
+          const probabilityA = impliedA / (impliedA + impliedB);
+          if (!Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1) {
+            rejectionReason = "invalid_market_probability";
+            selected = null;
+            break;
+          }
+          selected = {
+            probabilityA, capturedAt: quote.capturedAt,
+            matchStart: Date.parse(rowA.matchDate),
+            winner: Number(rowA.resultWinner),
+            identity: identityA
+          };
+          break;
+        }
+        if (!selected) continue;
+        selectedIdentity ||= selected.identity;
+        if (selectedResult && selectedResult.winner !== selected.winner) {
+          rejectionReason = "conflicting_verified_result";
+          providerProbabilities.length = 0;
+          break;
+        }
+        selectedResult ||= selected;
+        providerProbabilities.push(selected.probabilityA);
+        providerNames.push(provider.bookmaker);
+        latestCapture = Math.max(latestCapture, selected.capturedAt);
+      }
+      if (!providerProbabilities.length || !selectedResult) {
+        rejected.push({ matchId, reason: rejectionReason || "no_complete_same_bookmaker_pair" });
+        continue;
+      }
+      const sorted = providerProbabilities.slice().sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      const probability = sorted.length % 2
+        ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+      records.push({
+        modelId: "market-consensus", matchId, probability,
+        outcome: selectedResult.winner === 1 ? 1 : 0,
+        capturedAt: new Date(latestCapture).toISOString(),
+        matchStart: new Date(selectedResult.matchStart).toISOString(),
+        resultVerified: true, bookmakerCount: providerProbabilities.length,
+        bookmakers: providerNames
+      });
+    }
+    return {
+      records: records.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt) || a.matchId.localeCompare(b.matchId)),
+      rejected
+    };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -681,5 +800,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, runMatchMonteCarlo, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, runMatchMonteCarlo, buildModelHistoryRecords, buildMarketHistoryRecords, evaluateModelHistory };
 });
