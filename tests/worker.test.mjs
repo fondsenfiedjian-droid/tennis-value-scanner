@@ -6,6 +6,7 @@ import vm from "node:vm";
 
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const frontendSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const serviceWorkerSource = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
 const archiveStart = frontendSource.indexOf("const ARCHIVE_KEY=");
 const archiveEnd = frontendSource.indexOf("function renderArchive()", archiveStart);
 const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
@@ -628,4 +629,10 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
   assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
   assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
+});
+
+test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
+  assert.match(serviceWorkerSource, /tennis-value-static-v3/);
+  assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
+  assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
