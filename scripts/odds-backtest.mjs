@@ -378,7 +378,7 @@ export function runOddsBacktest(rows, options = {}) {
       }
     }
     thresholdSensitivity = {
-      status: validationDays.size ? "evaluated" : "insufficient_data",
+      status: trainingDays.size && validationDays.size ? "evaluated" : "insufficient_data",
       split: "chronological_70_30_by_match_day",
       trainingDays: trainingDays.size, validationDays: validationDays.size,
       trainingMatches: trainingIds.size, validationMatches: validationIds.size,
