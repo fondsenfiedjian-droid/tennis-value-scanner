@@ -35,6 +35,7 @@ export function adaptScannerArchiveRows(rows) {
     const id = String(row.matchId || row.matchKey || "").trim();
     const tour = String(row.tour || "").trim().toLowerCase();
     const surface = String(row.surface || "").trim();
+    const bookmaker = String(row.bookmaker || row.source || row.provider || "").trim().toLowerCase();
     if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
         start === null || !Number.isFinite(captured) || captured <= 0 ||
         !Number.isFinite(modelCalculated) || modelCalculated <= 0 || modelCalculated >= captured || modelCalculated >= start ||
@@ -45,10 +46,10 @@ export function adaptScannerArchiveRows(rows) {
       ignored++;
       continue;
     }
-    const key = id + "|" + captured;
-    if (!groups.has(key)) groups.set(key, { id, start, captured, modelCalculated, captureStatus, winner: winnerNumber === 1 ? "A" : "B", tour, surface, sides: {} });
+    const key = id + "|" + captured + "|" + bookmaker;
+    if (!groups.has(key)) groups.set(key, { id, start, captured, modelCalculated, captureStatus, bookmaker, winner: winnerNumber === 1 ? "A" : "B", tour, surface, sides: {} });
     const group = groups.get(key);
-    if (group.start !== start || group.modelCalculated !== modelCalculated || group.captureStatus !== captureStatus || group.winner !== (winnerNumber === 1 ? "A" : "B") ||
+    if (group.start !== start || group.modelCalculated !== modelCalculated || group.captureStatus !== captureStatus || group.bookmaker !== bookmaker || group.winner !== (winnerNumber === 1 ? "A" : "B") ||
         (group.tour && tour && group.tour !== tour) || (group.surface && surface && group.surface !== surface)) {
       throw new Error("Conflicting result, date, tour or surface in archive for " + id);
     }
@@ -72,6 +73,7 @@ export function adaptScannerArchiveRows(rows) {
     if (!a || !b || !a.player || !b.player || a.player === b.player) { ignored++; continue; }
     adapted.push({
       match_id: group.id,
+      bookmaker: group.bookmaker,
       match_start: new Date(group.start).toISOString(),
       tour: group.tour,
       surface: group.surface,
