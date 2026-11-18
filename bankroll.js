@@ -28,7 +28,8 @@
     if (!state || typeof state !== "object" || state.version !== VERSION ||
         !Number.isFinite(state.initialBankroll) || state.initialBankroll <= 0 ||
         !Number.isFinite(state.balance) || state.balance < -0.001 ||
-        !Array.isArray(state.openBets) || !Array.isArray(state.transactions) ||\n        (state.pendingPlan !== undefined && state.pendingPlan !== null && (!state.pendingPlan || typeof state.pendingPlan !== "object" || typeof state.pendingPlan.id !== "string" || !Array.isArray(state.pendingPlan.suggestions)))) {
+        !Array.isArray(state.openBets) || !Array.isArray(state.transactions) ||
+        (state.pendingPlan !== undefined && state.pendingPlan !== null && (!state.pendingPlan || typeof state.pendingPlan !== "object" || typeof state.pendingPlan.id !== "string" || !Array.isArray(state.pendingPlan.suggestions)))) {
       throw new Error("Повреждённые или неподдерживаемые данные банкролла.");
     }
     const ids = new Set();
