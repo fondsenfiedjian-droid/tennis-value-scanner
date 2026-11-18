@@ -7,6 +7,7 @@ import vm from "node:vm";
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const frontendSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const serviceWorkerSource = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+const bankrollSource = readFileSync(new URL("../bankroll.js", import.meta.url), "utf8");
 const archiveStart = frontendSource.indexOf("const ARCHIVE_KEY=");
 const archiveEnd = frontendSource.indexOf("function renderArchive()", archiveStart);
 const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
@@ -844,8 +845,50 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
 });
 
+
+test("portfolio proposals do not debit bankroll until the user confirms manual bookmaker placement", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const initial = api.createInitialState(100);
+  const portfolio = api.recommendPortfolio(initial, [{
+    matchKey: "match:101", matchId: 101, match: "ATP · Player A — Player B",
+    player: "Player A", opponent: "Player B", side: "A", bookmaker: "Winamax",
+    probability: 0.62, odds: 2.1, freshnessLevel: "good"
+  }]);
+  assert.equal(portfolio.suggestions.length, 1);
+  const planned = api.savePortfolioPlan(initial, portfolio.suggestions);
+  assert.equal(planned.balance, 100);
+  assert.equal(planned.openBets.length, 0);
+  assert.equal(planned.pendingPlan.suggestions.length, 1);
+  const confirmed = api.confirmPortfolioPlan(planned, planned.pendingPlan.id);
+  assert.equal(confirmed.state.pendingPlan, null);
+  assert.equal(confirmed.state.openBets.length, 1);
+  assert.ok(confirmed.state.balance < 100);
+  assert.equal(confirmed.bets[0].matchId, 101);
+  assert.throws(() => api.confirmPortfolioPlan(planned, "wrong-plan"), /не найден/);
+});
+
+test("pending portfolio can be cancelled without changing financial records", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const initial = api.createInitialState(100);
+  const portfolio = api.recommendPortfolio(initial, [{
+    matchKey: "match:202", match: "WTA · Player C — Player D",
+    player: "Player C", opponent: "Player D", probability: 0.6,
+    odds: 2.0, freshnessLevel: "medium", stakeMultiplier: 0.5
+  }]);
+  const planned = api.savePortfolioPlan(initial, portfolio.suggestions);
+  const cancelled = api.cancelPortfolioPlan(planned, planned.pendingPlan.id);
+  assert.equal(cancelled.pendingPlan, null);
+  assert.equal(cancelled.balance, 100);
+  assert.equal(cancelled.openBets.length, 0);
+  assert.equal(cancelled.transactions.length, initial.transactions.length);
+});
+
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v23/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v24/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
