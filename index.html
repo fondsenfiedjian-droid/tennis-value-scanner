@@ -98,7 +98,7 @@
       <label class="check"><input type="checkbox" data-tour="challenger" checked> Challenger</label><label class="check"><input type="checkbox" data-tour="itf" checked> ITF</label>
     </div></div>
     <div class="field"><label for="refreshRate">Автообновление</label><select id="refreshRate"><option value="0">Выключено</option><option value="30">Каждые 30 минут</option><option value="60" selected>Каждый час</option><option value="180">Каждые 3 часа</option></select></div>
-    <div class="foot">Настройки сохраняются на этом устройстве. Автообновление начнёт работать после подключения серверного источника данных.</div>
+    <div class="foot">Настройки сохраняются на этом устройстве. Автообновление работает, пока приложение открыто; после возвращения в приложение пропущенное обновление будет выполнено.</div>
     <div class="actions"><button id="cancelSettings">Отмена</button><button class="primary" id="saveSettings">Сохранить</button></div>
   </div>
 </div>
@@ -137,6 +137,7 @@
     data.tours=selectedTours();
     localStorage.setItem('tvs-settings',JSON.stringify(data));
     localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
+    scheduleAutoRefresh();
     close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
   };
@@ -263,6 +264,29 @@
     if(!candidates.length)$('#valueCount').textContent='0';
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+  let autoRefreshTimer=null;
+  let nextAutoRefreshAt=0;
+  function scheduleAutoRefresh(){
+    if(autoRefreshTimer)clearInterval(autoRefreshTimer);
+    autoRefreshTimer=null;
+    const minutes=Number($('#refreshRate').value||0);
+    nextAutoRefreshAt=minutes>0?Date.now()+minutes*60*1000:0;
+    if(minutes>0){
+      autoRefreshTimer=setInterval(()=>{
+        if(nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt&&!document.hidden){
+          nextAutoRefreshAt=Date.now()+minutes*60*1000;
+          loadMatches();
+        }
+      },15000);
+    }
+  }
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt){
+      const minutes=Number($('#refreshRate').value||0);
+      nextAutoRefreshAt=minutes>0?Date.now()+minutes*60*1000:0;
+      if(minutes>0)loadMatches();
+    }
+  });
   async function loadMatches(){
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
     $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
@@ -301,6 +325,7 @@
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navMatches').onclick=loadMatches;
   $('#navStats').onclick=()=>alert('Статистика появится после подключения коэффициентов и расчёта EV.');
+  scheduleAutoRefresh();
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
