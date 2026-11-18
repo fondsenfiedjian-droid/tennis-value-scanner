@@ -1519,6 +1519,36 @@
     if(!reasons.length)reasons.push('рейтинги не старше 14 дней, коэффициент не старше 30 минут');
     return {level,label,details:reasons.join('; '),maxRatingAge,oddsAge:oddsKnown?oddsAge:null};
   }
+  function assessPredictionReliability({freshness,ratingQualityA,ratingQualityB,ratingQualityGap,oddsKnown,matchDateKnown,bookmakerKnown,probabilitiesValid,calibration}){
+    const components=[];
+    const reasons=[];
+    const freshnessPoints=freshness?.level==='good'?40:freshness?.level==='medium'?28:10;
+    components.push({name:'Свежесть рейтингов и коэффициентов',score:freshnessPoints,max:40});
+    if(freshnessPoints<40)reasons.push(freshness?.details||'Свежесть данных ограничена');
+    const qualityStatuses=[ratingQualityA?.status,ratingQualityB?.status];
+    const ratingPoints=qualityStatuses.some(status=>status==='invalid')?0:
+      (qualityStatuses.some(status=>status==='review')||ratingQualityGap==='review'?12:25);
+    components.push({name:'Проверка значений Elo',score:ratingPoints,max:25});
+    if(ratingPoints<25)reasons.push('Одно или оба значения Elo требуют проверки');
+    const completeCount=[oddsKnown,matchDateKnown,bookmakerKnown,probabilitiesValid].filter(Boolean).length;
+    const completenessPoints=completeCount===4?15:completeCount>=2?8:0;
+    components.push({name:'Полнота данных матча',score:completenessPoints,max:15});
+    if(completeCount<4)reasons.push('Не все сведения о матче, котировках и вероятностях доступны');
+    let maxScore=80;
+    if(Number(calibration?.sampleSize)>=30&&Number.isFinite(calibration?.brierScore)){
+      const brier=calibration.brierScore;
+      const points=brier<=0.18?20:brier<=0.22?15:brier<=0.26?9:3;
+      components.push({name:'Историческая калибровка',score:points,max:20});
+      maxScore=100;
+      if(points<20)reasons.push('Историческая калибровка пока показывает заметную ошибку');
+    }else{
+      reasons.push('Исторической выборки недостаточно: требуется не менее 30 завершённых матчей');
+    }
+    const score=components.reduce((sum,item)=>sum+item.score,0);
+    const normalized=Math.round(score/maxScore*100);
+    const tier=normalized>=85?'высокая':normalized>=65?'средняя':'ограниченная';
+    return {score,maxScore,normalized,tier,components,reasons,calibrationIncluded:maxScore===100};
+  }
   function freshnessStakeMultiplier(level){
     return level==='good'?1:level==='medium'?0.5:0;
   }
@@ -1621,8 +1651,14 @@
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';const ratingStatusLabel=status=>({fresh:'свежий',recent:'недавний',stale:'устаревший',unknown:'дата неизвестна',invalid:'некорректная дата'})[status]||'неизвестно';const ratingAuditA=ratingStatusLabel(result.ratingFreshnessA?.status),ratingAuditB=ratingStatusLabel(result.ratingFreshnessB?.status);const ratingQualityLabel=q=>q?.status==='review'?'проверить значение':q?.status==='invalid'?'некорректное значение':'в пределах проверки';const ratingQualityA=ratingQualityLabel(result.ratingQualityA),ratingQualityB=ratingQualityLabel(result.ratingQualityB);const ratingQualityWarning=result.ratingQualityA?.status==='review'||result.ratingQualityB?.status==='review'||result.ratingQualityGap==='review';
         const currentOddsAge=currentOddsAgeMinutes(el.dataset.oddsAgeMinutes,el.dataset.oddsObservedAt);
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,currentOddsAge);
+        const reliability=assessPredictionReliability({
+          freshness,ratingQualityA:result.ratingQualityA,ratingQualityB:result.ratingQualityB,ratingQualityGap:result.ratingQualityGap,
+          oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=90,matchDateKnown:!!matchDate(m),
+          bookmakerKnown:!!(bookmakerA&&bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
+          calibration:archiveProbabilityCalibration(readPredictionArchive())
+        });
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
