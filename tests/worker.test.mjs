@@ -744,6 +744,8 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
   assert.ok(frontendSource.includes("bankExportCsv"));
   assert.ok(frontendSource.includes("bankDailyStaked"));
+  assert.ok(frontendSource.includes('id="bankInitialBankroll"'));
+  assert.ok(frontendSource.includes("summary.initialBankroll"));
   assert.ok(frontendSource.includes("bankDeposits"));
   assert.ok(frontendSource.includes("bankWithdrawals"));
   assert.ok(frontendSource.includes("tennis-value-bankroll-ledger.csv"));
