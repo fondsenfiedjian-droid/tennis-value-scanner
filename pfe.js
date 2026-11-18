@@ -396,7 +396,7 @@
     { id: "serve-return", name: "Подача и приём", category: "point-model", dependencyGroup: "serve-return-stats", dependencyGroups: ["serve-return-stats"], status: "planned", currentlyIntegrated: false, requires: ["verified serve and return statistics"] },
     { id: "recent-form", name: "Недавняя форма", category: "form", dependencyGroup: "recent-match-results", dependencyGroups: ["recent-match-results", "elo-ratings"], status: "planned", currentlyIntegrated: false, requires: ["timestamped recent match results"] },
     { id: "physical-load", name: "Физическая нагрузка", category: "physical", dependencyGroup: "match-load", dependencyGroups: ["match-load", "recent-match-results"], status: "planned", currentlyIntegrated: false, requires: ["verified match duration and schedule"] },
-    { id: "market-consensus", name: "Рыночная оценка", category: "market", dependencyGroup: "bookmaker-market", dependencyGroups: ["bookmaker-market"], status: "planned", currentlyIntegrated: false, requires: ["same-bookmaker two-sided odds"] }
+    { id: "market-consensus", name: "Рыночная оценка", category: "market", dependencyGroup: "bookmaker-market", dependencyGroups: ["bookmaker-market"], status: "active", currentlyIntegrated: true, requires: ["fresh same-bookmaker two-sided odds"] }
   ]);
 
   function getModelRegistry() {
