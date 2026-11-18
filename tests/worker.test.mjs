@@ -2410,6 +2410,64 @@ test("PFE recent-form UI explains PRO access and dependency with Elo", () => {
   assert.ok(frontendSource.includes("учитывается как зависимая от Elo информация"));
 });
 
+test("PFE builds one verified pre-match market record per match from paired same-bookmaker quotes", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const pfe = sandbox.pfe;
+  const start = Date.parse("2026-11-20T18:00:00Z");
+  const make = (side, odds, capturedAt, bookmaker = "Winamax", extra = {}) => ({
+    matchId: 777, side, player: side === "A" ? "Player Á" : "Player B",
+    opponent: side === "A" ? "Player B" : "Player A",
+    bookmaker, odds, capturedAt, matchDate: new Date(start).toISOString(),
+    captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1,
+    resultCheckedAt: start + 3600000, ...extra
+  });
+  const rows = [
+    make("A", 1.9, start - 7200000), make("B", 1.9, start - 7200000),
+    make("A", 1.8, start - 3600000), make("B", 2.1, start - 3600000),
+    make("A", 1.7, start - 1800000, "Betclic"), make("B", 2.2, start - 1800000, "Betclic"),
+    make("A", 1.5, start + 1000), make("B", 2.5, start + 1000)
+  ];
+  const result = pfe.buildMarketHistoryRecords(rows);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].modelId, "market-consensus");
+  assert.equal(result.records[0].outcome, 1);
+  assert.equal(result.records[0].bookmakerCount, 2);
+  assert.equal(result.records[0].capturedAt, new Date(start - 1800000).toISOString());
+  assert.ok(result.records[0].probability > 0.5);
+  assert.equal(pfe.evaluateModelHistory(result.records).models.find(row => row.modelId === "market-consensus").status,
+    "insufficient_sample");
+});
+
+test("PFE market history rejects mismatched identities, unverified results and ambiguous latest quotes", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const start = Date.parse("2026-11-20T18:00:00Z");
+  const base = (side, odds, extra = {}) => ({
+    matchId: 778, side, player: side === "A" ? "Player A" : "Player B",
+    opponent: side === "A" ? "Player B" : "Player A", bookmaker: "Winamax",
+    odds, capturedAt: start - 3600000, matchDate: new Date(start).toISOString(),
+    captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1,
+    resultCheckedAt: start + 3600000, ...extra
+  });
+  const mismatch = sandbox.pfe.buildMarketHistoryRecords([
+    base("A", 1.8), base("B", 2.1, { player: "Other Player" })
+  ]);
+  assert.equal(mismatch.records.length, 0);
+  assert.equal(mismatch.rejected[0].reason, "player_identity_mismatch");
+  const unverified = sandbox.pfe.buildMarketHistoryRecords([
+    base("A", 1.8), base("B", 2.1, { resultCheckedAt: 0 })
+  ]);
+  assert.equal(unverified.records.length, 0);
+  const ambiguous = sandbox.pfe.buildMarketHistoryRecords([
+    base("A", 1.8), base("A", 1.9), base("B", 2.1)
+  ]);
+  assert.equal(ambiguous.records.length, 0);
+  assert.equal(ambiguous.rejected[0].reason, "ambiguous_same_time_quote");
+});
+
 test("PFE history evaluation uses chronological holdout and neutral weights for small samples", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
