@@ -2257,7 +2257,7 @@ test("PFE interface states that serve-return model requires verified ULTRA data 
 test("PFE tie-break, set and match models are symmetric and respond to stronger point probabilities", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   assert.ok(Math.abs(pfe.calculateTiebreakWinProbability(0.6, 0.6, true) - 0.5) < 1e-10);
   assert.ok(Math.abs(pfe.calculateTiebreakWinProbability(0.6, 0.6, false) - 0.5) < 1e-10);
