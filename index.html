@@ -1709,7 +1709,7 @@
         const retryAfterHeader=response.headers?.get?.('Retry-After');
         const retryAfterText=String(retryAfterHeader||'').trim();
         const retryAfterDate=Date.parse(retryAfterText);
-        const retryAfterSeconds=/^\\d+$/.test(retryAfterText)?Math.min(3600,Number(retryAfterText)):
+        const retryAfterSeconds=/^\d+$/.test(retryAfterText)?Math.min(3600,Number(retryAfterText)):
           Number.isFinite(retryAfterDate)&&retryAfterDate>Date.now()?Math.min(3600,Math.ceil((retryAfterDate-Date.now())/1000)):null;
         let payload=null;
         try{payload=await response.json();}catch(error){}
