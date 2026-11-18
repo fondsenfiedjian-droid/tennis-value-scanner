@@ -42,7 +42,15 @@ Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ra
 
 These are quota and resilience safeguards, not guarantees that a bookmaker price is still available at the moment a bet is placed.
 
-## Prediction archive\n\nThe frontend stores local snapshots of each priced player outcome (odds, Elo probability, estimated EV, match, and capture time) on the current device. Repeated identical snapshots within ten minutes are suppressed; the archive keeps at most 600 entries and can be exported as CSV. The archive is device-local and is not synchronized across devices. Its EV summaries are estimates, not verified win/loss or profit statistics.\n\n## Model limitations
+## Prediction archive\n\nThe frontend stores local snapshots of each priced player outcome (odds, Elo probability, estimated EV, match, and capture time) on the current device. Repeated identical snapshots within ten minutes are suppressed; the archive keeps at most 600 entries and can be exported as CSV. The archive is device-local and is not synchronized across devices. Its EV summaries are estimates, not verified win/loss or profit statistics.\n\n## Probability and value calculations
+
+The Worker converts the difference between the two general Elo ratings into a win probability with the standard Elo logistic formula:
+
+`P(A) = 1 / (1 + 10^((EloB - EloA) / 400))`
+
+Player B receives the complementary probability (`1 - P(A)`). Model probabilities are calculated from Elo ratings alone; bookmaker odds are not inputs to the probability calculation. Fair odds are `1 / probability`. Expected value uses the offered decimal price: `EV (%) = (probability × decimal odds - 1) × 100`. EV is only as reliable as the underlying probability estimate and is not a measured return.
+
+## Model limitations
 
 The current model uses general player Elo ratings. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. Positive EV is a model estimate, not a guarantee of profit.
 
