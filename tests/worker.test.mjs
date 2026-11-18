@@ -472,7 +472,7 @@ test("archive memory cache remains readable when localStorage quota is exhausted
 test("corrupt local archive is reported and never silently overwritten", async () => {
   const store = makeArchiveStore([], { corruptSeed: true });
   const read = store.readPredictionArchive();
-  assert.deepEqual(read, []);
+  assert.equal(read.length, 0);
   assert.ok(store.getArchiveReadError() instanceof Error);
   const saved = store.persistPredictionArchive([{ matchKey: "new", side: "A", player: "A", opponent: "B",
     odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 }]);
