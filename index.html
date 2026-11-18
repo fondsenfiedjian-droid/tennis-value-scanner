@@ -1858,7 +1858,7 @@
             ', LogLoss '+(pfeMarketDelta?.validationDeltaLogLoss>=0?'+':'')+pfeMarketDelta?.validationDeltaLogLoss?.toFixed(4)
           :'недостаточно общих проверенных матчей для честного сравнения';
         const pfeStabilityLabel=pfePairedComparison.status==='evaluated'
-          ?pfePairedMarket.stability.map(item=>'последние '+item.window+': Brier '+item.brierScore.toFixed(4)+' / LogLoss '+item.logLoss.toFixed(4)).join(' · ')
+          ?pfeMarketDelta.stability.map(item=>'последние '+item.window+': Δ Brier '+(item.deltaBrier>=0?'+':'')+item.deltaBrier.toFixed(4)+' / Δ LogLoss '+(item.deltaLogLoss>=0?'+':'')+item.deltaLogLoss.toFixed(4)).join(' · ')
           :'окна устойчивости появятся после накопления общей истории';
         const pfeEloHistory=pfeHistoryEvaluation.models.find(model=>model.modelId==='general-elo-v2');
         const pfeMarketEvaluation=pfeHistoryEvaluation.models.find(model=>model.modelId==='market-consensus');
