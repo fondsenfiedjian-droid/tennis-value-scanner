@@ -308,7 +308,7 @@ export default {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
       }
       const rawPlayerId = url.searchParams.get("id") || "";
-      if (!/^\\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
+      if (!/^\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
         return response({ error: "id must be a positive integer player identifier" }, 400);
       }
       const playerId = String(Number(rawPlayerId));
