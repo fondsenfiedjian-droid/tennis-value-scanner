@@ -1045,7 +1045,7 @@ test("bankroll preserves bookmaker attribution from placement through settlement
 
 test("bankroll reports independent settled ROI and open exposure per bookmaker", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   let state = api.createInitialState(100);
   const betclic = api.placeBet(state, { matchKey: "provider-stats-a", match: "A — B", bookmaker: "Betclic", probability: 0.62, odds: 2.1, stake: 2 });
