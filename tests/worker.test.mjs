@@ -2208,7 +2208,7 @@ test("PFE builds one immutable pre-match history observation per model and match
 test("PFE serve-return adapter respects ULTRA availability, sample sizes and missing values", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   assert.equal(pfe.normalizeServeReturnProfile({ records: {} }).status, "unavailable");
   const ratio = (numerator, denominator, matches) => ({
@@ -2257,7 +2257,7 @@ test("PFE interface states that serve-return model requires verified ULTRA data 
 test("PFE recent-form adapter filters non-completed and out-of-window matches and computes recency weighting", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const now = Date.parse("2026-11-18T12:00:00Z");
   const daysAgo = days => new Date(now - days * 86400000).toISOString();
   const recent = [
