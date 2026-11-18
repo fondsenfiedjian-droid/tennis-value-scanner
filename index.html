@@ -571,6 +571,8 @@
     const matchId=Number.isSafeInteger(numericMatchId)&&numericMatchId>0?numericMatchId:null;
     const matchKey=String(match.id||match.match_id||match.event_id||[el.dataset.playerA,el.dataset.playerB,date?date.toISOString():''].join('-'));
     const tournament=match.tournament_name||match.tournament||match.event_name||match.competition||'';
+    const tour=normalizeTour(match.tour||match.tour_type||'')||'';
+    const surface=String(match.surface||match.court||match.court_name||'').trim().slice(0,40);
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
       {side:'A',player:playerA,opponent:playerB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
@@ -582,7 +584,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,tour,surface,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -601,6 +603,8 @@
         !Number.isFinite(ev)||!Number.isFinite(capturedAt)||capturedAt<=0)return null;
       return {matchKey:row.matchKey.slice(0,256),matchDate:typeof row.matchDate==='string'?row.matchDate:null,
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
+        tour:['atp','wta','challenger','itf','juniors'].includes(String(row.tour||'').toLowerCase())?String(row.tour).toLowerCase():'',
+        surface:typeof row.surface==='string'?row.surface.slice(0,40):'',
         player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
         odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,ratingAsOf:validRatingDate(row.ratingAsOf),
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
@@ -876,7 +880,7 @@
     await archiveStorageReady;
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','matchDate','matchId','tournament','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion'];
+    const columns=['capturedAt','matchDate','matchId','tournament','tour','surface','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion'];
     const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
     const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
