@@ -138,6 +138,11 @@
   function recommendPortfolio(input, candidates, options = {}) {
     let simulated = cloneState(input);
     const seenMatches = new Set();
+    const existingMatchIds = new Set(simulated.openBets.map(bet => Number(bet.matchId)).filter(id => Number.isSafeInteger(id) && id > 0));
+    const existingMatchKeys = new Set(simulated.openBets.map(bet => String(bet.matchKey || "").trim()).filter(Boolean));
+    const existingPlayerPairs = new Set(simulated.openBets.map(bet => [bet.player, bet.opponent]
+      .map(value => String(value || "").trim().toLocaleLowerCase())
+      .sort().join("|")).filter(value => value !== "|"));
     const ordered = (Array.isArray(candidates) ? candidates : [])
       .filter(item => item && Number.isFinite(Number(item.probability)) && Number(item.probability) > 0 && Number(item.probability) < 1 &&
         Number.isFinite(Number(item.odds)) && Number(item.odds) > 1)
@@ -147,7 +152,14 @@
     const suggestions = [];
     for (const candidate of ordered) {
       const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
-      if (seenMatches.has(matchKey)) continue;
+      const matchId = Number(candidate.matchId);
+      const playerPair = [candidate.player, candidate.opponent]
+        .map(value => String(value || "").trim().toLocaleLowerCase())
+        .sort().join("|");
+      if (seenMatches.has(matchKey) ||
+          (Number.isSafeInteger(matchId) && matchId > 0 && existingMatchIds.has(matchId)) ||
+          existingMatchKeys.has(matchKey) ||
+          (playerPair !== "|" && existingPlayerPairs.has(playerPair))) continue;
       const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
       const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
       if (!recommendation.eligible) continue;
@@ -206,7 +218,7 @@
     const id = "bet-" + makeId();
     const record = {
       id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,
-      match: String(bet.match || "").slice(0, 200), player: String(bet.player || "").slice(0, 100),
+      match: String(bet.match || "").slice(0, 200), matchKey: String(bet.matchKey || "").slice(0, 240), player: String(bet.player || "").slice(0, 100),
       opponent: String(bet.opponent || "").slice(0, 100), bookmaker: String(bet.bookmaker || "Winamax").slice(0, 60),
       matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
       side: bet.side === "A" || bet.side === "B" ? bet.side : null,
