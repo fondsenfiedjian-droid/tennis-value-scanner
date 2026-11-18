@@ -311,6 +311,72 @@
     };
   }
 
+  function normalizeRecentFormProfile(payload, options = {}) {
+    const minMatches = Number.isInteger(options.minMatches) ? clamp(options.minMatches, 1, 100) : 5;
+    const maxAgeDays = Number.isFinite(Number(options.maxAgeDays)) ? clamp(Number(options.maxAgeDays), 7, 365) : 180;
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const root = payload && typeof payload === "object" ? payload : null;
+    const playerId = Number(root?.player?.id);
+    const recent = root?.records?.recent;
+    if (!Number.isSafeInteger(playerId) || playerId <= 0 || !Array.isArray(recent)) {
+      return { status: "unavailable", reason: "player_stats_recent_unavailable", playerId: null, sampleSize: 0, records: [], bySurface: {} };
+    }
+    if (options.playerId !== undefined && Number(options.playerId) !== playerId) {
+      return { status: "invalid", reason: "player_identity_mismatch", playerId, sampleSize: 0, records: [], bySurface: {} };
+    }
+    const seen = new Set();
+    const records = [];
+    const excluded = { invalid: 0, duplicate: 0, non_completed: 0, outside_window: 0 };
+    for (const row of recent) {
+      const matchId = Number(row?.match_id);
+      const date = typeof row?.date === "string" ? Date.parse(row.date) : NaN;
+      if (!Number.isSafeInteger(matchId) || matchId <= 0 || !Number.isFinite(date) ||
+          typeof row?.won !== "boolean" || typeof row?.outcome !== "string") {
+        excluded.invalid++;
+        continue;
+      }
+      if (seen.has(matchId)) { excluded.duplicate++; continue; }
+      seen.add(matchId);
+      if (row.outcome !== "completed") { excluded.non_completed++; continue; }
+      const ageDays = (now - date) / 86400000;
+      if (ageDays < 0 || ageDays > maxAgeDays) { excluded.outside_window++; continue; }
+      const surface = ["hard", "clay", "grass"].includes(String(row.surface || "").toLowerCase())
+        ? String(row.surface).toLowerCase() : "unknown";
+      records.push({
+        matchId, date: new Date(date).toISOString(), won: row.won,
+        ageDays, surface,
+        level: ["atp", "wta", "challenger", "itf", "juniors"].includes(String(row.level || "").toLowerCase())
+          ? String(row.level).toLowerCase() : "unknown"
+      });
+    }
+    records.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+    const weighted = records.reduce((acc, row) => {
+      const weight = Math.pow(0.5, row.ageDays / 30);
+      acc.weight += weight;
+      acc.wins += row.won ? weight : 0;
+      return acc;
+    }, { wins: 0, weight: 0 });
+    const bySurface = {};
+    for (const surface of ["hard", "clay", "grass", "unknown"]) {
+      const rows = records.filter(row => row.surface === surface);
+      if (rows.length) bySurface[surface] = {
+        matches: rows.length, wins: rows.filter(row => row.won).length,
+        winRate: rows.filter(row => row.won).length / rows.length
+      };
+    }
+    const status = records.length >= minMatches ? "ready_for_modeling" : "insufficient_sample";
+    return {
+      status, reason: status === "insufficient_sample" ? "insufficient_recent_completed_matches" : null,
+      playerId, sampleSize: records.length, wins: records.filter(row => row.won).length,
+      losses: records.filter(row => !row.won).length,
+      winRate: records.length ? records.filter(row => row.won).length / records.length : null,
+      recencyWeightedWinRate: weighted.weight ? weighted.wins / weighted.weight : null,
+      halfLifeDays: 30, maxAgeDays, minMatches, records, bySurface, excluded,
+      source: "Live Tennis API PlayerStats.records.recent",
+      note: "Только завершённые матчи; травмы, снятия, walkover и матчи вне окна исключены. Это характеристика формы, не вероятность победы."
+    };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -364,5 +430,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, buildModelHistoryRecords, evaluateModelHistory };
 });
