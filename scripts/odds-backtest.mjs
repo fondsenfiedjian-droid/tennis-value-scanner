@@ -6,7 +6,7 @@ const number = value => Number(value);
 const timestamp = value => {
   const text = String(value ?? "").trim();
   // Require an explicit timezone so host locale cannot silently shift historical match times.
-  if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(text)) return null;
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) return null;
   const parsed = Date.parse(text);
   return Number.isFinite(parsed) ? parsed : null;
 };
@@ -233,11 +233,13 @@ export function runOddsBacktest(rows, options = {}) {
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
   const stake = Number.isFinite(options.stake) && options.stake > 0 ? options.stake : 1;
   const maxSnapshotAgeMinutes = options.maxSnapshotAgeMinutes === undefined ? 24 * 60 : Number(options.maxSnapshotAgeMinutes);
+  const maxClosingAgeMinutes = options.maxClosingAgeMinutes === undefined ? 60 : Number(options.maxClosingAgeMinutes);
   if (minEv < 0 || minEv > 10) throw new RangeError("minEv must be between 0 and 10");
   if (minOdds <= 1 || minOdds > 1000) throw new RangeError("minOdds must be greater than 1 and no greater than 1000");
   if (options.startingBankroll !== undefined && (!Number.isFinite(options.startingBankroll) || options.startingBankroll <= 0 || options.startingBankroll > 100000000)) throw new RangeError("startingBankroll must be positive and no greater than 100000000");
   if (!(stake > 0)) throw new RangeError("stake must be positive");
   if (!Number.isFinite(maxSnapshotAgeMinutes) || maxSnapshotAgeMinutes < 0 || maxSnapshotAgeMinutes > 365 * 24 * 60) throw new RangeError("maxSnapshotAgeMinutes must be between 0 and 525600");
+  if (!Number.isFinite(maxClosingAgeMinutes) || maxClosingAgeMinutes < 0 || maxClosingAgeMinutes > maxSnapshotAgeMinutes) throw new RangeError("maxClosingAgeMinutes must be between 0 and maxSnapshotAgeMinutes");
 
   const matches = new Map();
   let rejectedSnapshots = 0, staleSnapshots = 0;
@@ -283,11 +285,11 @@ export function runOddsBacktest(rows, options = {}) {
   }
 
   const bets = [];
-  let totalOverround = 0, overroundCount = 0, clvTotal = 0, clvCount = 0;
+  let totalOverround = 0, overroundCount = 0, closingOverroundTotal = 0, closingOverroundCount = 0, clvTotal = 0, clvCount = 0, missingClosingSnapshots = 0;
   for (const match of matches.values()) {
     match.snapshots.sort((a, b) => a.captured - b.captured || a.row - b.row);
     const opening = match.snapshots[0];
-    const closing = match.snapshots[match.snapshots.length - 1];
+    const closing = match.snapshots.filter(snapshot => (match.start - snapshot.captured) / 60000 <= maxClosingAgeMinutes && snapshot.captured > opening.captured).at(-1) || null;
     const openingMarket = noVig(opening.oddsA, opening.oddsB);
     totalOverround += openingMarket.overround;
     overroundCount++;
@@ -304,17 +306,16 @@ export function runOddsBacktest(rows, options = {}) {
     if (!candidate) continue;
     const ev = candidate.ev;
     const profit = candidate.outcome ? stake * (candidate.odds - 1) : -stake;
-    const closeMarket = noVig(closing.oddsA, closing.oddsB);
-    const closeProbability = candidate.side === "A" ? closeMarket.a : closeMarket.b;
-    const clv = closing.captured > opening.captured
-      ? candidate.odds * closeProbability - 1
-      : null;
-    if (clv !== null) { clvTotal += clv; clvCount++; }
+    const closeMarket = closing ? noVig(closing.oddsA, closing.oddsB) : null;
+    if (closeMarket) { closingOverroundTotal += closeMarket.overround; closingOverroundCount++; }
+    const closeProbability = closeMarket ? (candidate.side === "A" ? closeMarket.a : closeMarket.b) : null;
+    const clv = closeProbability === null ? null : candidate.odds * closeProbability - 1;
+    if (clv !== null) { clvTotal += clv; clvCount++; } else missingClosingSnapshots++;
     bets.push({
       matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
       odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
       entrySnapshotAgeMinutes: Number(((match.start - opening.captured) / 60000).toFixed(1)),
-      closingSnapshotAgeMinutes: Number(((match.start - closing.captured) / 60000).toFixed(1)),
+      closingSnapshotAgeMinutes: closing ? Number(((match.start - closing.captured) / 60000).toFixed(1)) : null,
       expectedValue: Number((ev * 100).toFixed(2)),
       winner: match.winner, won: candidate.outcome, stake,
       profit: Number(profit.toFixed(4)),
@@ -346,15 +347,18 @@ export function runOddsBacktest(rows, options = {}) {
     averageExpectedValuePercent: bets.length ? Number((bets.reduce((sum, bet) => sum + bet.expectedValue, 0) / bets.length).toFixed(2)) : null,
     averageOpeningOverroundPercent: overroundCount ? Number((totalOverround / overroundCount).toFixed(2)) : null,
     averageClosingLineValuePercent: clvCount ? Number((clvTotal / clvCount * 100).toFixed(2)) : null,
+    closingLineValueSample: { measured: clvCount, missingQualifyingClose: missingClosingSnapshots, maxClosingAgeMinutes },
+    averageClosingOverroundPercent: closingOverroundCount ? Number((closingOverroundTotal / closingOverroundCount).toFixed(2)) : null,
     statisticalSummary: performanceSummary(bets),
     byOddsRange: summarizeOddsBuckets(bets),
     methodology: {
       entryPrice: "earliest valid pre-match snapshot within the configured maximum snapshot age",
-      closingPrice: "latest valid pre-match snapshot",
+      closingPrice: "latest snapshot within maxClosingAgeMinutes before start and later than entry; otherwise unavailable",
       marketProbability: "two-way proportional de-vig",
       stake: "flat stake per qualifying selection",
       selection: "model EV and minimum odds thresholds",
       maxSnapshotAgeMinutes,
+      maxClosingAgeMinutes,
       warning: "Results are only as representative as the supplied historical snapshots; stale snapshots beyond the configured age are excluded. Limits, commission, voids, and execution slippage are not modelled."
     },
     bankrollSimulation: simulateBankrollStrategies(bets, { startingBankroll: options.startingBankroll }),
@@ -367,16 +371,16 @@ async function main() {
   const files = [];
   const options = {};
   for (let i = 0; i < args.length; i++) {
-    if (["--min-ev", "--min-odds", "--stake", "--bankroll", "--max-snapshot-age-minutes"].includes(args[i])) {
+    if (["--min-ev", "--min-odds", "--stake", "--bankroll", "--max-snapshot-age-minutes", "--max-closing-age-minutes"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
-      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : args[i] === "--bankroll" ? "startingBankroll" : args[i] === "--max-snapshot-age-minutes" ? "maxSnapshotAgeMinutes" : "stake";
+      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : args[i] === "--bankroll" ? "startingBankroll" : args[i] === "--max-snapshot-age-minutes" ? "maxSnapshotAgeMinutes" : args[i] === "--max-closing-age-minutes" ? "maxClosingAgeMinutes" : "stake";
       const value = Number(args[++i]);
       options[key] = key === "minEv" ? value / 100 : value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
   }
   if (!files.length) {
-    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] [--bankroll 100] [--max-snapshot-age-minutes 1440] odds-history.csv");
+    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] [--bankroll 100] [--max-snapshot-age-minutes 1440] [--max-closing-age-minutes 60] odds-history.csv");
     process.exitCode = 2;
     return;
   }
