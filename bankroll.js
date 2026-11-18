@@ -402,6 +402,7 @@
       opponent: String(bet.opponent || "").slice(0, 100), bookmaker: String(bet.bookmaker || "Winamax").slice(0, 60),
       matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
       side: bet.side === "A" || bet.side === "B" ? bet.side : null,
+      matchDate: typeof bet.matchDate === "string" && Number.isFinite(Date.parse(bet.matchDate)) ? new Date(bet.matchDate).toISOString() : null,
       placedAt: new Date().toISOString(), status: "open"
     };
     state.balance = roundMoney(state.balance - requested);
