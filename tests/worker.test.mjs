@@ -37,11 +37,13 @@ function makeFakeIndexedDB(options = {}) {
     transaction(names, mode) {
       const tx = {
         error: null,
+        aborted: false,
+        abort() { this.aborted = true; },
         objectStore(name) {
           if (name === "records") return {
             getAll() {
               const request = { result: [] };
-              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); });
+              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); request.onsuccess?.(); });
               return request;
             },
             clear() { state.records = []; },
@@ -57,7 +59,10 @@ function makeFakeIndexedDB(options = {}) {
           };
         }
       };
-      Promise.resolve().then(() => Promise.resolve().then(() => tx.oncomplete?.()));
+      Promise.resolve().then(() => Promise.resolve().then(() => {
+        if (tx.aborted) { tx.error ||= new Error("Transaction aborted"); tx.onabort?.(); }
+        else tx.oncomplete?.();
+      }));
       return tx;
     }
   };
@@ -406,6 +411,21 @@ test("IndexedDB retains the full archive when the localStorage backup is full", 
   await store.flushArchiveWrites();
   assert.equal(indexedDB.state.records.length, 350);
   assert.equal(store.readPredictionArchive().length, 350);
+});
+
+test("queued archive writes merge stale snapshots instead of dropping earlier tab records", async () => {
+  const indexedDB = makeFakeIndexedDB();
+  const store = makeArchiveStore([], { indexedDB });
+  await store.initializeArchiveStorage();
+  const rowA = { matchKey: "tab-a", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000100 };
+  const rowB = { matchKey: "tab-b", side: "B", player: "B", opponent: "A",
+    odds: 2.1, probability: 52, ev: 9.2, capturedAt: 1800000000200 };
+  store.persistPredictionArchive([rowA]);
+  store.persistPredictionArchive([rowB]);
+  const flushed = await store.flushArchiveWrites();
+  assert.equal(flushed.ok, true);
+  assert.deepEqual(indexedDB.state.records.map(row => row.matchKey).sort(), ["tab-a", "tab-b"]);
 });
 
 test("archive waits for IndexedDB transaction before reporting it flushed", async () => {
