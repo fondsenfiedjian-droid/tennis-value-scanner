@@ -910,7 +910,9 @@
   function renderWinamaxHistory(){
     const rows=readWinamaxHistory();if(!rows)return;
     const summary=TVSWinamaxImport.summarize(rows);
-    $('#bankWinamaxSummary').textContent=rows.length?'Historique importé : '+summary.importedBets+' paris · réglés '+summary.settledBets+' · ouverts '+summary.openBets+' · mises réglées '+formatEuro(summary.totalStaked)+' · résultat '+(summary.profit>=0?'+':'')+formatEuro(summary.profit)+' · ROI '+(summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%'):'Aucun historique Winamax importé.');
+    const profitLabel=(summary.profit>=0?'+':'')+formatEuro(summary.profit);
+    const roiLabel=summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%';
+    $('#bankWinamaxSummary').textContent=rows.length?['Historique importé : '+summary.importedBets+' paris','réglés '+summary.settledBets,'ouverts '+summary.openBets,'mises réglées '+formatEuro(summary.totalStaked),'résultat '+profitLabel,'ROI '+roiLabel].join(' · '):'Aucun historique Winamax importé.';
   }
   $('#bankWinamaxFile').onchange=async event=>{
     const file=event.target.files&&event.target.files[0];pendingWinamaxImport=null;$('#bankWinamaxImport').disabled=true;
