@@ -161,15 +161,27 @@ export function runBacktest(matches, options = {}) {
     bin.n++;
     bin.predicted += probability;
     bin.wins += favouriteWon;
+    bin.winsSquared += favouriteWon * favouriteWon;
   };
   const formatCalibration = bucket => {
-    const bins = bucket.calibration.map((bin, index) => ({
-      range: `${(50 + index * 5)}-${(55 + index * 5)}%`,
-      matches: bin.n,
-      predicted: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
-      actual: bin.n ? Number((bin.wins / bin.n * 100).toFixed(2)) : null,
-      gap: bin.n ? Number(((bin.predicted / bin.n - bin.wins / bin.n) * 100).toFixed(2)) : null
-    }));
+    const bins = bucket.calibration.map((bin, index) => {
+      const actualRate = bin.n ? bin.wins / bin.n : null;
+      // Sample standard error also handles the existing half-win convention for exact Elo ties.
+      const variance = bin.n > 1
+        ? Math.max(0, (bin.winsSquared - bin.n * actualRate * actualRate) / (bin.n - 1))
+        : null;
+      const margin = variance === null ? null : 1.96 * Math.sqrt(variance / bin.n);
+      return {
+        range: String(50 + index * 5) + "-" + String(55 + index * 5) + "%",
+        matches: bin.n,
+        predicted: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
+        actual: bin.n ? Number((actualRate * 100).toFixed(2)) : null,
+        gap: bin.n ? Number(((bin.predicted / bin.n - actualRate) * 100).toFixed(2)) : null,
+        actualLower95: margin === null ? null : Number((Math.max(0, actualRate - margin) * 100).toFixed(2)),
+        actualUpper95: margin === null ? null : Number((Math.min(1, actualRate + margin) * 100).toFixed(2)),
+        sampleQuality: bin.n < 30 ? "low" : bin.n < 100 ? "limited" : "larger_sample"
+      };
+    });
     const used = bins.filter(bin => bin.matches);
     const ece = used.reduce((sum, bin) => sum + bin.matches * Math.abs(bin.gap) / 100, 0) / (bucket.n || 1);
     return { expectedCalibrationError: Number((ece * 100).toFixed(2)), bins };
