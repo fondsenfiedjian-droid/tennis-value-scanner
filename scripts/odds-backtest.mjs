@@ -178,6 +178,53 @@ function buildBankrollBreakdown(selections, field, startingBankroll) {
   ]));
 }
 
+function wilsonInterval(wins, total, z = 1.96) {
+  if (!total) return null;
+  const p = wins / total, z2 = z * z, denominator = 1 + z2 / total;
+  const center = (p + z2 / (2 * total)) / denominator;
+  const margin = z * Math.sqrt((p * (1 - p) / total) + z2 / (4 * total * total)) / denominator;
+  return { lowerPercent: Number(Math.max(0, center - margin).toFixed(2)), upperPercent: Number(Math.min(1, center + margin).toFixed(2)) };
+}
+
+function performanceSummary(selections) {
+  const n = selections.length;
+  if (!n) return { bets: 0, roiPercent: null, roiConfidence95Percent: null, hitRateConfidence95Percent: null, sampleAssessment: "no-data" };
+  const returns = selections.map(item => Number(item.won ? item.odds - 1 : -1));
+  const mean = returns.reduce((sum, value) => sum + value, 0) / n;
+  const variance = n > 1 ? returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (n - 1) : null;
+  const critical = n < 2 ? null : n < 30 ? ([null, null, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262][Math.min(n, 10)] || 2.262) : 1.96;
+  const halfWidth = critical === null ? null : critical * Math.sqrt(variance / n) * 100;
+  const wins = selections.filter(item => item.won).length;
+  const hit = wilsonInterval(wins, n);
+  return {
+    bets: n,
+    roiPercent: Number((mean * 100).toFixed(2)),
+    roiConfidence95Percent: halfWidth === null ? null : {
+      lower: Number(((mean * 100) - halfWidth).toFixed(2)),
+      upper: Number(((mean * 100) + halfWidth).toFixed(2)),
+      method: n < 30 ? "t-approximation" : "normal-approximation"
+    },
+    hitRateConfidence95Percent: hit,
+    sampleAssessment: n < 30 ? "very-small" : n < 100 ? "small" : n < 300 ? "moderate" : "larger-but-not-proof"
+  };
+}
+
+function summarizeOddsBuckets(selections) {
+  const buckets = [
+    { label: "1.90–2.49", min: 1.9, max: 2.5 },
+    { label: "2.50–3.49", min: 2.5, max: 3.5 },
+    { label: "3.50–4.99", min: 3.5, max: 5 },
+    { label: "5.00+", min: 5, max: Infinity }
+  ];
+  return buckets.map(bucket => {
+    const rows = selections.filter(item => item.odds >= bucket.min && item.odds < bucket.max);
+    const summary = performanceSummary(rows);
+    const stake = rows.reduce((sum, item) => sum + item.stake, 0);
+    const profit = rows.reduce((sum, item) => sum + item.profit, 0);
+    return { range: bucket.label, ...summary, totalStake: Number(stake.toFixed(2)), profit: Number(profit.toFixed(2)) };
+  });
+}
+
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
@@ -276,6 +323,8 @@ export function runOddsBacktest(rows, options = {}) {
     averageExpectedValuePercent: bets.length ? Number((bets.reduce((sum, bet) => sum + bet.expectedValue, 0) / bets.length).toFixed(2)) : null,
     averageOpeningOverroundPercent: overroundCount ? Number((totalOverround / overroundCount).toFixed(2)) : null,
     averageClosingLineValuePercent: clvCount ? Number((clvTotal / clvCount * 100).toFixed(2)) : null,
+    statisticalSummary: performanceSummary(bets),
+    byOddsRange: summarizeOddsBuckets(bets),
     methodology: {
       entryPrice: "earliest valid pre-match snapshot",
       closingPrice: "latest valid pre-match snapshot",
