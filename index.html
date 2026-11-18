@@ -655,13 +655,20 @@
     if(!reasons.length)reasons.push('рейтинги не старше 14 дней, коэффициент не старше 30 минут');
     return {level,label,details:reasons.join('; '),maxRatingAge,oddsAge:oddsKnown?oddsAge:null};
   }
+  function selectBestBet(bets,minEv=3){
+    const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=1.9)
+      .sort((a,b)=>b.ev-a.ev)[0]||null;
+  }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
     const box=$('#bestBet');
     if(!box)return;
-    const best=bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&x.odds>=1.9).sort((a,b)=>b.ev-a.ev)[0];
+    const configuredMinEv=Number($('#minEv').value);
+    const minEv=Number.isFinite(configuredMinEv)?Math.max(0,configuredMinEv):3;
+    const best=selectBestBet(bets,minEv);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
-      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет положительной ставки с коэффициентом от 1.90.':'Нет подходящих матчей с коэффициентом от 1.90.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет ставки с коэффициентом от 1.90 и EV не ниже '+minEv.toFixed(1)+'%.':'Нет подходящих матчей с коэффициентом от 1.90.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
       return;
     }
     const d=matchDate(best.match);
