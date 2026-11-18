@@ -556,6 +556,49 @@ test("archive applies only verified completed results and honours result revisio
   assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
 
+test("archive rejects conflicting results at the same version and unversioned regressions", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const rows = [
+    { matchId: 321, matchKey: "321", side: "A", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
+    { matchId: 321, matchKey: "321", side: "B", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
+    { matchId: 654, matchKey: "654", side: "A", resultOutcome: "completed", resultWinner: 2, resultVersion: 3 }
+  ];
+  const sameVersionConflict = applyVerifiedMatchResult(rows, {
+    id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 4
+  }, 900);
+  assert.equal(sameVersionConflict.updated, 0);
+  assert.equal(sameVersionConflict.rows[0].resultWinner, 1);
+  const unversionedRegression = applyVerifiedMatchResult(sameVersionConflict.rows, {
+    id: 654, status: "completed", outcome: "completed", winner: 1
+  }, 901);
+  assert.equal(unversionedRegression.updated, 0);
+  assert.equal(unversionedRegression.rows[2].resultWinner, 2);
+  const newer = applyVerifiedMatchResult(unversionedRegression.rows, {
+    id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 5
+  }, 902);
+  assert.equal(newer.updated, 2);
+  assert.equal(newer.rows[0].resultWinner, 2);
+});
+
+test("archive accepts the first unversioned official result for a record with no result version", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const rows = [{ matchId: 987, matchKey: "987", side: "A", resultVersion: null }];
+  const applied = applyVerifiedMatchResult(rows, {
+    id: 987, status: "completed", outcome: "completed", winner: 1
+  }, 1000);
+  assert.equal(applied.updated, 1);
+  assert.equal(applied.rows[0].resultOutcome, "completed");
+  assert.equal(applied.rows[0].resultWinner, 1);
+});
+
+test("approved interface palette removes green and animates the best bet copper-pink to ruby", () => {
+  assert.match(frontendSource, /--green:#e6bd58/);
+  assert.match(frontendSource, /--copper-pink:#d58a8e/);
+  assert.match(frontendSource, /--ruby:#a51f45/);
+  assert.match(frontendSource, /@keyframes bestBetGlow/);
+  assert.match(frontendSource, /prefers-reduced-motion:reduce/);
+});
+
 test("auto-refresh setting is normalized and restored from persisted settings", () => {
   const start = frontendSource.indexOf("function normalizeRefreshRate(");
   const end = frontendSource.indexOf("\n  const saved=readSettings()", start);
