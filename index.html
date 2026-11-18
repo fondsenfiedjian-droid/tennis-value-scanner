@@ -864,7 +864,7 @@
       const key=keyOf(row),existingIndex=indexByKey.get(key);
       if(existingIndex===undefined){indexByKey.set(key,merged.length);merged.push(row);added++;continue;}
       const existing=merged[existingIndex];
-      if(Number(existing.modelCalculatedAt||0)!==Number(row.modelCalculatedAt||0)||existing.captureStatus!==row.captureStatus)throw new Error('Конфликт времени расчёта модели или статуса снимка в резервной копии');
+      if(Number(existing.modelCalculatedAt||0)!==Number(row.modelCalculatedAt||0)||(existing.captureStatus||null)!==(row.captureStatus||null))throw new Error('Конфликт времени расчёта модели или статуса снимка в резервной копии');
       const oldVersion=existing.resultVersion!==null&&existing.resultVersion!==undefined&&Number.isSafeInteger(Number(existing.resultVersion))&&Number(existing.resultVersion)>=1?Number(existing.resultVersion):null;
       const newVersion=row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null;
       const hasOld=typeof existing.resultOutcome==='string';
