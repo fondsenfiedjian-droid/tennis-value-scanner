@@ -78,12 +78,15 @@ export function runBacktest(matches, options = {}) {
     bucket.logLoss -= Math.log(Math.max(1e-15, probability));
     bucket.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
   };
-  const formatMetrics = bucket => Object.fromEntries(Object.entries(bucket).map(([name, value]) => [name, {
-    matches: value.n,
-    brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
-    logLoss: value.n ? Number((value.logLoss / value.n).toFixed(5)) : null,
-    accuracy: value.n ? Number((value.correct / value.n * 100).toFixed(2)) : null
-  }]));
+  const formatMetrics = bucket => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => {
+    const value = bucket[name];
+    return [name, {
+      matches: value.n,
+      brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
+      logLoss: value.n ? Number((value.logLoss / value.n).toFixed(5)) : null,
+      accuracy: value.n ? Number((value.correct / value.n * 100).toFixed(2)) : null
+    }];
+  }));
   const makeMetricBucket = () => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 })) }]));
   const addCalibration = (bucket, probability, favouriteWon) => {
     const index = Math.min(9, Math.max(0, Math.floor((probability - 0.5) * 20)));
