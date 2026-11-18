@@ -197,7 +197,7 @@
     const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       return a&&b&&a.id&&b.id&&document.getElementById('model-'+i)?.hasAttribute('data-player-a');
-    }).slice(0,5);
+    }).slice(0,3);
     let positive=0,checked=0;
     for(const {i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
@@ -240,13 +240,13 @@
     try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
     try{
       // Reuse recent data for five minutes; if the API is rate-limited, show the last saved data.
-      if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<5*60*1000){
+      if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
         cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов';
         return;
       }
-      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=100');
+      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=50');
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
