@@ -144,6 +144,34 @@ The backtest also tests a probability correction without fitting and scoring it 
 
 This is chronological validation, not a production change. The calibrator is trained only on the immediately preceding calendar year represented in the evaluation window; earlier warm-up years are used to initialize Elo state, not to train the calibrator. If you want a 2024-to-2025 test, include both years in the evaluation window. A surface-specific correction can be noisier than the tour-wide fit even when its training sample passes the minimum threshold. Prefer the tour-wide held-out result unless a surface-specific gain repeats across multiple independent year pairs. Do not infer betting ROI from calibration metrics.
 
+For a three-step rolling check (2023→2024, 2024→2025 and 2025→2026), include all evaluation years and the 2026 files:
+
+```sh
+node scripts/backtest.mjs --from 20230101 --to 20260525 data/atp_matches_2022.csv data/atp_matches_2023.csv data/atp_matches_2024.csv data/atp_matches_2025.csv data/atp_matches_2026.csv
+node scripts/backtest.mjs --from 20230101 --to 20260525 data/wta_matches_2022.csv data/wta_matches_2023.csv data/wta_matches_2024.csv data/wta_matches_2025.csv data/wta_matches_2026.csv
+```
+
+An independent run on the archive snapshot produced these tour-wide results. The 2026 test contains matches only through 2026-05-25, not a full season.
+
+| Tour | Candidate | Train→test | Test matches | Slope | Brier raw→calibrated | ECE raw→calibrated |
+|---|---|---:|---:|---:|---:|---:|
+| ATP | Overall Elo | 2023→2024 | 3,050 | 0.9008 | 0.21848→0.21805 | 2.63→2.10% |
+| ATP | Overall Elo | 2024→2025 | 2,735 | 0.8893 | 0.21832→0.21774 | 3.35→2.28% |
+| ATP | Overall Elo | 2025→2026* | 1,406 | 0.8435 | 0.21727→0.21664 | 2.55→1.40% |
+| WTA | Overall Elo | 2023→2024 | 2,686 | 1.0482 | 0.21913→0.21943 | 2.76→3.22% |
+| WTA | Overall Elo | 2024→2025 | 2,607 | 0.9123 | 0.21628→0.21596 | 3.71→1.84% |
+| WTA | Overall Elo | 2025→2026* | 1,249 | 0.8599 | 0.21009→0.20989 | 2.88→2.36% |
+| ATP | Surface blend | 2023→2024 | 3,050 | 0.9812 | 0.21701→0.21697 | 1.65→1.69% |
+| ATP | Surface blend | 2024→2025 | 2,735 | 0.9715 | 0.21714→0.21704 | 2.57→2.17% |
+| ATP | Surface blend | 2025→2026* | 1,406 | 0.9129 | 0.21592→0.21570 | 1.78→2.70% |
+| WTA | Surface blend | 2023→2024 | 2,686 | 1.1400 | 0.21863→0.21923 | 1.61→2.76% |
+| WTA | Surface blend | 2024→2025 | 2,607 | 0.9845 | 0.21506→0.21503 | 2.02→1.87% |
+| WTA | Surface blend | 2025→2026* | 1,249 | 0.9403 | 0.20915→0.20913 | 2.64→2.44% |
+
+*2026 archive rows run from 2026-01-04 through 2026-05-25. Results are not a full-season test.*
+
+Interpretation: the ATP overall-Elo correction improved Brier and ECE in all three windows, but gains were modest. WTA overall Elo was worse after correction in 2023→2024 and better in the next two windows, so its stability is not established. Surface-blend calibration gains were tiny and ECE moved in both directions. The separate per-surface fits were also inconsistent, including deterioration on grass. Therefore no calibration transform or exploratory feature weights were promoted to the live model. The 2026 partial-season window should be revisited after the archive receives the rest of the season, and historical match metrics still do not establish betting ROI.
+
 ### Calibration check (2024–2025)
 
 A separate favourite-calibration report was computed from the same chronological evaluation window after correcting same-day Elo updates to be order-independent. Each match contributes one observation: the higher-probability side's predicted win probability and whether that favourite won. Exact Elo ties count as half a win. ECE is the weighted average absolute difference between predicted and observed win rates across ten 5-percentage-point bins.
