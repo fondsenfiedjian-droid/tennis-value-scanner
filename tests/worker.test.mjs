@@ -959,3 +959,43 @@ test("prediction scanner reuses all fresh cached candidates and caps only uncach
   assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
   assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed\)/);
 });
+
+
+test("Winamax CSV parser normalizes French amounts and avoids duplicate imports", () => {
+  const sandbox = {};
+  vm.runInNewContext(readFileSync(new URL("../winamax-import.js", import.meta.url), "utf8") + "\nglobalThis.importApi = TVSWinamaxImport;", sandbox);
+  const api = sandbox.importApi;
+  const parsed = api.parseWinamaxCsv('Référence;Date;Match;Mise;Cote;Gain;Résultat\nW-100;2026-11-17;Player A - Player B;2,50;2,10;5,25;Gagné\nW-101;2026-11-17;Player C - Player D;1,00;1,90;0,00;Perdu');
+  assert.equal(parsed.records.length, 2);
+  assert.equal(parsed.records[0].stake, 2.5);
+  assert.equal(parsed.records[0].odds, 2.1);
+  assert.equal(parsed.records[0].profit, 2.75);
+  assert.equal(parsed.records[0].outcome, "won");
+  assert.equal(parsed.records[1].outcome, "lost");
+  const merged = api.mergeImportedHistory([], parsed.records);
+  assert.equal(merged.added, 2);
+  const repeated = api.mergeImportedHistory(merged.rows, parsed.records);
+  assert.equal(repeated.added, 0);
+  assert.equal(repeated.duplicates, 2);
+  const summary = api.summarize(merged.rows);
+  assert.equal(summary.settledBets, 2);
+  assert.equal(summary.totalStaked, 3.5);
+  assert.equal(summary.profit, 1.75);
+});
+
+test("Winamax importer is isolated from the financial ledger and validates preview before import", () => {
+  assert.ok(frontendSource.includes('const WINAMAX_HISTORY_KEY=\\'tvs-winamax-history-v1\\''));
+  assert.ok(frontendSource.includes('TVSWinamaxImport.parseWinamaxCsv'));
+  assert.ok(frontendSource.includes('TVSWinamaxImport.mergeImportedHistory'));
+  assert.ok(frontendSource.includes('Le solde du bankroll ne sera pas modifié.'));
+  assert.ok(frontendSource.includes('id="bankWinamaxFile"'));
+  assert.ok(frontendSource.includes('id="bankWinamaxImport"'));
+  assert.ok(frontendSource.includes('<script src="./winamax-import.js"></script>'));
+  assert.ok(frontendSource.includes('renderWinamaxHistory();'));
+});
+
+test("PWA app shell precaches the Winamax import module and advances cache version", () => {
+  assert.match(serviceWorkerSource, /tennis-value-static-v30/);
+  assert.match(serviceWorkerSource, /"\\.\\/winamax-import\\.js"/);
+  assert.match(serviceWorkerSource, /"\\.\\/bankroll\\.js"/);
+});
