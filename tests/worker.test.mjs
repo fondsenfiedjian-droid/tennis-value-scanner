@@ -292,6 +292,18 @@ test("daily best bet respects the configured minimum EV and odds floor", () => {
   assert.equal(sandbox.select(bets, 0).player, "E");
 });
 
+test("stake sizing maps good, medium and limited freshness correctly", () => {
+  const start = frontendSource.indexOf("function freshnessStakeMultiplier(");
+  const end = frontendSource.indexOf("function selectBestBet(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.multiplier = freshnessStakeMultiplier;", sandbox);
+  assert.equal(sandbox.multiplier("good"), 1);
+  assert.equal(sandbox.multiplier("medium"), 0.5);
+  assert.equal(sandbox.multiplier("limited"), 0);
+  assert.equal(sandbox.multiplier("unknown"), 0);
+});
+
 test("data freshness is labelled conservatively from rating dates and odds age", () => {
   const start = frontendSource.indexOf("function assessDataFreshness(");
   const end = frontendSource.indexOf("function renderBestBet(", start);
