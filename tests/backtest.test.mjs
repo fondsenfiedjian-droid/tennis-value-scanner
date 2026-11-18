@@ -95,3 +95,16 @@ test("backtest reports separate yearly and surface metrics", () => {
   assert.equal(report.breakdowns.bySurface.Hard.elo.matches, 2);
   assert.equal(report.breakdowns.bySurface.Clay.elo.matches, 1);
 });
+
+
+test("same-day rating updates are independent of CSV row order", () => {
+  const rows = [
+    { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250101", tourney_id: "A", match_num: "2", winner_id: "1", loser_id: "3", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250102", tourney_id: "A", match_num: "3", winner_id: "2", loser_id: "3", score: "6-4 6-4", surface: "Hard" }
+  ];
+  const forward = runBacktest(rows);
+  const reversed = runBacktest([...rows].reverse());
+  assert.deepEqual(forward.metrics, reversed.metrics);
+  assert.deepEqual(forward.breakdowns, reversed.breakdowns);
+});
