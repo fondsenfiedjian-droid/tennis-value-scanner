@@ -519,8 +519,8 @@ test("archive import rejects unknown result outcome labels", () => {
   const merged = mergePredictionArchive([], [row]);
   assert.equal(merged.rows.length, 1);
   assert.equal(merged.rows[0].resultOutcome, null);
-  assert.equal(merged.rows[0].resultWinner, 1);
-  assert.equal(merged.rows[0].resultVersion, 99);
+  assert.equal(merged.rows[0].resultWinner, null);
+  assert.equal(merged.rows[0].resultVersion, null);
 });
 
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
