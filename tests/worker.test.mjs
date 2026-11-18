@@ -2215,6 +2215,9 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Доступ Live Tennis API:/);
   assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
+  assert.ok(frontendSource.includes("rate_limited:'лимит запросов API; учитывайте Retry-After'"));
+  assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
+  assert.match(serviceWorkerSource, /tennis-value-static-v80/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
