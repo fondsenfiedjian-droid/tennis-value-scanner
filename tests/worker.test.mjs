@@ -845,7 +845,7 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("tennis-value-bankroll-ledger.csv"));
   assert.ok(frontendSource.includes("'stake','profit','outcome','source','betId','matchId','side','resultVersion','plannedStake','plannedOdds','actualStake','actualOdds','note','betSnapshot'"));
   assert.ok(frontendSource.includes("JSON.stringify(value)"));
-  assert.ok(frontendSource.includes("if(typeof value==='string'&&/^\\\\s*[=+@-]/.test(cell))"));
+  assert.ok(frontendSource.includes("if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))"));
   assert.match(frontendSource, /typeof value==='string'.*test\(cell\)/);
   assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
   assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
@@ -938,7 +938,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v31/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v32/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -998,7 +998,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
   assert.ok(frontendSource.includes('<script src="./winamax-import.js"></script>'));
   assert.ok(frontendSource.includes('renderWinamaxHistory();'));
   assert.ok(frontendSource.includes('class="bookmaker-tag"'));
-  assert.ok(frontendSource.includes("matched[0].bookmaker||'Winamax'"));
+  assert.ok(frontendSource.includes("const ODDS_PROVIDER_REGISTRY=Object.freeze"));
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
@@ -1009,12 +1009,12 @@ test("PWA app shell precaches the Winamax import module and advances cache versi
 
 
 test("odds matching supports provider-specific event IDs and keeps the best price per player side", () => {
-  assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\\.freeze/);
+  assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
-  assert.match(frontendSource, /const bestQuoteForSide=side=>matched\\.filter/);
+  assert.match(frontendSource, /const bestQuoteForSide=side=>matched\.filter/);
   assert.match(frontendSource, /data-bookmaker-a=/);
-  assert.match(frontendSource, /bookmaker:el\\.dataset\\.bookmakerA/);
-  assert.match(frontendSource, /escapeHtml\\(best\\.bookmaker\\|\\|'Winamax'\\)/);
+  assert.match(frontendSource, /bookmaker:el\.dataset\.bookmakerA/);
+  assert.match(frontendSource, /escapeHtml\(best\.bookmaker\|\|'Winamax'\)/);
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
