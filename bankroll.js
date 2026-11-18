@@ -117,7 +117,6 @@
     for (const candidate of ordered) {
       const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
       if (seenMatches.has(matchKey)) continue;
-      seenMatches.add(matchKey);
       const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
       const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
       if (!recommendation.eligible) continue;
@@ -127,6 +126,7 @@
         options: cfg
       });
       simulated = placed.state;
+      seenMatches.add(matchKey);
       suggestions.push({ ...candidate, stake: placed.bet.stake, ev: placed.bet.ev, recommendation });
     }
     return {
