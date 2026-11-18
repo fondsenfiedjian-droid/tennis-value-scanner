@@ -790,7 +790,7 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
 });
 
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v17/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v18/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
