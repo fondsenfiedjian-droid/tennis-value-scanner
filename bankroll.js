@@ -205,37 +205,103 @@
     return { state, bet: record, recommendation };
   }
 
-  function settleBet(input, betId, outcome) {
+  function settleBet(input, betId, outcome, metadata = {}) {
     const state = cloneState(input);
     const index = state.openBets.findIndex(bet => bet.id === betId);
     if (index < 0) throw new Error("Открытая ставка не найдена.");
     if (!["won", "lost", "void"].includes(outcome)) throw new Error("Неизвестный результат ставки.");
     const bet = state.openBets[index];
+    const snapshot = { ...bet };
     const payout = outcome === "won" ? roundMoney(bet.stake * bet.odds) : outcome === "void" ? bet.stake : 0;
     const profit = outcome === "won" ? roundMoney(payout - bet.stake) : outcome === "lost" ? -bet.stake : 0;
     state.balance = roundMoney(state.balance + payout);
     state.openBets.splice(index, 1);
-    appendTransaction(state, { id: "tx-" + makeId(), type: "settlement", amount: payout, balanceDelta: payout, stake: bet.stake, profit, outcome, betId, note: bet.match });
+    appendTransaction(state, {
+      id: "tx-" + makeId(), type: "settlement", amount: payout, balanceDelta: payout,
+      stake: bet.stake, profit, outcome, betId, note: bet.match,
+      source: metadata.source === "verified" ? "verified" : "manual",
+      matchId: bet.matchId, side: bet.side,
+      resultVersion: Number.isSafeInteger(metadata.resultVersion) && metadata.resultVersion >= 1 ? metadata.resultVersion : null,
+      betSnapshot: snapshot
+    });
     return state;
+  }
+
+  function verifiedResultForMatch(rows, matchId) {
+    const relevant = rows.filter(row => Number(row.matchId) === matchId &&
+      ["completed", "retired", "walkover", "default", "abandoned", "unresolved", "cancelled"].includes(String(row.resultOutcome || "")));
+    if (!relevant.length) return null;
+    const versions = relevant.map(row => Number.isSafeInteger(Number(row.resultVersion)) && Number(row.resultVersion) >= 1 ? Number(row.resultVersion) : null);
+    const knownVersions = versions.filter(version => version !== null);
+    const latestVersion = knownVersions.length ? Math.max(...knownVersions) : null;
+    const latest = relevant.filter((row, index) => latestVersion === null ? versions[index] === null : versions[index] === latestVersion);
+    const outcomes = new Set(latest.map(row => String(row.resultOutcome)));
+    if (outcomes.size !== 1) return null;
+    const outcome = [...outcomes][0];
+    const winners = new Set(latest.map(row => Number(row.resultWinner)).filter(winner => [1, 2].includes(winner)));
+    if (outcome === "completed" && (winners.size !== 1 || latest.some(row => ![1, 2].includes(Number(row.resultWinner))))) return null;
+    return { outcome, winner: winners.size === 1 ? [...winners][0] : null, version: latestVersion };
   }
 
   function settleVerifiedResults(input, archiveRows) {
     let state = cloneState(input);
-    const settled = [];
     const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    const settled = [], corrected = [], reopened = [];
     for (const bet of [...state.openBets]) {
       if (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0 || !["A", "B"].includes(bet.side)) continue;
-      const verified = rows.filter(row => Number(row.matchId) === bet.matchId &&
-        row.resultOutcome === "completed" && [1, 2].includes(Number(row.resultWinner)));
-      if (!verified.length) continue;
-      const winners = new Set(verified.map(row => Number(row.resultWinner)));
-      if (winners.size !== 1) continue;
-      const winner = [...winners][0];
-      const outcome = (bet.side === "A" ? 1 : 2) === winner ? "won" : "lost";
-      state = settleBet(state, bet.id, outcome);
+      const result = verifiedResultForMatch(rows, bet.matchId);
+      if (!result) continue;
+      const previousVersion = Number.isSafeInteger(bet.lastResultVersion) ? bet.lastResultVersion : null;
+      if (result.version !== null && previousVersion !== null && result.version <= previousVersion) continue;
+      if (result.outcome !== "completed") {
+        if (result.version !== null) bet.lastResultVersion = result.version;
+        continue;
+      }
+      const outcome = (bet.side === "A" ? 1 : 2) === result.winner ? "won" : "lost";
+      state = settleBet(state, bet.id, outcome, { source: "verified", resultVersion: result.version });
       settled.push({ betId: bet.id, matchId: bet.matchId, outcome });
     }
-    return { state, settled };
+
+    for (const transaction of [...state.transactions]) {
+      if (transaction.type !== "settlement" || transaction.source !== "verified" ||
+          !Number.isSafeInteger(transaction.matchId) || !transaction.betSnapshot) continue;
+      const result = verifiedResultForMatch(rows, transaction.matchId);
+      if (!result || result.version === null) continue;
+      const previousVersion = Number.isSafeInteger(transaction.resultVersion) ? transaction.resultVersion : null;
+      if (previousVersion !== null && result.version <= previousVersion) continue;
+      const snapshot = transaction.betSnapshot;
+      if (result.outcome === "completed") {
+        const outcome = (snapshot.side === "A" ? 1 : 2) === result.winner ? "won" : "lost";
+        const payout = outcome === "won" ? roundMoney(snapshot.stake * snapshot.odds) : 0;
+        const profit = outcome === "won" ? roundMoney(payout - snapshot.stake) : -snapshot.stake;
+        state.balance = roundMoney(state.balance + payout - transaction.amount);
+        transaction.amount = payout;
+        transaction.balanceDelta = payout;
+        transaction.stake = snapshot.stake;
+        transaction.profit = profit;
+        transaction.outcome = outcome;
+        transaction.resultVersion = result.version;
+        corrected.push({ betId: transaction.betId, matchId: transaction.matchId, outcome });
+      } else {
+        const oldPayout = transaction.amount;
+        state.balance = roundMoney(state.balance - oldPayout);
+        transaction.type = "settlement_reversed";
+        transaction.amount = 0;
+        transaction.balanceDelta = 0;
+        transaction.profit = 0;
+        transaction.outcome = "reopened_after_result_revision";
+        transaction.resultVersion = result.version;
+        state.openBets.push({ ...snapshot, lastResultVersion: result.version, status: "open" });
+        appendTransaction(state, {
+          id: "tx-" + makeId(), type: "settlement_reversal", amount: oldPayout,
+          balanceDelta: -oldPayout, betId: transaction.betId,
+          note: "Официальный результат изменён; ставка открыта повторно"
+        });
+        reopened.push({ betId: transaction.betId, matchId: transaction.matchId });
+      }
+    }
+    validateState(state);
+    return { state, settled, corrected, reopened, updated: settled.length + corrected.length + reopened.length };
   }
 
   function makeId() {
