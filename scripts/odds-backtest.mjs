@@ -16,7 +16,7 @@ const noVig = (oddsA, oddsB) => {
 
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
-  const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.01;
+  const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
   const stake = Number.isFinite(options.stake) && options.stake > 0 ? options.stake : 1;
   if (minEv < 0 || minEv > 10) throw new RangeError("minEv must be between 0 and 10");
   if (minOdds <= 1 || minOdds > 1000) throw new RangeError("minOdds must be greater than 1 and no greater than 1000");
