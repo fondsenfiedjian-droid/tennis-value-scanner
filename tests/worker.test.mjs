@@ -136,6 +136,8 @@ test("player stats endpoint validates IDs and returns read-only API data with ac
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(cachedStatsResponse.headers.get("Cache-Control"), "public, max-age=60");
   assert.equal(cachedStatsKey, "https://worker.test/__player-stats/123");
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=60");
+  assert.equal(result.headers.get("X-Data-Cache"), "MISS");
 });
 
 test("player stats endpoint reports forbidden access without inventing ULTRA entitlement", async () => {
@@ -156,8 +158,6 @@ test("player stats endpoint preserves rate-limit retry guidance and identifies m
   assert.equal(limited.headers.get("Retry-After"), "30");
   assert.equal(limited.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
   assert.equal((await limited.json()).accessStatus, "rate_limited");
-  assert.equal(limited.headers.get("Cache-Control"), "public, max-age=60");
-  assert.equal(limited.headers.get("X-Data-Cache"), "MISS");
 
   workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Player merged" }), { status: 410 });
   const merged = await call("/player-stats?id=123");
