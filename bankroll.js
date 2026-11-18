@@ -41,6 +41,7 @@
           typeof bet.placedAt !== "string" || !Number.isFinite(Date.parse(bet.placedAt)) ||
           (bet.matchId !== null && bet.matchId !== undefined && (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0)) ||
           (bet.matchId && !["A", "B"].includes(bet.side)) ||
+        (bet.matchDate !== undefined && bet.matchDate !== null && (typeof bet.matchDate !== "string" || !Number.isFinite(Date.parse(bet.matchDate)))) ||
           (bet.plannedStake !== undefined && bet.plannedStake !== null && (!Number.isFinite(bet.plannedStake) || bet.plannedStake < 0)) ||
           (bet.plannedOdds !== undefined && bet.plannedOdds !== null && (!Number.isFinite(bet.plannedOdds) || bet.plannedOdds <= 1))) {
         throw new Error("В журнале найдена некорректная открытая ставка.");
@@ -280,6 +281,7 @@
         opponent: String(item.opponent || "").slice(0, 100), bookmaker: String(item.bookmaker || "Winamax").slice(0, 60),
         side: item.side === "A" || item.side === "B" ? item.side : null,
         probability, odds, stake, ev: (probability * odds - 1) * 100,
+        matchDate: typeof item.matchDate === "string" && Number.isFinite(Date.parse(item.matchDate)) ? new Date(item.matchDate).toISOString() : null,
         freshnessLevel: item.freshnessLevel === "good" ? "good" : "medium"
       };
     });
@@ -519,6 +521,56 @@
     return { state, settled, corrected, reopened, metadataUpdated, updated: settled.length + corrected.length + reopened.length + metadataUpdated.length };
   }
 
+
+  function getClvSummary(state, archiveRows, options = {}) {
+    validateState(state);
+    const closeWindowMs = Math.max(1, Number(options.closeWindowHours) || 6) * 60 * 60 * 1000;
+    const bets = new Map();
+    for (const bet of state.openBets) bets.set(bet.id, bet);
+    for (const tx of state.transactions) {
+      if (tx.type === "settlement" && tx.betSnapshot && typeof tx.betSnapshot.id === "string") bets.set(tx.betSnapshot.id, tx.betSnapshot);
+    }
+    const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    const matched = [], missing = [];
+    for (const bet of bets.values()) {
+      const placedAt = Date.parse(bet.placedAt);
+      const matchStart = Date.parse(bet.matchDate || "");
+      const bookmaker = String(bet.bookmaker || "").trim();
+      if (!Number.isSafeInteger(Number(bet.matchId)) || Number(bet.matchId) <= 0 ||
+          !["A", "B"].includes(bet.side) || !bookmaker ||
+          !Number.isFinite(placedAt) || !Number.isFinite(matchStart) || matchStart <= placedAt) {
+        missing.push({ betId: bet.id, reason: "Недостаточно идентификаторов или времени" });
+        continue;
+      }
+      const candidates = rows.filter(row => Number(row.matchId) === Number(bet.matchId) &&
+        row.side === bet.side && String(row.bookmaker || "").trim() === bookmaker &&
+        Number.isFinite(Number(row.odds)) && Number(row.odds) > 1 &&
+        Number.isFinite(Number(row.capturedAt)) && Number(row.capturedAt) >= placedAt &&
+        Number(row.capturedAt) <= matchStart && matchStart - Number(row.capturedAt) <= closeWindowMs);
+      if (!candidates.length) {
+        missing.push({ betId: bet.id, reason: "Нет котировки этого букмекера в последние 6 часов до матча" });
+        continue;
+      }
+      const closing = candidates.reduce((latest, row) => Number(row.capturedAt) > Number(latest.capturedAt) ? row : latest);
+      const clvPercent = (Number(bet.odds) / Number(closing.odds) - 1) * 100;
+      matched.push({
+        betId: bet.id, matchId: Number(bet.matchId), bookmaker,
+        takenOdds: Number(bet.odds), closingOdds: Number(closing.odds),
+        capturedAt: Number(closing.capturedAt), clvPercent: roundMoney(clvPercent)
+      });
+    }
+    const average = matched.length ? roundMoney(matched.reduce((sum, item) => sum + item.clvPercent, 0) / matched.length) : null;
+    return {
+      sampleSize: matched.length, missingCount: missing.length,
+      positive: matched.filter(item => item.clvPercent > 0).length,
+      negative: matched.filter(item => item.clvPercent < 0).length,
+      neutral: matched.filter(item => item.clvPercent === 0).length,
+      averageClvPercent: average,
+      coveragePercent: bets.size ? roundMoney(matched.length / bets.size * 100) : null,
+      matched, missing
+    };
+  }
+
   function makeId() {
     return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
@@ -546,5 +598,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getClvSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
