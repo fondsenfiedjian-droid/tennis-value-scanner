@@ -1907,3 +1907,31 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
   assert.match(serviceWorkerSource, /tennis-value-static-v57/);
 });
+
+
+test("segment performance groups settled bets by original model probability", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(1000);
+  const add = (key, probability, odds, outcome) => {
+    const placed = api.placeBet(state, {
+      matchKey: key, match: key, probability, odds, stake: 2,
+      options: { minOdds: 1.01, minEv: 0, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
+    });
+    state = api.settleBet(placed.state, placed.bet.id, outcome);
+  };
+  add("prob-52", 0.52, 2.1, "won");
+  add("prob-62", 0.62, 2.1, "lost");
+  add("prob-72", 0.72, 2.1, "won");
+  add("prob-82", 0.82, 2.1, "lost");
+  const result = api.getSegmentPerformance(state, []);
+  const groups = Object.fromEntries(result.probabilityBand.map(row => [row.name, row]));
+  assert.equal(groups["50–54.99%"].wins, 1);
+  assert.equal(groups["60–64.99%"].losses, 1);
+  assert.equal(groups["70–74.99%"].roiPercent, 110);
+  assert.equal(groups["80%+"].roiPercent, -100);
+  assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
+  assert.ok(frontendSource.includes("Вероятность модели при размещении"));
+  assert.match(serviceWorkerSource, /tennis-value-static-v58/);
+});
