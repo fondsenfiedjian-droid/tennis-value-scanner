@@ -871,7 +871,7 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
 
 test("pending portfolio can be cancelled without changing financial records", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const initial = api.createInitialState(100);
   const portfolio = api.recommendPortfolio(initial, [{
