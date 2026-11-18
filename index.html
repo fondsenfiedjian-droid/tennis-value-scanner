@@ -484,6 +484,7 @@
   let archiveWriteQueue=Promise.resolve();
   let archiveMemoryRows=null;
   let archiveWriteError=null;
+  let archiveReadError=null;
   let archiveStorageMode='local';
   function openArchiveDatabase(){
     if(typeof indexedDB==='undefined')return Promise.resolve(null);
@@ -503,8 +504,13 @@
   }
   function readPredictionArchive(){
     if(Array.isArray(archiveMemoryRows))return archiveMemoryRows.map(row=>({...row}));
-    try{const rows=JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'):[];}
-    catch(e){return [];}
+    try{
+      const raw=localStorage.getItem(ARCHIVE_KEY);
+      const rows=raw===null?[]:JSON.parse(raw);
+      if(!Array.isArray(rows))throw new Error('Формат локального архива повреждён');
+      archiveReadError=null;
+      return rows.filter(x=>x&&typeof x==='object'&&!Array.isArray(x));
+    }catch(e){archiveReadError=e;return [];}
   }
   function writeArchiveDatabase(db,rows,markInitialized=false){
     return new Promise((resolve,reject)=>{
@@ -532,6 +538,7 @@
       let rows=state.rows.map(({id,...row})=>row);
       let migrated=false;
       const legacy=readPredictionArchive();
+      if(archiveReadError&&!state.initialized)throw new Error('Локальный архив повреждён. Импортируй резервную копию JSON; пустой архив не будет записан поверх повреждённых данных.');
       if(legacy.length){
         rows=mergePredictionArchive(rows,legacy).rows;
       }
@@ -574,8 +581,8 @@
     return rows.slice().sort((a,b)=>priority(b)-priority(a)||Number(b.capturedAt)-Number(a.capturedAt)).slice(0,limit).sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
   }
   function persistPredictionArchive(rows){
+    if(archiveReadError)return {saved:0,dropped:rows.length,error:archiveReadError};
     const normalized=limitPredictionArchive(rows);
-    archiveMemoryRows=normalized.map(row=>({...row}));
     for(const limit of [MAX_ARCHIVE_ENTRIES,2000,1000,600,300]){
       const kept=limitPredictionArchive(normalized,limit);
       try{
@@ -817,7 +824,7 @@
     $('#archiveOddsDrifted').textContent=movement.drifted;
     $('#archiveOddsUnchanged').textContent=movement.unchanged;
     $('#archiveOddsConflicts').textContent=movement.conflicting;
-    $('#archiveUpdated').textContent=rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'';
+    $('#archiveUpdated').textContent=archiveReadError?'Локальный архив повреждён · импортируй JSON-копию':(rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'');
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
     list.innerHTML=rows.slice(0,50).map(row=>{
@@ -1045,7 +1052,10 @@
       await archiveStorageReady;
       const payload=JSON.parse(await file.text());
       const backup=readArchiveBackup(payload);
-      const result=mergePredictionArchive(readPredictionArchive(),backup.records);
+      if(archiveReadError&&!confirm('Локальный архив повреждён и не читается. Импорт проверенной резервной копии заменит повреждённую запись. Продолжить?'))return;
+      const currentRows=archiveReadError?[]:readPredictionArchive();
+      if(archiveReadError)archiveReadError=null;
+      const result=mergePredictionArchive(currentRows,backup.records);
       const stored=persistPredictionArchive(result.rows);
       const archiveFlush=await flushArchiveWrites();
       if(!stored.saved)throw new Error('Недостаточно места в памяти браузера. Сначала экспортируйте резервную копию и освободите место.');
