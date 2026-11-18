@@ -49,8 +49,11 @@ export function adaptScannerArchiveRows(rows) {
     if (!group.surface) group.surface = surface;
     if (group.sides[side]) {
       const previous = group.sides[side];
-      if (previous.odds !== odds || previous.probability !== probability) {
-        throw new Error("Conflicting duplicate side snapshot in archive for " + id);
+      const player = String(row.player ?? "").trim();
+      const ratingAsOf = String(row.ratingAsOf ?? "").trim();
+      if (previous.odds !== odds || previous.probability !== probability ||
+          previous.player !== player || previous.ratingAsOf !== ratingAsOf) {
+        throw new Error("Conflicting duplicate side snapshot or rating provenance in archive for " + id);
       }
       continue;
     }
