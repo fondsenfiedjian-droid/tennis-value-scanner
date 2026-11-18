@@ -77,7 +77,7 @@ test("JSON responses include CORS and content type headers", () => {
   const result = response({ ok: true });
   assert.equal(result.status, 200);
   assert.equal(result.headers.get("Access-Control-Allow-Origin"), "*");
-  assert.match(result.headers.get("Content-Type"), /application\\/json/);
+  assert.ok(result.headers.get("Content-Type").includes("application/json"));
 });
 
 test("predict rejects malformed JSON with HTTP 400", async () => {
