@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
-export function parseCsv(text) {
+export function parseCsv(text, { delimiter = "," } = {}) {
   text = text.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false, closedQuote = false, line = 1;
@@ -21,13 +21,13 @@ export function parseCsv(text) {
       else { field += ch; if (ch === "\n") line++; }
       continue;
     }
-    if (closedQuote && ch !== "," && ch !== "\n" && ch !== "\r") {
+    if (closedQuote && ch !== delimiter && ch !== "\n" && ch !== "\r") {
       throw new SyntaxError(`Unexpected character after closing quote on line ${line}`);
     }
     if (ch === '"') {
       if (field.length !== 0 || closedQuote) throw new SyntaxError(`Unexpected quote in unquoted field on line ${line}`);
       quoted = true;
-    } else if (ch === ",") pushField();
+    } else if (ch === delimiter) pushField();
     else if (ch === "\n") { pushRow(); line++; }
     else if (ch === "\r" && text[i + 1] === "\n") { /* CRLF handled by newline */ }
     else if (ch === "\r") field += ch;
