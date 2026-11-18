@@ -1693,6 +1693,55 @@
     const addButton=$('#addPortfolioToBank');
     if(addButton)addButton.onclick=()=>addPortfolioToBankroll(portfolio.suggestions);
   }
+  const pfePlayerStatsCache=new Map();
+  async function loadPfePlayerStats(playerId){
+    const id=String(playerId??'').trim();
+    if(!/^\\d{1,15}$/.test(id)||!Number.isSafeInteger(Number(id))||Number(id)<=0){
+      return {accessStatus:'invalid_player_id',recent:null,serve:null};
+    }
+    const cached=pfePlayerStatsCache.get(id);
+    if(cached&&Date.now()-cached.savedAt<6*60*60*1000)return cached.value;
+    const task=(async()=>{
+      try{
+        const response=await fetch(API+'/player-stats?id='+encodeURIComponent(id));
+        let payload=null;
+        try{payload=await response.json();}catch(error){}
+        if(!response.ok||!payload||payload.accessStatus!=='available'||!payload.stats){
+          return {accessStatus:payload?.accessStatus||'upstream_error',upstreamStatus:response.status,
+            recent:null,serve:null,error:payload?.error||null};
+        }
+        const stats=payload.stats;
+        const sourcePlayerId=Number(stats?.player?.id);
+        if(stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourcePlayerId)||sourcePlayerId!==Number(id))){
+          return {accessStatus:'player_identity_mismatch',recent:null,serve:null};
+        }
+        // The endpoint is scoped to this stable player ID; attach it only when the provider omits the redundant player object.
+        const recentPayload=stats.player?stats:{...stats,player:{id:Number(id)}};
+        const recent=TVSPFE.normalizeRecentFormProfile(recentPayload,{playerId:Number(id)});
+        const normalizedServe=TVSPFE.normalizeServeReturnProfile(stats);
+        const serve={...normalizedServe,playerId:Number(id)};
+        return {accessStatus:'available',recent,serve};
+      }catch(error){
+        return {accessStatus:'unavailable',recent:null,serve:null,error:String(error?.message||error)};
+      }
+    })();
+    pfePlayerStatsCache.set(id,{savedAt:Date.now(),value:task});
+    const value=await task;
+    pfePlayerStatsCache.set(id,{savedAt:Date.now(),value});
+    return value;
+  }
+  function explicitMatchBestOf(match){
+    const raw=match?.best_of??match?.bestOf??match?.format?.best_of??match?.match_format;
+    if(raw===3||raw===5)return raw;
+    if(typeof raw==='string'){
+      const normalized=raw.trim().toLowerCase();
+      const matchText=normalized.match(/best\\s*of\\s*[- ]?([35])/);
+      if(matchText)return Number(matchText[1]);
+      if(normalized==='bo3')return 3;
+      if(normalized==='bo5')return 5;
+    }
+    return null;
+  }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
     const allCandidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
@@ -1761,6 +1810,18 @@
           bookmakerKnown:!!(bookmakerA&&bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
           calibration:archiveProbabilityCalibration(readPredictionArchive())
         });
+        const [pfePlayerA,pfePlayerB]=await Promise.all([
+          loadPfePlayerStats(idA),loadPfePlayerStats(idB)
+        ]);
+        if(renderId!==predictionRenderId)return;
+        const pfeServeInputs=pfePlayerA.serve&&pfePlayerB.serve
+          ?TVSPFE.deriveServeReturnMatchInputs(pfePlayerA.serve,pfePlayerB.serve)
+          :{status:'insufficient_data',reason:'player_stats_unavailable'};
+        const matchBestOf=explicitMatchBestOf(m);
+        const pfeScoreSimulation=pfeServeInputs.status==='ready_for_score_simulation'&&matchBestOf
+          ?TVSPFE.runMatchMonteCarlo(pfeServeInputs.playerA.servicePointWin,pfeServeInputs.playerB.servicePointWin,{
+            bestOf:matchBestOf,iterations:10000,seed:Number.isSafeInteger(Number(m.id))?Number(m.id):20261118
+          }):null;
         const pfeRegistry=TVSPFE.getModelRegistry();
         const pfeActiveCount=pfeRegistry.filter(model=>model.status==='active').length;
         const pfeArchiveRows=readPredictionArchive();
@@ -1789,8 +1850,23 @@
         }).join(' · ');
         const pfeDisagreementLabel=Number.isFinite(pfeAssessment.disagreement)
           ?' · расхождение '+(pfeAssessment.disagreement*100).toFixed(2)+' п.п.':'';
+        const profileStatusLabel=profile=>profile?.status==='ready_for_modeling'?'готов':profile?.status==='insufficient_sample'?'мало матчей':profile?.status==='partial'?'частичные данные':profile?.status==='invalid'?'ошибка данных':'нет данных';
+        const recentA=pfePlayerA.recent,recentB=pfePlayerB.recent;
+        const serveA=pfePlayerA.serve,serveB=pfePlayerB.serve;
+        const recentFormLabel='Форма PRO: '+profileStatusLabel(recentA)+' ('+(recentA?.sampleSize??0)+' / '+profileStatusLabel(recentB)+' ('+(recentB?.sampleSize??0)+')';
+        const serveProfileLabel='Подача/приём ULTRA: '+profileStatusLabel(serveA)+' ('+(serveA?.matchesWithStats??0)+' матчей) / '+profileStatusLabel(serveB)+' ('+(serveB?.matchesWithStats??0)+' матчей)';
+        const serveInputLabel=pfeServeInputs.status==='ready_for_score_simulation'
+          ?'Подача: '+(pfeServeInputs.playerA.servicePointWin*100).toFixed(1)+'% / '+(pfeServeInputs.playerB.servicePointWin*100).toFixed(1)+'% · проверка расхождения пройдена'
+          :pfeServeInputs.status==='review'?'Подача/приём: конфликт показателей, симуляция заблокирована'
+          :pfeServeInputs.status==='invalid'?'Подача/приём: несовпадение идентификаторов игроков'
+          :'Подача/приём: недостаточно данных';
+        const simulationLabel=pfeScoreSimulation?.status==='ok'
+          ?'Сценарная симуляция BO'+matchBestOf+': '+(pfeScoreSimulation.probabilityA*100).toFixed(1)+'% игрок 1 · 95% интервал '+(pfeScoreSimulation.confidenceInterval95.lower*100).toFixed(1)+'–'+(pfeScoreSimulation.confidenceInterval95.upper*100).toFixed(1)+'% · среднее '+pfeScoreSimulation.averageGames.toFixed(1)+' геймов'
+          :pfeServeInputs.status==='ready_for_score_simulation'&&!matchBestOf
+            ?'Симуляция не запущена: формат матча не указан в источнике'
+            :'Симуляция не запускалась: нет двух проверенных профилей';
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br>'+escapeHtml(simulationLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
