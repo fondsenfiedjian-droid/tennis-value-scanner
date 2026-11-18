@@ -130,6 +130,17 @@ export default {
       }
 
       try {
+        // Cache identical match queries for three minutes to protect the free API quota.
+        const cache = caches.default;
+        const cacheUrl = new URL(request.url);
+        const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
         const upstream = await fetch(
           `https://api.livetennisapi.com/api/public/v1/matches?${params.toString()}`,
           {
@@ -141,7 +152,20 @@ export default {
         );
 
         const body = await upstream.json();
-        return response(body, upstream.status);
+        const result = response(body, upstream.status);
+        if (upstream.ok) {
+          const cacheResponse = new Response(JSON.stringify(body), {
+            status: 200,
+            headers: {
+              ...cors,
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "public, max-age=180",
+              "X-Data-Cache": "MISS"
+            }
+          });
+          await cache.put(cacheKey, cacheResponse);
+        }
+        return result;
       } catch (error) {
         return response({ error: "Could not reach Live Tennis API" }, 502);
       }
