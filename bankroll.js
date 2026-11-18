@@ -223,23 +223,49 @@
     return state;
   }
 
-  function confirmPortfolioPlan(input, planId) {
+  function reconcilePortfolioPlan(input, planId, actuals) {
     let state = cloneState(input);
     const plan = state.pendingPlan;
     if (!plan || plan.id !== planId) throw new Error("План портфеля не найден. Обновите данные.");
     if (!Number.isFinite(Date.parse(plan.expiresAt)) || Date.parse(plan.expiresAt) <= Date.now()) {
-      state.pendingPlan = null;
       throw new Error("План устарел (срок действия 15 минут). Пересчитайте портфель по актуальным коэффициентам.");
     }
+    if (!Array.isArray(actuals) || actuals.length !== plan.suggestions.length) {
+      throw new Error("Нужно указать фактическую сумму для каждой позиции плана. Ноль означает, что ставка не была размещена.");
+    }
+    const byKey = new Map();
+    for (const actual of actuals) {
+      const key = String(actual?.matchKey || "").trim();
+      if (!key || byKey.has(key)) throw new Error("Фактические данные содержат повторную или пустую позицию.");
+      byKey.set(key, actual);
+    }
+    if (byKey.size !== plan.suggestions.length) throw new Error("Состав фактических ставок не совпадает с планом.");
     const placed = [];
+    let skipped = 0;
     for (const item of plan.suggestions) {
-      const result = placeBet(state, item);
+      const actual = byKey.get(item.matchKey);
+      if (!actual) throw new Error("Не найдены фактические данные для матча: " + item.match);
+      const stake = roundMoney(Number(actual.stake));
+      if (!Number.isFinite(stake) || stake < 0) throw new Error("Фактическая сумма должна быть нулём или положительным числом.");
+      if (stake === 0) { skipped++; continue; }
+      const odds = Number(actual.odds);
+      if (!Number.isFinite(odds) || odds <= 1) throw new Error("Укажите фактический коэффициент больше 1 для матча: " + item.match);
+      const result = placeBet(state, { ...item, stake, odds });
       state = result.state;
       placed.push(result.bet);
     }
     state.pendingPlan = null;
     validateState(state);
-    return { state, bets: placed };
+    return { state, bets: placed, skipped, placedCount: placed.length };
+  }
+
+  function confirmPortfolioPlan(input, planId) {
+    const state = cloneState(input);
+    const plan = state.pendingPlan;
+    if (!plan || plan.id !== planId) throw new Error("План портфеля не найден. Обновите данные.");
+    return reconcilePortfolioPlan(state, planId, plan.suggestions.map(item => ({
+      matchKey: item.matchKey, stake: item.stake, odds: item.odds
+    })));
   }
 
   function cancelPortfolioPlan(input, planId) {
@@ -442,5 +468,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
