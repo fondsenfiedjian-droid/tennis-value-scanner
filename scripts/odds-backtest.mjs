@@ -4,7 +4,10 @@ import { parseCsv } from "./backtest.mjs";
 
 const number = value => Number(value);
 const timestamp = value => {
-  const parsed = Date.parse(String(value ?? ""));
+  const text = String(value ?? "").trim();
+  // Require an explicit timezone so host locale cannot silently shift historical match times.
+  if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(text)) return null;
+  const parsed = Date.parse(text);
   return Number.isFinite(parsed) ? parsed : null;
 };
 const validOdds = value => Number.isFinite(value) && value > 1 && value <= 1000;
