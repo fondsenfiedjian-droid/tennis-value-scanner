@@ -789,33 +789,31 @@
     return {rows,added,updated,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
   function normalizeResultPlayerName(value){
-    return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+    return String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim().replace(/\\s+/g,' ');
+  }
+  function resultPlayerId(value){
+    const id=Number(value);
+    return Number.isSafeInteger(id)&&id>0?id:null;
   }
   function validateArchivedMatchIdentity(rows,result,id){
     const apiP1=result?.players?.p1||{},apiP2=result?.players?.p2||{};
     const p1=normalizeResultPlayerName(apiP1.name),p2=normalizeResultPlayerName(apiP2.name);
-    const apiP1Id=Number.isSafeInteger(Number(apiP1.id))&&Number(apiP1.id)>0?Number(apiP1.id):null;
-    const apiP2Id=Number.isSafeInteger(Number(apiP2.id))&&Number(apiP2.id)>0?Number(apiP2.id):null;
-    if(!p1||!p2||p1===p2)return false;
+    const apiP1Id=resultPlayerId(apiP1.id),apiP2Id=resultPlayerId(apiP2.id);
+    if(!p1||!p2||p1===p2||(apiP1Id!==null&&apiP2Id!==null&&apiP1Id===apiP2Id))return false;
     const matchRows=rows.filter(row=>Number(row.matchId)===id&&['A','B'].includes(row.side));
     if(!matchRows.length)return false;
-    let matched=0;
     for(const row of matchRows){
-      const player=normalizeResultPlayerName(row.player);
-      const opponent=normalizeResultPlayerName(row.opponent);
+      const player=normalizeResultPlayerName(row.player),opponent=normalizeResultPlayerName(row.opponent);
       if(!player||!opponent)return false;
-      const expectedPlayer=row.side==='A'?p1:p2;
-      const expectedOpponent=row.side==='A'?p2:p1;
-      if(player!==expectedPlayer||opponent!==expectedOpponent)return false;
-      const apiPlayerId=row.side==='A'?apiP1Id:apiP2Id;
-      const apiOpponentId=row.side==='A'?apiP2Id:apiP1Id;
-      const storedPlayerId=Number.isSafeInteger(Number(row.playerId))&&Number(row.playerId)>0?Number(row.playerId):null;
-      const storedOpponentId=Number.isSafeInteger(Number(row.opponentId))&&Number(row.opponentId)>0?Number(row.opponentId):null;
-      if(storedPlayerId!==null&&apiPlayerId!==null&&storedPlayerId!==apiPlayerId)return false;
-      if(storedOpponentId!==null&&apiOpponentId!==null&&storedOpponentId!==apiOpponentId)return false;
-      matched++;
+      const expectedPlayer=row.side==='A'?p1:p2,expectedOpponent=row.side==='A'?p2:p1;
+      const apiPlayerId=row.side==='A'?apiP1Id:apiP2Id,apiOpponentId=row.side==='A'?apiP2Id:apiP1Id;
+      const storedPlayerId=resultPlayerId(row.playerId),storedOpponentId=resultPlayerId(row.opponentId);
+      if(storedPlayerId!==null&&apiPlayerId!==null){if(storedPlayerId!==apiPlayerId)return false;}
+      else if(player!==expectedPlayer)return false;
+      if(storedOpponentId!==null&&apiOpponentId!==null){if(storedOpponentId!==apiOpponentId)return false;}
+      else if(opponent!==expectedOpponent)return false;
     }
-    return matched>0;
+    return true;
   }
   function applyVerifiedMatchResult(rows, result, now=Date.now()){
     const id=Number(result?.id),winner=Number(result?.winner);
