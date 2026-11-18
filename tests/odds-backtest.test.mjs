@@ -203,6 +203,7 @@ test("odds backtest excludes stale snapshots by default and reports snapshot age
   assert.equal(report.snapshotAgeMinutes.min, 30);
   assert.equal(report.selections[0].entrySnapshotAgeMinutes, 30);
   assert.equal(report.selections[0].closingSnapshotAgeMinutes, 30);
+  assert.equal(report.closingLineValueSample.measured, 1);
 });
 
 test("odds backtest allows an explicit wider snapshot age and validates the option", () => {
@@ -218,4 +219,38 @@ test("odds backtest rejects timezone-less timestamps instead of using machine lo
   const report = runOddsBacktest([{ ...base, match_start: "2025-01-01T12:00:00", odds_captured_at: "2025-01-01T10:00:00Z" }]);
   assert.equal(report.matches, 0);
   assert.equal(report.rejectedSnapshots, 1);
+});
+
+
+test("CLV is unavailable without a later snapshot inside the closing window", () => {
+  const report = runOddsBacktest([
+    { ...base, odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, odds_captured_at: "2025-01-01T10:30:00Z", odds_a: "2.10", odds_b: "1.85" }
+  ]);
+  assert.equal(report.bets, 1);
+  assert.equal(report.averageClosingLineValuePercent, null);
+  assert.equal(report.closingLineValueSample.measured, 0);
+  assert.equal(report.closingLineValueSample.missingQualifyingClose, 1);
+  assert.equal(report.selections[0].closingSnapshotAgeMinutes, null);
+});
+
+test("CLV uses the latest snapshot within 60 minutes, not a later stale snapshot", () => {
+  const report = runOddsBacktest([
+    { ...base, odds_captured_at: "2025-01-01T09:00:00Z" },
+    { ...base, odds_captured_at: "2025-01-01T11:30:00Z", odds_a: "2.00", odds_b: "1.90" },
+    { ...base, odds_captured_at: "2025-01-01T11:55:00Z", odds_a: "1.95", odds_b: "1.95" }
+  ]);
+  assert.equal(report.closingLineValueSample.measured, 1);
+  assert.equal(report.selections[0].closingSnapshotAgeMinutes, 5);
+  assert.ok(report.selections[0].closingLineValue !== null);
+});
+
+test("timezone offsets with digits are accepted", () => {
+  const report = runOddsBacktest([{
+    ...base,
+    match_start: "2025-01-01T13:00:00+01:00",
+    odds_captured_at: "2025-01-01T11:00:00Z"
+  }]);
+  assert.equal(report.matches, 1);
+  assert.equal(report.rejectedSnapshots, 0);
 });
