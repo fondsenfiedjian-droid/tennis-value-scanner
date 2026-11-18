@@ -90,7 +90,8 @@
     .data-freshness.good{background:#211a0d;color:#f0d58b;border:1px solid #8a6c32}
     .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
     .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
-    .best-bet{background:linear-gradient(145deg,#211018,#090909 68%);border-color:transparent;animation:bestBetGlow 2.8s ease-in-out infinite}
+    .best-bet{background:linear-gradient(145deg,#211018,#090909 68%);border-color:transparent}
+    .best-bet.has-pick{animation:bestBetGlow 2.8s ease-in-out infinite}
     .best-bet:before{background:linear-gradient(120deg,#d9a0a7,#77716d 12%,#d58a8e 35%,#a51f45 58%,#d58a8e 78%,#e2dcd7)}
     .best-bet-title,.best-bet-value{color:#d58a8e}
     .best-bet-main{color:#fff1f2}
@@ -1080,6 +1081,7 @@
     const configuredMinEv=Number($('#minEv').value);
     const minEv=Number.isFinite(configuredMinEv)?Math.max(0,configuredMinEv):3;
     const best=selectBestBet(bets,minEv);
+    box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
       box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет ставки с коэффициентом от 1.90 и EV не ниже '+minEv.toFixed(1)+'%.':'Нет подходящих матчей с коэффициентом от 1.90.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
