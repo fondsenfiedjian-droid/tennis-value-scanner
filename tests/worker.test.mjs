@@ -638,7 +638,8 @@ test("archive accepts the first unversioned official result for a record with no
 });
 
 test("approved interface palette removes green and animates the best bet copper-pink to ruby", () => {
-  assert.match(frontendSource, /--green:#e6bd58/);
+  assert.match(frontendSource, /--yellow:#e6bd58/);
+  assert.doesNotMatch(frontendSource, /--green:|#35d07f|#286547|#7de6a8|#123323|#16834e|#20b86b|#75e6a3|#9af0bd/);
   assert.match(frontendSource, /--copper-pink:#d58a8e/);
   assert.match(frontendSource, /--ruby:#a51f45/);
   assert.match(frontendSource, /@keyframes bestBetGlow/);
