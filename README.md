@@ -120,4 +120,21 @@ The report compares five exploratory candidates: overall Elo, a surface-Elo blen
 
 The evaluation is chronological. Every match on a given tournament date is predicted using only state from earlier dates; that date's results are applied only after all predictions for that date. The script excludes invalid player IDs/dates and walkovers, retirements, defaults and abandoned matches. It strips a UTF-8 BOM from CSV headers, removes duplicate tournament match rows when tournament and match IDs are present, and reports duplicate and unknown-surface row counts. Surface and form features use only previously observed results. The candidate weights are deliberately exploratory and are not automatically copied into the live prediction model. Compare results across multiple seasons and tours before considering any production change.
 
+
+### Initial historical comparison (2024–2025)
+
+An initial out-of-sample comparison was run on the ATP and WTA archive CSVs for 2022–2025. The 2022–2023 matches were warm-up only; metrics below use matches dated 2024-01-01 through 2025-12-31. ATP and WTA were evaluated separately. The run used the script's default K-factor (32) and five-match minimum before enabling the surface blend.
+
+| Candidate | ATP Brier | ATP log loss | ATP accuracy | WTA Brier | WTA log loss | WTA accuracy |
+|---|---:|---:|---:|---:|---:|---:|
+| Overall Elo | 0.21906 | 0.62592 | 63.65% | 0.21997 | 0.62891 | 63.67% |
+| Surface blend | 0.21775 | 0.62285 | 63.99% | 0.21913 | 0.62667 | 63.54% |
+| Elo + recent form | 0.21996 | 0.62823 | 63.65% | 0.22109 | 0.63175 | 63.54% |
+| Elo + head-to-head | 0.21904 | 0.62588 | 63.85% | 0.22005 | 0.62919 | 63.78% |
+| Combined | 0.21844 | 0.62443 | 64.15% | 0.22011 | 0.62907 | 63.59% |
+
+The evaluation contained 5,785 ATP and 5,293 WTA matches, after filtering invalid records and non-standard outcomes. The 2022–2023 warm-up contained 5,716 ATP and 5,188 WTA matches. There were no duplicate match keys in these files; 51 ATP and 124 WTA matches had an unrecognized or missing surface.
+
+The surface blend improved Brier score and log loss over overall Elo on both tours in this sample, but it did not improve winner accuracy on WTA. Recent form and the combined variant did not consistently improve calibration. This is evidence to investigate surface-specific ratings further, **not** enough to promote new weights into the live model. The test uses match results only, not historical Winamax prices; it does not measure betting ROI, closing-line value, or profitability. Re-run the commands above when the source archive changes, and validate on additional seasons before any production change.
+
 Data licensing matters: the commonly used Sackmann archive is distributed under CC BY-NC-SA 4.0. Check the source repository's current license and attribution requirements before use or redistribution; the non-commercial restriction may not permit commercial use. Treat older CSVs as historical backtest data, not a live feed.
