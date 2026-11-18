@@ -145,6 +145,7 @@
     <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
     <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
     <div class="panel"><div class="muted">Коэффициент вырос</div><div class="stat-num" id="archiveOddsDrifted">0</div></div>
+    <div class="panel"><div class="muted">Коэффициент не изменился</div><div class="stat-num" id="archiveOddsUnchanged">0</div></div>
   </div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
@@ -761,10 +762,10 @@
       snapshots.sort((a,b)=>a.capturedAt-b.capturedAt);
       if(snapshots.length<2)continue;
       const first=snapshots[0].odds,last=snapshots[snapshots.length-1].odds;
-      if(first===last)continue;
       comparable++;
       if(last<first)shortened++;
-      else drifted++;
+      else if(last>first)drifted++;
+      else unchanged++;
     }
     return {shortened,drifted,unchanged,comparable};
   }
@@ -781,6 +782,7 @@
     const movement=archiveOddsMovement(rows);
     $('#archiveOddsShortened').textContent=movement.shortened;
     $('#archiveOddsDrifted').textContent=movement.drifted;
+    $('#archiveOddsUnchanged').textContent=movement.unchanged;
     $('#archiveUpdated').textContent=rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'';
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
