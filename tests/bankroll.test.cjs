@@ -130,3 +130,27 @@ test("conflicting official winners at the same result version are not auto-settl
   assert.equal(result.state.openBets.length, 1);
   assert.equal(result.state.balance, 98);
 });
+
+test("a newly versioned official result can supersede an earlier unversioned settlement", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654324, side: "A"
+  });
+  const unversioned = bank.settleVerifiedResults(placed.state, [verifiedRow(7654324, "completed", 1, null)]);
+  assert.equal(unversioned.state.balance, 102.2);
+  const revised = bank.settleVerifiedResults(unversioned.state, [verifiedRow(7654324, "completed", 2, 1)]);
+  assert.equal(revised.corrected.length, 1);
+  assert.equal(revised.state.balance, 98);
+  assert.equal(bank.realizedProfit(revised.state), -2);
+  assert.equal(bank.validateState(revised.state), revised.state);
+});
+
+test("manual settlements are not silently overwritten by later API results", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654325, side: "A"
+  });
+  const manual = bank.settleBet(placed.state, placed.bet.id, "won");
+  const reconciled = bank.settleVerifiedResults(manual, [verifiedRow(7654325, "completed", 2, 1)]);
+  assert.equal(reconciled.updated, 0);
+  assert.equal(reconciled.state.balance, 102.2);
+  assert.equal(bank.realizedProfit(reconciled.state), 2.2);
+});
