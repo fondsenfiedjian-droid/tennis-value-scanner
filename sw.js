@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-value-static-v22";
+const CACHE_NAME = "tennis-value-static-v21";
 const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./bankroll.js"];
 
 self.addEventListener("install", event => {
