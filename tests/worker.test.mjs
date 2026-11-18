@@ -760,6 +760,18 @@ test("result verification rejects mismatched match IDs, missing player identity 
   assert.equal(applyVerifiedMatchResult(rows,valid).updated,2);
 });
 
+test("result identity prefers stable player IDs when archived IDs are available", () => {
+  const { applyVerifiedMatchResult, mergePredictionArchive } = makeArchiveStore();
+  const imported=mergePredictionArchive([],[
+    {matchKey:"ids",matchId:4321,side:"A",player:"Player One",opponent:"Player Two",playerId:11,opponentId:22,odds:2,probability:60,ev:20,capturedAt:100},
+    {matchKey:"ids",matchId:4321,side:"B",player:"Player Two",opponent:"Player One",playerId:22,opponentId:11,odds:2,probability:40,ev:-20,capturedAt:100}
+  ]).rows;
+  assert.equal(imported[0].playerId,11);
+  const base={id:4321,players:{p1:{id:11,name:"Player One"},p2:{id:22,name:"Player Two"}},outcome:"completed",winner:1,result_version:1};
+  assert.equal(applyVerifiedMatchResult(imported,{...base,players:{p1:{id:99,name:"Player One"},p2:{id:22,name:"Player Two"}}}).updated,0);
+  assert.equal(applyVerifiedMatchResult(imported,base).updated,2);
+});
+
 test("result verification refuses completed matches without a valid winner or unknown outcomes", () => {
   const { applyVerifiedMatchResult } = makeArchiveStore();
   const rows=[{matchId:654,side:"A",player:"Player One",opponent:"Player Two"}];
