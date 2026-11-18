@@ -111,6 +111,8 @@
     <div class="panel"><div class="muted">Реализованная прибыль</div><div class="stat-num" id="bankProfit">—</div></div>
     <div class="panel"><div class="muted">Всего поставлено</div><div class="stat-num" id="bankTotalStaked">—</div></div>
     <div class="panel"><div class="muted">ROI рассчитанных ставок</div><div class="stat-num" id="bankRoi">—</div></div>
+    <div class="panel"><div class="muted">Приход</div><div class="stat-num" id="bankInflow">—</div></div>
+    <div class="panel"><div class="muted">Расход</div><div class="stat-num" id="bankOutflow">—</div></div>
   </div>
   <div class="panel">
     <b>Операции с деньгами</b>
@@ -744,6 +746,8 @@
     $('#bankProfit').textContent=(summary.realizedProfit>0?'+':'')+formatEuro(summary.realizedProfit);
     $('#bankTotalStaked').textContent=formatEuro(summary.totalStaked);
     $('#bankRoi').textContent=summary.roiPercent===null?'—':(summary.roiPercent>0?'+':'')+summary.roiPercent.toFixed(2)+'%';
+    $('#bankInflow').textContent=formatEuro(summary.totalInflow);
+    $('#bankOutflow').textContent=formatEuro(summary.totalOutflow);
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
     $('#bankTxCount').textContent=state.transactions.length+' операций';
     $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
