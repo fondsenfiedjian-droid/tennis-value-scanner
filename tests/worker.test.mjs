@@ -720,6 +720,18 @@ test("probability calibration excludes unresolved, retired, malformed, missing-d
   assert.equal(result.ambiguous,1);
 });
 
+test("probability calibration can derive the match-side probability from a B-only archive snapshot", () => {
+  const { archiveProbabilityCalibration } = makeArchiveStore();
+  const start=Date.parse("2026-11-20T12:00:00Z");
+  const result=archiveProbabilityCalibration([{
+    matchId:77,matchKey:"77",side:"B",probability:65,capturedAt:start-1000,
+    matchDate:new Date(start).toISOString(),resultOutcome:"completed",resultWinner:2
+  }]);
+  assert.equal(result.sampleSize,1);
+  assert.equal(result.buckets[0].lower,35);
+  assert.equal(result.brierScore,0.1225);
+});
+
 test("probability calibration rejects conflicting latest snapshots and counts duplicate exact snapshots once", () => {
   const { archiveProbabilityCalibration } = makeArchiveStore();
   const start=Date.parse("2026-11-20T12:00:00Z");
