@@ -137,4 +137,18 @@ The evaluation contained 5,785 ATP and 5,293 WTA matches, after filtering invali
 
 The surface blend improved Brier score and log loss over overall Elo on both tours in this sample, but it did not improve winner accuracy on WTA. Recent form and the combined variant did not consistently improve calibration. This is evidence to investigate surface-specific ratings further, **not** enough to promote new weights into the live model. The test uses match results only, not historical Winamax prices; it does not measure betting ROI, closing-line value, or profitability. Re-run the commands above when the source archive changes, and validate on additional seasons before any production change.
 
+
+### Year-by-year stability check (2024 and 2025)
+
+The same 2022–2025 ATP/WTA files were also evaluated separately by season, retaining 2022–2023 as warm-up. Brier score by year:
+
+| Tour / season | Overall Elo | Surface blend | Elo + form | Elo + H2H | Combined |
+|---|---:|---:|---:|---:|---:|
+| ATP 2024 (3,050 matches) | 0.21902 | **0.21758** | 0.21992 | 0.21896 | 0.21823 |
+| ATP 2025 (2,735 matches) | 0.21910 | **0.21795** | 0.22000 | 0.21912 | 0.21868 |
+| WTA 2024 (2,686 matches) | 0.21914 | **0.21864** | 0.22038 | 0.21926 | 0.21974 |
+| WTA 2025 (2,607 matches) | 0.22082 | **0.21963** | 0.22182 | 0.22086 | 0.22050 |
+
+The surface blend had the lowest Brier score in all four tour-season slices, so its calibration improvement was not confined to one of the two evaluated years. Recent-form adjustment was worse than overall Elo in every slice. H2H was close to baseline and inconsistent; the combined candidate did not beat the surface-only blend. This strengthens the case for a carefully validated surface-rating experiment, but it still does not establish positive betting value: historical odds and market comparison are absent, and the candidate weights have not been tuned on a separate validation set.
+
 Data licensing matters: the commonly used Sackmann archive is distributed under CC BY-NC-SA 4.0. Check the source repository's current license and attribution requirements before use or redistribution; the non-commercial restriction may not permit commercial use. Treat older CSVs as historical backtest data, not a live feed.
