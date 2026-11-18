@@ -505,12 +505,15 @@ test("archive stores both priced player outcomes with calculated EV", () => {
   const match = { id: 123, tournament_name: "ATP Finals", tour: "ATP", surface: "Hard" };
   const element = { dataset: {
     nameA: "Ben Shelton", nameB: "Rafael Jodar",
-    playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10"
+    playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10",
+    quoteCapturedA: String(Date.parse("2026-11-18T09:59:00Z")),
+    quoteCapturedB: String(Date.parse("2026-11-18T09:58:30Z")),
+    oddsObservedAt: String(Date.parse("2026-11-18T09:59:30Z"))
   }};
   savePredictionSnapshot(match, element, {
     probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800,
     ratingsAsOfA: "2026-11-10", ratingsAsOfB: "2026-11-11"
-  });
+  }, Date.parse("2026-11-18T09:59:45Z"));
   const rows = readPredictionArchive();
   assert.equal(rows.length, 2);
   assert.equal(rows[0].tour, "atp");
@@ -519,6 +522,10 @@ test("archive stores both priced player outcomes with calculated EV", () => {
   assert.equal(rows.find(row => row.side === "A").ev, 8);
   assert.equal(rows.find(row => row.side === "B").ev, -16);
   assert.equal(rows.find(row => row.side === "A").ratingAsOf, "2026-11-10");
+  assert.equal(rows.find(row => row.side === "A").quoteCapturedAt, Date.parse("2026-11-18T09:59:00Z"));
+  assert.equal(rows.find(row => row.side === "B").quoteCapturedAt, Date.parse("2026-11-18T09:58:30Z"));
+  assert.equal(rows.find(row => row.side === "A").quoteObservedAt, Date.parse("2026-11-18T09:59:30Z"));
+  assert.equal(rows.find(row => row.side === "A").modelCalculatedAt, Date.parse("2026-11-18T09:59:45Z"));
 });
 
 test("archive suppresses identical snapshots but records changed odds", () => {
