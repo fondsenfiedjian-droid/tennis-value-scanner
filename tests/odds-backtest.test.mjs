@@ -426,7 +426,7 @@ test("archive coverage counts closing snapshots even when a match has no qualify
     { ...base, match_id: "no-bet-close", player_a: "Player C", player_b: "Player D",
       probability_a: "0.40", odds_captured_at: "2025-01-01T10:00:00Z" },
     { ...base, match_id: "no-bet-close", player_a: "Player C", player_b: "Player D",
-      probability_a: "0.40", odds_captured_at: "2025-01-01T11:30:00Z", odds_a: "2.10", odds_b: "1.90" }
+      probability_a: "0.40", odds_captured_at: "2025-01-01T11:30:00Z", odds_a: "2.10", odds_b: "1.80" }
   ];
   const report = runOddsBacktest(rows);
   assert.equal(report.bets, 1);
