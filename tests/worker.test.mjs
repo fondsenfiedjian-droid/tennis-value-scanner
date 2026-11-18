@@ -1190,6 +1190,31 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
   assert.equal(cancelled.transactions.length, initial.transactions.length);
 });
 
+test("open exposure concentration groups bookmaker and overlapping player risk without changing the ledger", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  state = api.placeBet(state, {
+    matchKey: "cluster-1", match: "Player A — Player B", player: "Player A", opponent: "Player B",
+    bookmaker: "Winamax", probability: 0.62, odds: 2.1, stake: 2
+  }).state;
+  state = api.placeBet(state, {
+    matchKey: "cluster-2", match: "Player A — Player C", player: "Player A", opponent: "Player C",
+    bookmaker: "Betclic", probability: 0.62, odds: 2.1, stake: 2
+  }).state;
+  const before = JSON.stringify(state);
+  const exposure = api.getExposureConcentration(state);
+  assert.equal(exposure.totalOpenStake, 4);
+  assert.equal(exposure.byBookmaker.length, 2);
+  assert.equal(exposure.byPlayer[0].name, "player a");
+  assert.equal(exposure.byPlayer[0].stake, 4);
+  assert.equal(exposure.byPlayer[0].sharePercent, 100);
+  assert.equal(exposure.byPlayer[0].highConcentration, true);
+  assert.match(exposure.note, /пересекается/);
+  assert.equal(JSON.stringify(state), before);
+});
+
 test("portfolio manager blocks the same match across different keys, labels and IDs", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -1271,7 +1296,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v50/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1335,7 +1360,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v50/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1351,7 +1376,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v50/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1540,7 +1565,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v50/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v51/);
 });
 
 
