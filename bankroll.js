@@ -72,11 +72,15 @@
     validateState(state);
     const deposits = state.transactions.filter(tx => tx.type === "deposit").reduce((s, tx) => s + tx.amount, 0);
     const withdrawals = state.transactions.filter(tx => tx.type === "withdrawal").reduce((s, tx) => s + tx.amount, 0);
+    const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
+    const profit = realizedProfit(state);
     return {
       balance: roundMoney(state.balance),
       openStake: totalOpenStake(state),
       equity: bankrollEquity(state),
-      realizedProfit: realizedProfit(state),
+      realizedProfit: profit,
+      totalStaked: roundMoney(totalStaked),
+      roiPercent: totalStaked > 0 ? roundMoney(profit / totalStaked * 100) : null,
       deposits: roundMoney(deposits),
       withdrawals: roundMoney(withdrawals),
       openBets: state.openBets.length,
