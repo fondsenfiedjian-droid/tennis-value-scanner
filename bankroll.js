@@ -278,7 +278,7 @@
   function settleVerifiedResults(input, archiveRows) {
     let state = cloneState(input);
     const rows = Array.isArray(archiveRows) ? archiveRows : [];
-    const settled = [], corrected = [], reopened = [];
+    const settled = [], corrected = [], reopened = [], metadataUpdated = [];
     for (const bet of [...state.openBets]) {
       if (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0 || !["A", "B"].includes(bet.side)) continue;
       const result = verifiedResultForMatch(rows, bet.matchId);
@@ -286,7 +286,10 @@
       const previousVersion = Number.isSafeInteger(bet.lastResultVersion) ? bet.lastResultVersion : null;
       if (previousVersion !== null && (result.version === null || result.version <= previousVersion)) continue;
       if (result.outcome !== "completed") {
-        if (result.version !== null) bet.lastResultVersion = result.version;
+        if (result.version !== null && result.version !== previousVersion) {
+          bet.lastResultVersion = result.version;
+          metadataUpdated.push({ betId: bet.id, matchId: bet.matchId, resultVersion: result.version, outcome: result.outcome });
+        }
         continue;
       }
       const outcome = (bet.side === "A" ? 1 : 2) === result.winner ? "won" : "lost";
@@ -342,7 +345,7 @@
       }
     }
     validateState(state);
-    return { state, settled, corrected, reopened, updated: settled.length + corrected.length + reopened.length };
+    return { state, settled, corrected, reopened, metadataUpdated, updated: settled.length + corrected.length + reopened.length + metadataUpdated.length };
   }
 
   function makeId() {
