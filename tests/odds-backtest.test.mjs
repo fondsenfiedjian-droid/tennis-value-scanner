@@ -255,3 +255,18 @@ test("timezone offsets with digits are accepted", () => {
   assert.equal(report.matches, 1);
   assert.equal(report.rejectedSnapshots, 0);
 });
+
+
+test("odds backtest rejects mixed bookmaker prices within one match", () => {
+  assert.throws(() => runOddsBacktest([
+    { ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, bookmaker: "Betclic", odds_captured_at: "2025-01-01T11:00:00Z" }
+  ]), /Conflicting match metadata/);
+});
+
+test("odds backtest keeps bookmaker provenance in selections", () => {
+  const report = runOddsBacktest([{
+    ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T10:00:00Z"
+  }]);
+  assert.equal(report.selections[0].bookmaker, "winamax");
+});
