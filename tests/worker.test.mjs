@@ -152,14 +152,18 @@ test("player stats endpoint reports forbidden access without inventing ULTRA ent
 });
 
 test("player stats endpoint preserves rate-limit retry guidance and identifies merged player IDs", async () => {
-  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Rate limited" }), {
-    status: 429, headers: { "Retry-After": "30" }
-  });
+  workerSandbox.fetch = async () => new Response(JSON.stringify({
+    error: "rate_limited", scope: "day", resets_at: "2026-11-19T00:00:00Z", limit_per_day: 100
+  }), { status: 429, headers: { "Retry-After": "30" } });
   const limited = await call("/player-stats?id=123");
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get("Retry-After"), "30");
   assert.equal(limited.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
-  assert.equal((await limited.json()).accessStatus, "rate_limited");
+  const limitedPayload = await limited.json();
+  assert.equal(limitedPayload.accessStatus, "rate_limited");
+  assert.deepEqual(JSON.parse(JSON.stringify(limitedPayload.rateLimit)), {
+    errorCode: "rate_limited", scope: "day", resetsAt: "2026-11-19T00:00:00Z", retryAtEpoch: null, detail: null
+  });
 
   workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Player merged" }), { status: 410 });
   const merged = await call("/player-stats?id=123");
@@ -1404,7 +1408,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
   assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
@@ -1469,7 +1473,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1485,7 +1489,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1674,7 +1678,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -1893,7 +1897,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -1972,7 +1976,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -2000,7 +2004,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -2067,7 +2071,7 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -2130,7 +2134,7 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
 test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
   assert.ok(frontendSource.includes("summary.outcomeDispersion"));
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 
@@ -2206,6 +2210,24 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
   assert.equal(limited.calls.recent, 0);
   assert.equal(limited.calls.serve, 0);
 
+  const dailyReset = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const daily = await runLoader({
+    accessStatus: "rate_limited", error: "Rate limited",
+    rateLimit: { errorCode: "rate_limited", scope: "day", resetsAt: dailyReset, retryAtEpoch: null }
+  }, 429, "30");
+  assert.equal(daily.result.rateLimitScope, "day");
+  assert.equal(daily.result.resetsAt, dailyReset);
+  assert.ok(daily.result.retryAfterSeconds >= 7199 && daily.result.retryAfterSeconds <= 7200,
+    "daily reset must take precedence over the short Retry-After header");
+
+  const abuse = await runLoader({
+    accessStatus: "rate_limited", error: "Rate limited",
+    rateLimit: { errorCode: "abuse_throttled", scope: null, resetsAt: null, retryAtEpoch: Math.ceil((Date.now() + 24 * 60 * 60 * 1000) / 1000) }
+  }, 429, "30");
+  assert.equal(abuse.result.rateLimitError, "abuse_throttled");
+  assert.ok(abuse.result.retryAfterSeconds >= 86399 && abuse.result.retryAfterSeconds <= 86400,
+    "abuse retry epoch must take precedence over Retry-After");
+
   const dateRetry = await runLoader(
     { accessStatus: "rate_limited", error: "Rate limited" },
     429,
@@ -2238,7 +2260,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.ok(frontendSource.includes("rate_limited:'лимит запросов API; учитывайте Retry-After'"));
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v84/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
