@@ -1911,7 +1911,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
 
 test("segment performance groups settled bets by original model probability", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   let state = api.createInitialState(1000);
   const add = (key, probability, odds, outcome) => {
