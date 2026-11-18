@@ -205,6 +205,16 @@ test("archive import validates records, merges duplicates, and keeps newest 600"
   assert.equal(capped.rows[0].capturedAt, 6);
 });
 
+test("predict rejects the same player ID on both sides before API calls", async () => {
+  const response = await worker.fetch(new Request("https://example.com/predict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ playerIdA: "player-123", playerIdB: "player-123" })
+  }), { LIVE_TENNIS_API_KEY: "test-key" });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /different players/);
+});
+
 test("result endpoint validates the match ID and HTTP method", async () => {
   assert.equal((await call("/result?id=0")).status, 400);
   assert.equal((await call("/result?id=12x")).status, 400);
