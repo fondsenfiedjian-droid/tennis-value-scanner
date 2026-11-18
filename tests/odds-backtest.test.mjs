@@ -323,7 +323,7 @@ test("threshold sensitivity compares fixed EV and odds grids on a chronological 
       match_id: "grid-" + index,
       match_start: "2025-01-" + day + "T12:00:00Z",
       odds_captured_at: "2025-01-" + day + "T10:00:00Z",
-      probability_a: index % 2 ? "0.40" : "0.60",
+      probability_a: "0.60",
       winner: index % 2 ? "B" : "A"
     };
   });
