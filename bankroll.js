@@ -275,6 +275,15 @@
     const probability = Number(bet.probability);
     const odds = Number(bet.odds);
     const recommendation = recommendStake(state, probability, odds, bet.options || {});
+    const matchKey = String(bet.matchKey || "").trim();
+    const matchId = Number(bet.matchId);
+    const matchLabel = String(bet.match || "").trim().toLocaleLowerCase();
+    if (state.openBets.some(existing =>
+      (matchKey && existing.matchKey === matchKey) ||
+      (Number.isSafeInteger(matchId) && matchId > 0 && existing.matchId === matchId) ||
+      (matchLabel && String(existing.match || "").trim().toLocaleLowerCase() === matchLabel))) {
+      throw new Error("Ставка на этот матч уже есть в открытом журнале. Повторная запись заблокирована.");
+    }
     const requested = bet.stake === undefined ? recommendation.stake : roundMoney(Number(bet.stake));
     if (!recommendation.eligible) throw new Error(recommendation.reason);
     if (!Number.isFinite(requested) || requested < 0.01 || requested > state.balance || requested > recommendation.stake) throw new Error("Размер ставки превышает рекомендуемый лимит или свободный баланс.");
