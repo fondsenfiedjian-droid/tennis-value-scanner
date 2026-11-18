@@ -417,3 +417,20 @@ test("archive coverage reports date span, bookmaker, tours, surfaces and snapsho
   assert.equal(coverage.matchesWithQualifyingClosingSnapshot, 1);
   assert.equal(coverage.matchesWithoutQualifyingClosingSnapshot, 1);
 });
+
+
+test("archive coverage counts closing snapshots even when a match has no qualifying bet", () => {
+  const rows = [
+    { ...base, match_id: "selected-close", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "selected-close", odds_captured_at: "2025-01-01T11:30:00Z", odds_a: "2.10", odds_b: "1.90" },
+    { ...base, match_id: "no-bet-close", player_a: "Player C", player_b: "Player D",
+      probability_a: "0.40", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "no-bet-close", player_a: "Player C", player_b: "Player D",
+      probability_a: "0.40", odds_captured_at: "2025-01-01T11:30:00Z", odds_a: "2.10", odds_b: "1.90" }
+  ];
+  const report = runOddsBacktest(rows);
+  assert.equal(report.bets, 1);
+  assert.equal(report.closingLineValueSample.measured, 1);
+  assert.equal(report.archiveCoverage.matchesWithQualifyingClosingSnapshot, 2);
+  assert.equal(report.archiveCoverage.matchesWithoutQualifyingClosingSnapshot, 0);
+});
