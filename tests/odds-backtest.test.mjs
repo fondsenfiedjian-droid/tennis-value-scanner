@@ -11,7 +11,9 @@ const base = {
   odds_a: "2.20",
   odds_b: "1.80",
   probability_a: "0.50",
-  winner: "A"
+  winner: "A",
+  tour: "atp",
+  surface: "Hard"
 };
 
 test("odds backtest uses earliest pre-match price, flat stakes and reports ROI", () => {
@@ -113,4 +115,16 @@ test("bankroll simulation limits same-day open exposure and skips duplicate matc
   assert.equal(report.strategies.bankroll2Percent.totalStaked, 8);
   assert.equal(report.strategies.bankroll2Percent.endingBankroll, 92);
   assert.equal(report.strategies.bankroll2Percent.maxDrawdownPercent, 8);
+});
+
+test("historical bankroll results are separated by tour and playing surface", () => {
+  const rows = [
+    { ...base, match_id: "atp-hard", match_start: "2025-01-01T12:00:00Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "wta-clay", match_start: "2025-01-02T12:00:00Z", odds_captured_at: "2025-01-02T10:00:00Z", tour: "wta", surface: "Clay" }
+  ];
+  const report = runOddsBacktest(rows);
+  assert.equal(report.bankrollSimulation.byTour.atp.strategies.flat1Euro.bets, 1);
+  assert.equal(report.bankrollSimulation.byTour.wta.strategies.flat1Euro.bets, 1);
+  assert.equal(report.bankrollSimulation.bySurface.hard.strategies.flat1Euro.bets, 1);
+  assert.equal(report.bankrollSimulation.bySurface.clay.strategies.flat1Euro.bets, 1);
 });
