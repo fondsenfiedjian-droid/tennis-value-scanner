@@ -129,7 +129,9 @@
   tourChecks.forEach(input=>input.addEventListener('change',()=>{saveTours();if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#saveSettings').onclick=()=>{
     const data={}; ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>data[id]=$('#'+id).value);
-    localStorage.setItem('tvs-settings',JSON.stringify(data)); close();
+    localStorage.setItem('tvs-settings',JSON.stringify(data));
+    localStorage.setItem('tvs-tours',JSON.stringify(selectedTours()));
+    close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
   };
   const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
