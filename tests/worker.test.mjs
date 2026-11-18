@@ -249,3 +249,20 @@ test("archive applies only verified completed results and honours result revisio
   assert.equal(withdrawn.rows[0].resultOutcome, "retired");
   assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
+
+test("auto-refresh setting is normalized and restored from persisted settings", () => {
+  const start = frontendSource.indexOf("function normalizeRefreshRate(");
+  const end = frontendSource.indexOf("\n  const saved=readSettings()", start);
+  assert.ok(start >= 0 && end > start);
+  const source = frontendSource.slice(start, end);
+  const sandbox = { Number };
+  vm.runInNewContext(source + "\nglobalThis.normalize = normalizeRefreshRate;", sandbox);
+  assert.equal(sandbox.normalize(0), 0);
+  assert.equal(sandbox.normalize("30"), 30);
+  assert.equal(sandbox.normalize(60), 60);
+  assert.equal(sandbox.normalize("180"), 180);
+  assert.equal(sandbox.normalize("invalid"), 60);
+  assert.match(frontendSource, /data\.refreshRate=refreshRate/);
+  assert.match(frontendSource, /normalizeRefreshRate\(readSettings\(\)\.refreshRate\)/);
+  assert.match(frontendSource, /window\.addEventListener\('pageshow'/);
+});
