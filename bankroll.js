@@ -371,7 +371,7 @@
     };
     state.balance = roundMoney(state.balance - requested);
     state.openBets.push(record);
-    appendTransaction(state, { id: "tx-" + makeId(), type: "stake", amount: requested, balanceDelta: -requested, betId: id, plannedStake: record.plannedStake, plannedOdds: record.plannedOdds, actualStake: requested, actualOdds: odds, note: record.match });
+    appendTransaction(state, { id: "tx-" + makeId(), type: "stake", amount: requested, balanceDelta: -requested, betId: id, plannedStake: record.plannedStake, plannedOdds: record.plannedOdds, actualStake: requested, actualOdds: odds, note: record.match, bookmaker: record.bookmaker });
     return { state, bet: record, recommendation };
   }
 
@@ -388,7 +388,7 @@
     state.openBets.splice(index, 1);
     appendTransaction(state, {
       id: "tx-" + makeId(), type: "settlement", amount: payout, balanceDelta: payout,
-      stake: bet.stake, profit, outcome, betId, note: bet.match,
+      stake: bet.stake, profit, outcome, betId, note: bet.match, bookmaker: bet.bookmaker || "Winamax",
       source: metadata.source === "verified" ? "verified" : "manual",
       matchId: bet.matchId, side: bet.side,
       resultVersion: Number.isSafeInteger(metadata.resultVersion) && metadata.resultVersion >= 1 ? metadata.resultVersion : null,
@@ -461,7 +461,7 @@
         appendTransaction(state, {
           id: "tx-" + makeId(), type: "settlement", amount: payout,
           balanceDelta: payout, stake: snapshot.stake, profit, outcome,
-          betId: transaction.betId, note: snapshot.match, source: "verified",
+          betId: transaction.betId, note: snapshot.match, bookmaker: snapshot.bookmaker || "Winamax", source: "verified",
           matchId: transaction.matchId, side: transaction.side,
           resultVersion: result.version, betSnapshot: snapshot
         });
