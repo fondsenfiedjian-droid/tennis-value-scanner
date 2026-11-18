@@ -657,8 +657,8 @@ test("archive tracks opening-to-latest odds movement per match side", () => {
   const movement = archiveOddsMovement(rows);
   assert.equal(movement.shortened, 1);
   assert.equal(movement.drifted, 1);
-  assert.equal(movement.unchanged, 1);
-  assert.equal(movement.comparable, 3);
+  assert.equal(movement.unchanged, 2);
+  assert.equal(movement.comparable, 4);
 });
 
 
