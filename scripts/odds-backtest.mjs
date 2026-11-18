@@ -154,10 +154,15 @@ export function simulateBankrollStrategies(selections, options = {}) {
       maxDrawdownPercent: Number(maxDrawdown.toFixed(2))
     };
   }
-  return {
+  const report = {
     startingBankroll, distinctMatches: unique.size, strategies: reports,
     methodology: "One highest-EV selection per match. Stakes are allocated in descending EV order in calendar-day batches and each day's outcomes are settled together. This approximates same-day exposure; intraday start/end times, commission, void rules, limits and execution slippage are not modelled."
   };
+  if (!options.skipBreakdowns) {
+    report.byTour = buildBankrollBreakdown([...unique.values()], "tour", startingBankroll);
+    report.bySurface = buildBankrollBreakdown([...unique.values()], "surface", startingBankroll);
+  }
+  return report;
 }
 
 function buildBankrollBreakdown(selections, field, startingBankroll) {
