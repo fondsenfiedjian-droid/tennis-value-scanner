@@ -434,7 +434,10 @@ test("IndexedDB migration never replaces a newer official result with a later-ch
   indexedDB.state.records.push({ ...stored, id: 1 });
   indexedDB.state.meta.set("initialized", true);
   const store = makeArchiveStore([staleBackup], { indexedDB });
-  await store.initializeArchiveStorage();
+  const preflight = store.mergePredictionArchive([stored], [staleBackup]);
+  assert.equal(preflight.rows[0].resultVersion, 5);
+  const initialization = await store.initializeArchiveStorage();
+  assert.equal(initialization.mode, "indexeddb");
   const migrated = store.readPredictionArchive()[0];
   assert.equal(migrated.resultVersion, 5);
   assert.equal(migrated.resultWinner, 1);
