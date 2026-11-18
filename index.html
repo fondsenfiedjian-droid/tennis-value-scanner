@@ -239,7 +239,7 @@
     let saved=null;
     try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
     try{
-      // Reuse recent data for five minutes; if the API is rate-limited, show the last saved data.
+      // Reuse recent data for fifteen minutes; if the API is rate-limited, show the last saved data.
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
         cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
