@@ -71,7 +71,7 @@ export function runBacktest(matches, options = {}) {
   if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
-  const byYear = new Map(), bySurface = new Map();
+  const byYear = new Map(), bySurfaceMetrics = new Map();
   const addMetric = (bucket, probability) => {
     bucket.n++;
     bucket.brier += (probability - 1) ** 2;
@@ -136,12 +136,12 @@ export function runBacktest(matches, options = {}) {
         const year = date.slice(0, 4);
         if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
         const surfaceKey = match.surface ?? "Unknown";
-        if (!bySurface.has(surfaceKey)) bySurface.set(surfaceKey, makeMetricBucket());
+        if (!bySurfaceMetrics.has(surfaceKey)) bySurfaceMetrics.set(surfaceKey, makeMetricBucket());
         for (const [name, delta] of Object.entries(features)) {
           const probability = sigmoid(1500 + delta, 1500);
           addMetric(totals[name], probability);
           addMetric(byYear.get(year)[name], probability);
-          addMetric(bySurface.get(surfaceKey)[name], probability);
+          addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
         }
       }
       updates.push(match);
@@ -190,7 +190,7 @@ export function runBacktest(matches, options = {}) {
     metrics: formatMetrics(totals),
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
-      bySurface: Object.fromEntries([...bySurface.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
+      bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
     }
   };
 }
