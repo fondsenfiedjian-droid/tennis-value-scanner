@@ -1207,7 +1207,7 @@ test("open exposure concentration groups bookmaker and overlapping player risk w
   const exposure = api.getExposureConcentration(state);
   assert.equal(exposure.totalOpenStake, 4);
   assert.equal(exposure.byBookmaker.length, 2);
-  assert.equal(exposure.byPlayer[0].name, "player a");
+  assert.equal(exposure.byPlayer[0].name, "Player A");
   assert.equal(exposure.byPlayer[0].stake, 4);
   assert.equal(exposure.byPlayer[0].sharePercent, 100);
   assert.equal(exposure.byPlayer[0].highConcentration, true);
