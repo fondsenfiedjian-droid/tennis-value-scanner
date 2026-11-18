@@ -115,6 +115,8 @@ async function call(path, method = "GET", body = undefined) {
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
+  let cachedStatsResponse = null;
+  workerSandbox.caches.default.put = async (_key, value) => { cachedStatsResponse = value; };
   workerSandbox.fetch = async (url, options) => {
     requestedUrl = url;
     requestedHeaders = options.headers;
@@ -131,6 +133,7 @@ test("player stats endpoint validates IDs and returns read-only API data with ac
   assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/players/123/stats");
   assert.equal(requestedHeaders["X-API-Key"], "test-key");
   assert.equal(requestedHeaders.Accept, "application/json");
+  assert.equal(cachedStatsResponse.headers.get("Cache-Control"), "public, max-age=60");
 });
 
 test("player stats endpoint reports forbidden access without inventing ULTRA entitlement", async () => {
@@ -2134,6 +2137,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.equal(sandbox.bestOf({ match_format: "BO3" }), 3);
   assert.equal(sandbox.bestOf({}), null);
   assert.ok(frontendSource.includes("fetch(API+'/player-stats?id='+encodeURIComponent(id))"));
+  assert.ok(frontendSource.includes("cached.value?.accessStatus==='available'?60*1000:2*60*1000"));
   assert.match(frontendSource, /normalizeRecentFormProfile/);
   assert.match(frontendSource, /normalizeServeReturnProfile/);
   assert.match(frontendSource, /pfeServeInputs\.status==='ready_for_score_simulation'&&matchBestOf/);
