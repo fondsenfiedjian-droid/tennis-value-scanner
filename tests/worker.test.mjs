@@ -2180,7 +2180,7 @@ test("live prediction cards connect the Elo estimate to PFE without changing the
 test("PFE treats a fresh two-sided bookmaker market as a separate source and flags disagreement", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   const agreement = pfe.fusePredictions([
     { id: "general-elo-v2", dependencyGroup: "elo-ratings", probability: 0.61 },
