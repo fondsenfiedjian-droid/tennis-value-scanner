@@ -226,11 +226,11 @@
     };
     for (const bet of state.openBets) {
       add(bookmakerGroups, bet.bookmaker || "Не указан", bet.stake);
-      const participants = new Set([bet.player, bet.opponent]
+      const participants = new Map([bet.player, bet.opponent]
         .filter(name => typeof name === "string" && name.trim())
-        .map(name => name.trim().toLocaleLowerCase()));
+        .map(name => [name.trim().toLocaleLowerCase(), name.trim()]));
       if (!participants.size) unclassifiedStake += bet.stake;
-      for (const participant of participants) add(playerGroups, participant, bet.stake);
+      for (const participant of participants.values()) add(playerGroups, participant, bet.stake);
     }
     const format = groups => [...groups.values()].map(group => ({
       name: group.name, stake: roundMoney(group.stake), bets: group.bets,
