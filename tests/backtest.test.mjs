@@ -209,6 +209,8 @@ test("favourite recalibration validation trains on the prior year and scores the
   );
   assert.ok(validation);
   assert.equal(validation.trainingMatches, 205);
+  assert.equal(validation.trainingSampleQuality, "larger_sample");
+  assert.equal(validation.evaluationSampleQuality, "larger_sample");
   assert.equal(validation.raw.matches, 205);
   assert.equal(validation.calibrated.matches, 205);
   assert.equal(validation.calibrator.intercept, 0);
@@ -253,4 +255,30 @@ test("calibration sample-quality tiers switch at documented boundaries", () => {
   assert.equal(tierFor(30), "limited");
   assert.equal(tierFor(99), "limited");
   assert.equal(tierFor(100), "larger_sample");
+});
+
+
+test("held-out calibration labels small evaluation samples instead of implying stable validation", () => {
+  const rows = [];
+  for (const [year, count] of [["2024", 205], ["2025", 29]]) {
+    for (let i = 0; i < count; i++) {
+      rows.push({
+        tourney_date: year + "0101",
+        tourney_id: year + "-T",
+        match_num: String(i + 1),
+        winner_id: String(i * 2 + 1),
+        loser_id: String(i * 2 + 2),
+        score: "6-4 6-4",
+        surface: "Hard"
+      });
+    }
+  }
+  const validation = runBacktest(rows).calibrationValidation.find(item =>
+    item.trainingYear === "2024" && item.evaluationYear === "2025" &&
+    item.candidate === "elo" && item.scope === "tour"
+  );
+  assert.ok(validation);
+  assert.equal(validation.trainingSampleQuality, "larger_sample");
+  assert.equal(validation.evaluationSampleQuality, "low");
+  assert.equal(validation.raw.matches, 29);
 });
