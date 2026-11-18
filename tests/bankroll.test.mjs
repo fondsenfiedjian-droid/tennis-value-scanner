@@ -248,6 +248,13 @@ test("portfolio reconciliation records actual stake and odds and skips unplaced 
   assert.equal(result.skipped, 1);
   assert.equal(result.bets[0].stake, 1.25);
   assert.equal(result.bets[0].odds, 2.04);
+  assert.equal(result.bets[0].plannedStake, portfolio.suggestions[0].stake);
+  assert.equal(result.bets[0].plannedOdds, portfolio.suggestions[0].odds);
+  const stakeTx = result.state.transactions.find(tx => tx.type === "stake");
+  assert.equal(stakeTx.actualStake, 1.25);
+  assert.equal(stakeTx.actualOdds, 2.04);
+  assert.equal(stakeTx.plannedStake, portfolio.suggestions[0].stake);
+  assert.equal(stakeTx.plannedOdds, portfolio.suggestions[0].odds);
   assert.equal(result.state.balance, 98.75);
   assert.equal(result.state.openBets.length, 1);
   assert.equal(result.state.pendingPlan, null);
