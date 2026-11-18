@@ -227,6 +227,23 @@ test("frontend rejects malformed prediction payloads before display or caching",
   assert.ok(frontendSource.includes("else localStorage.removeItem(cacheKey)"));
 });
 
+test("daily best bet respects the configured minimum EV and odds floor", () => {
+  const start = frontendSource.indexOf("function selectBestBet(");
+  const end = frontendSource.indexOf("function renderBestBet(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Number };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.select = selectBestBet;", sandbox);
+  const bets = [
+    { player: "A", odds: 2.4, ev: 2.9 },
+    { player: "B", odds: 1.8, ev: 20 },
+    { player: "C", odds: 2.1, ev: 6 },
+    { player: "D", odds: 2.2, ev: 4 }
+  ];
+  assert.equal(sandbox.select(bets, 3).player, "C");
+  assert.equal(sandbox.select(bets, 7), null);
+  assert.equal(sandbox.select(bets, 0).player, "C");
+});
+
 test("data freshness is labelled conservatively from rating dates and odds age", () => {
   const start = frontendSource.indexOf("function assessDataFreshness(");
   const end = frontendSource.indexOf("function renderBestBet(", start);
