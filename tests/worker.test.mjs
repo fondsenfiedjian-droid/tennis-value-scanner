@@ -1054,6 +1054,8 @@ test("bankroll reports independent settled ROI and open exposure per bookmaker",
   state = api.settleBet(winamax.state, winamax.bet.id, "lost");
   const unknown = api.placeBet(state, { matchKey: "provider-stats-c", match: "E — F", probability: 0.62, odds: 2.1, stake: 1 });
   state = api.settleBet(unknown.state, unknown.bet.id, "void");
+  delete state.transactions.at(-1).bookmaker;
+  delete state.transactions.at(-1).betSnapshot.bookmaker;
   const open = api.placeBet(state, { matchKey: "provider-stats-d", match: "G — H", bookmaker: "Betclic", probability: 0.62, odds: 2.1, stake: 1 });
   state = open.state;
   const stats = api.getBookmakerSummary(state);
