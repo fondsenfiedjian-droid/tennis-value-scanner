@@ -53,7 +53,7 @@
       independent.push({
         dependencyGroup,
         probability: usable.reduce((sum, member) => sum + member.probability * member.weight, 0) / totalWeight,
-        weight: Math.max(...usable.map(member => member.quality * member.weight)),
+        weight: Math.max(...usable.map(member => member.weight)),
         modelIds: usable.map(member => member.id),
         uncertainty: usable.every(member => member.uncertainty !== null)
           ? Math.sqrt(usable.reduce((sum, member) => sum + Math.pow(member.uncertainty * member.weight, 2), 0)) / totalWeight
