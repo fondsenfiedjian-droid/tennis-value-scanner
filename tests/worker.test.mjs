@@ -2119,13 +2119,13 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.equal(sandbox.bestOf({ match_format: "Best of 5" }), 5);
   assert.equal(sandbox.bestOf({ match_format: "BO3" }), 3);
   assert.equal(sandbox.bestOf({}), null);
-  assert.match(frontendSource, /API\+'\\/player-stats\?id='/);
+  assert.ok(frontendSource.includes("fetch(API+'/player-stats?id='+encodeURIComponent(id))"));
   assert.match(frontendSource, /normalizeRecentFormProfile/);
   assert.match(frontendSource, /normalizeServeReturnProfile/);
   assert.match(frontendSource, /pfeServeInputs\.status==='ready_for_score_simulation'&&matchBestOf/);
   assert.match(frontendSource, /runMatchMonteCarlo/);
   assert.match(frontendSource, /confidenceInterval95A/);
-  assert.match(frontendSource, /Форма PRO:/);
+  assert.match(frontendSource, /Доступ Live Tennis API:/);\n  assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
 });
 
