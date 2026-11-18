@@ -33,7 +33,7 @@ vm.runInNewContext(
 const { findElo, eloProbability, response } = helperSandbox.testHelpers;
 
 const workerSandbox = {
-  Response, Request, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, encodeURIComponent,
+  Response, Request, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
   caches: { default: { match: async () => null, put: async () => {} } },
   fetch: async () => { throw new Error("Unexpected upstream network call in validation test"); }
 };
@@ -105,6 +105,17 @@ test("predict rejects malformed JSON with HTTP 400", async () => {
   const result = await call("/predict", "POST", "{");
   assert.equal(result.status, 400);
   assert.match((await result.json()).error, /Invalid JSON/);
+});
+
+test("predict rejects invalid UTF-8 request bodies", async () => {
+  const request = new Request("https://worker.test/predict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: new Uint8Array([0xff, 0xfe])
+  });
+  const result = await worker.fetch(request, env);
+  assert.equal(result.status, 400);
+  assert.match((await result.json()).error, /UTF-8/);
 });
 
 test("predict enforces the 16 KB limit using actual UTF-8 body bytes", async () => {
