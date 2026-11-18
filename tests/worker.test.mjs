@@ -2088,6 +2088,40 @@ test("PFE groups dependent models before fusion and flags a single-model estimat
   assert.ok(Math.abs(fused.groups.find(group => group.dependencyGroup === "results").probability - 0.66) < 1e-12);
 });
 
+test("PFE merges overlapping and transitively connected dependencies without double-counting", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const result = sandbox.pfe.fusePredictions([
+    { id: "elo", probability: 0.60, dependencyGroups: ["elo-ratings"] },
+    { id: "form", probability: 0.70, dependencyGroups: ["elo-ratings", "recent-results"] },
+    { id: "load", probability: 0.80, dependencyGroups: ["recent-results", "match-load"] },
+    { id: "market", probability: 0.55, dependencyGroups: ["market"] }
+  ]);
+  assert.equal(result.modelCount, 4);
+  assert.equal(result.independentGroups, 2);
+  assert.equal(result.status, "consensus");
+  assert.equal(result.groups.find(group => group.modelIds.includes("elo")).modelIds.length, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.groups.find(group => group.modelIds.includes("elo")).dependencyGroups)),
+    ["elo-ratings", "match-load", "recent-results"]);
+});
+
+test("PFE dependencyGroups retains legacy dependencyGroup behavior and registry copies dependency metadata", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const pfe = sandbox.pfe;
+  const result = pfe.fusePredictions([
+    { id: "elo", probability: 0.60, dependencyGroup: "ratings" },
+    { id: "form", probability: 0.70, dependencyGroup: "ratings" },
+    { id: "market", probability: 0.55, dependencyGroup: "market" }
+  ]);
+  assert.equal(result.independentGroups, 2);
+  const registry = pfe.getModelRegistry();
+  registry.find(row => row.id === "recent-form").dependencyGroups.push("mutated");
+  assert.equal(pfe.getModelRegistry().find(row => row.id === "recent-form").dependencyGroups.includes("mutated"), false);
+});
+
 test("PFE rejects invalid inputs, detects model conflict and keeps calibrated weights bounded", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
