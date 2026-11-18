@@ -824,6 +824,9 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes('id="navBankroll"'));
   assert.ok(frontendSource.includes("const BANKROLL_KEY='tvs-bankroll-v1'"));
   assert.ok(frontendSource.includes("TVSBankroll.recommendPortfolio"));
+  assert.ok(frontendSource.includes("TVSBankroll.reconcilePortfolioPlan"));
+  assert.ok(frontendSource.includes("data-plan-stake"));
+  assert.ok(frontendSource.includes("data-plan-odds"));
   assert.ok(frontendSource.includes("stakeMultiplier"));
   assert.match(frontendSource, /freshnessStakeMultiplier\(freshness\.level\)/);
   assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
@@ -881,7 +884,7 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
 });
 
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v24/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v25/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
