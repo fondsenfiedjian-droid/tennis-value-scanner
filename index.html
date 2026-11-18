@@ -138,9 +138,9 @@
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
-    <div class="panel"><div class="muted">С положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
-    <div class="panel"><div class="muted">Средний EV</div><div class="stat-num" id="archiveAvgEv">—</div></div>
-    <div class="panel"><div class="muted">Средний коэффициент</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
+    <div class="panel"><div class="muted">Сторон с положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
+    <div class="panel"><div class="muted">Средний EV по сторонам</div><div class="stat-num" id="archiveAvgEv">—</div></div>
+    <div class="panel"><div class="muted">Средний коэффициент по сторонам</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
     <div class="panel"><div class="muted">Завершено матчей</div><div class="stat-num" id="archiveSettled">0</div></div>
     <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
     <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
@@ -743,7 +743,9 @@
     }
     let hits=0;
     for(const row of latest.values()){
-      const predicted=Number(row.probability)>=50?row.side:(row.side==='A'?'B':'A');
+      const probability=Number(row.probability);
+      if(Math.abs(probability-50)<1e-9){hits+=0.5;continue;}
+      const predicted=probability>50?row.side:(row.side==='A'?'B':'A');
       if((predicted==='A'?1:2)===Number(row.resultWinner))hits++;
     }
     return {settled:latest.size,accuracy:latest.size?hits/latest.size*100:null};
