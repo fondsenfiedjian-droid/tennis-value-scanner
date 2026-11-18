@@ -206,13 +206,12 @@
     const setProbability = (firstA + firstB) / 2;
     const setsToWin = bestOf === 3 ? 2 : 3;
     let probabilityA = 0;
-    for (let winsA = setsToWin; winsA <= bestOf; winsA++) {
-      const winsB = bestOf - winsA;
+    for (let winsB = 0; winsB < setsToWin; winsB++) {
       let combinations = 1;
       for (let index = 1; index <= winsB; index++) {
         combinations *= (setsToWin - 1 + index) / index;
       }
-      probabilityA += combinations * Math.pow(setProbability, winsA) * Math.pow(1 - setProbability, winsB);
+      probabilityA += combinations * Math.pow(setProbability, setsToWin) * Math.pow(1 - setProbability, winsB);
     }
     return {
       status: "provisional",
