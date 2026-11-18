@@ -188,11 +188,15 @@
       return (x===a&&y===b)||(x===b&&y===a);
     });
   }
+  function normalizeTour(value){
+    const tour=String(value??'').trim().toLowerCase();
+    return ['atp','wta','challenger','itf','juniors'].includes(tour)?tour:null;
+  }
   function renderMatches(all){
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
-    const tours=selectedTours();
-    const byTour=all.filter(m=>tours.includes(String(m.tour||'').toLowerCase()));
+    const tours=selectedTours().map(normalizeTour).filter(Boolean);
+    const byTour=all.filter(m=>{const tour=normalizeTour(m.tour);return tour!==null&&tours.includes(tour);});
     const filtered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны');
     $('#matchCount').textContent=filtered.length;
