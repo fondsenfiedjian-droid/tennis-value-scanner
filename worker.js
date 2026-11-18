@@ -1,7 +1,8 @@
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache"
 };
 
 const APIFY_DATASET_ID = "ZBWihC1oYU8Pq9uBo";
@@ -14,12 +15,13 @@ function internalCacheRequest(request, pathname) {
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
-function response(data, status = 200) {
+function response(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
     headers: {
       ...cors,
-      "Content-Type": "application/json; charset=utf-8"
+      "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders
     }
   });
 }
@@ -327,13 +329,19 @@ export default {
         catch { stats = null; }
         if (!upstream.ok) {
           const accessStatus = upstream.status === 403 ? "forbidden_or_plan_restricted"
-            : upstream.status === 401 ? "unauthorized" : upstream.status === 404 ? "stats_not_found" : "upstream_error";
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 404 ? "stats_not_found"
+            : upstream.status === 410 ? "player_merged"
+            : upstream.status === 429 ? "rate_limited"
+            : upstream.status === 400 ? "invalid_player_or_doubles"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
           return response({
             error: "Live Tennis player statistics request failed",
             playerId,
             accessStatus,
             upstreamStatus: upstream.status
-          }, upstream.status);
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
         }
         if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
           return response({ error: "Live Tennis returned an invalid player statistics payload", playerId, accessStatus: "invalid_payload" }, 502);
