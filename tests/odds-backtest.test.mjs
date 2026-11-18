@@ -130,3 +130,20 @@ test("historical bankroll results are separated by tour and playing surface", ()
   assert.equal(report.bankrollSimulation.bySurface.hard.strategies.flat1Euro.bets, 1);
   assert.equal(report.bankrollSimulation.bySurface.clay.strategies.flat1Euro.bets, 1);
 });
+
+test("flat one-euro benchmark obeys the live two-percent per-bet cap on small bankrolls", () => {
+  const selections = Array.from({ length: 10 }, (_, index) => ({
+    matchId: "small-bank-" + index,
+    matchStart: "2025-01-01T12:00:00Z",
+    odds: 2,
+    modelProbability: 0.6,
+    expectedValue: 20 + index,
+    winner: "A",
+    won: true
+  }));
+  const report = simulateBankrollStrategies(selections, { startingBankroll: 20 });
+  assert.equal(report.strategies.flat1Euro.bets, 4);
+  assert.equal(report.strategies.flat1Euro.totalStaked, 1.6);
+  assert.equal(report.strategies.flat1Euro.endingBankroll, 21.6);
+  assert.match(report.methodology, /capped at 2%/);
+});
