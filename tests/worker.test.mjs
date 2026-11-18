@@ -23,7 +23,7 @@ function makeArchiveStore(seed = [], options = {}) {
   const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, archiveOddsQuality, archiveProbabilityCalibration, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, archiveOddsQuality, archiveProbabilityCalibration, selectArchiveResultCheckIds, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -669,6 +669,30 @@ test("result endpoint proxies one match with the configured API key", async () =
   assert.equal(body.winner, 1);
 });
 
+test("result check batches rotate by oldest check time instead of starving later matches", () => {
+  const { selectArchiveResultCheckIds } = makeArchiveStore();
+  const now=Date.parse("2026-11-20T18:00:00Z");
+  const rows=Array.from({length:15},(_,index)=>({
+    matchId:index+1,matchDate:new Date(now-5*60*60*1000-index*60000).toISOString(),
+    resultCheckedAt:index<10?now-10*60*1000:null
+  }));
+  assert.deepEqual(selectArchiveResultCheckIds(rows,now,10),[11,12,13,14,15]);
+  const next=rows.map(row=>({...row,resultCheckedAt:row.matchId>10?now:row.resultCheckedAt}));
+  assert.deepEqual(selectArchiveResultCheckIds(next,now+31*60*1000,10),[1,2,3,4,5,6,7,8,9,10]);
+});
+
+test("result check selector ignores future, too-recent and invalid match records", () => {
+  const { selectArchiveResultCheckIds } = makeArchiveStore();
+  const now=Date.parse("2026-11-20T18:00:00Z");
+  const rows=[
+    {matchId:1,matchDate:new Date(now-4*60*60*1000).toISOString()},
+    {matchId:2,matchDate:new Date(now-2*60*60*1000).toISOString()},
+    {matchId:3,matchDate:new Date(now-4*60*60*1000).toISOString(),resultCheckedAt:now-5*60*1000},
+    {matchId:0,matchDate:new Date(now-4*60*60*1000).toISOString()}
+  ];
+  assert.deepEqual(selectArchiveResultCheckIds(rows,now,10),[1]);
+});
+
 test("probability calibration uses one latest pre-match A-side prediction per verified match", () => {
   const { archiveProbabilityCalibration } = makeArchiveStore();
   const start = Date.parse("2026-11-20T12:00:00Z");
@@ -1123,7 +1147,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v45/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1187,7 +1211,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v45/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1203,7 +1227,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v45/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1350,7 +1374,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v44/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v45/);
 });
 
 
