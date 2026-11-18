@@ -11,6 +11,8 @@ const base = {
   odds_a: "2.20",
   odds_b: "1.80",
   probability_a: "0.50",
+  model_calculated_at: "2024-12-31T00:00:00Z",
+  capture_status: "upcoming",
   winner: "A",
   tour: "atp",
   surface: "Hard"
@@ -101,12 +103,12 @@ test("odds backtest rejects conflicting results for one match ID", () => {
 
 test("scanner semicolon CSV archive is paired into pre-match snapshots and settled outcomes", () => {
   const csv = [
-    "capturedAt;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
-    "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;completed;1",
-    "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;completed;1",
-    "1735725600000;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
+    "capturedAt;modelCalculatedAt;captureStatus;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
+    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
+    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
+    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;completed;1",
+    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;completed;1",
+    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
   ].join("\n");
   const parsed = parseCsv(csv, { delimiter: ";" });
   const adapted = adaptScannerArchiveRows(parsed);
@@ -116,6 +118,7 @@ test("scanner semicolon CSV archive is paired into pre-match snapshots and settl
   assert.equal(adapted.rows[0].tour, "atp");
   assert.equal(adapted.rows[0].surface, "Hard");
   assert.equal(adapted.rows[0].rating_as_of_a, "2024-12-31");
+  assert.equal(adapted.rows[0].model_calculated_at, "2025-01-01T09:59:59.000Z");
   assert.equal(adapted.rows[0].rating_as_of_b, "2025-01-01");
   const report = runOddsBacktest(adapted.rows, { minEv: 0.03, minOdds: 1.9 });
   assert.equal(report.matches, 1);
@@ -406,7 +409,7 @@ test("archive coverage reports date span, bookmaker, tours, surfaces and snapsho
   assert.equal(coverage.validSnapshots, 3);
   assert.deepEqual(coverage.ratingDateCoverage, {
     provided: 0, missing: 6, invalid: 0, beforeMatchDate: 0, sameMatchDate: 0, afterMatchDate: 0,
-    note: "ratingAsOf is a calendar-date provenance hint, not proof that the probability was calculated before the odds snapshot or match start. Same-day dates have unknown intraday ordering."
+    note: "ratingAsOf is a calendar-date hint only; model_calculated_at is separately required and must be strictly earlier than odds_captured_at and match_start."
   });
   assert.equal(coverage.matchDateRange.from, "2025-01-01T12:00:00.000Z");
   assert.equal(coverage.matchDateRange.to, "2025-01-03T12:00:00.000Z");
@@ -440,13 +443,13 @@ test("scanner archive rejects duplicate side snapshots with conflicting rating p
   const rows = [
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-30", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-30", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
-      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" }
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
   ];
   assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
 });
@@ -455,13 +458,48 @@ test("scanner archive rejects duplicate side snapshots with conflicting player i
   const rows = [
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Wrong Player", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
-      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", resultOutcome: "completed", resultWinner: "1" }
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
   ];
   assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
+});
+
+
+test("strict probability provenance excludes missing, equal-time, future and non-upcoming snapshots", () => {
+  const rows = [
+    { ...base, match_id: "valid-provenance", model_calculated_at: "2025-01-01T09:59:59Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "missing-model-time", model_calculated_at: undefined, odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "same-time", model_calculated_at: "2025-01-01T10:00:00Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "after-odds", model_calculated_at: "2025-01-01T10:00:01Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "after-start", model_calculated_at: "2025-01-01T12:00:00Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "live-capture", capture_status: "live", odds_captured_at: "2025-01-01T10:00:00Z" }
+  ];
+  const report = runOddsBacktest(rows, { thresholdSensitivity: false });
+  assert.equal(report.matches, 1);
+  assert.equal(report.rejectedSnapshots, 5);
+  assert.deepEqual(report.archiveCoverage.modelProbabilityProvenance, {
+    provided: 5, missing: 1, invalid: 0, afterOddsCapture: 3, atOrAfterMatchStart: 1,
+    nonUpcomingStatus: 1, acceptedSnapshots: 1,
+    note: "Strict cohort only: model_calculated_at must include a timezone and be strictly earlier than odds_captured_at and match_start. If capture_status is present it must be upcoming. Missing or ambiguous legacy timestamps are excluded, not inferred."
+  });
+});
+
+test("scanner archive excludes legacy rows without model calculation time", () => {
+  const rows = [
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "legacy-no-model-time",
+      captureStatus: "upcoming", tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B",
+      side: "A", odds: "2.20", probability: "50", resultOutcome: "completed", resultWinner: "1" },
+    { capturedAt: "1735725600000", modelCalculatedAt: "1735725599000", captureStatus: "upcoming",
+      matchDate: "2025-01-01T12:00:00.000Z", matchId: "legacy-no-model-time", tour: "atp", surface: "Hard",
+      player: "Player B", opponent: "Player A", side: "B", odds: "1.80", probability: "50",
+      resultOutcome: "completed", resultWinner: "1" }
+  ];
+  const adapted = adaptScannerArchiveRows(rows);
+  assert.equal(adapted.rows.length, 0);
+  assert.equal(adapted.ignored, 2);
 });
