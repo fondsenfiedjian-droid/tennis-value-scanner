@@ -1071,6 +1071,9 @@
     if(!reasons.length)reasons.push('рейтинги не старше 14 дней, коэффициент не старше 30 минут');
     return {level,label,details:reasons.join('; '),maxRatingAge,oddsAge:oddsKnown?oddsAge:null};
   }
+  function freshnessStakeMultiplier(level){
+    return level==='good'?1:level==='medium'?0.5:0;
+  }
   function selectBestBet(bets,minEv=3){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
     const freshnessRank={good:2,medium:1};
@@ -1164,7 +1167,7 @@
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,el.dataset.oddsAgeMinutes);
-        for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshness.level==='good'?1:freshness.level==='medium'?0.5:0;}
+        for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
