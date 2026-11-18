@@ -511,6 +511,18 @@ test("archive import merges newer official result metadata into an identical sna
   assert.equal(stale.rows[0].resultWinner, 1);
 });
 
+test("archive import rejects unknown result outcome labels", () => {
+  const { mergePredictionArchive } = makeArchiveStore();
+  const row = { matchKey: "bad-outcome", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1000,
+    resultOutcome: "winner", resultWinner: 1, resultVersion: 99 };
+  const merged = mergePredictionArchive([], [row]);
+  assert.equal(merged.rows.length, 1);
+  assert.equal(merged.rows[0].resultOutcome, null);
+  assert.equal(merged.rows[0].resultWinner, 1);
+  assert.equal(merged.rows[0].resultVersion, 99);
+});
+
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
