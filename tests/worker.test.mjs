@@ -2250,7 +2250,7 @@ test("PFE serve-return adapter respects ULTRA availability, sample sizes and mis
 });
 
 test("PFE interface states that serve-return model requires verified ULTRA data and does not activate without it", () => {
-  assert.ok(frontendSource.includes("Модуль подачи и приёма ожидает проверенные агрегаты ULTRA"));
+  assert.ok(frontendSource.includes("Подача и приём требуют агрегатов ULTRA"));
   assert.ok(frontendSource.includes("без них модель не активируется"));
 });
 
