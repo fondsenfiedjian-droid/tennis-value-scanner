@@ -362,14 +362,20 @@ export default {
         return response({ error: "Provide both player IDs, or neither" }, 400);
       }
 
-      const parseRating = value => {
+      const parseDecimal = value => {
+        if (typeof value !== "number" && typeof value !== "string") return null;
+        if (typeof value === "string" && !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(value.trim())) return null;
         const number = Number(value);
-        return Number.isFinite(number) && number > 0 && number <= 5000 ? number : null;
+        return Number.isFinite(number) ? number : null;
+      };
+      const parseRating = value => {
+        const number = parseDecimal(value);
+        return number !== null && number > 0 && number <= 5000 ? number : null;
       };
       const parseOdds = value => {
         if (value === undefined || value === null || value === "") return { valid: true, value: null };
-        const number = Number(value);
-        return Number.isFinite(number) && number > 1 && number <= 1000
+        const number = parseDecimal(value);
+        return number !== null && number > 1 && number <= 1000
           ? { valid: true, value: number }
           : { valid: false, value: null };
       };
