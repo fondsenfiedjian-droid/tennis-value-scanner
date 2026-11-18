@@ -395,3 +395,27 @@ test("archive tracks opening-to-latest odds movement per match side", () => {
   assert.equal(movement.drifted, 1);
   assert.equal(movement.comparable, 2);
 });
+
+
+test("concurrent predictions share in-flight player profile requests", async () => {
+  let upstreamCalls = 0;
+  workerSandbox.fetch = async url => {
+    upstreamCalls++;
+    await new Promise(resolve => setTimeout(resolve, 5));
+    const id = String(url).split("/").pop();
+    return new Response(JSON.stringify({ name: "Player " + id, stats: { overall_elo: id === "101" ? 1900 : 1800 } }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  const payload = JSON.stringify({ playerIdA: "101", playerIdB: "202" });
+  const [first, second] = await Promise.all([
+    call("/predict", "POST", payload),
+    call("/predict", "POST", payload)
+  ]);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(upstreamCalls, 2);
+  const firstBody = await first.json();
+  assert.equal(firstBody.ratingA, 1900);
+  assert.equal(firstBody.ratingB, 1800);
+});
