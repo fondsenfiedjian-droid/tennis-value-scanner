@@ -2178,7 +2178,8 @@ test("PFE history evaluation rejects post-start, unverified, duplicate and unkno
     { ...base, matchId: "unverified", resultVerified: false },
     { ...base, modelId: "imaginary-model", matchId: "unknown" }
   ]);
-  assert.equal(result.models[0].training.sampleSize, 1);
+  assert.equal(result.models[0].training.sampleSize, 0);
+  assert.equal(result.models[0].validation.sampleSize, 1);
   assert.equal(result.rejected.length, 4);
   assert.deepEqual(JSON.parse(JSON.stringify(result.rejected.map(row => row.reason).sort())),
     ["duplicate_match_model", "not_pre_match", "unknown_model", "unverified_result"].sort());
