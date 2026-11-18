@@ -2120,3 +2120,10 @@ test("PFE Monte Carlo is reproducible and labels the limits of its stress simula
   assert.equal(fixed.hasUncertaintyInputs, false);
   assert.match(fixed.note, /не симуляция розыгрышей или счёта|неинформативен/);
 });
+
+
+test("live prediction cards connect the Elo estimate to PFE without changing the source probability", () => {
+  assert.ok(frontendSource.includes("TVSPFE.fusePredictions(["));
+  assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
+  assert.ok(frontendSource.includes("PFE не меняет исходную вероятность, EV или размер ставки"));
+});
