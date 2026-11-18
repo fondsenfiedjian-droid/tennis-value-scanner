@@ -42,6 +42,7 @@
     .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#1b2a40;color:white;font-weight:700}.actions .primary{background:#16834e;border-color:#16834e}
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
     .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}.loading{text-align:center;padding:24px;color:var(--muted)}
+    .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
   </style>
 </head>
@@ -75,7 +76,7 @@
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
-  <div class="notice"><b>Статус:</b> расписание и коэффициенты Winamax подключены. Расчёт вероятностей и EV пока не реализован — коэффициенты сами по себе не являются рекомендацией к ставке.</div>
+  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются первые пять матчей с доступными ID игроков. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
 <div class="bottom"><div class="nav">
@@ -164,15 +165,66 @@
     $('#matchCount').textContent=all.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>Матчей на выбранную дату не найдено</strong><div class="muted">Попробуй вкладку «Завтра» или обнови данные.</div></div>';return;}
-    list.innerHTML=filtered.map(m=>{
-      const p=m.players||{};const a=playerName(p.p1||m.player1);const b=playerName(p.p2||m.player2);
+    list.innerHTML=filtered.map((m,i)=>{
+      const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
+      const a=playerName(p1);const b=playerName(p2);
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const matched=oddsForMatch(m);
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\s+-\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
-      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
+      let oddsA=null,oddsB=null;
+      matched.forEach(o=>{
+        const names=String(o.eventName||'').split(/\\s+-\\s+/);
+        if(names.length!==2)return;
+        const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);
+        const isP1=(o.outcome==='home')===homeIsP1;
+        const value=Number(o.oddsDecimal);
+        if(Number.isFinite(value)&&value>1){if(isP1)oddsA=value;else oddsB=value;}
+      });
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\\s+-\\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'"':'';
+      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
     }).join('');
+    loadPredictions(filtered);
+  }
+  async function loadPredictions(matches){
+    const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
+      const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
+      return a&&b&&a.id&&b.id&&document.getElementById('model-'+i)?.hasAttribute('data-player-a');
+    }).slice(0,5);
+    let positive=0,checked=0;
+    for(const {i} of candidates){
+      const el=document.getElementById('model-'+i);if(!el)continue;
+      const idA=el.dataset.playerA,idB=el.dataset.playerB;
+      const cacheKey='tvs-elo-'+idA+'-'+idB;
+      let result=null;
+      try{
+        const cached=localStorage.getItem(cacheKey);
+        if(cached){const item=JSON.parse(cached);if(item.savedAt>Date.now()-7*24*60*60*1000)result=item.data;}
+        if(!result){
+          const res=await fetch(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
+          result=await res.json();
+          if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
+          localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
+        }
+        if(result.evA===null&&el.dataset.oddsA)result.evA=(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100;
+        if(result.evB===null&&el.dataset.oddsB)result.evB=(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100;
+        const fmt=(v)=>Number(v).toFixed(2);
+        const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
+        const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
+        const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)?'model-positive':'model-negative';
+        const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
+        el.classList.remove('model-muted');
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>';
+        checked++;
+        if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
+        if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
+      }catch(err){
+        el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
+      }
+    }
+    $('#valueCount').textContent=positive;
+    if(!candidates.length)$('#valueCount').textContent='0';
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   async function loadMatches(){
