@@ -684,11 +684,19 @@
     };
   }
 
-  function buildMarketHistoryRecords(archiveRows) {
+  function buildMarketHistoryRecords(archiveRows, options = {}) {
     const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    const maxQuoteAgeMinutes = Number.isFinite(Number(options?.maxQuoteAgeMinutes))
+      ? clamp(Number(options.maxQuoteAgeMinutes), 1, 1440) : 90;
+    const maxQuoteAgeMs = maxQuoteAgeMinutes * 60000;
     const byMatch = new Map();
     const rejected = [];
-    const parseTime = value => typeof value === "number" ? value : Date.parse(value);
+    const staleMatches = new Set();
+    const parseTime = value => {
+      if (typeof value === "number") return value;
+      if (typeof value === "string" && /^\d{10,13}$/.test(value.trim())) return Number(value);
+      return Date.parse(value);
+    };
     const normalizeName = value => typeof value === "string"
       ? value.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
       : "";
@@ -704,6 +712,10 @@
           !Number.isFinite(capturedAt) || !Number.isFinite(matchStart) || capturedAt >= matchStart ||
           (row?.captureStatus && row.captureStatus !== "upcoming")) continue;
       if (!byMatch.has(matchId)) byMatch.set(matchId, new Map());
+      if (matchStart - capturedAt > maxQuoteAgeMs) {
+        staleMatches.add(matchId);
+        continue;
+      }
       const providers = byMatch.get(matchId);
       const providerKey = bookmaker.toLocaleLowerCase();
       if (!providers.has(providerKey)) providers.set(providerKey, { bookmaker, quotes: new Map() });
@@ -733,23 +745,34 @@
           const rowA = quote.A[0], rowB = quote.B[0];
           const identityA = [normalizeName(rowA.player), normalizeName(rowA.opponent)];
           const identityB = [normalizeName(rowB.opponent), normalizeName(rowB.player)];
+          const matchStartA = Date.parse(rowA.matchDate), matchStartB = Date.parse(rowB.matchDate);
           if (!identityA[0] || !identityA[1] || identityA[0] === identityA[1] ||
               identityA[0] !== identityB[0] || identityA[1] !== identityB[1]) {
             rejectionReason = "player_identity_mismatch";
             selected = null;
             break;
           }
+          if (!Number.isFinite(matchStartA) || !Number.isFinite(matchStartB) ||
+              Math.abs(matchStartA - matchStartB) > 60000) {
+            rejectionReason = "match_schedule_mismatch";
+            selected = null;
+            break;
+          }
+          const checkedAtA = parseTime(rowA.resultCheckedAt);
+          const checkedAtB = parseTime(rowB.resultCheckedAt);
           if (rowA.resultOutcome !== "completed" || rowB.resultOutcome !== "completed" ||
               ![1, 2].includes(Number(rowA.resultWinner)) ||
               Number(rowA.resultWinner) !== Number(rowB.resultWinner) ||
-              !Number.isFinite(Number(rowA.resultCheckedAt)) || Number(rowA.resultCheckedAt) <= 0 ||
-              !Number.isFinite(Number(rowB.resultCheckedAt)) || Number(rowB.resultCheckedAt) <= 0) {
+              !Number.isFinite(checkedAtA) || checkedAtA < matchStartA ||
+              !Number.isFinite(checkedAtB) || checkedAtB < matchStartB) {
             rejectionReason = "result_not_verified";
             selected = null;
             break;
           }
           if (selectedIdentity && (selectedIdentity[0] !== identityA[0] || selectedIdentity[1] !== identityA[1])) {
             rejectionReason = "cross_bookmaker_identity_mismatch";
+            providerProbabilities.length = 0;
+            selectedResult = null;
             selected = null;
             break;
           }
@@ -762,17 +785,21 @@
           }
           selected = {
             probabilityA, capturedAt: quote.capturedAt,
-            matchStart: Date.parse(rowA.matchDate),
+            matchStart: matchStartA,
             winner: Number(rowA.resultWinner),
             identity: identityA
           };
           break;
         }
-        if (!selected) continue;
+        if (!selected) {
+          if (rejectionReason === "cross_bookmaker_identity_mismatch") break;
+          continue;
+        }
         selectedIdentity ||= selected.identity;
         if (selectedResult && selectedResult.winner !== selected.winner) {
           rejectionReason = "conflicting_verified_result";
           providerProbabilities.length = 0;
+          selectedResult = null;
           break;
         }
         selectedResult ||= selected;
@@ -786,7 +813,8 @@
         continue;
       }
       if (!providerProbabilities.length || !selectedResult) {
-        rejected.push({ matchId, reason: rejectionReason || "no_complete_same_bookmaker_pair" });
+        rejected.push({ matchId, reason: rejectionReason || (staleMatches.has(matchId)
+          ? "stale_market_quote" : "no_complete_same_bookmaker_pair") });
         continue;
       }
       const sorted = providerProbabilities.slice().sort((a, b) => a - b);
