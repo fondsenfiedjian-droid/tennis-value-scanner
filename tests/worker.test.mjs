@@ -818,7 +818,7 @@ test("result verification rejects mismatched match IDs, missing player identity 
   assert.equal(applyVerifiedMatchResult(rows,valid).updated,2);
 });
 
-test("result identity prefers stable player IDs when archived IDs are available", () => {
+test("result identity prefers stable player IDs and tolerates harmless display-name changes", () => {
   const { applyVerifiedMatchResult, mergePredictionArchive } = makeArchiveStore();
   const imported=mergePredictionArchive([],[
     {matchKey:"ids",matchId:4321,side:"A",player:"Player One",opponent:"Player Two",playerId:11,opponentId:22,odds:2,probability:60,ev:20,capturedAt:100},
@@ -827,7 +827,34 @@ test("result identity prefers stable player IDs when archived IDs are available"
   assert.equal(imported[0].playerId,11);
   const base={id:4321,players:{p1:{id:11,name:"Player One"},p2:{id:22,name:"Player Two"}},outcome:"completed",winner:1,result_version:1};
   assert.equal(applyVerifiedMatchResult(imported,{...base,players:{p1:{id:99,name:"Player One"},p2:{id:22,name:"Player Two"}}}).updated,0);
+  assert.equal(applyVerifiedMatchResult(imported,{...base,players:{p1:{id:11,name:"P. One"},p2:{id:22,name:"P. Two"}}}).updated,2);
   assert.equal(applyVerifiedMatchResult(imported,base).updated,2);
+});
+
+test("result identity rejects swapped stable IDs even when names appear in the expected order", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const rows=[
+    {matchId:4322,side:"A",player:"Player One",opponent:"Player Two",playerId:11,opponentId:22},
+    {matchId:4322,side:"B",player:"Player Two",opponent:"Player One",playerId:22,opponentId:11}
+  ];
+  const swapped={id:4322,players:{p1:{id:22,name:"Player One"},p2:{id:11,name:"Player Two"}},outcome:"completed",winner:1,result_version:1};
+  assert.equal(applyVerifiedMatchResult(rows,swapped).updated,0);
+});
+
+test("result identity fallback normalizes accented Latin and Cyrillic player names", () => {
+  const { applyVerifiedMatchResult } = makeArchiveStore();
+  const latin=[
+    {matchId:4323,side:"A",player:"João Fonseca",opponent:"Nuno Borges"},
+    {matchId:4323,side:"B",player:"Nuno Borges",opponent:"João Fonseca"}
+  ];
+  const latinResult={id:4323,players:{p1:{name:"Joao Fonseca"},p2:{name:"Nuno Borges"}},outcome:"completed",winner:1,result_version:1};
+  assert.equal(applyVerifiedMatchResult(latin,latinResult).updated,2);
+  const cyrillic=[
+    {matchId:4324,side:"A",player:"Андрей Рублёв",opponent:"Даниил Медведев"},
+    {matchId:4324,side:"B",player:"Даниил Медведев",opponent:"Андрей Рублёв"}
+  ];
+  const cyrillicResult={id:4324,players:{p1:{name:"Андрей Рублев"},p2:{name:"Даниил Медведев"}},outcome:"completed",winner:2,result_version:1};
+  assert.equal(applyVerifiedMatchResult(cyrillic,cyrillicResult).updated,2);
 });
 
 test("result verification refuses completed matches without a valid winner or unknown outcomes", () => {
