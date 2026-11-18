@@ -302,7 +302,7 @@ export default {
         return response({ error: "id must be a valid player identifier" }, 400);
       }
       try {
-        // Player statistics change more often than profile ratings; cache successful responses for six hours.
+        // Player statistics change more often than profile ratings; cache successful responses for one minute, matching the provider's cache window.
         const cache = caches.default;
         const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-stats/" + encodeURIComponent(playerId));
         const cached = await cache.match(cacheKey);
@@ -333,7 +333,7 @@ export default {
         const payload = { playerId, source: "Live Tennis API /players/{id}/stats", accessStatus: "available", stats };
         await cache.put(cacheKey, new Response(JSON.stringify(payload), {
           status: 200,
-          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" }
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=60" }
         }));
         return response(payload);
       } catch {
