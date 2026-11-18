@@ -627,6 +627,8 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("TVSBankroll.settleVerifiedResults"));
   assert.ok(frontendSource.includes("reconcileBankrollWithArchive"));
   assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
+  assert.ok(frontendSource.includes("bankExportCsv"));
+  assert.ok(frontendSource.includes("tennis-value-bankroll-ledger.csv"));
   assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
   assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
 });
