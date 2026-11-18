@@ -373,3 +373,25 @@ test("threshold sensitivity marks one-day archives as insufficient rather than a
   assert.equal(sensitivity.trainingDays, 0);
   assert.equal(sensitivity.validationDays, 1);
 });
+
+
+test("archive coverage reports date span, bookmaker, tours, surfaces and snapshot depth", () => {
+  const rows = [
+    { ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T11:30:00Z" },
+    { ...base, match_id: "m2", match_start: "2025-01-03T12:00:00Z",
+      odds_captured_at: "2025-01-03T10:00:00Z", bookmaker: "Winamax",
+      player_a: "Player C", player_b: "Player D", winner: "B", surface: "Clay" }
+  ];
+  const coverage = runOddsBacktest(rows).archiveCoverage;
+  assert.equal(coverage.uniqueMatches, 2);
+  assert.equal(coverage.validSnapshots, 3);
+  assert.equal(coverage.matchDateRange.from, "2025-01-01T12:00:00.000Z");
+  assert.equal(coverage.matchDateRange.to, "2025-01-03T12:00:00.000Z");
+  assert.deepEqual(coverage.bookmakers, ["winamax"]);
+  assert.deepEqual(coverage.tours, ["atp"]);
+  assert.deepEqual(coverage.surfaces, ["Clay", "Hard"]);
+  assert.deepEqual(coverage.snapshotsPerMatch, { min: 1, median: 1, max: 2 });
+  assert.equal(coverage.matchesWithQualifyingClosingSnapshot, 1);
+  assert.equal(coverage.matchesWithoutQualifyingClosingSnapshot, 1);
+});
