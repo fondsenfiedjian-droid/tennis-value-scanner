@@ -2128,6 +2128,55 @@ test("PFE player stats loader accepts numeric IDs and rejects malformed IDs befo
   assert.equal(idPattern.test("12/3"), false);
 });
 
+test("PFE stats loader keeps PRO form independent of missing ULTRA data and rejects identity mismatch", async () => {
+  const start = frontendSource.indexOf("async function loadPfePlayerStats(");
+  const end = frontendSource.indexOf("\n  function explicitMatchBestOf", start);
+  assert.ok(start >= 0 && end > start);
+  const loader = frontendSource.slice(start, end);
+  const runLoader = async (payload, status = 200) => {
+    const calls = { recent: 0, serve: 0, requested: "" };
+    const sandbox = {
+      API: "https://worker.test",
+      Date, Number, String, encodeURIComponent, Map,
+      pfePlayerStatsCache: new Map(),
+      fetch: async url => {
+        calls.requested = url;
+        return { ok: status >= 200 && status < 300, status, json: async () => payload };
+      },
+      TVSPFE: {
+        normalizeRecentFormProfile: (value, options) => {
+          calls.recent++;
+          return { status: "ready_for_modeling", playerId: value.player.id, requestedId: options.playerId };
+        },
+        normalizeServeReturnProfile: () => {
+          calls.serve++;
+          return { status: "unavailable", reason: "serve_return_requires_ultra" };
+        }
+      }
+    };
+    vm.runInNewContext(loader + "\nglobalThis.loadStats = loadPfePlayerStats;", sandbox);
+    return { result: await sandbox.loadStats(123), calls };
+  };
+  const partial = await runLoader({ records: { recent: [] } });
+  assert.equal(partial.result.accessStatus, "available");
+  assert.equal(partial.result.recent.status, "ready_for_modeling");
+  assert.equal(partial.result.recent.playerId, 123);
+  assert.equal(partial.result.serve.status, "unavailable");
+  assert.equal(partial.calls.recent, 1);
+  assert.equal(partial.calls.serve, 1);
+  assert.equal(partial.calls.requested, "https://worker.test/player-stats?id=123");
+
+  const mismatch = await runLoader({ player: { id: 456 }, records: { recent: [] } });
+  assert.equal(mismatch.result.accessStatus, "player_identity_mismatch");
+  assert.equal(mismatch.calls.recent, 0);
+  assert.equal(mismatch.calls.serve, 0);
+
+  const forbidden = await runLoader({ accessStatus: "forbidden_or_plan_restricted" }, 403);
+  assert.equal(forbidden.result.accessStatus, "forbidden_or_plan_restricted");
+  assert.equal(forbidden.calls.recent, 0);
+  assert.equal(forbidden.calls.serve, 0);
+});
+
 test("PFE player stats are connected read-only and score simulation is gated by verified inputs and explicit format", () => {
   const start = frontendSource.indexOf("function explicitMatchBestOf(");
   const end = frontendSource.indexOf("\n  async function loadPredictions", start);
