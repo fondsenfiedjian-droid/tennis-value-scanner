@@ -48,6 +48,18 @@ The current model uses general player Elo ratings. It does **not** yet adjust fo
 
 Unsupported markets (totals, handicaps, and set betting) are not connected; only match-winner odds are processed.
 
+## Automated checks
+
+The GitHub Actions workflow runs on every push to `main` and on pull requests. It uses Node.js 22 and the built-in test runner; no third-party test packages are required.
+
+Run the same checks locally:
+
+```sh
+node --test tests/worker.test.mjs
+```
+
+The suite covers Elo extraction and probability calculations, Worker request validation, CORS headers, frontend JavaScript syntax, and the prediction archive wiring. Validation-route tests use mocked runtime dependencies and do not consume Live Tennis API or Apify quota.
+
 ## Deployment
 
 ### Cloudflare Worker
