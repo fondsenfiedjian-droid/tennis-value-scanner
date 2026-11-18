@@ -73,6 +73,7 @@
     const deposits = state.transactions.filter(tx => tx.type === "deposit").reduce((s, tx) => s + tx.amount, 0);
     const withdrawals = state.transactions.filter(tx => tx.type === "withdrawal").reduce((s, tx) => s + tx.amount, 0);
     const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
+    const settledStake = state.transactions.filter(tx => tx.type === "settlement").reduce((s, tx) => s + Number(tx.stake || 0), 0);
     const profit = realizedProfit(state);
     return {
       balance: roundMoney(state.balance),
@@ -80,7 +81,8 @@
       equity: bankrollEquity(state),
       realizedProfit: profit,
       totalStaked: roundMoney(totalStaked),
-      roiPercent: totalStaked > 0 ? roundMoney(profit / totalStaked * 100) : null,
+      settledStake: roundMoney(settledStake),
+      roiPercent: settledStake > 0 ? roundMoney(profit / settledStake * 100) : null,
       deposits: roundMoney(deposits),
       withdrawals: roundMoney(withdrawals),
       openBets: state.openBets.length,
@@ -197,7 +199,7 @@
     const profit = outcome === "won" ? roundMoney(payout - bet.stake) : outcome === "lost" ? -bet.stake : 0;
     state.balance = roundMoney(state.balance + payout);
     state.openBets.splice(index, 1);
-    appendTransaction(state, { id: "tx-" + makeId(), type: "settlement", amount: payout, balanceDelta: payout, profit, outcome, betId, note: bet.match });
+    appendTransaction(state, { id: "tx-" + makeId(), type: "settlement", amount: payout, balanceDelta: payout, stake: bet.stake, profit, outcome, betId, note: bet.match });
     return state;
   }
 
