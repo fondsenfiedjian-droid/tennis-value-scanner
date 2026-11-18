@@ -236,3 +236,21 @@ test("half-win Elo ties retain uncertainty in calibration intervals", () => {
   assert.ok(bin.actualUpper95 > 50);
   assert.ok(bin.actualUpper95 - bin.actualLower95 > 25);
 });
+
+
+test("calibration sample-quality tiers switch at documented boundaries", () => {
+  const makeRows = count => Array.from({ length: count }, (_, i) => ({
+    tourney_date: "20250101",
+    tourney_id: "T",
+    match_num: String(i + 1),
+    winner_id: String(i * 2 + 1),
+    loser_id: String(i * 2 + 2),
+    score: "6-4 6-4",
+    surface: "Hard"
+  }));
+  const tierFor = count => runBacktest(makeRows(count)).calibration.elo.bins.find(bin => bin.matches === count).sampleQuality;
+  assert.equal(tierFor(29), "low");
+  assert.equal(tierFor(30), "limited");
+  assert.equal(tierFor(99), "limited");
+  assert.equal(tierFor(100), "larger_sample");
+});
