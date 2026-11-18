@@ -573,6 +573,17 @@ test("archive applies only verified completed results and honours result revisio
   assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
 
+test("archive prediction accuracy gives exact 50 percent Elo ties half credit", () => {
+  const { archiveResultStats } = makeArchiveStore();
+  const rows = [
+    { matchId: 765, matchKey: "765", side: "A", probability: 50, capturedAt: 100, resultOutcome: "completed", resultWinner: 1 },
+    { matchId: 765, matchKey: "765", side: "B", probability: 50, capturedAt: 100, resultOutcome: "completed", resultWinner: 1 }
+  ];
+  const stats = archiveResultStats(rows);
+  assert.equal(stats.settled, 1);
+  assert.equal(stats.accuracy, 50);
+});
+
 test("archive rejects conflicting results at the same version and unversioned regressions", () => {
   const { applyVerifiedMatchResult } = makeArchiveStore();
   const rows = [
