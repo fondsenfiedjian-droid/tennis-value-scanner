@@ -138,6 +138,12 @@ The evaluation contained 5,785 ATP and 5,293 WTA matches, after filtering invali
 The surface blend improved Brier score and log loss over overall Elo on both tours in this sample, but it did not improve winner accuracy on WTA. Recent form and the combined variant did not consistently improve calibration. This is evidence to investigate surface-specific ratings further, **not** enough to promote new weights into the live model. The test uses match results only, not historical Winamax prices; it does not measure betting ROI, closing-line value, or profitability. Re-run the commands above when the source archive changes, and validate on additional seasons before any production change.
 
 
+### Held-out probability recalibration
+
+The backtest also tests a probability correction without fitting and scoring it on the same matches. For each adjacent pair of evaluation years, it fits a one-parameter logistic slope on the earlier year's favourite probabilities and evaluates the unchanged transformation on the following year. The intercept is fixed at zero so a 50% Elo tie remains exactly 50%; the slope is constrained to a positive range and weakly regularized toward 1 (no correction). The report compares held-out Brier score, log loss and ECE before and after recalibration. It also reports exploratory per-surface fits when the prior-year surface sample reaches 200 matches. ATP and WTA must be run separately, so each receives its own fit.
+
+This is chronological validation, not a production change. The calibrator is trained only on the immediately preceding calendar year represented in the evaluation window; earlier warm-up years are used to initialize Elo state, not to train the calibrator. If you want a 2024-to-2025 test, include both years in the evaluation window. A surface-specific correction can be noisier than the tour-wide fit even when its training sample passes the minimum threshold. Prefer the tour-wide held-out result unless a surface-specific gain repeats across multiple independent year pairs. Do not infer betting ROI from calibration metrics.
+
 ### Calibration check (2024–2025)
 
 A separate favourite-calibration report was computed from the same chronological evaluation window after correcting same-day Elo updates to be order-independent. Each match contributes one observation: the higher-probability side's predicted win probability and whether that favourite won. Exact Elo ties count as half a win. ECE is the weighted average absolute difference between predicted and observed win rates across ten 5-percentage-point bins.
