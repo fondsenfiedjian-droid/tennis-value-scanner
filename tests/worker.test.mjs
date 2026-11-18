@@ -12,16 +12,16 @@ const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
 const ratingDateStart = frontendSource.indexOf("function validRatingDate(");
 const ratingDateEnd = frontendSource.indexOf("function isValidPredictionResult(", ratingDateStart);
 const ratingDateSource = frontendSource.slice(ratingDateStart, ratingDateEnd);
-function makeArchiveStore(seed = []) {
+function makeArchiveStore(seed = [], options = {}) {
   const data = { 'tvs-prediction-archive-v1': JSON.stringify(seed) };
   const localStorage = {
     getItem: key => data[key] ?? null,
-    setItem: (key, value) => { data[key] = value; }
+    setItem: (key, value) => { if(options.failWrites)throw new Error('QuotaExceededError'); data[key] = value; }
   };
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -315,6 +315,19 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("archive memory cache remains readable when localStorage quota is exhausted", () => {
+  const store = makeArchiveStore([], { failWrites: true });
+  const row = { matchKey: "memory-only", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 };
+  const saved = store.persistPredictionArchive([row]);
+  assert.equal(saved.saved, 0);
+  assert.equal(store.readPredictionArchive().length, 1);
+  assert.equal(store.readPredictionArchive()[0].matchKey, "memory-only");
+  const returned = store.readPredictionArchive();
+  returned[0].player = "mutated";
+  assert.equal(store.readPredictionArchive()[0].player, "A");
 });
 
 test("archive keeps the legacy localStorage copy when IndexedDB is unavailable", async () => {
