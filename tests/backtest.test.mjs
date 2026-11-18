@@ -108,3 +108,30 @@ test("same-day rating updates are independent of CSV row order", () => {
   assert.deepEqual(forward.metrics, reversed.metrics);
   assert.deepEqual(forward.breakdowns, reversed.breakdowns);
 });
+
+
+test("calibration groups favourite probabilities and treats exact rating ties neutrally", () => {
+  const report = runBacktest([
+    { tourney_date: "20250101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" }
+  ]);
+  const calibration = report.calibration.elo;
+  assert.equal(calibration.bins[0].range, "50-55%");
+  assert.equal(calibration.bins[0].matches, 1);
+  assert.equal(calibration.bins[0].predicted, 50);
+  assert.equal(calibration.bins[0].actual, 50);
+  assert.equal(calibration.expectedCalibrationError, 0);
+  assert.equal(calibration.bins.reduce((sum, bin) => sum + bin.matches, 0), report.metrics.elo.matches);
+});
+
+test("calibration separates confident favourites from underdogs", () => {
+  const rows = [];
+  for (let i = 0; i < 8; i++) {
+    rows.push({ tourney_date: "20250101", tourney_id: "T", match_num: String(i + 1), winner_id: "1", loser_id: String(i + 2), score: "6-4 6-4", surface: "Hard" });
+  }
+  const report = runBacktest(rows);
+  const bins = report.calibration.elo.bins;
+  assert.equal(bins.reduce((sum, bin) => sum + bin.matches, 0), 8);
+  assert.ok(bins.some(bin => bin.matches > 0));
+  assert.ok(report.calibration.elo.expectedCalibrationError >= 0);
+  assert.ok(report.calibration.elo.expectedCalibrationError <= 100);
+});
