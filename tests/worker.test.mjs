@@ -6,7 +6,7 @@ import vm from "node:vm";
 const workerSource = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
 const sandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
-vm.runInNewContext(
+  helperSource + "\nglobalThis.testHelpers = { findElo, eloProbability, response };",
   helperSource + "\\nglobalThis.testHelpers = { findElo, eloProbability, response };",
   sandbox
 );
