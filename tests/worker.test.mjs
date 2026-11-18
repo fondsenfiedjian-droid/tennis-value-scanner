@@ -59,10 +59,10 @@ function makeFakeIndexedDB(options = {}) {
           };
         }
       };
-      Promise.resolve().then(() => Promise.resolve().then(() => {
+      setTimeout(() => {
         if (tx.aborted) { tx.error ||= new Error("Transaction aborted"); tx.onabort?.(); }
         else tx.oncomplete?.();
-      }));
+      }, 0);
       return tx;
     }
   };
