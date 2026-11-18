@@ -225,6 +225,9 @@
     if(!raw)return null;
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
+  function isFreshCacheTimestamp(savedAt,maxAge,now=Date.now()){
+    return Number.isFinite(savedAt)&&savedAt>0&&savedAt<=now+5*60*1000&&now-savedAt<=maxAge;
+  }
   const ODDS_CACHE_TTL=10*60*1000;
   let cachedOdds = [];
   let cachedOddsSavedAt = 0;
@@ -232,7 +235,7 @@
     const raw=localStorage.getItem('tvs-odds-cache');
     if(raw){
       const item=JSON.parse(raw);
-      if(Array.isArray(item.odds)&&Number.isFinite(item.savedAt)&&Date.now()-item.savedAt<=ODDS_CACHE_TTL){
+      if(Array.isArray(item.odds)&&isFreshCacheTimestamp(item.savedAt,ODDS_CACHE_TTL)){
         cachedOdds=item.odds;
         cachedOddsSavedAt=item.savedAt;
       }else localStorage.removeItem('tvs-odds-cache');
@@ -249,7 +252,7 @@
       localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,odds:cachedOdds}));
       return true;
     }catch(err){
-      if(!cachedOddsSavedAt||Date.now()-cachedOddsSavedAt>ODDS_CACHE_TTL){
+      if(!isFreshCacheTimestamp(cachedOddsSavedAt,ODDS_CACHE_TTL)){
         cachedOdds=[];
         cachedOddsSavedAt=0;
         localStorage.removeItem('tvs-odds-cache');
@@ -628,7 +631,7 @@
       let result=null;
       try{
         const cached=localStorage.getItem(cacheKey);
-        if(cached){const item=JSON.parse(cached);if(item.savedAt>Date.now()-7*24*60*60*1000)result=item.data;}
+        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000))result=item.data;}
         if(!result){
           const res=await fetch(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
           result=await res.json();
