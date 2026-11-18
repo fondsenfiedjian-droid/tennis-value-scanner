@@ -88,12 +88,12 @@ export default {
       }
 
       const status = url.searchParams.get("status") || "upcoming";
-      if (!["live", "upcoming", "completed"].includes(status)) {
-        return response({ error: "Invalid status. Use live, upcoming, or completed." }, 400);
+      if (!["live", "upcoming", "completed", "cancelled"].includes(status)) {
+        return response({ error: "Invalid status. Use live, upcoming, completed, or cancelled." }, 400);
       }
 
       const params = new URLSearchParams({ status });
-      for (const key of ["limit", "offset", "tour"]) {
+      for (const key of ["limit", "offset", "tour", "draw", "from", "to", "player", "country", "has_market", "has_analysis"]) {
         const value = url.searchParams.get(key);
         if (value !== null) params.set(key, value);
       }
