@@ -308,15 +308,32 @@ export default {
 
       let body = {};
       if (request.method === "POST") {
-        let rawBody;
+        let rawBody = "";
         try {
-          rawBody = await request.text();
+          const reader = request.body?.getReader();
+          if (reader) {
+            const chunks = [];
+            let totalBytes = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              totalBytes += value.byteLength;
+              if (totalBytes > 16384) {
+                await reader.cancel();
+                return response({ error: "Request body is too large (maximum 16 KB)" }, 413);
+              }
+              chunks.push(value);
+            }
+            const bytes = new Uint8Array(totalBytes);
+            let offset = 0;
+            for (const chunk of chunks) {
+              bytes.set(chunk, offset);
+              offset += chunk.byteLength;
+            }
+            rawBody = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+          }
         } catch {
-          return response({ error: "Could not read request body" }, 400);
-        }
-        // Enforce the limit against actual UTF-8 bytes, not a client-supplied header.
-        if (new TextEncoder().encode(rawBody).byteLength > 16384) {
-          return response({ error: "Request body is too large (maximum 16 KB)" }, 413);
+          return response({ error: "Could not read a valid UTF-8 request body" }, 400);
         }
         try {
           body = JSON.parse(rawBody);
