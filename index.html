@@ -438,7 +438,7 @@
         tx.oncomplete=()=>resolve({rows:rowsRequest.result||[],initialized:initializedRequest.result===true});
         tx.onerror=()=>reject(tx.error||new Error('Не удалось прочитать архив IndexedDB'));
       });
-      let rows=state.rows;
+      let rows=state.rows.map(({id,...row})=>row);
       let migrated=false;
       const legacy=readPredictionArchive();
       if(legacy.length){
