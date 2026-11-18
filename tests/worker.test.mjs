@@ -2125,7 +2125,8 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /pfeServeInputs\.status==='ready_for_score_simulation'&&matchBestOf/);
   assert.match(frontendSource, /runMatchMonteCarlo/);
   assert.match(frontendSource, /confidenceInterval95A/);
-  assert.match(frontendSource, /Доступ Live Tennis API:/);\n  assert.match(frontendSource, /Форма PRO:/);
+  assert.match(frontendSource, /Доступ Live Tennis API:/);
+  assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
 });
 
