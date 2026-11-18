@@ -571,7 +571,8 @@
     const matchId=Number.isSafeInteger(numericMatchId)&&numericMatchId>0?numericMatchId:null;
     const matchKey=String(match.id||match.match_id||match.event_id||[el.dataset.playerA,el.dataset.playerB,date?date.toISOString():''].join('-'));
     const tournament=match.tournament_name||match.tournament||match.event_name||match.competition||'';
-    const tour=normalizeTour(match.tour||match.tour_type||'')||'';
+    const rawTour=String(match.tour||match.tour_type||'').trim().toLowerCase();
+    const tour=['atp','wta','challenger','itf','juniors'].includes(rawTour)?rawTour:'';
     const surface=String(match.surface||match.court||match.court_name||'').trim().slice(0,40);
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
