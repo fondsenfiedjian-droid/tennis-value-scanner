@@ -1245,7 +1245,7 @@ test("player rating audit distinguishes fresh, recent, stale, unknown and invali
   const end = workerSource.indexOf("function normalizeSurface(", start);
   assert.ok(start >= 0 && end > start);
   const auditSource = workerSource.slice(start, end) +
-    "\\nglobalThis.ratingAudit = { extractRatingAsOf, assessRatingFreshness };";
+    "\nglobalThis.ratingAudit = { extractRatingAsOf, assessRatingFreshness };";
   const sandbox = {};
   vm.runInNewContext(auditSource, sandbox);
   const api = sandbox.ratingAudit;
