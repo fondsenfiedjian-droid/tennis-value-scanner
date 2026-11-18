@@ -52,7 +52,7 @@ Player B receives the complementary probability (`1 - P(A)`). Model probabilitie
 
 ## Model limitations
 
-The current model uses general player Elo ratings. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. Positive EV is a model estimate, not a guarantee of profit.
+The current model uses general player Elo ratings. Where the provider publishes `stats.ratings_as_of`, the app displays each player's rating date and stores it with the prediction snapshot and CSV export; a missing date is shown as unavailable rather than guessed. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. Positive EV is a model estimate, not a guarantee of profit.
 
 Unsupported markets (totals, handicaps, and set betting) are not connected; only match-winner odds are processed.
 
