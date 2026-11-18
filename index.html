@@ -1073,8 +1073,10 @@
   }
   function selectBestBet(bets,minEv=3){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=1.9)
-      .sort((a,b)=>b.ev-a.ev)[0]||null;
+    const freshnessRank={high:2,medium:1};
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=1.9&&
+      ['high','medium'].includes(x.freshnessLevel))
+      .sort((a,b)=>b.ev-a.ev||freshnessRank[b.freshnessLevel]-freshnessRank[a.freshnessLevel]||b.odds-a.odds)[0]||null;
   }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
     const box=$('#bestBet');
