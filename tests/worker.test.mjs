@@ -1338,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
   assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
@@ -1403,7 +1403,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1419,7 +1419,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1608,7 +1608,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -1827,7 +1827,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -1906,7 +1906,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -1934,7 +1934,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -2001,7 +2001,7 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -2064,7 +2064,7 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
 test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
   assert.ok(frontendSource.includes("summary.outcomeDispersion"));
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v62/);
 });
 
 
@@ -2127,4 +2127,59 @@ test("live prediction cards connect the Elo estimate to PFE without changing the
   assert.ok(frontendSource.includes("TVSPFE.fusePredictions(["));
   assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
   assert.ok(frontendSource.includes("PFE не меняет исходную вероятность, EV или размер ставки"));
+});
+
+
+test("PFE registry exposes active and planned models with explicit dependency groups", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const registry = sandbox.pfe.getModelRegistry();
+  assert.ok(registry.some(model => model.id === "general-elo-v2" && model.status === "active"));
+  assert.ok(registry.some(model => model.id === "surface-elo" && model.status === "planned"));
+  assert.equal(registry.find(model => model.id === "general-elo-v2").dependencyGroup, "elo-ratings");
+  registry[0].requires.push("mutated");
+  assert.equal(sandbox.pfe.getModelRegistry()[0].requires.includes("mutated"), false);
+});
+
+test("PFE history evaluation uses chronological holdout and neutral weights for small samples", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const rows = Array.from({ length: 60 }, (_, index) => ({
+    modelId: "general-elo-v2", matchId: "hist-" + index,
+    probability: index % 2 ? 0.7 : 0.3, outcome: index % 2 ? 1 : 0,
+    capturedAt: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+    matchStart: new Date(Date.UTC(2025, 0, index + 1, 12)).toISOString(),
+    resultVerified: true
+  }));
+  const evaluated = sandbox.pfe.evaluateModelHistory(rows);
+  assert.equal(evaluated.status, "evaluated");
+  assert.equal(evaluated.split, "chronological_70_30");
+  assert.equal(evaluated.models[0].training.sampleSize, 42);
+  assert.equal(evaluated.models[0].validation.sampleSize, 18);
+  assert.equal(evaluated.models[0].status, "validated");
+  assert.ok(evaluated.models[0].calibratedWeight > 1);
+  const small = sandbox.pfe.evaluateModelHistory(rows.slice(0, 20));
+  assert.equal(small.models[0].status, "insufficient_sample");
+  assert.equal(small.models[0].calibratedWeight, 1);
+});
+
+test("PFE history evaluation rejects post-start, unverified, duplicate and unknown observations", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const base = {
+    modelId: "general-elo-v2", matchId: "strict-1", probability: 0.62, outcome: 1,
+    capturedAt: "2025-01-01T10:00:00Z", matchStart: "2025-01-01T12:00:00Z", resultVerified: true
+  };
+  const result = sandbox.pfe.evaluateModelHistory([
+    base, { ...base }, { ...base, matchId: "late", capturedAt: "2025-01-01T12:00:00Z" },
+    { ...base, matchId: "unverified", resultVerified: false },
+    { ...base, modelId: "imaginary-model", matchId: "unknown" }
+  ]);
+  assert.equal(result.models[0].training.sampleSize, 1);
+  assert.equal(result.rejected.length, 4);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.rejected.map(row => row.reason).sort())),
+    ["duplicate_match_model", "not_pre_match", "unknown_model", "unverified_result"].sort());
 });
