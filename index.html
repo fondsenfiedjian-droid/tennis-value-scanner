@@ -92,6 +92,8 @@
     <div class="panel"><div class="muted">Средний коэффициент</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
     <div class="panel"><div class="muted">Завершено матчей</div><div class="stat-num" id="archiveSettled">0</div></div>
     <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
+    <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
+    <div class="panel"><div class="muted">Коэффициент вырос</div><div class="stat-num" id="archiveOddsDrifted">0</div></div>
   </div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
@@ -490,6 +492,27 @@
     }
     return {settled:latest.size,accuracy:latest.size?hits/latest.size*100:null};
   }
+  function archiveOddsMovement(rows){
+    const groups=new Map();
+    for(const row of rows){
+      const odds=Number(row.odds),capturedAt=Number(row.capturedAt);
+      if(!Number.isFinite(odds)||odds<=1||!Number.isFinite(capturedAt))continue;
+      const key=String(row.matchId||row.matchKey)+'|'+String(row.side||'');
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push({odds,capturedAt});
+    }
+    let shortened=0,drifted=0,unchanged=0,comparable=0;
+    for(const snapshots of groups.values()){
+      snapshots.sort((a,b)=>a.capturedAt-b.capturedAt);
+      if(snapshots.length<2)continue;
+      const first=snapshots[0].odds,last=snapshots[snapshots.length-1].odds;
+      if(first===last)continue;
+      comparable++;
+      if(last<first)shortened++;
+      else drifted++;
+    }
+    return {shortened,drifted,unchanged,comparable};
+  }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
     const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
@@ -500,6 +523,9 @@
     const resultStats=archiveResultStats(rows);
     $('#archiveSettled').textContent=resultStats.settled;
     $('#archiveAccuracy').textContent=resultStats.accuracy===null?'—':resultStats.accuracy.toFixed(1)+'%';
+    const movement=archiveOddsMovement(rows);
+    $('#archiveOddsShortened').textContent=movement.shortened;
+    $('#archiveOddsDrifted').textContent=movement.drifted;
     $('#archiveUpdated').textContent=rows.length?'хранится до 600 записей':'';
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
