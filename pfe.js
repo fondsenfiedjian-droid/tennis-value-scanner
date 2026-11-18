@@ -172,6 +172,30 @@
     return clamp(solve(0, 0), 0, 1);
   }
 
+  function calculateSetWinOutcomes(pointWinA, pointWinB, firstServerA) {
+    const holdA = calculateHoldProbability(pointWinA);
+    const holdB = calculateHoldProbability(pointWinB);
+    const tiebreakA = calculateTiebreakWinProbability(pointWinA, pointWinB, firstServerA);
+    const memo = new Map();
+    const solve = (gamesA, gamesB) => {
+      if (gamesA >= 6 && gamesA - gamesB >= 2) return { aRegular: 1, bRegular: 0, aTiebreak: 0, bTiebreak: 0 };
+      if (gamesB >= 6 && gamesB - gamesA >= 2) return { aRegular: 0, bRegular: 1, aTiebreak: 0, bTiebreak: 0 };
+      if (gamesA === 6 && gamesB === 6) return { aRegular: 0, bRegular: 0, aTiebreak: tiebreakA, bTiebreak: 1 - tiebreakA };
+      const key = gamesA + ":" + gamesB;
+      if (memo.has(key)) return memo.get(key);
+      const serverA = (gamesA + gamesB) % 2 === 0 ? firstServerA : !firstServerA;
+      const gameWinA = serverA ? holdA : 1 - holdB;
+      const won = solve(gamesA + 1, gamesB), lost = solve(gamesA, gamesB + 1);
+      const result = {};
+      for (const field of ["aRegular", "bRegular", "aTiebreak", "bTiebreak"]) {
+        result[field] = gameWinA * won[field] + (1 - gameWinA) * lost[field];
+      }
+      memo.set(key, result);
+      return result;
+    };
+    return solve(0, 0);
+  }
+
   function calculateSetWinProbability(pointWinA, pointWinB, firstServerA = true) {
     const pA = Number(pointWinA), pB = Number(pointWinB);
     if (![pA, pB].every(value => Number.isFinite(value) && value >= 0 && value <= 1) ||
@@ -197,29 +221,40 @@
   }
 
   function calculateMatchWinProbability(pointWinA, pointWinB, options = {}) {
+    const pA = Number(pointWinA), pB = Number(pointWinB);
     const bestOf = options.bestOf === undefined ? 3 : Number(options.bestOf);
     if (![3, 5].includes(bestOf)) return { status: "invalid", probabilityA: null, reason: "unsupported_match_format" };
-    const firstA = calculateSetWinProbability(pointWinA, pointWinB, true);
-    const firstB = calculateSetWinProbability(pointWinA, pointWinB, false);
-    if (firstA === null || firstB === null) return { status: "invalid", probabilityA: null, reason: "invalid_point_probabilities" };
-    // Average first-server order per set; full between-set service order and fatigue are not modeled.
-    const setProbability = (firstA + firstB) / 2;
-    const setsToWin = bestOf === 3 ? 2 : 3;
-    let probabilityA = 0;
-    for (let winsB = 0; winsB < setsToWin; winsB++) {
-      let combinations = 1;
-      for (let index = 1; index <= winsB; index++) {
-        combinations *= (setsToWin - 1 + index) / index;
-      }
-      probabilityA += combinations * Math.pow(setProbability, setsToWin) * Math.pow(1 - setProbability, winsB);
+    if (![pA, pB].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      return { status: "invalid", probabilityA: null, reason: "invalid_point_probabilities" };
     }
+    const outcomes = [true, false].map(firstServerA => calculateSetWinOutcomes(pA, pB, firstServerA));
+    const setsToWin = bestOf === 3 ? 2 : 3;
+    const memo = new Map();
+    const solve = (setsA, setsB, firstServerA) => {
+      if (setsA >= setsToWin) return 1;
+      if (setsB >= setsToWin) return 0;
+      const key = setsA + ":" + setsB + ":" + (firstServerA ? "A" : "B");
+      if (memo.has(key)) return memo.get(key);
+      const set = outcomes[firstServerA ? 0 : 1];
+      const result =
+        set.aRegular * solve(setsA + 1, setsB, firstServerA) +
+        set.bRegular * solve(setsA, setsB + 1, firstServerA) +
+        set.aTiebreak * solve(setsA + 1, setsB, !firstServerA) +
+        set.bTiebreak * solve(setsA, setsB + 1, !firstServerA);
+      memo.set(key, result);
+      return result;
+    };
+    const probabilityStartingA = solve(0, 0, true);
+    const probabilityStartingB = solve(0, 0, false);
+    const setProbabilityA = (outcomes[0].aRegular + outcomes[0].aTiebreak +
+      outcomes[1].aRegular + outcomes[1].aTiebreak) / 2;
     return {
       status: "provisional",
-      probabilityA: clamp(probabilityA, 0, 1),
-      setProbabilityA: setProbability,
-      bestOf, setsToWin,
-      assumptions: ["standard_advantage_scoring", "tiebreak_at_6_all", "no_fatigue_or_injury_adjustment", "average_first_server_order_per_set"],
-      note: "Предварительная аналитическая модель по вероятностям очка. Не учитывает усталость, травмы, смену условий и зависимость вероятностей от счёта."
+      probabilityA: clamp((probabilityStartingA + probabilityStartingB) / 2, 0, 1),
+      setProbabilityA, bestOf, setsToWin,
+      firstServerProbabilities: { startA: probabilityStartingA, startB: probabilityStartingB },
+      assumptions: ["standard_advantage_scoring", "tiebreak_at_6_all", "service_order_continues_between_sets", "randomized_initial_server", "no_fatigue_or_injury_adjustment"],
+      note: "Расчёт учитывает переход подачи между сетами, включая правило приёма после тай-брейка. Не учитывает усталость, травмы, смену условий и изменение вероятностей по ходу матча."
     };
   }
 
