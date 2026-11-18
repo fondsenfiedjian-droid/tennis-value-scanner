@@ -17,7 +17,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive };",
+    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -157,7 +157,7 @@ test("prediction archive and CSV export remain connected to the UI", () => {
 
 test("archive stores both priced player outcomes with calculated EV", () => {
   const { readPredictionArchive, savePredictionSnapshot } = makeArchiveStore();
-  const match = { id: "match-123", tournament_name: "ATP Finals" };
+  const match = { id: 123, tournament_name: "ATP Finals" };
   const element = { dataset: {
     nameA: "Ben Shelton", nameB: "Rafael Jodar",
     playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10"
@@ -167,7 +167,7 @@ test("archive stores both priced player outcomes with calculated EV", () => {
   });
   const rows = readPredictionArchive();
   assert.equal(rows.length, 2);
-  assert.equal(rows.find(row => row.side === "A").ev, 8);
+  assert.equal(rows.find(row => row.side === "A").matchId, 123);\n  assert.equal(rows.find(row => row.side === "A").ev, 8);
   assert.equal(rows.find(row => row.side === "B").ev, -16);
 });
 
@@ -202,4 +202,49 @@ test("archive import validates records, merges duplicates, and keeps newest 600"
   const capped = mergePredictionArchive([], many);
   assert.equal(capped.rows.length, 600);
   assert.equal(capped.rows[0].capturedAt, 6);
+});
+
+test("result endpoint validates the match ID and HTTP method", async () => {
+  assert.equal((await call("/result?id=0")).status, 400);
+  assert.equal((await call("/result?id=12x")).status, 400);
+  assert.equal((await call("/result?id=123", "POST", "{}")).status, 405);
+});
+
+test("result endpoint proxies one match with the configured API key", async () => {
+  let requestedUrl = "";
+  let requestedKey = "";
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedKey = options.headers["X-API-Key"];
+    return new Response(JSON.stringify({ id: 123, status: "completed", outcome: "completed", winner: 1, result_version: 1 }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  const res = await call("/result?id=123");
+  const body = await res.json();
+  assert.equal(res.status, 200);
+  assert.match(requestedUrl, /\/matches\/123$/);
+  assert.equal(requestedKey, "test-key");
+  assert.equal(body.winner, 1);
+});
+
+test("archive applies only verified completed results and honours result revisions", () => {
+  const { applyVerifiedMatchResult, archiveResultStats } = makeArchiveStore();
+  const rows = [
+    { matchId: 123, matchKey: "123", side: "A", probability: 61, capturedAt: 100, resultVersion: 1 },
+    { matchId: 123, matchKey: "123", side: "B", probability: 39, capturedAt: 100, resultVersion: 1 },
+    { matchId: 456, matchKey: "456", side: "A", probability: 70, capturedAt: 100 }
+  ];
+  const ignoredRevision = applyVerifiedMatchResult(rows, { id: 123, status: "completed", outcome: "completed", winner: 2, result_version: 0 }, 500);
+  assert.equal(ignoredRevision.rows[0].resultWinner, undefined);
+  const applied = applyVerifiedMatchResult(rows, { id: 123, status: "completed", outcome: "completed", winner: 1, result_version: 2 }, 600);
+  assert.equal(applied.updated, 2);
+  assert.equal(applied.rows[0].resultOutcome, "completed");
+  assert.equal(applied.rows[0].resultWinner, 1);
+  const stats = archiveResultStats(applied.rows);
+  assert.equal(stats.settled, 1);
+  assert.equal(stats.accuracy, 100);
+  const withdrawn = applyVerifiedMatchResult(applied.rows, { id: 123, status: "completed", outcome: "retired", winner: 1, result_version: 3 }, 700);
+  assert.equal(withdrawn.rows[0].resultOutcome, "retired");
+  assert.equal(archiveResultStats(withdrawn.rows).settled, 0);
 });
