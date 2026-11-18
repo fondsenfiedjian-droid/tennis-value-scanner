@@ -25,6 +25,8 @@ export function adaptScannerArchiveRows(rows) {
     const winnerNumber = Number(row.resultWinner);
     const captured = Number(row.capturedAt);
     const modelCalculated = Number(row.modelCalculatedAt);
+    const quoteCaptured = Number(row.quoteCapturedAt);
+    const quoteObserved = Number(row.quoteObservedAt);
     const captureStatus = String(row.captureStatus ?? '').trim().toLowerCase();
     const start = timestamp(row.matchDate);
     const side = String(row.side ?? "").toUpperCase();
@@ -36,6 +38,7 @@ export function adaptScannerArchiveRows(rows) {
     if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
         start === null || !Number.isFinite(captured) || captured <= 0 ||
         !Number.isFinite(modelCalculated) || modelCalculated <= 0 || modelCalculated >= captured || modelCalculated >= start ||
+        !Number.isFinite(quoteCaptured) || quoteCaptured <= 0 || !Number.isFinite(quoteObserved) || quoteObserved < quoteCaptured || quoteObserved > modelCalculated || modelCalculated - quoteObserved > 90 * 60 * 1000 ||
         captureStatus !== 'upcoming' ||
         !["A", "B"].includes(side) || !validOdds(odds) ||
         !Number.isFinite(probability) || probability <= 0 || probability >= 100) {
@@ -56,12 +59,12 @@ export function adaptScannerArchiveRows(rows) {
       const player = String(row.player ?? "").trim();
       const ratingAsOf = String(row.ratingAsOf ?? "").trim();
       if (previous.odds !== odds || previous.probability !== probability ||
-          previous.player !== player || previous.ratingAsOf !== ratingAsOf) {
+          previous.player !== player || previous.ratingAsOf !== ratingAsOf || previous.quoteCapturedAt !== quoteCaptured || previous.quoteObservedAt !== quoteObserved) {
         throw new Error("Conflicting duplicate side snapshot or rating provenance in archive for " + id);
       }
       continue;
     }
-    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim(), ratingAsOf: String(row.ratingAsOf ?? "").trim() };
+    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim(), ratingAsOf: String(row.ratingAsOf ?? "").trim(), quoteCapturedAt: quoteCaptured, quoteObservedAt: quoteObserved };
   }
   const adapted = [];
   for (const group of groups.values()) {
@@ -74,6 +77,10 @@ export function adaptScannerArchiveRows(rows) {
       surface: group.surface,
       odds_captured_at: new Date(group.captured).toISOString(),
       model_calculated_at: new Date(group.modelCalculated).toISOString(),
+      quote_a_captured_at: new Date(a.quoteCapturedAt).toISOString(),
+      quote_b_captured_at: new Date(b.quoteCapturedAt).toISOString(),
+      quote_a_observed_at: new Date(a.quoteObservedAt).toISOString(),
+      quote_b_observed_at: new Date(b.quoteObservedAt).toISOString(),
       capture_status: group.captureStatus,
       player_a: a.player,
       player_b: b.player,
@@ -255,6 +262,7 @@ export function runOddsBacktest(rows, options = {}) {
   const matches = new Map();
   let rejectedSnapshots = 0, staleSnapshots = 0;
   const modelTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterOddsCapture: 0, atOrAfterMatchStart: 0, nonUpcomingStatus: 0 };
+  const quoteTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterObservation: 0, afterModelCalculation: 0, staleAtObservation: 0, acceptedSides: 0 };
   const acceptedSnapshotAges = [];
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
@@ -263,6 +271,8 @@ export function runOddsBacktest(rows, options = {}) {
     const captured = timestamp(row.odds_captured_at);
     const rawModelCalculated = String(row.model_calculated_at ?? '').trim();
     const modelCalculated = timestamp(row.model_calculated_at);
+    const quoteA = timestamp(row.quote_a_captured_at), quoteB = timestamp(row.quote_b_captured_at);
+    const observedA = timestamp(row.quote_a_observed_at), observedB = timestamp(row.quote_b_observed_at);
     const captureStatus = String(row.capture_status ?? '').trim().toLowerCase();
     const oddsA = number(row.odds_a), oddsB = number(row.odds_b);
     const probabilityA = number(row.probability_a);
@@ -279,8 +289,22 @@ export function runOddsBacktest(rows, options = {}) {
         if (start !== null && modelCalculated >= start) modelTimestampCoverage.atOrAfterMatchStart++;
       }
     }
+    const quoteFields = [row.quote_a_captured_at,row.quote_b_captured_at,row.quote_a_observed_at,row.quote_b_observed_at];
+    const quoteFieldsProvided = quoteFields.every(value => String(value ?? '').trim());
+    if (!quoteFieldsProvided) quoteTimestampCoverage.missing++;
+    else {
+      quoteTimestampCoverage.provided++;
+      if ([quoteA,quoteB,observedA,observedB].some(value => value === null)) quoteTimestampCoverage.invalid++;
+      else {
+        if (observedA < quoteA || observedB < quoteB) quoteTimestampCoverage.afterObservation++;
+        if (modelCalculated !== null && (quoteA > modelCalculated || quoteB > modelCalculated || observedA > modelCalculated || observedB > modelCalculated)) quoteTimestampCoverage.afterModelCalculation++;
+        if (observedA - quoteA > 90*60*1000 || observedB - quoteB > 90*60*1000) quoteTimestampCoverage.staleAtObservation++;
+        if (observedA >= quoteA && observedB >= quoteB && modelCalculated !== null && quoteA <= modelCalculated && quoteB <= modelCalculated && observedA <= modelCalculated && observedB <= modelCalculated && observedA-quoteA <= 90*60*1000 && observedB-quoteB <= 90*60*1000) quoteTimestampCoverage.acceptedSides += 2;
+      }
+    }
     if (captureStatus && captureStatus !== 'upcoming') modelTimestampCoverage.nonUpcomingStatus++;
-    if (!id || start === null || captured === null || modelCalculated === null || modelCalculated >= captured || modelCalculated >= start ||
+    if (!quoteFieldsProvided || [quoteA,quoteB,observedA,observedB].some(value => value === null) || observedA < quoteA || observedB < quoteB || quoteA > modelCalculated || quoteB > modelCalculated || observedA > modelCalculated || observedB > modelCalculated || observedA-quoteA > 90*60*1000 || observedB-quoteB > 90*60*1000 ||
+        !id || start === null || captured === null || modelCalculated === null || modelCalculated >= captured || modelCalculated >= start ||
         (captureStatus && captureStatus !== 'upcoming') || !validOdds(oddsA) || !validOdds(oddsB) ||
         !Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1 ||
         !["A", "B"].includes(winner) || captured >= start) {
@@ -442,6 +466,8 @@ export function runOddsBacktest(rows, options = {}) {
   }
   const archiveCoverage = {
     uniqueMatches: archiveMatches.length,
+    quoteTimestampProvenance: { ...quoteTimestampCoverage, acceptedSnapshots: acceptedSnapshotAges.length,
+      note: "Strict cohort requires each side's source scrapedAt timestamp and browser observation time. Source timestamp <= observation <= model calculation <= archive capture; source quote must be no older than 90 minutes at observation. Missing or contradictory quote timestamps are excluded." },
     modelProbabilityProvenance: { ...modelTimestampCoverage, acceptedSnapshots: acceptedSnapshotAges.length,
       note: "Strict cohort only: model_calculated_at must include a timezone and be strictly earlier than odds_captured_at and match_start. If capture_status is present it must be upcoming. Missing or ambiguous legacy timestamps are excluded, not inferred." },
     ratingDateCoverage: {
