@@ -1242,7 +1242,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v48/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v49/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1306,7 +1306,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v48/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v49/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1322,7 +1322,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v48/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v49/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1467,8 +1467,8 @@ test("CLV excludes live/post-start snapshots and treats same-time conflicting pr
   assert.equal(liveOnly.sampleSize,0);
   assert.equal(liveOnly.missingCount,1);
   const conflicting = api.getClvSummary(placed.state, [
-    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.9,capturedAt:placedAt+60000,captureStatus:"upcoming"},
-    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.8,capturedAt:placedAt+60000,captureStatus:"upcoming"}
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.9,capturedAt:start-60000,captureStatus:"upcoming"},
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.8,capturedAt:start-60000,captureStatus:"upcoming"}
   ]);
   assert.equal(conflicting.sampleSize,0);
   assert.equal(conflicting.missingCount,1);
@@ -1485,8 +1485,8 @@ test("CLV bookmaker matching is case-insensitive but remains provider-specific",
   });
   const placedAt=Date.parse(placed.bet.placedAt);
   const summary=api.getClvSummary(placed.state,[
-    {matchId:504,side:"B",bookmaker:"winamax",odds:1.9,capturedAt:placedAt+60000},
-    {matchId:504,side:"B",bookmaker:"Betclic",odds:1.5,capturedAt:placedAt+120000}
+    {matchId:504,side:"B",bookmaker:"winamax",odds:1.9,capturedAt:Date.parse("2026-11-20T17:59:00.000Z"),captureStatus:"upcoming"},
+    {matchId:504,side:"B",bookmaker:"Betclic",odds:1.5,capturedAt:Date.parse("2026-11-20T17:58:00.000Z"),captureStatus:"upcoming"}
   ]);
   assert.equal(summary.sampleSize,1);
   assert.equal(summary.matched[0].closingOdds,1.9);
@@ -1511,7 +1511,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v48/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v49/);
 });
 
 
