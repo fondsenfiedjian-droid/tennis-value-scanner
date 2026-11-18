@@ -121,16 +121,22 @@
   const saved=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
   ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
-  let savedTours=null;
-  try{savedTours=JSON.parse(localStorage.getItem('tvs-tours')||'null');}catch(e){}
+  let savedTours=Array.isArray(saved.tours)?saved.tours:null;
+  if(!savedTours){try{savedTours=JSON.parse(localStorage.getItem('tvs-tours')||'null');}catch(e){}}
   if(Array.isArray(savedTours))tourChecks.forEach(input=>input.checked=savedTours.includes(input.dataset.tour));
   function selectedTours(){return tourChecks.filter(input=>input.checked).map(input=>input.dataset.tour);}
-  function saveTours(){localStorage.setItem('tvs-tours',JSON.stringify(selectedTours()));}
+  function saveTours(){
+    const settings=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
+    settings.tours=selectedTours();
+    localStorage.setItem('tvs-settings',JSON.stringify(settings));
+    localStorage.setItem('tvs-tours',JSON.stringify(settings.tours));
+  }
   tourChecks.forEach(input=>input.addEventListener('change',()=>{saveTours();if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#saveSettings').onclick=()=>{
     const data={}; ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>data[id]=$('#'+id).value);
+    data.tours=selectedTours();
     localStorage.setItem('tvs-settings',JSON.stringify(data));
-    localStorage.setItem('tvs-tours',JSON.stringify(selectedTours()));
+    localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
     close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
   };
