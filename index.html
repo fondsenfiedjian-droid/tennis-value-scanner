@@ -389,9 +389,22 @@
   }
 
   const ARCHIVE_KEY='tvs-prediction-archive-v1';
+  const MAX_ARCHIVE_ENTRIES=3000;
   function readPredictionArchive(){
     try{const rows=JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'):[];}
     catch(e){return [];}
+  }
+  function limitPredictionArchive(rows,limit=MAX_ARCHIVE_ENTRIES){
+    const priority=row=>row.resultOutcome==='completed'&&[1,2].includes(Number(row.resultWinner))?3:row.resultOutcome?2:1;
+    return rows.slice().sort((a,b)=>priority(b)-priority(a)||Number(b.capturedAt)-Number(a.capturedAt)).slice(0,limit).sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
+  }
+  function persistPredictionArchive(rows){
+    for(const limit of [MAX_ARCHIVE_ENTRIES,2000,1000,600,300]){
+      const kept=limitPredictionArchive(rows,limit);
+      try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(kept));return {saved:kept.length,dropped:rows.length-kept.length};}
+      catch(error){if(limit===300)return {saved:0,dropped:rows.length,error};}
+    }
+    return {saved:0,dropped:rows.length};
   }
   function savePredictionSnapshot(match,el,result){
     const playerA=el.dataset.nameA||result.playerA||'Игрок 1';
@@ -418,7 +431,7 @@
     }
     if(changed){
       archive.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
-      try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(archive.slice(-600)));}catch(e){}
+      persistPredictionArchive(archive);
     }
   }
   function mergePredictionArchive(current, imported){
@@ -450,7 +463,8 @@
       seen.add(key);merged.push(row);added++;
     }
     merged.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
-    return {rows:merged.slice(-600),added,ignored:imported.length-clean.length};
+    const rows=limitPredictionArchive(merged);
+    return {rows,added,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
   function applyVerifiedMatchResult(rows, result, now=Date.now()){
     const id=Number(result?.id),winner=Number(result?.winner);
@@ -614,9 +628,10 @@
       const payload=JSON.parse(await file.text());
       if(!payload||payload.format!=='tennis-value-scanner-archive'||payload.version!==1||!Array.isArray(payload.records))throw new Error('Неподдерживаемый формат резервной копии');
       const result=mergePredictionArchive(readPredictionArchive(),payload.records);
-      localStorage.setItem(ARCHIVE_KEY,JSON.stringify(result.rows));
+      const stored=persistPredictionArchive(result.rows);
+      if(!stored.saved)throw new Error('Недостаточно места в памяти браузера. Сначала экспортируйте резервную копию и освободите место.');
       renderArchive();
-      alert('Импорт завершён. Добавлено: '+result.added+'. Пропущено некорректных записей: '+result.ignored+'. В архиве хранится до 600 последних записей.');
+      alert('Импорт завершён. Добавлено: '+result.added+'. Пропущено некорректных записей: '+result.ignored+'. Не помещено в локальный архив: '+(result.dropped+stored.dropped)+'. Лимит архива: '+MAX_ARCHIVE_ENTRIES+' записей.');
     }catch(error){alert('Не удалось импортировать архив: '+error.message);}
   };
   function validRatingDate(value){
