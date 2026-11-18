@@ -17,7 +17,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, stampResultCheck };",
+    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -274,4 +274,20 @@ test("failed result lookups receive a cooldown timestamp without changing other 
   assert.equal(stamped[0].resultCheckedAt, 999);
   assert.equal(stamped[1].resultCheckedAt, 20);
   assert.equal(stampResultCheck(rows, 0, 999), rows);
+});
+test("archive tracks opening-to-latest odds movement per match side", () => {
+  const { archiveOddsMovement } = makeArchiveStore();
+  const rows = [
+    { matchId: 1, side: "A", odds: 2.10, capturedAt: 100 },
+    { matchId: 1, side: "A", odds: 1.90, capturedAt: 200 },
+    { matchId: 1, side: "B", odds: 1.80, capturedAt: 100 },
+    { matchId: 1, side: "B", odds: 2.00, capturedAt: 200 },
+    { matchId: 2, side: "A", odds: 1.70, capturedAt: 100 },
+    { matchId: 2, side: "A", odds: 1.70, capturedAt: 200 },
+    { matchId: 3, side: "A", odds: 1.50, capturedAt: 100 }
+  ];
+  const movement = archiveOddsMovement(rows);
+  assert.equal(movement.shortened, 1);
+  assert.equal(movement.drifted, 1);
+  assert.equal(movement.comparable, 2);
 });
