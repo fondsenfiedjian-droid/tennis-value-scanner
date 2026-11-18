@@ -99,6 +99,17 @@ function assessRatingFreshness(asOf, now = Date.now()) {
   };
 }
 
+function assessRatingPlausibility(rating) {
+  if (typeof rating !== "number" || !Number.isFinite(rating) || rating <= 0 || rating > 5000) {
+    return { status: "invalid", reason: "Рейтинг вне допустимого технического диапазона" };
+  }
+  // Broad review band, not a hard rejection: rating systems and tours can differ.
+  if (rating < 800 || rating > 3200) {
+    return { status: "review", reason: "Необычное значение Elo; требуется проверка источника" };
+  }
+  return { status: "plausible", reason: null };
+}
+
 function normalizeSurface(value) {
   const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (surface.includes("clay") || surface.includes("terre battue") || surface.includes("грунт")) return "clay";
@@ -582,6 +593,9 @@ export default {
         ratingsAsOfB: extractRatingAsOf(profileB),
         ratingFreshnessA: assessRatingFreshness(extractRatingAsOf(profileA)),
         ratingFreshnessB: assessRatingFreshness(extractRatingAsOf(profileB)),
+        ratingQualityA: assessRatingPlausibility(a),
+        ratingQualityB: assessRatingPlausibility(b),
+        ratingQualityGap: Math.abs(a - b) > 800 ? "review" : "normal",
         note: source === "manual-test" ? "Manual test ratings; not player data." : (selectedA.type === "surface" && selectedB.type === "surface" ? "Probabilities use surface-specific Elo ratings." : "At least one surface-specific rating is unavailable; overall Elo fallback used. Model does not account for injuries or recent form.")
       });
     }
