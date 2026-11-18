@@ -1269,3 +1269,29 @@ test("prediction UI displays each player's rating freshness separately", () => {
   assert.match(frontendSource, /дата неизвестна/);
   assert.match(frontendSource, /устаревший/);
 });
+
+
+test("Elo plausibility audit flags unusual ratings without rejecting them", () => {
+  const start = workerSource.indexOf("function assessRatingPlausibility(");
+  const end = workerSource.indexOf("function normalizeSurface(", start);
+  assert.ok(start >= 0 && end > start);
+  const source = workerSource.slice(start, end) +
+    "\\nglobalThis.ratingQuality = assessRatingPlausibility;";
+  const sandbox = {};
+  vm.runInNewContext(source, sandbox);
+  const check = sandbox.ratingQuality;
+  assert.equal(check(1800).status, "plausible");
+  assert.equal(check(800).status, "plausible");
+  assert.equal(check(3200).status, "plausible");
+  assert.equal(check(799).status, "review");
+  assert.equal(check(3201).status, "review");
+  assert.equal(check(5001).status, "invalid");
+  assert.equal(check(NaN).status, "invalid");
+  assert.match(check(600).reason, /проверки/);
+});
+
+test("prediction UI warns about unusual Elo without suppressing the calculation", () => {
+  assert.match(workerSource, /ratingQualityGap/);
+  assert.match(frontendSource, /Проверка Elo/);
+  assert.match(frontendSource, /Значения не исключены автоматически/);
+});
