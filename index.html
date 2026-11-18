@@ -440,11 +440,19 @@
       });
       let rows=state.rows;
       let migrated=false;
-      if(!state.initialized){
-        const legacy=readPredictionArchive();
-        if(!rows.length&&legacy.length){rows=limitPredictionArchive(legacy);migrated=true;}
-        await writeArchiveDatabase(db,rows,true);
+      const legacy=readPredictionArchive();
+      if(legacy.length){
+        const combined=mergePredictionArchive(rows,legacy).rows;
+        const bySnapshot=new Map(combined.map(row=>[[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|'),row]));
+        for(const backupRow of legacy){
+          const key=[backupRow.matchKey,backupRow.side,backupRow.capturedAt,backupRow.odds,backupRow.probability].join('|');
+          const stored=bySnapshot.get(key);
+          if(stored&&(Number(backupRow.resultVersion||0)>Number(stored.resultVersion||0)||Number(backupRow.resultCheckedAt||0)>Number(stored.resultCheckedAt||0)))bySnapshot.set(key,{...stored,...backupRow});
+        }
+        rows=limitPredictionArchive([...bySnapshot.values()]);
       }
+      if(!state.initialized){migrated=legacy.length>0;await writeArchiveDatabase(db,rows,true);}
+      else if(rows.length!==state.rows.length||legacy.length)await writeArchiveDatabase(db,rows,true);
       rows=limitPredictionArchive(rows);
       try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}
       archiveStorageMode='indexeddb';
@@ -642,7 +650,7 @@
     const movement=archiveOddsMovement(rows);
     $('#archiveOddsShortened').textContent=movement.shortened;
     $('#archiveOddsDrifted').textContent=movement.drifted;
-    $('#archiveUpdated').textContent=rows.length?'хранится до 600 записей':'';
+    $('#archiveUpdated').textContent=rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'';
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
     list.innerHTML=rows.slice(0,50).map(row=>{
