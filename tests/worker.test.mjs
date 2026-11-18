@@ -167,7 +167,8 @@ test("archive stores both priced player outcomes with calculated EV", () => {
   });
   const rows = readPredictionArchive();
   assert.equal(rows.length, 2);
-  assert.equal(rows.find(row => row.side === "A").matchId, 123);\n  assert.equal(rows.find(row => row.side === "A").ev, 8);
+  assert.equal(rows.find(row => row.side === "A").matchId, 123);
+  assert.equal(rows.find(row => row.side === "A").ev, 8);
   assert.equal(rows.find(row => row.side === "B").ev, -16);
 });
 
