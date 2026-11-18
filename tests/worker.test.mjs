@@ -2515,7 +2515,7 @@ test("PFE history evaluation rejects post-start, unverified, duplicate and unkno
 test("PFE model history evaluation is displayed as diagnostic and snapshots retain model version", () => {
   assert.ok(frontendSource.includes("TVSPFE.buildModelHistoryRecords(pfeArchiveRows)"));
   assert.ok(frontendSource.includes("вес-кандидат "));
-  assert.ok(frontendSource.includes("Кандидатный вес не применяется к объединению автоматически"));
+  assert.ok(frontendSource.includes("Кандидатные веса пока не применяются автоматически"));
   assert.ok(frontendSource.includes("modelVersion:'2'"));
 });
 
