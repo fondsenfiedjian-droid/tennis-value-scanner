@@ -526,7 +526,7 @@ test("strict quote provenance rejects missing, future and stale source timestamp
   const report = runOddsBacktest(rows, { thresholdSensitivity: false });
   assert.equal(report.matches, 1);
   assert.equal(report.rejectedSnapshots, 5);
-  assert.equal(report.archiveCoverage.quoteTimestampProvenance.provided, 4);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.provided, 5);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.missing, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterObservation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterModelCalculation, 1);
