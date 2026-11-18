@@ -191,6 +191,18 @@
     <div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="bankMaxDrawdown">—</div></div>
   </div>
   <div class="panel">
+    <div class="section-head"><h2>Серии результатов и устойчивость</h2><span class="muted">диагностика журнала</span></div>
+    <div class="stats">
+      <div class="panel"><div class="muted">Выигрыши / проигрыши</div><div class="stat-num" id="bankOutcomeCounts">—</div></div>
+      <div class="panel"><div class="muted">Доля побед</div><div class="stat-num" id="bankWinRate">—</div></div>
+      <div class="panel"><div class="muted">Текущая серия</div><div class="stat-num" id="bankCurrentStreak">—</div></div>
+      <div class="panel"><div class="muted">Самая длинная серия побед</div><div class="stat-num" id="bankLongestWinStreak">—</div></div>
+      <div class="panel"><div class="muted">Самая длинная серия поражений</div><div class="stat-num" id="bankLongestLossStreak">—</div></div>
+      <div class="panel"><div class="muted">Profit Factor</div><div class="stat-num" id="bankProfitFactor">—</div></div>
+    </div>
+    <div class="archive-meta" id="bankOutcomeSequenceNote">Возвраты не прерывают серии. Неизвестные и некорректные результаты исключаются. Profit Factor = валовая прибыль / валовые потери. Это статистика результатов, а не ограничение ставок.</div>
+  </div>
+  <div class="panel">
     <div class="section-head"><h2>CLV — качество цены</h2><span class="muted">сравнение с закрытием</span></div>
     <div class="archive-list" id="bankClvStats"><div class="panel empty">Пока недостаточно данных.</div></div>
   </div>
@@ -1289,6 +1301,18 @@
     $('#bankDailyStaked').textContent=formatEuro(summary.dailyStaked);
     $('#bankCurrentDrawdown').textContent=formatEuro(summary.currentDrawdown)+' · '+summary.currentDrawdownPercent.toFixed(2)+'%';
     $('#bankMaxDrawdown').textContent=formatEuro(summary.maxDrawdown)+' · '+summary.maxDrawdownPercent.toFixed(2)+'%';
+    const sequence=summary.outcomeSequence;
+    $('#bankOutcomeCounts').textContent=sequence.wins+' / '+sequence.losses+' · возвраты '+sequence.voids;
+    $('#bankWinRate').textContent=sequence.winRatePercent===null?'—':sequence.winRatePercent.toFixed(1)+'%';
+    $('#bankCurrentStreak').textContent=sequence.currentStreak.length
+      ?(sequence.currentStreak.type==='won'?'Победы · ':'Поражения · ')+sequence.currentStreak.length:'Нет серии';
+    $('#bankLongestWinStreak').textContent=String(sequence.longestWinStreak);
+    $('#bankLongestLossStreak').textContent=String(sequence.longestLossStreak);
+    $('#bankProfitFactor').textContent=sequence.profitFactor===null?'—':sequence.profitFactor.toFixed(2);
+    $('#bankOutcomeSequenceNote').textContent='Рассчитано ставок: '+sequence.settledBets+' · исключено некорректных исходов: '+sequence.excluded+
+      ' · валовая прибыль '+formatEuro(sequence.grossProfit)+' · валовые потери '+formatEuro(sequence.grossLoss)+
+      '. Возвраты не прерывают серии. Profit Factor = валовая прибыль / валовые потери. Показатели диагностические и не меняют размеры ставок.';
+
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
     const clv=TVSBankroll.getClvSummary(state,readPredictionArchive());
     const clvAverage=clv.averageClvPercent===null?'—':(clv.averageClvPercent>0?'+':'')+clv.averageClvPercent.toFixed(2)+'%';
