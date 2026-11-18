@@ -54,7 +54,11 @@
           !Number.isFinite(tx.balanceDelta) || typeof tx.at !== "string" || !Number.isFinite(Date.parse(tx.at)) ||
           Math.abs(tx.balanceDelta - expectedDeltaSign[tx.type] * tx.amount) > 0.01 ||
           (tx.profit !== undefined && !Number.isFinite(tx.profit)) ||
-          (tx.stake !== undefined && (!Number.isFinite(tx.stake) || tx.stake < 0)) ||\n          ...["plannedStake", "actualStake"].some(key => tx[key] !== undefined && tx[key] !== null && (!Number.isFinite(tx[key]) || tx[key] < 0)) ||\n          ...["plannedOdds", "actualOdds"].some(key => tx[key] !== undefined && tx[key] !== null && (!Number.isFinite(tx[key]) || tx[key] <= 1)) ||
+          (tx.stake !== undefined && (!Number.isFinite(tx.stake) || tx.stake < 0)) ||
+          (tx.plannedStake !== undefined && tx.plannedStake !== null && (!Number.isFinite(tx.plannedStake) || tx.plannedStake < 0)) ||
+          (tx.actualStake !== undefined && tx.actualStake !== null && (!Number.isFinite(tx.actualStake) || tx.actualStake < 0)) ||
+          (tx.plannedOdds !== undefined && tx.plannedOdds !== null && (!Number.isFinite(tx.plannedOdds) || tx.plannedOdds <= 1)) ||
+          (tx.actualOdds !== undefined && tx.actualOdds !== null && (!Number.isFinite(tx.actualOdds) || tx.actualOdds <= 1)) ||
           (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1))) {
         throw new Error("В журнале найдена некорректная операция.");
       }
