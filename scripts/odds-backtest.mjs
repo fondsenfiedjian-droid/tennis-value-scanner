@@ -54,7 +54,7 @@ export function adaptScannerArchiveRows(rows) {
       }
       continue;
     }
-    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim() };
+    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim(), ratingAsOf: String(row.ratingAsOf ?? "").trim() };
   }
   const adapted = [];
   for (const group of groups.values()) {
@@ -71,6 +71,8 @@ export function adaptScannerArchiveRows(rows) {
       odds_a: a.odds,
       odds_b: b.odds,
       probability_a: a.probability,
+      rating_as_of_a: a.ratingAsOf,
+      rating_as_of_b: b.ratingAsOf,
       winner: group.winner
     });
   }
@@ -393,8 +395,32 @@ export function runOddsBacktest(rows, options = {}) {
   const snapshotCounts = archiveMatches.map(match => match.snapshots.length).sort((a, b) => a - b);
   const medianSnapshotCount = snapshotCounts.length
     ? snapshotCounts[Math.floor((snapshotCounts.length - 1) / 2)] : null;
+  const ratingDateCounts = { provided: 0, missing: 0, invalid: 0, beforeMatchDate: 0, sameMatchDate: 0, afterMatchDate: 0 };
+  for (const row of rows) {
+    const values = [row.rating_as_of_a, row.rating_as_of_b].filter(value => value !== undefined);
+    for (const value of values) {
+      const date = String(value ?? "").trim();
+      if (!date) { ratingDateCounts.missing++; continue; }
+      ratingDateCounts.provided++;
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z"))) {
+        ratingDateCounts.invalid++;
+        continue;
+      }
+      const match = matches.get(String(row.match_id ?? "").trim());
+      if (!match) continue;
+      const ratingDay = date;
+      const matchDay = new Date(match.start).toISOString().slice(0, 10);
+      if (ratingDay < matchDay) ratingDateCounts.beforeMatchDate++;
+      else if (ratingDay === matchDay) ratingDateCounts.sameMatchDate++;
+      else ratingDateCounts.afterMatchDate++;
+    }
+  }
   const archiveCoverage = {
     uniqueMatches: archiveMatches.length,
+    ratingDateCoverage: {
+      ...ratingDateCounts,
+      note: "ratingAsOf is a calendar-date provenance hint, not proof that the probability was calculated before the odds snapshot or match start. Same-day dates have unknown intraday ordering."
+    },
     validSnapshots: snapshotCounts.reduce((sum, count) => sum + count, 0),
     matchDateRange: matchStarts.length ? {
       from: new Date(matchStarts[0]).toISOString(),
