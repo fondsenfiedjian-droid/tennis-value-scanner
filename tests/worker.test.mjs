@@ -83,10 +83,10 @@ function makeFakeIndexedDB(options = {}) {
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
 const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
 vm.runInNewContext(
-  helperSource + "\nglobalThis.testHelpers = { findElo, eloProbability, response };",
+  helperSource + "\nglobalThis.testHelpers = { findElo, findEloForSurface, normalizeSurface, eloProbability, response };",
   helperSandbox
 );
-const { findElo, eloProbability, response } = helperSandbox.testHelpers;
+const { findElo, findEloForSurface, normalizeSurface, eloProbability, response } = helperSandbox.testHelpers;
 
 const workerSandbox = {
   Response, Request, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
@@ -111,6 +111,32 @@ async function call(path, method = "GET", body = undefined) {
 
 test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
+});
+
+test("surface Elo is selected when a matching court rating exists", () => {
+  const profile = { overall_elo: 1800, stats: { clay_elo: 1940, hard_elo: 1830, grass_elo: 1710 } };
+  assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, "Clay"))), { rating: 1940, type: "surface", surface: "clay" });
+  assert.equal(findEloForSurface(profile, "Hard court").rating, 1830);
+  assert.equal(findEloForSurface(profile, "Grass").rating, 1710);
+});
+
+test("surface Elo supports nested provider maps and known surface aliases", () => {
+  const profile = { surface_elo: { clay: "1888", hard: 1777 } };
+  assert.equal(findEloForSurface(profile, "terre battue").rating, 1888);
+  assert.equal(findEloForSurface(profile, "хард").rating, 1777);
+  assert.equal(normalizeSurface("indoor hard"), "hard");
+  assert.equal(normalizeSurface("unknown"), null);
+});
+
+test("surface Elo falls back transparently to overall Elo when unavailable", () => {
+  const result = findEloForSurface({ overall_elo: 1820, grass_elo: 1700 }, "clay");
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { rating: 1820, type: "overall", surface: "clay" });
+  assert.equal(findEloForSurface({ grass_elo: 1700 }, "clay"), null);
+});
+
+test("surface Elo rejects invalid ratings and does not treat unrelated fields as court ratings", () => {
+  assert.equal(findEloForSurface({ clay_elo: 0, overall_elo: 1800 }, "clay").type, "overall");
+  assert.equal(findEloForSurface({ clay_elo: "NaN" }, "clay"), null);
 });
 
 test("generic Elo is used when overall Elo is absent", () => {
