@@ -1339,6 +1339,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
   assert.match(serviceWorkerSource, /tennis-value-static-v61/);
+  assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
