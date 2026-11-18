@@ -113,6 +113,7 @@
     <div class="panel"><div class="muted">ROI рассчитанных ставок</div><div class="stat-num" id="bankRoi">—</div></div>
     <div class="panel"><div class="muted">Приход</div><div class="stat-num" id="bankInflow">—</div></div>
     <div class="panel"><div class="muted">Расход</div><div class="stat-num" id="bankOutflow">—</div></div>
+    <div class="panel"><div class="muted">Поставлено сегодня</div><div class="stat-num" id="bankDailyStaked">—</div></div>
   </div>
   <div class="panel">
     <b>Операции с деньгами</b>
@@ -124,7 +125,7 @@
   <div class="archive-list" id="bankOpenList"><div class="panel empty">Открытых ставок пока нет.</div></div>
   <div class="section-head"><h2>История приходов и расходов</h2><span class="muted" id="bankTxCount"></span></div>
   <div class="archive-list" id="bankTransactions"><div class="panel empty">Операций пока нет.</div></div>
-  <div class="notice">Начальный банк — 100 €. Базовые ограничения: не более 2% капитала на одну ставку и не более 8% суммарно в открытых ставках. Размер рекомендации рассчитывается по четверти критерия Келли. Это ограничение риска, а не гарантия сохранности капитала.</div>
+  <div class="notice">Начальный банк — 100 €. Базовые ограничения: не более 2% капитала на одну ставку и не более 8% суммарно в открытых ставках и не более 8% оборота за день. Размер рекомендации рассчитывается по четверти критерия Келли. Это ограничение риска, а не гарантия сохранности капитала.</div>
 </div>
 
 <div class="bottom"><div class="nav">
@@ -753,6 +754,7 @@
     $('#bankRoi').textContent=summary.roiPercent===null?'—':(summary.roiPercent>0?'+':'')+summary.roiPercent.toFixed(2)+'%';
     $('#bankInflow').textContent=formatEuro(summary.totalInflow);
     $('#bankOutflow').textContent=formatEuro(summary.totalOutflow);
+    $('#bankDailyStaked').textContent=formatEuro(summary.dailyStaked);
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
     $('#bankTxCount').textContent=state.transactions.length+' операций';
     $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
