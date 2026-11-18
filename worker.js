@@ -308,12 +308,18 @@ export default {
 
       let body = {};
       if (request.method === "POST") {
-        const contentLength = Number(request.headers.get("Content-Length") || 0);
-        if (contentLength > 16384) {
+        let rawBody;
+        try {
+          rawBody = await request.text();
+        } catch {
+          return response({ error: "Could not read request body" }, 400);
+        }
+        // Enforce the limit against actual UTF-8 bytes, not a client-supplied header.
+        if (new TextEncoder().encode(rawBody).byteLength > 16384) {
           return response({ error: "Request body is too large (maximum 16 KB)" }, 413);
         }
         try {
-          body = await request.json();
+          body = JSON.parse(rawBody);
         } catch {
           return response({ error: "Invalid JSON body" }, 400);
         }
