@@ -112,6 +112,36 @@ async function call(path, method = "GET", body = undefined) {
   return worker.fetch(request, env);
 }
 
+test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
+  let requestedUrl = "";
+  let requestedHeaders = null;
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = url;
+    requestedHeaders = options.headers;
+    return new Response(JSON.stringify({ player: { id: 123 }, records: { recent: [] } }), { status: 200 });
+  };
+  const invalid = await call("/player-stats?id=../secret");
+  assert.equal(invalid.status, 400);
+  const result = await call("/player-stats?id=123");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.playerId, "123");
+  assert.equal(payload.accessStatus, "available");
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.stats)), { player: { id: 123 }, records: { recent: [] } });
+  assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/players/123/stats");
+  assert.equal(requestedHeaders["X-API-Key"], "test-key");
+  assert.equal(requestedHeaders.Accept, "application/json");
+});
+
+test("player stats endpoint reports forbidden access without inventing ULTRA entitlement", async () => {
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+  const result = await call("/player-stats?id=123");
+  assert.equal(result.status, 403);
+  const payload = await result.json();
+  assert.equal(payload.accessStatus, "forbidden_or_plan_restricted");
+  assert.equal(payload.upstreamStatus, 403);
+});
+
 test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
 });
