@@ -908,8 +908,27 @@ test("expired portfolio plans are cleared automatically and cannot block the nex
   assert.ok(nextPlan.pendingPlan);
   assert.notEqual(nextPlan.pendingPlan.id, planned.pendingPlan.id);
 });
+test("bankroll drawdown tracks betting losses and ignores external deposits", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const first = api.placeBet(state, { matchKey: "drawdown-1", match: "Drawdown loss", probability: 0.62, odds: 2.1, stake: 2 });
+  state = api.settleBet(first.state, first.bet.id, "lost");
+  state = api.addDeposit(state, 50, "Внешнее пополнение");
+  let summary = api.getSummary(state);
+  assert.equal(summary.currentDrawdown, 2);
+  assert.equal(summary.currentDrawdownPercent, 2);
+  assert.equal(summary.maxDrawdown, 2);
+  assert.equal(summary.maxDrawdownPercent, 2);
+  const second = api.placeBet(state, { matchKey: "drawdown-2", match: "Drawdown recovery", probability: 0.62, odds: 2.1, stake: 2 });
+  state = api.settleBet(second.state, second.bet.id, "won");
+  summary = api.getSummary(state);
+  assert.equal(summary.currentDrawdown, 0);
+  assert.equal(summary.maxDrawdown, 2);
+});
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v27/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v28/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
