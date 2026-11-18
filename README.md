@@ -127,28 +127,30 @@ An initial out-of-sample comparison was run on the ATP and WTA archive CSVs for 
 
 | Candidate | ATP Brier | ATP log loss | ATP accuracy | WTA Brier | WTA log loss | WTA accuracy |
 |---|---:|---:|---:|---:|---:|---:|
-| Overall Elo | 0.21906 | 0.62592 | 63.65% | 0.21997 | 0.62891 | 63.67% |
-| Surface blend | 0.21775 | 0.62285 | 63.99% | 0.21913 | 0.62667 | 63.54% |
-| Elo + recent form | 0.21996 | 0.62823 | 63.65% | 0.22109 | 0.63175 | 63.54% |
-| Elo + head-to-head | 0.21904 | 0.62588 | 63.85% | 0.22005 | 0.62919 | 63.78% |
-| Combined | 0.21844 | 0.62443 | 64.15% | 0.22011 | 0.62907 | 63.59% |
+| Overall Elo | 0.21931 | 0.62648 | 63.48% | 0.22009 | 0.62920 | 63.27% |
+| Surface blend | **0.21798** | **0.62334** | **63.79%** | **0.21923** | **0.62693** | **63.44%** |
+| Elo + recent form | 0.22023 | 0.62884 | 63.48% | 0.22124 | 0.63211 | 63.44% |
+| Elo + head-to-head | 0.21929 | 0.62642 | 63.54% | 0.22017 | 0.62946 | 63.39% |
+| Combined | 0.21869 | 0.62497 | 64.04% | 0.22024 | 0.62937 | 63.42% |
 
 The evaluation contained 5,785 ATP and 5,293 WTA matches, after filtering invalid records and non-standard outcomes. The 2022–2023 warm-up contained 5,716 ATP and 5,188 WTA matches. There were no duplicate match keys in these files; 51 ATP and 124 WTA matches had an unrecognized or missing surface.
 
 The surface blend improved Brier score and log loss over overall Elo on both tours in this sample, but it did not improve winner accuracy on WTA. Recent form and the combined variant did not consistently improve calibration. This is evidence to investigate surface-specific ratings further, **not** enough to promote new weights into the live model. The test uses match results only, not historical Winamax prices; it does not measure betting ROI, closing-line value, or profitability. Re-run the commands above when the source archive changes, and validate on additional seasons before any production change.
 
 
-### Year-by-year stability check (2024 and 2025)
+### Calibration check (2024–2025)
 
-The same 2022–2025 ATP/WTA files were also evaluated separately by season, retaining 2022–2023 as warm-up. Brier score by year:
+A separate favourite-calibration report was computed from the same chronological evaluation window after correcting same-day Elo updates to be order-independent. Each match contributes one observation: the higher-probability side's predicted win probability and whether that favourite won. Exact Elo ties count as half a win. ECE is the weighted average absolute difference between predicted and observed win rates across ten 5-percentage-point bins.
 
-| Tour / season | Overall Elo | Surface blend | Elo + form | Elo + H2H | Combined |
-|---|---:|---:|---:|---:|---:|
-| ATP 2024 (3,050 matches) | 0.21902 | **0.21758** | 0.21992 | 0.21896 | 0.21823 |
-| ATP 2025 (2,735 matches) | 0.21910 | **0.21795** | 0.22000 | 0.21912 | 0.21868 |
-| WTA 2024 (2,686 matches) | 0.21914 | **0.21864** | 0.22038 | 0.21926 | 0.21974 |
-| WTA 2025 (2,607 matches) | 0.22082 | **0.21963** | 0.22182 | 0.22086 | 0.22050 |
+| Tour | Candidate | Brier | ECE |
+|---|---|---:|---:|
+| ATP | Overall Elo | 0.21931 | 2.63% |
+| ATP | Surface blend | **0.21798** | **1.63%** |
+| WTA | Overall Elo | 0.22009 | 2.28% |
+| WTA | Surface blend | **0.21923** | **1.52%** |
 
-The surface blend had the lowest Brier score in all four tour-season slices, so its calibration improvement was not confined to one of the two evaluated years. Recent-form adjustment was worse than overall Elo in every slice. H2H was close to baseline and inconsistent; the combined candidate did not beat the surface-only blend. This strengthens the case for a carefully validated surface-rating experiment, but it still does not establish positive betting value: historical odds and market comparison are absent, and the candidate weights have not been tuned on a separate validation set.
+The surface blend reduced both Brier score and ECE versus overall Elo in ATP and WTA. Extreme probability bands are sparse (for example, only 19 WTA favourites fell in the 95–100% band for overall Elo), so observed rates there are noisy and must not be treated as stable estimates.
+
+The same-day update correction changes historical Elo trajectories, so the earlier year-by-year numeric table is withdrawn pending a fresh run with the corrected implementation. Use the current script output for any new seasonal comparison. These aggregate calibration results are diagnostics, not a calibrated probability transformation and not evidence of betting profit. No live-model weights have been changed.
 
 Data licensing matters: the commonly used Sackmann archive is distributed under CC BY-NC-SA 4.0. Check the source repository's current license and attribution requirements before use or redistribution; the non-commercial restriction may not permit commercial use. Treat older CSVs as historical backtest data, not a live feed.
