@@ -82,3 +82,16 @@ test("CSV parser rejects duplicate or empty headers and rows wider than the head
   assert.throws(() => parseCsv('name,,age\nAlice,,30\n'), /empty header/);
   assert.throws(() => parseCsv('name,age\nAlice,30,extra\n'), /more fields than the header/);
 });
+
+
+test("backtest reports separate yearly and surface metrics", () => {
+  const report = runBacktest([
+    { tourney_date: "20240101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20240102", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Clay" },
+    { tourney_date: "20250101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" }
+  ]);
+  assert.equal(report.breakdowns.byYear["2024"].elo.matches, 2);
+  assert.equal(report.breakdowns.byYear["2025"].elo.matches, 1);
+  assert.equal(report.breakdowns.bySurface.Hard.elo.matches, 2);
+  assert.equal(report.breakdowns.bySurface.Clay.elo.matches, 1);
+});
