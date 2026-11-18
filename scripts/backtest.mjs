@@ -147,6 +147,7 @@ export function runBacktest(matches, options = {}) {
       updates.push(match);
     }
 
+    updates.sort((a, b) => a.tourneyId.localeCompare(b.tourneyId) || a.matchNum.localeCompare(b.matchNum) || a.winner.localeCompare(b.winner) || a.loser.localeCompare(b.loser));
     // Batch all rating updates from the same pre-date state. This makes
     // next-day ratings independent of CSV row order when players have
     // multiple matches recorded on the same date.
