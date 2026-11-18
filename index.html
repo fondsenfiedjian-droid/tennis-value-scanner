@@ -160,6 +160,7 @@
     <div class="panel"><div class="muted">Свободный баланс</div><div class="stat-num" id="bankBalance">—</div></div>
     <div class="panel"><div class="muted">В открытых ставках</div><div class="stat-num" id="bankOpenStake">—</div></div>
     <div class="panel"><div class="muted">Общий капитал</div><div class="stat-num" id="bankEquity">—</div></div>
+    <div class="panel"><div class="muted">Начальный банк</div><div class="stat-num" id="bankInitialBankroll">—</div></div>
     <div class="panel"><div class="muted">Реализованная прибыль</div><div class="stat-num" id="bankProfit">—</div></div>
     <div class="panel"><div class="muted">Всего поставлено</div><div class="stat-num" id="bankTotalStaked">—</div></div>
     <div class="panel"><div class="muted">ROI без возвратов</div><div class="stat-num" id="bankRoi">—</div></div>
@@ -835,6 +836,7 @@
     $('#bankBalance').textContent=formatEuro(summary.balance);
     $('#bankOpenStake').textContent=formatEuro(summary.openStake);
     $('#bankEquity').textContent=formatEuro(summary.equity);
+    $('#bankInitialBankroll').textContent=formatEuro(summary.initialBankroll);
     $('#bankProfit').textContent=(summary.realizedProfit>0?'+':'')+formatEuro(summary.realizedProfit);
     $('#bankTotalStaked').textContent=formatEuro(summary.totalStaked);
     $('#bankRoi').textContent=summary.roiPercent===null?'—':(summary.roiPercent>0?'+':'')+summary.roiPercent.toFixed(2)+'%';
