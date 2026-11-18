@@ -1276,7 +1276,7 @@ test("Elo plausibility audit flags unusual ratings without rejecting them", () =
   const end = workerSource.indexOf("function normalizeSurface(", start);
   assert.ok(start >= 0 && end > start);
   const source = workerSource.slice(start, end) +
-    "\\nglobalThis.ratingQuality = assessRatingPlausibility;";
+    "\nglobalThis.ratingQuality = assessRatingPlausibility;";
   const sandbox = {};
   vm.runInNewContext(source, sandbox);
   const check = sandbox.ratingQuality;
