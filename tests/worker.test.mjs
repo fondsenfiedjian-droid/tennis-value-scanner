@@ -309,6 +309,21 @@ test("stake sizing maps good, medium and limited freshness correctly", () => {
   assert.equal(sandbox.multiplier("unknown"), 0);
 });
 
+test("odds freshness continues aging while the model prediction is loading", () => {
+  const start = frontendSource.indexOf("function currentOddsAgeMinutes(");
+  const end = frontendSource.indexOf("function assessDataFreshness(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Date, Number, Math, String };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.age = currentOddsAgeMinutes;", sandbox);
+  const observedAt = Date.parse("2026-11-18T12:00:00Z");
+  const now = observedAt + 45 * 60 * 1000;
+  assert.equal(sandbox.age(20, observedAt, now), 65);
+  assert.equal(sandbox.age("", observedAt, now), null);
+  assert.equal(sandbox.age("invalid", observedAt, now), null);
+  assert.equal(sandbox.age(20, null, now), null);
+  assert.equal(sandbox.age(20, now + 6000, now), null);
+});
+
 test("data freshness is labelled conservatively from rating dates and odds age", () => {
   const start = frontendSource.indexOf("function assessDataFreshness(");
   const end = frontendSource.indexOf("function renderBestBet(", start);
