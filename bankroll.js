@@ -175,6 +175,45 @@
     };
   }
 
+  function getOutcomeDispersionStats(state) {
+    validateState(state);
+    const returns = [], winningProfits = [];
+    let netProfit = 0, largestWin = null, largestLoss = null, excluded = 0, voids = 0;
+    for (const tx of state.transactions) {
+      if (tx.type !== "settlement") continue;
+      const outcome = String(tx.outcome || "").toLowerCase();
+      if (outcome === "void") { voids++; continue; }
+      const stake = Number(tx.stake), profit = Number(tx.profit);
+      const validSign = (outcome === "won" && profit > 0) || (outcome === "lost" && profit < 0);
+      if (!["won", "lost"].includes(outcome) || !Number.isFinite(stake) || stake <= 0 ||
+          !Number.isFinite(profit) || !validSign) { excluded++; continue; }
+      const returnPercent = profit / stake * 100;
+      if (!Number.isFinite(returnPercent)) { excluded++; continue; }
+      returns.push(returnPercent);
+      netProfit += profit;
+      if (profit > 0) {
+        winningProfits.push(profit);
+        largestWin = largestWin === null ? profit : Math.max(largestWin, profit);
+      } else largestLoss = largestLoss === null ? profit : Math.min(largestLoss, profit);
+    }
+    const sorted = returns.slice().sort((a, b) => a - b), count = sorted.length;
+    const mean = count ? sorted.reduce((sum, value) => sum + value, 0) / count : null;
+    const median = count ? (count % 2 ? sorted[(count - 1) / 2] : (sorted[count / 2 - 1] + sorted[count / 2]) / 2) : null;
+    const variance = count > 1 ? sorted.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / (count - 1) : null;
+    const grossWinningProfit = winningProfits.reduce((sum, value) => sum + value, 0);
+    const topThreeProfit = winningProfits.slice().sort((a, b) => b - a).slice(0, 3).reduce((sum, value) => sum + value, 0);
+    return {
+      sampleSize: count, voids, excluded, netProfit: roundMoney(netProfit),
+      meanReturnPercent: mean === null ? null : roundMoney(mean),
+      medianReturnPercent: median === null ? null : roundMoney(median),
+      returnStdDevPercent: variance === null ? null : roundMoney(Math.sqrt(variance)),
+      largestWin: largestWin === null ? null : roundMoney(largestWin),
+      largestLoss: largestLoss === null ? null : roundMoney(largestLoss),
+      topThreeWinSharePercent: grossWinningProfit > 0 ? roundMoney(topThreeProfit / grossWinningProfit * 100) : null,
+      netProfitWithoutTopThreeWins: roundMoney(netProfit - topThreeProfit)
+    };
+  }
+
   function getSummary(state) {
     validateState(state);
     const deposits = state.transactions.filter(tx => tx.type === "deposit" && tx.id !== "initial").reduce((s, tx) => s + tx.amount, 0);
@@ -191,6 +230,7 @@
     const profit = realizedProfit(state);
     const drawdown = calculateDrawdown(state);
     const outcomeSequence = getOutcomeSequenceStats(state);
+    const outcomeDispersion = getOutcomeDispersionStats(state);
     const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
     const totalOutflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, -tx.balanceDelta), 0);
     return {
@@ -201,6 +241,7 @@
       realizedProfit: profit,
       ...drawdown,
       outcomeSequence,
+      outcomeDispersion,
       totalStaked: roundMoney(totalStaked),
       dailyStaked: roundMoney(dailyStaked),
       settledStake: roundMoney(settledStake),
@@ -835,5 +876,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getOutcomeSequenceStats, getBookmakerSummary, getSegmentPerformance, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getOutcomeSequenceStats, getOutcomeDispersionStats, getBookmakerSummary, getSegmentPerformance, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
