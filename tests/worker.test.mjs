@@ -2157,7 +2157,11 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
       pfePlayerStatsCache: new Map(),
       fetch: async url => {
         calls.requested = url;
-        return { ok: status >= 200 && status < 300, status, json: async () => payload };
+        return {
+          ok: status >= 200 && status < 300, status,
+          headers: { get: name => name === "Retry-After" && status === 429 ? "45" : null },
+          json: async () => payload
+        };
       },
       TVSPFE: {
         normalizeRecentFormProfile: (value, options) => {
@@ -2191,6 +2195,12 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
   assert.equal(forbidden.result.accessStatus, "forbidden_or_plan_restricted");
   assert.equal(forbidden.calls.recent, 0);
   assert.equal(forbidden.calls.serve, 0);
+
+  const limited = await runLoader({ accessStatus: "rate_limited", error: "Rate limited" }, 429);
+  assert.equal(limited.result.accessStatus, "rate_limited");
+  assert.equal(limited.result.retryAfterSeconds, 45);
+  assert.equal(limited.calls.recent, 0);
+  assert.equal(limited.calls.serve, 0);
 });
 
 test("PFE player stats are connected read-only and score simulation is gated by verified inputs and explicit format", () => {
