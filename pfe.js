@@ -144,5 +144,84 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo };
+
+  const MODEL_REGISTRY = Object.freeze([
+    { id: "general-elo-v2", name: "Общий Elo", category: "rating", dependencyGroup: "elo-ratings", status: "active", currentlyIntegrated: true, requires: ["player Elo ratings"] },
+    { id: "surface-elo", name: "Elo покрытия", category: "rating", dependencyGroup: "elo-ratings", status: "planned", currentlyIntegrated: false, requires: ["surface-specific player ratings"] },
+    { id: "serve-return", name: "Подача и приём", category: "point-model", dependencyGroup: "serve-return-stats", status: "planned", currentlyIntegrated: false, requires: ["verified serve and return statistics"] },
+    { id: "recent-form", name: "Недавняя форма", category: "form", dependencyGroup: "recent-match-results", status: "planned", currentlyIntegrated: false, requires: ["timestamped recent match results"] },
+    { id: "physical-load", name: "Физическая нагрузка", category: "physical", dependencyGroup: "match-load", status: "planned", currentlyIntegrated: false, requires: ["verified match duration and schedule"] },
+    { id: "market-consensus", name: "Рыночная оценка", category: "market", dependencyGroup: "bookmaker-market", status: "planned", currentlyIntegrated: false, requires: ["same-bookmaker two-sided odds"] }
+  ]);
+
+  function getModelRegistry() {
+    return MODEL_REGISTRY.map(model => ({ ...model, requires: model.requires.slice() }));
+  }
+
+  function scorePredictions(records) {
+    const n = records.length;
+    if (!n) return { sampleSize: 0, brierScore: null, logLoss: null };
+    let brier = 0, logLoss = 0;
+    for (const row of records) {
+      const p = clamp(row.probability, 1e-6, 1 - 1e-6);
+      brier += Math.pow(p - row.outcome, 2);
+      logLoss += -(row.outcome * Math.log(p) + (1 - row.outcome) * Math.log(1 - p));
+    }
+    return { sampleSize: n, brierScore: brier / n, logLoss: logLoss / n };
+  }
+
+  function evaluateModelHistory(records, options = {}) {
+    const source = Array.isArray(records) ? records : [];
+    const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
+    const minValidation = Number.isInteger(options.minValidation) ? clamp(options.minValidation, 5, 1000) : 10;
+    const registry = new Map(MODEL_REGISTRY.map(model => [model.id, model]));
+    const grouped = new Map(), rejected = [], seen = new Set();
+    for (const row of source) {
+      const modelId = typeof row?.modelId === "string" ? row.modelId.trim() : "";
+      const matchId = String(row?.matchId ?? "").trim();
+      const probability = finiteProbability(row?.probability);
+      const outcome = row?.outcome;
+      const capturedAt = Date.parse(row?.capturedAt);
+      const matchStart = Date.parse(row?.matchStart);
+      let reason = null;
+      if (!registry.has(modelId)) reason = "unknown_model";
+      else if (!matchId) reason = "missing_match_id";
+      else if (probability === null) reason = "invalid_probability";
+      else if (outcome !== 0 && outcome !== 1) reason = "invalid_outcome";
+      else if (row?.resultVerified !== true) reason = "unverified_result";
+      else if (!Number.isFinite(capturedAt) || !Number.isFinite(matchStart) || capturedAt >= matchStart) reason = "not_pre_match";
+      const key = modelId + "::" + matchId;
+      if (!reason && seen.has(key)) reason = "duplicate_match_model";
+      if (reason) { rejected.push({ modelId: modelId || null, matchId: matchId || null, reason }); continue; }
+      seen.add(key);
+      if (!grouped.has(modelId)) grouped.set(modelId, []);
+      grouped.get(modelId).push({ probability, outcome, capturedAt, matchId });
+    }
+    const models = [];
+    for (const model of MODEL_REGISTRY) {
+      const rows = (grouped.get(model.id) || []).sort((a, b) => a.capturedAt - b.capturedAt || a.matchId.localeCompare(b.matchId));
+      if (!rows.length) continue;
+      const splitAt = Math.floor(rows.length * 0.7);
+      const training = rows.slice(0, splitAt), validation = rows.slice(splitAt);
+      const trainingScore = scorePredictions(training), validationScore = scorePredictions(validation);
+      const enoughData = training.length >= minTraining && validation.length >= minValidation;
+      const rawWeight = trainingScore.brierScore === null ? 1 : clamp(1 + (0.25 - trainingScore.brierScore) * 8, 0.5, 1.5);
+      const shrinkage = enoughData ? training.length / (training.length + 30) : 0;
+      models.push({
+        modelId: model.id, name: model.name, dependencyGroup: model.dependencyGroup,
+        training: trainingScore, validation: validationScore,
+        calibratedWeight: enoughData ? 1 + (rawWeight - 1) * shrinkage : 1,
+        rawWeight: enoughData ? rawWeight : null,
+        status: enoughData ? "validated" : "insufficient_sample",
+        trainingShare: 0.7
+      });
+    }
+    return {
+      status: models.some(model => model.status === "validated") ? "evaluated" : "insufficient_data",
+      split: "chronological_70_30", minTraining, minValidation, models, rejected,
+      note: "Вес рассчитан по ранней обучающей части; поздняя часть используется только для отдельной проверки. При малой выборке вес остаётся нейтральным."
+    };
+  }
+
+  return { fusePredictions, runMonteCarlo, getModelRegistry, evaluateModelHistory };
 });
