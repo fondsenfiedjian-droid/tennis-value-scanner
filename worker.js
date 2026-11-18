@@ -73,10 +73,10 @@ function extractRatingAsOf(profile) {
       const isoLike = /^\d{4}-\d{2}-\d{2}T/.test(clean);
       if (!dateOnly && !isoLike) continue;
       const parsed = Date.parse(clean);
-      if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+      if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
     } else if (typeof value === "number" && Number.isFinite(value) && value > 0) {
       const millis = value < 1e12 ? value * 1000 : value;
-      if (millis <= 8640000000000000) return new Date(millis).toISOString();
+      if (millis <= 8640000000000000) return new Date(millis).toISOString().slice(0, 10);
     }
   }
   return null;
