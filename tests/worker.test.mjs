@@ -3014,3 +3014,11 @@ test("PFE fixed-weight sensitivity stays empty when Elo and market are not both 
   const result = sandbox.pfe.compareModelHistory(rows, { modelIds: ["general-elo-v2"] });
   assert.equal(result.weightSensitivity.length, 0);
 });
+
+
+test("PFE fixed-weight sensitivity is surfaced as a diagnostic and never auto-applied", () => {
+  assert.ok(frontendSource.includes("pfePairedComparison.weightSensitivity"));
+  assert.ok(frontendSource.includes("Чувствительность весов (только диагностика):"));
+  assert.ok(frontendSource.includes("Elo/рынок "));
+  assert.ok(frontendSource.includes("Кандидатные веса пока не применяются автоматически"));
+});
