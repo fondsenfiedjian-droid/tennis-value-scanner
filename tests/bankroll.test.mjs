@@ -71,6 +71,9 @@ test("backup round trip preserves state and rejects malformed data", () => {
   const state = bank.createInitialState(100);
   const backup = bank.serializeBackup(state);
   assert.deepEqual(bank.parseBackup(JSON.parse(JSON.stringify(backup))), state);
+  const corrupted = JSON.parse(JSON.stringify(backup));
+  corrupted.state.balance += 1;
+  assert.throws(() => bank.parseBackup(corrupted), /Контрольная сумма/);
   assert.throws(() => bank.parseBackup({ format: "other", version: 1, state }), /не поддерживается/);
 });
 
