@@ -1205,7 +1205,7 @@ test("portfolio manager blocks the same match across different keys, labels and 
   assert.equal(portfolio.suggestions.length, 2);
   assert.deepEqual(portfolio.suggestions.map(item => item.matchId), [501, 502]);
   const first = api.placeBet(initial, {
-    matchKey: "open:601", matchId: 601, match: "Player E — Player F",
+    matchKey: "open:601", matchId: 601, side: "A", match: "Player E — Player F",
     probability: 0.62, odds: 2.1, stake: 2
   });
   const againstOpen = api.recommendPortfolio(first.state, [{
