@@ -236,23 +236,39 @@
   async function loadMatches(){
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
     $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
+    let saved=null;
+    try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
     try{
-      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=100',{cache:'no-store'});
+      // Reuse recent data for five minutes; if the API is rate-limited, show the last saved data.
+      if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<5*60*1000){
+        cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
+        window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов';
+        return;
+      }
+      const res=await fetch(API+'/matches?status=upcoming&tour=atp&draw=singles&limit=100');
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
       if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
       try{
-        const oddsRes=await fetch(API+'/odds',{cache:'no-store'});
+        const oddsRes=await fetch(API+'/odds');
         const oddsPayload=await oddsRes.json();
         if(oddsRes.ok&&Array.isArray(oddsPayload.items))cachedOdds=oddsPayload.items;
-      }catch(oddsError){cachedOdds=[];}
+      }catch(oddsError){}
+      localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
       $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов';
     }catch(err){
-      $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
-      $('#matchCount').textContent='—';
+      if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
+        cachedOdds=Array.isArray(saved.odds)?saved.odds:[];
+        window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent='Сохранённые данные · API: '+err.message;
+      }else{
+        $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
+        $('#matchCount').textContent='—';
+      }
     }finally{btn.disabled=false;btn.textContent='↻  ОБНОВИТЬ ДАННЫЕ';}
   }
   $('#refreshBtn').onclick=loadMatches;
