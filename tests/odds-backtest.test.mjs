@@ -286,3 +286,30 @@ test("odds backtest rejects conflicting prices at the same snapshot timestamp", 
   ]), /Conflicting duplicate timestamp snapshot/);
 });
 
+
+test("odds backtest aligns player B probability with player B odds and winner", () => {
+  const report = runOddsBacktest([{
+    ...base,
+    odds_captured_at: "2025-01-01T10:00:00Z",
+    odds_a: "1.80",
+    odds_b: "2.40",
+    probability_a: "0.60",
+    winner: "B"
+  }], { minEv: 0.03, minOdds: 1.9 });
+  assert.equal(report.bets, 1);
+  assert.equal(report.selections[0].side, "B");
+  assert.equal(report.selections[0].player, "Player B");
+  assert.equal(report.selections[0].modelProbability, 0.4);
+  assert.equal(report.selections[0].won, true);
+  assert.equal(report.selections[0].odds, 2.4);
+});
+
+test("scanner archive excludes retirements and walkovers from ordinary win-loss backtests", () => {
+  const rows = [
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00Z", matchId: "retired", tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A", odds: "2.20", probability: "50", resultOutcome: "retired", resultWinner: "1" },
+    { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00Z", matchId: "walkover", tour: "atp", surface: "Hard", player: "Player C", opponent: "Player D", side: "A", odds: "2.20", probability: "50", resultOutcome: "walkover", resultWinner: "1" }
+  ];
+  const adapted = adaptScannerArchiveRows(rows);
+  assert.equal(adapted.rows.length, 0);
+  assert.equal(adapted.ignored, 2);
+});
