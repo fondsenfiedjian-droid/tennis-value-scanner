@@ -307,10 +307,11 @@ export default {
       if (!env.LIVE_TENNIS_API_KEY) {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
       }
-      const playerId = url.searchParams.get("id") || "";
-      if (!/^[A-Za-z0-9_-]{1,128}$/.test(playerId)) {
-        return response({ error: "id must be a valid player identifier" }, 400);
+      const rawPlayerId = url.searchParams.get("id") || "";
+      if (!/^\\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
+        return response({ error: "id must be a positive integer player identifier" }, 400);
       }
+      const playerId = String(Number(rawPlayerId));
       try {
         // Player statistics change more often than profile ratings; cache successful responses for one minute, matching the provider's cache window.
         const cache = caches.default;
