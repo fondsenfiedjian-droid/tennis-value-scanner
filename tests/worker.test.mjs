@@ -1854,3 +1854,56 @@ test("segment ROI follows the latest verified result revision without double-cou
   assert.equal(hard.roiPercent, -100);
   assert.equal(performance.bookmaker.find(row => row.name === "Winamax").settledBets, 1);
 });
+
+
+test("segment performance groups settled bets by original odds and EV, not settlement prices", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(1000);
+  const add = (key, odds, probability, outcome) => {
+    const placed = api.placeBet(state, {
+      matchKey: key, match: key, player: "A", opponent: "B", bookmaker: "Winamax",
+      probability, odds, stake: 2,
+      options: { minOdds: 1.01, minEv: -10, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
+    });
+    state = api.settleBet(placed.state, placed.bet.id, outcome);
+  };
+  add("odds-low", 1.7, 0.7, "won");
+  add("odds-mid", 2.2, 0.55, "lost");
+  add("odds-high", 3.2, 0.7, "lost");
+  add("ev-low", 1.7, 0.55, "lost");
+  const result = api.getSegmentPerformance(state, []);
+  const odds = Object.fromEntries(result.oddsBand.map(row => [row.name, row]));
+  assert.equal(odds["1.50–1.79"].settledBets, 2);
+  assert.equal(odds["1.50–1.79"].wins, 1);
+  assert.equal(odds["2.10–2.49"].losses, 1);
+  assert.equal(odds["3.00+"].settledBets, 1);
+  const ev = Object.fromEntries(result.evBand.map(row => [row.name, row]));
+  assert.equal(ev["15%+"].settledBets, 2);
+  assert.equal(ev["10–14.99%"].settledBets, 1);
+  assert.equal(ev["Отрицательный"].settledBets, 1);
+  assert.equal(result.oddsBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
+  assert.equal(result.evBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
+});
+
+test("odds and EV segmentation keeps missing source values unknown and labels are displayed", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const placed = api.placeBet(state, {
+    matchKey: "unknown-price", match: "Unknown", probability: 0.7, odds: 2.1, stake: 2,
+    options: { minOdds: 1.01, minEv: -10, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
+  });
+  state = api.settleBet(placed.state, placed.bet.id, "won");
+  const tx = state.transactions.find(item => item.type === "settlement");
+  delete tx.betSnapshot.odds;
+  delete tx.betSnapshot.ev;
+  const result = api.getSegmentPerformance(state, []);
+  assert.equal(result.oddsBand.find(row => row.name === "Неизвестно").excluded, 1);
+  assert.equal(result.evBand.find(row => row.name === "Неизвестно").excluded, 1);
+  assert.ok(frontendSource.includes("Коэффициенты при размещении"));
+  assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
+});
