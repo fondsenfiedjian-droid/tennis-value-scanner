@@ -22,25 +22,36 @@ function eloProbability(a, b) {
 
 function findElo(profile) {
   if (!profile || typeof profile !== "object") return null;
-  const preferred = ["overall_elo", "elo", "elo_rating", "overallElo"];
   const seen = new Set();
-  function scan(obj, depth = 0) {
-    if (!obj || typeof obj !== "object" || depth > 8 || seen.has(obj)) return null;
+  const nodes = [];
+  function collect(obj, depth = 0) {
+    if (!obj || typeof obj !== "object" || depth > 8 || seen.has(obj)) return;
     seen.add(obj);
-    for (const key of preferred) {
-      const value = obj[key];
-      if (value !== undefined && value !== null && Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
-    }
-    for (const [key, value] of Object.entries(obj)) {
-      if (/elo/i.test(key) && value !== null && typeof value !== "object" && Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
-    }
-    for (const value of Object.values(obj)) {
-      const found = scan(value, depth + 1);
-      if (found !== null) return found;
-    }
-    return null;
+    nodes.push(obj);
+    for (const value of Object.values(obj)) if (value && typeof value === "object") collect(value, depth + 1);
   }
-  return scan(profile);
+  collect(profile);
+  function valid(value) {
+    const rating = Number(value);
+    return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
+  }
+  // Prefer an overall rating anywhere in the profile before surface-specific data.
+  const overallKeys = ["overall_elo", "overallElo", "overall_elo_rating"];
+  for (const obj of nodes) for (const key of overallKeys) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      const rating = valid(obj[key]);
+      if (rating !== null) return rating;
+    }
+  }
+  // Fall back only to unqualified Elo fields.
+  const genericKeys = ["elo", "elo_rating", "eloRating", "rating_elo"];
+  for (const obj of nodes) for (const key of genericKeys) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      const rating = valid(obj[key]);
+      if (rating !== null) return rating;
+    }
+  }
+  return null;
 }
 
 async function getPlayerProfile(playerId, apiKey) {
