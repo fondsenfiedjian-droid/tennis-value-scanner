@@ -1238,3 +1238,34 @@ test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
   assert.match(serviceWorkerSource, /tennis-value-static-v40/);
 });
+
+
+test("player rating audit distinguishes fresh, recent, stale, unknown and invalid dates", () => {
+  const start = workerSource.indexOf("function extractRatingAsOf(");
+  const end = workerSource.indexOf("function normalizeSurface(", start);
+  assert.ok(start >= 0 && end > start);
+  const auditSource = workerSource.slice(start, end) +
+    "\\nglobalThis.ratingAudit = { extractRatingAsOf, assessRatingFreshness };";
+  const sandbox = {};
+  vm.runInNewContext(auditSource, sandbox);
+  const api = sandbox.ratingAudit;
+  const now = Date.parse("2026-11-18T12:00:00.000Z");
+  assert.equal(api.extractRatingAsOf({ stats: { ratings_as_of: "2026-11-17" } }), "2026-11-17");
+  assert.equal(api.extractRatingAsOf({ ratingsAsOf: "2026-11-17T08:30:00Z" }), "2026-11-17");
+  assert.equal(api.extractRatingAsOf({ stats: { elo_updated_at: 1795000000 } }), new Date(1795000000 * 1000).toISOString().slice(0, 10));
+  assert.equal(api.extractRatingAsOf({ ratings_as_of: "2026-02-31" }), null);
+  assert.equal(api.extractRatingAsOf({ ratings_as_of: "not-a-date" }), null);
+  assert.equal(api.extractRatingAsOf({}), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-11-17", now))), { status: "fresh", ageDays: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-11-01", now))), { status: "recent", ageDays: 17 });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-10-01", now))), { status: "stale", ageDays: 48 });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness(null, now))), { status: "unknown", ageDays: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-11-19", now))), { status: "invalid", ageDays: null });
+});
+
+test("prediction UI displays each player's rating freshness separately", () => {
+  assert.match(frontendSource, /ratingFreshnessA/);
+  assert.match(frontendSource, /ratingFreshnessB/);
+  assert.match(frontendSource, /дата неизвестна/);
+  assert.match(frontendSource, /устаревший/);
+});
