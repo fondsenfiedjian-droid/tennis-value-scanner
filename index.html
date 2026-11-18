@@ -1022,14 +1022,28 @@
   }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
-    const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
+    const allCandidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       const el=document.getElementById('model-'+i);
       const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9);
       return a&&b&&a.id&&b.id&&eligibleOdds&&el?.hasAttribute('data-player-a');
-    }).slice(0,3);
+    });
+    // Reuse every valid local prediction; only three cache misses may request profiles.
+    const cachedCandidates=[],uncachedCandidates=[];
+    for(const candidate of allCandidates){
+      const el=document.getElementById('model-'+candidate.i);
+      const key='tvs-elo-v2-'+el.dataset.playerA+'-'+el.dataset.playerB;
+      let validCache=false;
+      try{
+        const raw=localStorage.getItem(key);
+        if(raw){const item=JSON.parse(raw);validCache=isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data);}
+      }catch(error){}
+      (validCache?cachedCandidates:uncachedCandidates).push(candidate);
+    }
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,3)];
+    const totalCandidates=allCandidates.length;
     const dayBets=[];
-    renderBestBet(dayBets,0,candidates.length);
+    renderBestBet(dayBets,0,totalCandidates);
     let positive=0,checked=0,failed=0;
     for(const {m,i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
@@ -1065,19 +1079,19 @@
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshness.level==='high'?1:freshness.level==='medium'?0.5:0;}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
-        renderBestBet(dayBets,checked,candidates.length,failed);
+        renderBestBet(dayBets,checked,totalCandidates,failed);
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
         if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
       }catch(err){
         if(renderId!==predictionRenderId)return;
         failed++;el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
-        renderBestBet(dayBets,checked,candidates.length,failed);
+        renderBestBet(dayBets,checked,totalCandidates,failed);
       }
     }
     if(renderId!==predictionRenderId)return;
     $('#valueCount').textContent=positive;
     if(!candidates.length)$('#valueCount').textContent='0';
-    renderBestBet(dayBets,checked,candidates.length,failed);
+    renderBestBet(dayBets,checked,totalCandidates,failed);
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   let autoRefreshTimer=null;
