@@ -12,6 +12,10 @@ const base = {
   odds_b: "1.80",
   probability_a: "0.50",
   model_calculated_at: "2024-12-31T00:00:00Z",
+  quote_a_captured_at: "2024-12-30T23:58:00Z",
+  quote_b_captured_at: "2024-12-30T23:58:00Z",
+  quote_a_observed_at: "2024-12-30T23:59:00Z",
+  quote_b_observed_at: "2024-12-30T23:59:00Z",
   capture_status: "upcoming",
   winner: "A",
   tour: "atp",
@@ -103,12 +107,12 @@ test("odds backtest rejects conflicting results for one match ID", () => {
 
 test("scanner semicolon CSV archive is paired into pre-match snapshots and settled outcomes", () => {
   const csv = [
-    "capturedAt;modelCalculatedAt;captureStatus;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
-    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
-    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
-    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;;completed;1",
-    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;;completed;1",
-    "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
+    "capturedAt;modelCalculatedAt;quoteCapturedAt;quoteObservedAt;captureStatus;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
+    "1735725600000;1735725599000;1735725590000;1735725595000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
+    "1735725600000;1735725599000;1735725590000;1735725595000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
+    "1735729200000;1735729199000;1735729190000;1735729195000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;;completed;1",
+    "1735729200000;1735729199000;1735729190000;1735729195000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;;completed;1",
+    "1735725600000;1735725599000;1735725590000;1735725595000;upcoming;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
   ].join("\n");
   const parsed = parseCsv(csv, { delimiter: ";" });
   const adapted = adaptScannerArchiveRows(parsed);
@@ -119,6 +123,7 @@ test("scanner semicolon CSV archive is paired into pre-match snapshots and settl
   assert.equal(adapted.rows[0].surface, "Hard");
   assert.equal(adapted.rows[0].rating_as_of_a, "2024-12-31");
   assert.equal(adapted.rows[0].model_calculated_at, "2025-01-01T09:59:59.000Z");
+  assert.equal(adapted.rows[0].quote_a_captured_at, "2025-01-01T09:58:10.000Z");
   assert.equal(adapted.rows[0].rating_as_of_b, "2025-01-01");
   const report = runOddsBacktest(adapted.rows, { minEv: 0.03, minOdds: 1.9 });
   assert.equal(report.matches, 1);
@@ -472,7 +477,7 @@ test("scanner archive rejects duplicate side snapshots with conflicting player i
 
 test("strict probability provenance excludes missing, equal-time, future and non-upcoming snapshots", () => {
   const rows = [
-    { ...base, match_id: "valid-provenance", model_calculated_at: "2025-01-01T09:59:59Z", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "valid-provenance", model_calculated_at: "2025-01-01T09:59:59Z", quote_a_captured_at: "2025-01-01T09:58:00Z", quote_b_captured_at: "2025-01-01T09:58:00Z", quote_a_observed_at: "2025-01-01T09:58:10Z", quote_b_observed_at: "2025-01-01T09:58:10Z", odds_captured_at: "2025-01-01T10:00:00Z" },
     { ...base, match_id: "missing-model-time", model_calculated_at: undefined, odds_captured_at: "2025-01-01T10:00:00Z" },
     { ...base, match_id: "same-time", model_calculated_at: "2025-01-01T10:00:00Z", odds_captured_at: "2025-01-01T10:00:00Z" },
     { ...base, match_id: "after-odds", model_calculated_at: "2025-01-01T10:00:01Z", odds_captured_at: "2025-01-01T10:00:00Z" },
@@ -502,4 +507,28 @@ test("scanner archive excludes legacy rows without model calculation time", () =
   const adapted = adaptScannerArchiveRows(rows);
   assert.equal(adapted.rows.length, 0);
   assert.equal(adapted.ignored, 2);
+});
+
+
+test("strict quote provenance rejects missing, future and stale source timestamps", () => {
+  const valid = { ...base, match_id: "quote-valid", odds_captured_at: "2025-01-01T10:00:00Z",
+    model_calculated_at: "2025-01-01T09:59:00Z",
+    quote_a_captured_at: "2025-01-01T09:58:00Z", quote_b_captured_at: "2025-01-01T09:58:00Z",
+    quote_a_observed_at: "2025-01-01T09:58:10Z", quote_b_observed_at: "2025-01-01T09:58:10Z" };
+  const rows = [
+    valid,
+    { ...valid, match_id: "quote-missing", quote_a_captured_at: undefined },
+    { ...valid, match_id: "quote-after-observation", quote_b_captured_at: "2025-01-01T09:59:00Z" },
+    { ...valid, match_id: "quote-after-model", quote_a_captured_at: "2025-01-01T09:59:30Z", quote_a_observed_at: "2025-01-01T09:59:40Z" },
+    { ...valid, match_id: "quote-stale", quote_a_captured_at: "2025-01-01T08:00:00Z", quote_a_observed_at: "2025-01-01T09:58:10Z" }
+  ];
+  const report = runOddsBacktest(rows, { thresholdSensitivity: false });
+  assert.equal(report.matches, 1);
+  assert.equal(report.rejectedSnapshots, 4);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.provided, 4);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.missing, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterObservation, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterModelCalculation, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.staleAtObservation, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.acceptedSides, 2);
 });
