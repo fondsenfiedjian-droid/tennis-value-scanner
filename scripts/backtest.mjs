@@ -147,21 +147,40 @@ export function runBacktest(matches, options = {}) {
       updates.push(match);
     }
 
-    // Update state only after every match on this date has been predicted.
+    // Batch all rating updates from the same pre-date state. This makes
+    // next-day ratings independent of CSV row order when players have
+    // multiple matches recorded on the same date.
+    const overallDeltas = new Map();
+    const surfaceDeltas = new Map();
     for (const match of updates) {
       const winnerRating = overall.get(match.winner) ?? 1500;
       const loserRating = overall.get(match.loser) ?? 1500;
       const expected = sigmoid(winnerRating, loserRating);
-      overall.set(match.winner, winnerRating + k * (1 - expected));
-      overall.set(match.loser, loserRating - k * (1 - expected));
+      overallDeltas.set(match.winner, (overallDeltas.get(match.winner) ?? 0) + k * (1 - expected));
+      overallDeltas.set(match.loser, (overallDeltas.get(match.loser) ?? 0) - k * (1 - expected));
 
       if (match.surface) {
         const keyW = match.surface + ":" + match.winner, keyL = match.surface + ":" + match.loser;
         const currentW = bySurface.get(keyW) ?? { rating: 1500, count: 0 };
         const currentL = bySurface.get(keyL) ?? { rating: 1500, count: 0 };
         const surfaceExpected = sigmoid(currentW.rating, currentL.rating);
-        bySurface.set(keyW, { rating: currentW.rating + k * (1 - surfaceExpected), count: currentW.count + 1 });
-        bySurface.set(keyL, { rating: currentL.rating - k * (1 - surfaceExpected), count: currentL.count + 1 });
+        const delta = k * (1 - surfaceExpected);
+        surfaceDeltas.set(keyW, (surfaceDeltas.get(keyW) ?? 0) + delta);
+        surfaceDeltas.set(keyL, (surfaceDeltas.get(keyL) ?? 0) - delta);
+      }
+    }
+    for (const [id, delta] of overallDeltas) overall.set(id, (overall.get(id) ?? 1500) + delta);
+    for (const [key, delta] of surfaceDeltas) {
+      const current = bySurface.get(key) ?? { rating: 1500, count: 0 };
+      bySurface.set(key, { rating: current.rating + delta, count: current.count });
+    }
+    for (const match of updates) {
+      if (match.surface) {
+        for (const id of [match.winner, match.loser]) {
+          const key = match.surface + ":" + id;
+          const current = bySurface.get(key) ?? { rating: 1500, count: 0 };
+          bySurface.set(key, { ...current, count: current.count + 1 });
+        }
       }
       addResult(form, match.winner, true, match.surface);
       addResult(form, match.loser, false, match.surface);
