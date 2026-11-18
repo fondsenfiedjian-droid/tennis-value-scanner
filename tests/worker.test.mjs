@@ -363,6 +363,22 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   assert.equal(readPredictionArchive().length, 4);
 });
 
+test("IndexedDB retains the full archive when the localStorage backup is full", async () => {
+  const indexedDB = makeFakeIndexedDB();
+  const store = makeArchiveStore([], { indexedDB, failWrites: true });
+  await store.initializeArchiveStorage();
+  const rows = Array.from({ length: 350 }, (_, i) => ({
+    matchKey: "quota-" + i, side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 + i
+  }));
+  const saved = store.persistPredictionArchive(rows);
+  assert.equal(saved.storage, "indexeddb");
+  assert.equal(saved.saved, 350);
+  await store.flushArchiveWrites();
+  assert.equal(indexedDB.state.records.length, 350);
+  assert.equal(store.readPredictionArchive().length, 350);
+});
+
 test("archive waits for IndexedDB transaction before reporting it flushed", async () => {
   const indexedDB = makeFakeIndexedDB();
   const store = makeArchiveStore([], { indexedDB });
