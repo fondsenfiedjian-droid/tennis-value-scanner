@@ -901,7 +901,9 @@ test("expired portfolio plans are cleared automatically and cannot block the nex
   assert.equal(expired.state.pendingPlan, null);
   assert.equal(expired.state.balance, 100);
   assert.equal(expired.state.openBets.length, 0);
-  assert.throws(() => api.reconcilePortfolioPlan(planned, planned.pendingPlan.id, planned.pendingPlan.suggestions.map(item => ({ matchKey: item.matchKey, stake: item.stake, odds: item.odds }))), /устарел/);
+  const stalePlan = JSON.parse(JSON.stringify(planned));
+  stalePlan.pendingPlan.expiresAt = new Date(Date.now() - 1000).toISOString();
+  assert.throws(() => api.reconcilePortfolioPlan(stalePlan, stalePlan.pendingPlan.id, stalePlan.pendingPlan.suggestions.map(item => ({ matchKey: item.matchKey, stake: item.stake, odds: item.odds }))), /устарел/);
   const nextPlan = api.savePortfolioPlan(expired.state, suggestions);
   assert.ok(nextPlan.pendingPlan);
   assert.notEqual(nextPlan.pendingPlan.id, planned.pendingPlan.id);
