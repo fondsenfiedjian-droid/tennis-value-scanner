@@ -1209,7 +1209,7 @@ test("portfolio manager blocks the same match across different keys, labels and 
     probability: 0.62, odds: 2.1, stake: 2
   });
   const againstOpen = api.recommendPortfolio(first.state, [{
-    matchKey: "another-key:601", matchId: 601, match: "Other label",
+    matchKey: "another-key:601", matchId: 601, side: "A", match: "Other label",
     probability: 0.62, odds: 2.1
   }]);
   assert.equal(againstOpen.suggestions.length, 0);
