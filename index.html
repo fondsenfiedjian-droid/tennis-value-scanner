@@ -431,6 +431,7 @@
     const outcome=typeof result.outcome==='string'?result.outcome:null;
     const settled=['completed','retired','walkover','default','abandoned','unresolved'].includes(outcome)||result.status==='cancelled';
     const version=result.result_version!==null&&result.result_version!==undefined&&Number.isSafeInteger(Number(result.result_version))&&Number(result.result_version)>=1?Number(result.result_version):null;
+    if(result.result_version!==null&&result.result_version!==undefined&&version===null)return {rows,updated:0};
     let updated=0;
     const next=rows.map(row=>{
       if(Number(row.matchId)!==id)return row;
