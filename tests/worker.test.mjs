@@ -1196,10 +1196,10 @@ test("portfolio manager blocks the same match across different keys, labels and 
   const api = sandbox.bankrollApi;
   const initial = api.createInitialState(100);
   const candidates = [
-    { matchKey: "provider:event:501", matchId: 501, match: "Player A — Player B", probability: 0.62, odds: 2.1 },
-    { matchKey: "different-key:501", matchId: 501, match: "A different display label", probability: 0.64, odds: 2.2 },
-    { matchKey: "provider:event:502", matchId: 502, match: "Player C — Player D", probability: 0.62, odds: 2.1 },
-    { matchKey: "alternate-key:502", matchId: 999, match: "Player C — Player D", probability: 0.63, odds: 2.15 }
+    { matchKey: "provider:event:501", matchId: 501, side: "A", match: "Player A — Player B", probability: 0.62, odds: 2.1 },
+    { matchKey: "different-key:501", matchId: 501, side: "A", match: "A different display label", probability: 0.64, odds: 2.2 },
+    { matchKey: "provider:event:502", matchId: 502, side: "A", match: "Player C — Player D", probability: 0.62, odds: 2.1 },
+    { matchKey: "alternate-key:502", matchId: 999, side: "A", match: "Player C — Player D", probability: 0.63, odds: 2.15 }
   ];
   const portfolio = api.recommendPortfolio(initial, candidates);
   assert.equal(portfolio.suggestions.length, 2);
