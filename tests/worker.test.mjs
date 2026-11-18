@@ -186,6 +186,23 @@ test("cache timestamps reject stale, invalid, and implausibly future data", () =
   assert.equal(sandbox.isFresh(0, 600_000, now), false);
 });
 
+test("frontend rejects malformed prediction payloads before display or caching", () => {
+  const start = frontendSource.indexOf("function isValidPredictionResult(");
+  const end = frontendSource.indexOf("async function loadPredictions(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Number, Math };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.validate = isValidPredictionResult;", sandbox);
+  const valid = { ratingA: 1900, ratingB: 1800, probabilityA: 64, probabilityB: 36,
+    fairOddsA: 1.563, fairOddsB: 2.778 };
+  assert.equal(sandbox.validate(valid), true);
+  assert.equal(sandbox.validate({ ...valid, probabilityB: 40 }), false);
+  assert.equal(sandbox.validate({ ...valid, ratingA: 0 }), false);
+  assert.equal(sandbox.validate({ ...valid, fairOddsA: 1.2 }), false);
+  assert.equal(sandbox.validate({ ...valid, probabilityA: 100 }), false);
+  assert.equal(sandbox.validate(null), false);
+  assert.ok(frontendSource.includes("else localStorage.removeItem(cacheKey)"));
+});
+
 test("frontend inline JavaScript parses without syntax errors", () => {
   const start = frontendSource.indexOf("<script>");
   const end = frontendSource.indexOf("</script>", start);
