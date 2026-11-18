@@ -279,3 +279,19 @@ test("portfolio reconciliation rejects worse actual odds or oversized actual sta
   assert.ok(planned.pendingPlan);
 });
 
+
+
+test("bankroll validation rejects malformed planned and actual execution audit values", () => {
+  const invalidBet = bank.createInitialState(100);
+  const placed = bank.placeBet(invalidBet, { probability: 0.62, odds: 2.1, stake: 1 });
+  placed.state.openBets[0].plannedStake = -1;
+  assert.throws(() => bank.validateState(placed.state), /некорректная открытая ставка/);
+
+  const invalidTransaction = bank.createInitialState(100);
+  invalidTransaction.transactions.push({
+    id: "tx-audit-invalid", type: "stake", amount: 1, balanceDelta: -1,
+    actualOdds: 1, at: new Date().toISOString()
+  });
+  invalidTransaction.balance = 99;
+  assert.throws(() => bank.validateState(invalidTransaction), /некорректная операция/);
+});
