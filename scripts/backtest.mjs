@@ -321,7 +321,14 @@ export function runBacktest(matches, options = {}) {
       const calibrator = fitLogisticCalibration(training);
       const raw = scoreFavouriteCalibration(evaluation);
       if (!calibrator) {
-        calibrationValidation.push({ trainingYear, evaluationYear, candidate: name, scope: "tour", status: "insufficient_training_data", trainingMatches: training.length, raw });
+        calibrationValidation.push({
+          trainingYear, evaluationYear, candidate: name, scope: "tour",
+          status: "insufficient_training_data",
+          trainingMatches: training.length,
+          trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
+          evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
+          raw
+        });
         continue;
       }
       const calibratedObservations = evaluation.map(item => ({
@@ -330,7 +337,10 @@ export function runBacktest(matches, options = {}) {
       }));
       calibrationValidation.push({
         trainingYear, evaluationYear, candidate: name, scope: "tour",
-        trainingMatches: training.length, calibrator,
+        trainingMatches: training.length,
+        trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
+        evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
+        calibrator,
         raw, calibrated: scoreFavouriteCalibration(calibratedObservations)
       });
 
@@ -347,6 +357,8 @@ export function runBacktest(matches, options = {}) {
         calibrationValidation.push({
           trainingYear, evaluationYear, candidate: name, scope: "surface",
           surface: surfaceName, trainingMatches: surfaceTraining.length,
+          trainingSampleQuality: surfaceTraining.length < 30 ? "low" : surfaceTraining.length < 100 ? "limited" : "larger_sample",
+          evaluationSampleQuality: surfaceEvaluation.length < 30 ? "low" : surfaceEvaluation.length < 100 ? "limited" : "larger_sample",
           raw: scoreFavouriteCalibration(surfaceEvaluation),
           calibrated: scoreFavouriteCalibration(transformed),
           calibrator: surfaceCalibrator
