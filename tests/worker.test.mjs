@@ -367,6 +367,15 @@ test("daily best bet respects the configured minimum EV and odds floor", () => {
   assert.equal(sandbox.select(bets, 3).player, "E");
   assert.equal(sandbox.select(bets, 7), null);
   assert.equal(sandbox.select(bets, 0).player, "E");
+  assert.equal(sandbox.select(bets, 3, 2.3).player, "A");
+  assert.equal(sandbox.select(bets, 3, 2.5), null);
+});
+
+test("daily best bet has its own persisted odds threshold setting and does not reuse the general odds filter", () => {
+  assert.ok(frontendSource.includes('id="bestBetMinOdds"'));
+  assert.ok(frontendSource.includes("data.bestBetMinOdds"));
+  assert.ok(frontendSource.includes("selectBestBet(bets,minEv,bestBetMinOdds)"));
+  assert.ok(frontendSource.includes("Не меняет EV, вероятность модели или размер ставки"));
 });
 
 test("stake sizing maps good, medium and limited freshness correctly", () => {
