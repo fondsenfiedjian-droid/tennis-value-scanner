@@ -227,6 +227,23 @@ test("frontend rejects malformed prediction payloads before display or caching",
   assert.ok(frontendSource.includes("else localStorage.removeItem(cacheKey)"));
 });
 
+test("data freshness is labelled conservatively from rating dates and odds age", () => {
+  const start = frontendSource.indexOf("function assessDataFreshness(");
+  const end = frontendSource.indexOf("function renderBestBet(", start);
+  assert.ok(start >= 0 && end > start);
+  const validDateStart = frontendSource.indexOf("function validRatingDate(");
+  const validDateEnd = frontendSource.indexOf("function isValidPredictionResult(", validDateStart);
+  const sandbox = { Date, Number, Math };
+  vm.runInNewContext(frontendSource.slice(validDateStart, validDateEnd) +
+    frontendSource.slice(start, end) + "\nglobalThis.assess = assessDataFreshness;", sandbox);
+  const now = Date.parse("2026-11-18T12:00:00Z");
+  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 20, now).level, "good");
+  assert.equal(sandbox.assess("2026-10-20", "2026-10-21", 60, now).level, "medium");
+  assert.equal(sandbox.assess(null, "2026-11-11", 10, now).level, "limited");
+  assert.equal(sandbox.assess("2026-10-01", "2026-10-02", 10, now).level, "limited");
+  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 120, now).level, "limited");
+});
+
 test("frontend inline JavaScript parses without syntax errors", () => {
   const start = frontendSource.indexOf("<script>");
   const end = frontendSource.indexOf("</script>", start);
