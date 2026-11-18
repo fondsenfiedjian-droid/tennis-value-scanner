@@ -955,6 +955,42 @@
       };
     };
     const trainingScores = makeScored(trainingMatches), validationScores = makeScored(validationMatches);
+    // Fixed Elo/market ratios are evaluated on the same paired matches and the same
+    // chronological holdout. Validation is descriptive only; it never selects a weight.
+    const weightSensitivity = requested.includes("general-elo-v2") && requested.includes("market-consensus")
+      ? [0, 0.25, 0.5, 0.75, 1].map(marketWeight => {
+        const eloWeight = 1 - marketWeight;
+        const scoreWeighted = matches => scorePredictions(matches.map(match => ({
+          probability: match.rows["general-elo-v2"].probability * eloWeight +
+            match.rows["market-consensus"].probability * marketWeight,
+          outcome: match.rows["general-elo-v2"].outcome
+        })));
+        const segmentResults = [];
+        for (const dimension of ["surface", "tour"]) {
+          const values = [...new Set(matched.map(match => match[dimension]).filter(Boolean))].sort();
+          for (const value of values) {
+            const trainSegment = trainingMatches.filter(match => match[dimension] === value);
+            const validationSegment = validationMatches.filter(match => match[dimension] === value);
+            segmentResults.push({
+              dimension, value,
+              trainingSampleSize: trainSegment.length,
+              validationSampleSize: validationSegment.length,
+              status: trainSegment.length >= minTraining && validationSegment.length >= minValidation
+                ? "validated" : "preliminary",
+              training: scoreWeighted(trainSegment),
+              validation: scoreWeighted(validationSegment)
+            });
+          }
+        }
+        return {
+          eloWeight, marketWeight,
+          label: Math.round(eloWeight * 100) + "/" + Math.round(marketWeight * 100),
+          training: scoreWeighted(trainingMatches),
+          validation: scoreWeighted(validationMatches),
+          segments: segmentResults
+        };
+      })
+      : [];
     const segmentGroups = [];
     for (const dimension of ["surface", "tour"]) {
       const values = [...new Set(matched.map(match => match[dimension]).filter(Boolean))].sort();
@@ -1001,8 +1037,8 @@
       excluded: { unpaired: excludedUnpaired, outcomeConflict: excludedOutcomeConflict,
         scheduleConflict: excludedScheduleConflict, invalid: rejected.length },
       models, comparisons, rejected, minTraining, minValidation,
-      trainingScores, validationScores, segments: segmentGroups,
-      note: "Объединённый прогноз — равновесное среднее независимых Elo и рынка, как при нейтральных весах PFE. Все сегменты используют общую хронологическую границу 70/30; малые сегменты предварительные. Базовый ориентир — постоянная вероятность 50%. Меньший Brier Score и Log Loss лучше."
+      trainingScores, validationScores, segments: segmentGroups, weightSensitivity,
+      note: "Объединённый прогноз — равновесное среднее независимых Elo и рынка, как при нейтральных весах PFE. Анализ чувствительности проверяет фиксированные доли Elo/рынка 100/0, 75/25, 50/50, 25/75 и 0/100 на одной хронологической выборке; поздняя часть не используется для подбора веса. Все сегменты используют общую границу 70/30; малые сегменты предварительные. Базовый ориентир — постоянная вероятность 50%. Меньший Brier Score и Log Loss лучше."
     };
   }
 
