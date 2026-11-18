@@ -2184,3 +2184,9 @@ test("PFE history evaluation rejects post-start, unverified, duplicate and unkno
   assert.deepEqual(JSON.parse(JSON.stringify(result.rejected.map(row => row.reason).sort())),
     ["duplicate_match_model", "not_pre_match", "unknown_model", "unverified_result"].sort());
 });
+
+
+test("prediction card shows the registered PFE model count without claiming planned models are active", () => {
+  assert.ok(frontendSource.includes("TVSPFE.getModelRegistry()"));
+  assert.ok(frontendSource.includes("Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount"));
+});
