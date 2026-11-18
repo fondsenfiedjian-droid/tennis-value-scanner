@@ -1093,6 +1093,12 @@
     if(Math.abs(fairOddsA-100/probabilityA)>0.002||Math.abs(fairOddsB-100/probabilityB)>0.002)return false;
     return true;
   }
+  function currentOddsAgeMinutes(initialAge,observedAt,now=Date.now()){
+    if(initialAge===null||initialAge===undefined||String(initialAge).trim()==='')return null;
+    const age=Number(initialAge),observed=Number(observedAt);
+    if(!Number.isFinite(age)||age<0||!Number.isFinite(observed)||observed<=0||observed>now+5000)return null;
+    return age+Math.max(0,(now-observed)/60000);
+  }
   function assessDataFreshness(ratingAsOfA,ratingAsOfB,oddsAgeMinutes,now=Date.now()){
     const dates=[validRatingDate(ratingAsOfA),validRatingDate(ratingAsOfB)];
     const ratingAges=dates.map(date=>date===null?null:Math.floor((now-Date.parse(date+'T00:00:00Z'))/86400000));
@@ -1207,10 +1213,7 @@
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
-        const initialOddsAge=Number(el.dataset.oddsAgeMinutes);
-        const oddsObservedAt=Number(el.dataset.oddsObservedAt);
-        const currentOddsAge=Number.isFinite(initialOddsAge)&&initialOddsAge>=0&&Number.isFinite(oddsObservedAt)&&oddsObservedAt>0
-          ?initialOddsAge+Math.max(0,(Date.now()-oddsObservedAt)/60000):null;
+        const currentOddsAge=currentOddsAgeMinutes(el.dataset.oddsAgeMinutes,el.dataset.oddsObservedAt);
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,currentOddsAge);
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
