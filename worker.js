@@ -56,6 +56,58 @@ function findElo(profile) {
   return null;
 }
 
+function normalizeSurface(value) {
+  const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ");
+  if (/\\b(clay|terre battue|грунт)\\b/.test(surface)) return "clay";
+  if (/\\b(grass|gazon|трава)\\b/.test(surface)) return "grass";
+  if (/\\b(carpet|moquette|ковер)\\b/.test(surface)) return "carpet";
+  if (/\\b(hard|hardcourt|hard court|dur|бетон|хард)\\b/.test(surface)) return "hard";
+  return null;
+}
+
+function findEloForSurface(profile, requestedSurface) {
+  const surface = normalizeSurface(requestedSurface);
+  if (surface) {
+    const seen = new Set();
+    const nodes = [];
+    function collect(obj, depth = 0) {
+      if (!obj || typeof obj !== "object" || depth > 8 || seen.has(obj)) return;
+      seen.add(obj); nodes.push(obj);
+      for (const value of Object.values(obj)) if (value && typeof value === "object") collect(value, depth + 1);
+    }
+    collect(profile);
+    const aliases = {
+      clay: ["clay", "clay_elo", "clayElo", "elo_clay", "eloClay", "clay_elo_rating"],
+      hard: ["hard", "hard_elo", "hardElo", "elo_hard", "eloHard", "hard_elo_rating"],
+      grass: ["grass", "grass_elo", "grassElo", "elo_grass", "eloGrass", "grass_elo_rating"],
+      carpet: ["carpet", "carpet_elo", "carpetElo", "elo_carpet", "eloCarpet", "carpet_elo_rating"]
+    };
+    const containers = ["surface_elo", "surfaceElo", "elo_by_surface", "eloBySurface", "surface_ratings", "surfaceRatings"];
+    function valid(value) {
+      if (typeof value !== "number" && typeof value !== "string") return null;
+      if (typeof value === "string" && !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(value.trim())) return null;
+      const rating = Number(value);
+      return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
+    }
+    for (const obj of nodes) {
+      for (const key of aliases[surface]) {
+        const rating = valid(obj[key]);
+        if (rating !== null) return { rating, type: "surface", surface };
+      }
+      for (const key of containers) {
+        const group = obj[key];
+        if (!group || typeof group !== "object" || Array.isArray(group)) continue;
+        for (const alias of [surface, surface + "_elo", surface + "Elo"]) {
+          const rating = valid(group[alias]);
+          if (rating !== null) return { rating, type: "surface", surface };
+        }
+      }
+    }
+  }
+  const overall = findElo(profile);
+  return overall === null ? null : { rating: overall, type: "overall", surface };
+}
+
 const playerProfileInflight = new Map();
 
 async function getPlayerProfile(playerId, apiKey) {
@@ -434,8 +486,11 @@ export default {
         } catch {
           return response({ error: "Could not retrieve one or both player profiles" }, 502);
         }
-        a = findElo(profileA);
-        b = findElo(profileB);
+        const requestedSurface = normalizeSurface(body.surface);
+        const selectedA = findEloForSurface(profileA, requestedSurface);
+        const selectedB = findEloForSurface(profileB, requestedSurface);
+        a = selectedA?.rating ?? null;
+        b = selectedB?.rating ?? null;
         source = "Live Tennis API player profiles";
         if (a === null || b === null) {
           return response({
@@ -444,6 +499,9 @@ export default {
             playerB: cleanName(body.playerB, cleanName(profileB?.name, "Player B")),
             ratingA: a,
             ratingB: b,
+            ratingTypeA: selectedA?.type || null,
+            ratingTypeB: selectedB?.type || null,
+            surface: requestedSurface,
             source
           }, 422);
         }
@@ -471,10 +529,13 @@ export default {
         evA: oddsA !== null ? Number(((pA * oddsA - 1) * 100).toFixed(2)) : null,
         evB: oddsB !== null ? Number(((pB * oddsB - 1) * 100).toFixed(2)) : null,
         method: "Elo",
+        ratingTypeA: hasIdA ? selectedA.type : "manual",
+        ratingTypeB: hasIdB ? selectedB.type : "manual",
+        surface: hasIdA ? (selectedA.surface || null) : null,
         source,
         ratingsAsOfA: profileA?.stats?.ratings_as_of || profileA?.ratings_as_of || null,
         ratingsAsOfB: profileB?.stats?.ratings_as_of || profileB?.ratings_as_of || null,
-        note: source === "manual-test" ? "Manual test ratings; not player data." : "Probabilities derived from player Elo ratings. Model does not account for surface, injuries, or recent form."
+        note: source === "manual-test" ? "Manual test ratings; not player data." : (selectedA.type === "surface" && selectedB.type === "surface" ? "Probabilities use surface-specific Elo ratings." : "At least one surface-specific rating is unavailable; overall Elo fallback used. Model does not account for injuries or recent form.")
       });
     }
 
