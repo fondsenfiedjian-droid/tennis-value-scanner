@@ -722,6 +722,7 @@
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
         tour:['atp','wta','challenger','itf','juniors'].includes(String(row.tour||'').toLowerCase())?String(row.tour).toLowerCase():'',
         surface:typeof row.surface==='string'?row.surface.slice(0,40):'',
+        bookmaker:typeof row.bookmaker==='string'?row.bookmaker.trim().slice(0,60):'',
         player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
         odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,ratingAsOf:validRatingDate(row.ratingAsOf),
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
