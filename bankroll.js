@@ -83,7 +83,7 @@
 
   function getSummary(state) {
     validateState(state);
-    const deposits = state.transactions.filter(tx => tx.type === "deposit").reduce((s, tx) => s + tx.amount, 0);
+    const deposits = state.transactions.filter(tx => tx.type === "deposit" && tx.id !== "initial").reduce((s, tx) => s + tx.amount, 0);
     const withdrawals = state.transactions.filter(tx => tx.type === "withdrawal").reduce((s, tx) => s + tx.amount, 0);
     const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
     const today = new Date().toDateString();
@@ -101,6 +101,7 @@
       balance: roundMoney(state.balance),
       openStake: totalOpenStake(state),
       equity: bankrollEquity(state),
+      initialBankroll: roundMoney(state.initialBankroll),
       realizedProfit: profit,
       totalStaked: roundMoney(totalStaked),
       dailyStaked: roundMoney(dailyStaked),
