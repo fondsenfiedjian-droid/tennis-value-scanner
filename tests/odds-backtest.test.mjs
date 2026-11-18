@@ -202,8 +202,9 @@ test("odds backtest excludes stale snapshots by default and reports snapshot age
   assert.equal(report.snapshotAgeMinutes.count, 1);
   assert.equal(report.snapshotAgeMinutes.min, 30);
   assert.equal(report.selections[0].entrySnapshotAgeMinutes, 30);
-  assert.equal(report.selections[0].closingSnapshotAgeMinutes, 30);
-  assert.equal(report.closingLineValueSample.measured, 1);
+  assert.equal(report.selections[0].closingSnapshotAgeMinutes, null);
+  assert.equal(report.closingLineValueSample.measured, 0);
+  assert.equal(report.closingLineValueSample.missingQualifyingClose, 1);
 });
 
 test("odds backtest allows an explicit wider snapshot age and validates the option", () => {
