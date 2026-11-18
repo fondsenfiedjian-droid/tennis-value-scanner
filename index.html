@@ -112,6 +112,7 @@
     selectedDay=btn.dataset.day; $('#dayTitle').textContent=selectedDay==='all'?'Все предстоящие матчи':'Завтра';
     const d=new Date(); if(selectedDay==='tomorrow') d.setDate(d.getDate()+1);
     $('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+    if(window.cachedMatches)renderMatches(window.cachedMatches);
   }));
   document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('on')));
   const modal=$('#settingsModal');
