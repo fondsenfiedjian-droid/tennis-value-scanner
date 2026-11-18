@@ -2716,3 +2716,17 @@ test("prediction card shows the registered PFE model count without claiming plan
   assert.ok(frontendSource.includes("TVSPFE.getModelRegistry()"));
   assert.ok(frontendSource.includes("Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount"));
 });
+
+
+test("PFE does not understate uncertainty inside correlated dependency groups", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const result = sandbox.pfe.fusePredictions([
+    { id: "model-a", probability: 0.62, dependencyGroup: "shared-source", uncertainty: 0.1 },
+    { id: "model-b", probability: 0.66, dependencyGroup: "shared-source", uncertainty: 0.2 }
+  ]);
+  assert.equal(result.independentGroups, 1);
+  assert.ok(Math.abs(result.groups[0].uncertainty - 0.15) < 1e-12);
+  assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
+});
