@@ -1730,3 +1730,99 @@ test("archive segment calibration groups only known surfaces and tournament cate
   assert.match(frontendSource, /archiveSegmentCalibration\(rows\)/);
   assert.match(frontendSource, /id="archiveSegmentCalibration"/);
 });
+
+
+
+test("segment performance uses settled ledger only, separates bookmaker, excludes void/open and enriches only exact archive identity", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const addAndSettle = (input, details, outcome) => {
+    const placed = api.placeBet(input, {
+      matchKey: details.matchKey, matchId: details.matchId, side: details.side || "A",
+      match: details.match || details.matchKey, player: details.player || "Player A",
+      opponent: details.opponent || "Player B", bookmaker: details.bookmaker,
+      surface: details.surface, tour: details.tour,
+      probability: 0.7, odds: 2.1, stake: 2
+    });
+    return api.settleBet(placed.state, placed.bet.id, outcome);
+  };
+  state = addAndSettle(state, {
+    matchKey: "segment-clay-win", matchId: 7001, player: "Player A", opponent: "Player B",
+    bookmaker: "Betclic", surface: "Clay", tour: "atp"
+  }, "won");
+  state = addAndSettle(state, {
+    matchKey: "segment-grass-loss", matchId: 7002, player: "Player C", opponent: "Player D",
+    bookmaker: "Winamax", surface: "Grass", tour: "wta"
+  }, "lost");
+  state = addAndSettle(state, {
+    matchKey: "segment-void", matchId: 7003, player: "Player E", opponent: "Player F",
+    bookmaker: "Betclic", surface: "Clay", tour: "atp"
+  }, "void");
+  state = addAndSettle(state, {
+    matchKey: "segment-enrich", matchId: 7004, player: "José Nadal", opponent: "Test Player",
+    bookmaker: "Winamax"
+  }, "won");
+  const open = api.placeBet(state, {
+    matchKey: "segment-open", matchId: 7005, side: "A", player: "Open Player",
+    opponent: "Other Player", bookmaker: "Betclic", surface: "Clay", tour: "atp",
+    probability: 0.7, odds: 2.1, stake: 2
+  });
+  state = open.state;
+  const archive = [{
+    matchId: 7004, side: "A", player: "Jose Nadal", opponent: "Test Player",
+    surface: "Clay", tour: "atp"
+  }];
+  const result = api.getSegmentPerformance(state, archive);
+  const clay = result.surface.find(row => row.name === "Грунт");
+  const grass = result.surface.find(row => row.name === "Трава");
+  const unknownSurface = result.surface.find(row => row.name === "Неизвестно");
+  assert.equal(clay.settledBets, 2);
+  assert.equal(clay.wins, 2);
+  assert.equal(clay.voids, 1);
+  assert.equal(clay.settledStake, 4);
+  assert.equal(clay.voidedStake, 2);
+  assert.equal(clay.profit, 4.4);
+  assert.equal(clay.roiPercent, 110);
+  assert.equal(grass.losses, 1);
+  assert.equal(grass.roiPercent, -100);
+  assert.equal(unknownSurface, undefined);
+  const byBookmaker = Object.fromEntries(result.bookmaker.map(row => [row.name, row]));
+  assert.equal(byBookmaker.Betclic.settledBets, 1);
+  assert.equal(byBookmaker.Betclic.voids, 1);
+  assert.equal(byBookmaker.Betclic.roiPercent, 110);
+  assert.equal(byBookmaker.Winamax.settledBets, 2);
+  assert.equal(byBookmaker.Winamax.roiPercent, 10);
+  assert.equal(result.tour.find(row => row.name === "ATP").settledBets, 2);
+  assert.equal(result.tour.find(row => row.name === "WTA").settledBets, 1);
+  assert.ok(result.surface.every(row => row.preliminary));
+});
+
+test("segment performance keeps unknown metadata visible and excludes invalid or zero-stake settlements", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const placed = api.placeBet(state, {
+    matchKey: "segment-zero", match: "Unknown match", bookmaker: "",
+    probability: 0.7, odds: 2.1, stake: 2
+  });
+  state = api.settleBet(placed.state, placed.bet.id, "won");
+  state.transactions.at(-1).stake = 0;
+  const result = api.getSegmentPerformance(state, []);
+  const surfaceUnknown = result.surface.find(row => row.name === "Неизвестно");
+  const bookmakerUnknown = result.bookmaker.find(row => row.name === "Неизвестно");
+  assert.equal(surfaceUnknown.settledBets, 0);
+  assert.equal(surfaceUnknown.excluded, 1);
+  assert.equal(surfaceUnknown.roiPercent, null);
+  assert.equal(bookmakerUnknown.excluded, 1);
+  assert.equal(bookmakerUnknown.settledStake, 0);
+});
+
+test("segment performance UI uses the selected ledger and cache version advances", () => {
+  assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
+  assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
+  assert.match(frontendSource, /Доходность по сегментам/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+});
