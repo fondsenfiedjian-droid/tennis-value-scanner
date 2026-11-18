@@ -199,3 +199,17 @@ test("reopens a bet after a revised retirement status and settles a later comple
   assert.equal(bank.realizedProfit(completed.state), 2.2);
   assert.equal(bank.validateState(completed.state), completed.state);
 });
+
+test("rejects ledger entries with invalid dates, duplicate IDs or unknown transaction types", () => {
+  const invalidDate = bank.createInitialState(100);
+  invalidDate.transactions[0].at = "not-a-date";
+  assert.throws(() => bank.validateState(invalidDate), /некорректная операция/);
+
+  const unknownType = bank.createInitialState(100);
+  unknownType.transactions[0].type = "mystery";
+  assert.throws(() => bank.validateState(unknownType), /некорректная операция/);
+
+  const duplicateId = bank.createInitialState(100);
+  duplicateId.transactions.push({ ...duplicateId.transactions[0], amount: 0, balanceDelta: 0 });
+  assert.throws(() => bank.validateState(duplicateId), /некорректная операция/);
+});
