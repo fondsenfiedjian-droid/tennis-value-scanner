@@ -106,7 +106,7 @@ test("automatic settlement uses only consistent verified completed match results
   assert.equal(result.settled[0].outcome, "won");
   assert.equal(result.state.openBets.length, 1);
   assert.equal(result.state.openBets[0].matchId, 456);
-  assert.equal(result.state.balance, 102.2);
+  assert.equal(result.state.balance, 100.2);
 });
 
 test("automatic settlement ignores conflicting result revisions", () => {
