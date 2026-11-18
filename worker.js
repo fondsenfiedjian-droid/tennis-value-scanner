@@ -58,10 +58,10 @@ function findElo(profile) {
 
 function normalizeSurface(value) {
   const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ");
-  if (/\\b(clay|terre battue|грунт)\\b/.test(surface)) return "clay";
-  if (/\\b(grass|gazon|трава)\\b/.test(surface)) return "grass";
-  if (/\\b(carpet|moquette|ковер)\\b/.test(surface)) return "carpet";
-  if (/\\b(hard|hardcourt|hard court|dur|бетон|хард)\\b/.test(surface)) return "hard";
+  if (surface.includes("clay") || surface.includes("terre battue") || surface.includes("грунт")) return "clay";
+  if (surface.includes("grass") || surface.includes("gazon") || surface.includes("трава")) return "grass";
+  if (surface.includes("carpet") || surface.includes("moquette") || surface.includes("ковер")) return "carpet";
+  if (surface.includes("hard") || surface.includes("dur") || surface.includes("бетон") || surface.includes("хард")) return "hard";
   return null;
 }
 
@@ -462,6 +462,8 @@ export default {
 
       let profileA = null;
       let profileB = null;
+      let selectedA = null;
+      let selectedB = null;
       let a;
       let b;
       let source = "manual-test";
@@ -487,8 +489,8 @@ export default {
           return response({ error: "Could not retrieve one or both player profiles" }, 502);
         }
         const requestedSurface = normalizeSurface(body.surface);
-        const selectedA = findEloForSurface(profileA, requestedSurface);
-        const selectedB = findEloForSurface(profileB, requestedSurface);
+        selectedA = findEloForSurface(profileA, requestedSurface);
+        selectedB = findEloForSurface(profileB, requestedSurface);
         a = selectedA?.rating ?? null;
         b = selectedB?.rating ?? null;
         source = "Live Tennis API player profiles";
