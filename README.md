@@ -63,10 +63,10 @@ The GitHub Actions workflow runs on every push to `main` and on pull requests. I
 Run the same checks locally:
 
 ```sh
-node --test tests/worker.test.mjs
+node --test tests/*.test.mjs
 ```
 
-The suite covers Elo extraction and probability calculations, Worker request validation, CORS headers, frontend JavaScript syntax, and the prediction archive wiring. Validation-route tests use mocked runtime dependencies and do not consume Live Tennis API or Apify quota.
+The suite covers Elo extraction and probability calculations, Worker request validation, CORS headers, frontend JavaScript syntax, and the prediction archive wiring. The suite covers the Worker, frontend and offline backtest; tests use mocked runtime dependencies and do not consume Live Tennis API or Apify quota.
 
 ## Deployment
 
