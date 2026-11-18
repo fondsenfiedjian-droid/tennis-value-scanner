@@ -535,7 +535,7 @@
     list.innerHTML=rows.slice(0,50).map(row=>{
       const when=new Date(Number(row.capturedAt)),ev=Number(row.ev);
       const resultLabel=row.resultOutcome==='completed'&&[1,2].includes(Number(row.resultWinner))?(Number(row.resultWinner)===(row.side==='A'?1:2)?'Победа':'Поражение'):row.resultOutcome&&row.resultOutcome!=='completed'?'Исключено: '+row.resultOutcome:'';
-      return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">'+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
+      return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
   function showMain(){
