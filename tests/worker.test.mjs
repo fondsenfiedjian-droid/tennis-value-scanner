@@ -1709,7 +1709,7 @@ test("archive segment calibration groups only known surfaces and tournament cate
   const end = frontendSource.indexOf("\n  function ", start + 10);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
   const rows = [
     { matchKey: "m1", surface: "Clay", tour: "atp" },
     { matchKey: "m2", surface: "Грунт", tour: "atp" },
