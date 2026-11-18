@@ -693,7 +693,7 @@
     let updated=0;
     const next=rows.map(row=>{
       if(Number(row.matchId)!==id)return row;
-      const oldVersion=Number.isSafeInteger(Number(row.resultVersion))?Number(row.resultVersion):null;
+      const oldVersion=row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null;
       const oldOutcome=typeof row.resultOutcome==='string'?row.resultOutcome:null;
       const oldWinner=[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null;
       const nextWinner=[1,2].includes(winner)?winner:null;
