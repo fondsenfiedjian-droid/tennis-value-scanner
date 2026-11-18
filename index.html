@@ -271,10 +271,10 @@
     const minEv=Number($('#minEv').value),minOdds=Number($('#minOdds').value),maxOdds=Number($('#maxOdds').value);
     const refreshRate=Number($('#refreshRate').value);
     if(!Number.isFinite(minEv)||minEv<0||minEv>100||
-       !Number.isFinite(minOdds)||minOdds<1||
-       !Number.isFinite(maxOdds)||maxOdds<minOdds||
+       !Number.isFinite(minOdds)||minOdds<1.9||minOdds>100||
+       !Number.isFinite(maxOdds)||maxOdds<minOdds||maxOdds>100||
        ![0,30,60,180].includes(refreshRate)){
-      alert('Проверь настройки: EV должен быть от 0 до 100%, минимальный коэффициент — не меньше 1, максимальный — не меньше минимального.');
+      alert('Проверь настройки: EV должен быть от 0 до 100%, минимальный коэффициент — от 1.90 до 100, максимальный — не меньше минимального и не больше 100.');
       return;
     }
     const data=readSettings();
