@@ -425,6 +425,21 @@ test("IndexedDB migration is repeatable and preserves legacy snapshots", async (
   assert.equal(indexedDB.state.meta.get("initialized"), true);
 });
 
+test("IndexedDB migration never replaces a newer official result with a later-checked stale backup", async () => {
+  const stored = { matchKey: "same", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 60, ev: 20, capturedAt: 1800000000000,
+    resultOutcome: "completed", resultWinner: 1, resultVersion: 5, resultCheckedAt: 1000 };
+  const staleBackup = { ...stored, resultWinner: 2, resultVersion: 4, resultCheckedAt: 2000 };
+  const indexedDB = makeFakeIndexedDB();
+  indexedDB.state.records.push({ ...stored, id: 1 });
+  indexedDB.state.meta.set("initialized", true);
+  const store = makeArchiveStore([staleBackup], { indexedDB });
+  await store.initializeArchiveStorage();
+  const migrated = store.readPredictionArchive()[0];
+  assert.equal(migrated.resultVersion, 5);
+  assert.equal(migrated.resultWinner, 1);
+});
+
 test("archive memory cache remains readable when localStorage quota is exhausted", () => {
   const store = makeArchiveStore([], { failWrites: true });
   const row = { matchKey: "memory-only", side: "A", player: "A", opponent: "B",
