@@ -672,6 +672,7 @@ test("approved interface palette removes green and animates the best bet copper-
   assert.match(frontendSource, /--ruby:#a51f45/);
   assert.match(frontendSource, /@keyframes bestBetGlow/);
   assert.match(frontendSource, /\.best-bet\.has-pick\{animation:bestBetGlow/);
+  assert.match(frontendSource, /prefers-reduced-motion:reduce\)\{\.best-bet\.has-pick\{animation:none\}\}/);
   assert.match(frontendSource, /box\.classList\.toggle\('has-pick',!!best\)/);
   assert.match(frontendSource, /prefers-reduced-motion:reduce/);
 });
