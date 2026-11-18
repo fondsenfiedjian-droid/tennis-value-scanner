@@ -621,7 +621,7 @@
       const oddsObservedAt=Date.now();
       const selectedQuotes=[quoteA,quoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -811,16 +811,16 @@
     el.dataset.surface=surface;
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
-      {side:'A',player:playerA,opponent:playerB,playerId:playerIdA,opponentId:playerIdB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
-      {side:'B',player:playerB,opponent:playerA,playerId:playerIdB,opponentId:playerIdA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
+      {side:'A',player:playerA,opponent:playerB,playerId:playerIdA,opponentId:playerIdB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA),quoteCapturedAt:Number(el.dataset.quoteCapturedA),quoteObservedAt:Number(el.dataset.oddsObservedAt)},
+      {side:'B',player:playerB,opponent:playerA,playerId:playerIdB,opponentId:playerIdA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB),quoteCapturedAt:Number(el.dataset.quoteCapturedB),quoteObservedAt:Number(el.dataset.oddsObservedAt)}
     ];
     let changed=false;
     for(const entry of entries){
       if(!Number.isFinite(entry.odds)||entry.odds<=1||!Number.isFinite(entry.probability))continue;
       const ev=(entry.probability/100*entry.odds-1)*100;
-      const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&String(row.bookmaker||'')===entry.bookmaker&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
+      const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&String(row.bookmaker||'')===entry.bookmaker&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&Number(row.quoteCapturedAt||0)===entry.quoteCapturedAt&&Number(row.quoteObservedAt||0)===entry.quoteObservedAt&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,captureStatus,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',modelVersion:'2',modelCalculatedAt:Number.isFinite(Number(modelCalculatedAt))&&Number(modelCalculatedAt)>0?Number(modelCalculatedAt):null,capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,captureStatus,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',modelVersion:'2',modelCalculatedAt:Number.isFinite(Number(modelCalculatedAt))&&Number(modelCalculatedAt)>0?Number(modelCalculatedAt):null,quoteCapturedAt:Number.isFinite(entry.quoteCapturedAt)&&entry.quoteCapturedAt>0?entry.quoteCapturedAt:null,quoteObservedAt:Number.isFinite(entry.quoteObservedAt)&&entry.quoteObservedAt>0?entry.quoteObservedAt:null,capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -854,7 +854,7 @@
         resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
         resultStatus:typeof row.resultStatus==='string'?row.resultStatus.slice(0,80):null,
         resultRestatedAt:typeof row.resultRestatedAt==='string'?row.resultRestatedAt:null,
-        model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,modelCalculatedAt:Number.isFinite(Number(row.modelCalculatedAt))&&Number(row.modelCalculatedAt)>0?Number(row.modelCalculatedAt):null,capturedAt};
+        model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,modelCalculatedAt:Number.isFinite(Number(row.modelCalculatedAt))&&Number(row.modelCalculatedAt)>0?Number(row.modelCalculatedAt):null,quoteCapturedAt:Number.isFinite(Number(row.quoteCapturedAt))&&Number(row.quoteCapturedAt)>0?Number(row.quoteCapturedAt):null,quoteObservedAt:Number.isFinite(Number(row.quoteObservedAt))&&Number(row.quoteObservedAt)>0?Number(row.quoteObservedAt):null,capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
     const keyOf=row=>[row.matchKey,row.side,String(row.bookmaker||''),row.capturedAt,row.odds,row.probability].join('|');
@@ -864,7 +864,7 @@
       const key=keyOf(row),existingIndex=indexByKey.get(key);
       if(existingIndex===undefined){indexByKey.set(key,merged.length);merged.push(row);added++;continue;}
       const existing=merged[existingIndex];
-      if(Number(existing.modelCalculatedAt||0)!==Number(row.modelCalculatedAt||0)||(existing.captureStatus||null)!==(row.captureStatus||null))throw new Error('Конфликт времени расчёта модели или статуса снимка в резервной копии');
+      if(Number(existing.modelCalculatedAt||0)!==Number(row.modelCalculatedAt||0)||Number(existing.quoteCapturedAt||0)!==Number(row.quoteCapturedAt||0)||Number(existing.quoteObservedAt||0)!==Number(row.quoteObservedAt||0)||(existing.captureStatus||null)!==(row.captureStatus||null))throw new Error('Конфликт времени модели, котировки или статуса снимка в резервной копии');
       const oldVersion=existing.resultVersion!==null&&existing.resultVersion!==undefined&&Number.isSafeInteger(Number(existing.resultVersion))&&Number(existing.resultVersion)>=1?Number(existing.resultVersion):null;
       const newVersion=row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null;
       const hasOld=typeof existing.resultOutcome==='string';
@@ -1578,7 +1578,7 @@
     await archiveStorageReady;
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','modelCalculatedAt','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
+    const columns=['capturedAt','modelCalculatedAt','quoteCapturedAt','quoteObservedAt','captureStatus','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
       if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))cell="'"+cell;
