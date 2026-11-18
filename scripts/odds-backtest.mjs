@@ -229,13 +229,16 @@ export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
   const stake = Number.isFinite(options.stake) && options.stake > 0 ? options.stake : 1;
+  const maxSnapshotAgeMinutes = options.maxSnapshotAgeMinutes === undefined ? 24 * 60 : Number(options.maxSnapshotAgeMinutes);
   if (minEv < 0 || minEv > 10) throw new RangeError("minEv must be between 0 and 10");
   if (minOdds <= 1 || minOdds > 1000) throw new RangeError("minOdds must be greater than 1 and no greater than 1000");
   if (options.startingBankroll !== undefined && (!Number.isFinite(options.startingBankroll) || options.startingBankroll <= 0 || options.startingBankroll > 100000000)) throw new RangeError("startingBankroll must be positive and no greater than 100000000");
   if (!(stake > 0)) throw new RangeError("stake must be positive");
+  if (!Number.isFinite(maxSnapshotAgeMinutes) || maxSnapshotAgeMinutes < 0 || maxSnapshotAgeMinutes > 365 * 24 * 60) throw new RangeError("maxSnapshotAgeMinutes must be between 0 and 525600");
 
   const matches = new Map();
-  let rejectedSnapshots = 0;
+  let rejectedSnapshots = 0, staleSnapshots = 0;
+  const acceptedSnapshotAges = [];
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     const id = String(row.match_id ?? "").trim();
@@ -252,6 +255,13 @@ export function runOddsBacktest(rows, options = {}) {
       rejectedSnapshots++;
       continue;
     }
+    const ageMinutes = (start - captured) / 60000;
+    if (ageMinutes > maxSnapshotAgeMinutes) {
+      rejectedSnapshots++;
+      staleSnapshots++;
+      continue;
+    }
+    acceptedSnapshotAges.push(ageMinutes);
     const playerA = String(row.player_a ?? "").trim();
     const playerB = String(row.player_b ?? "").trim();
     if (!playerA || !playerB || playerA === playerB) {
@@ -300,6 +310,8 @@ export function runOddsBacktest(rows, options = {}) {
     bets.push({
       matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
       odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
+      entrySnapshotAgeMinutes: Number(((match.start - opening.captured) / 60000).toFixed(1)),
+      closingSnapshotAgeMinutes: Number(((match.start - closing.captured) / 60000).toFixed(1)),
       expectedValue: Number((ev * 100).toFixed(2)),
       winner: match.winner, won: candidate.outcome, stake,
       profit: Number(profit.toFixed(4)),
@@ -312,6 +324,14 @@ export function runOddsBacktest(rows, options = {}) {
   return {
     matches: matches.size,
     rejectedSnapshots,
+    staleSnapshots,
+    maxSnapshotAgeMinutes,
+    snapshotAgeMinutes: acceptedSnapshotAges.length ? {
+      count: acceptedSnapshotAges.length,
+      min: Number(Math.min(...acceptedSnapshotAges).toFixed(1)),
+      median: Number(acceptedSnapshotAges.slice().sort((a,b)=>a-b)[Math.floor((acceptedSnapshotAges.length-1)/2)].toFixed(1)),
+      max: Number(Math.max(...acceptedSnapshotAges).toFixed(1))
+    } : null,
     bets: bets.length,
     wins: bets.filter(bet => bet.won).length,
     losses: bets.filter(bet => !bet.won).length,
@@ -326,12 +346,13 @@ export function runOddsBacktest(rows, options = {}) {
     statisticalSummary: performanceSummary(bets),
     byOddsRange: summarizeOddsBuckets(bets),
     methodology: {
-      entryPrice: "earliest valid pre-match snapshot",
+      entryPrice: "earliest valid pre-match snapshot within the configured maximum snapshot age",
       closingPrice: "latest valid pre-match snapshot",
       marketProbability: "two-way proportional de-vig",
       stake: "flat stake per qualifying selection",
       selection: "model EV and minimum odds thresholds",
-      warning: "Results are only as representative as the supplied historical snapshots; they exclude limits, commission, voids, and execution slippage."
+      maxSnapshotAgeMinutes,
+      warning: "Results are only as representative as the supplied historical snapshots; stale snapshots beyond the configured age are excluded. Limits, commission, voids, and execution slippage are not modelled."
     },
     bankrollSimulation: simulateBankrollStrategies(bets, { startingBankroll: options.startingBankroll }),
     selections: bets
@@ -343,16 +364,16 @@ async function main() {
   const files = [];
   const options = {};
   for (let i = 0; i < args.length; i++) {
-    if (["--min-ev", "--min-odds", "--stake", "--bankroll"].includes(args[i])) {
+    if (["--min-ev", "--min-odds", "--stake", "--bankroll", "--max-snapshot-age-minutes"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
-      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : args[i] === "--bankroll" ? "startingBankroll" : "stake";
+      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : args[i] === "--bankroll" ? "startingBankroll" : args[i] === "--max-snapshot-age-minutes" ? "maxSnapshotAgeMinutes" : "stake";
       const value = Number(args[++i]);
       options[key] = key === "minEv" ? value / 100 : value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
   }
   if (!files.length) {
-    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] [--bankroll 100] odds-history.csv");
+    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] [--bankroll 100] [--max-snapshot-age-minutes 1440] odds-history.csv");
     process.exitCode = 2;
     return;
   }
