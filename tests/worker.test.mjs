@@ -2257,7 +2257,7 @@ test("PFE interface states that serve-return model requires verified ULTRA data 
 test("PFE derives serve-point inputs only when serve and opponent-return evidence agrees", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   const make = (playerId, firstServeIn, firstWon, secondWon, returnFirst, returnSecond) => ({
     status: "ready_for_modeling", playerId, metrics: {
