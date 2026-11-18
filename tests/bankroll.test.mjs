@@ -230,3 +230,45 @@ test("rejects ledger entries with invalid dates, duplicate IDs or unknown transa
   duplicateId.transactions.push({ ...duplicateId.transactions[0], amount: 0, balanceDelta: 0 });
   assert.throws(() => bank.validateState(duplicateId), /некорректная операция/);
 });
+
+
+test("portfolio reconciliation records actual stake and odds and skips unplaced selections", () => {
+  const initial = bank.createInitialState(100);
+  const portfolio = bank.recommendPortfolio(initial, [
+    { matchKey: "match:301", matchId: 301, match: "ATP · Player A — Player B", player: "Player A", opponent: "Player B", side: "A", probability: 0.62, odds: 2.1, freshnessLevel: "good" },
+    { matchKey: "match:302", matchId: 302, match: "WTA · Player C — Player D", player: "Player C", opponent: "Player D", side: "B", probability: 0.60, odds: 2.0, freshnessLevel: "medium" }
+  ]);
+  assert.equal(portfolio.suggestions.length, 2);
+  const planned = bank.savePortfolioPlan(initial, portfolio.suggestions);
+  const result = bank.reconcilePortfolioPlan(planned, planned.pendingPlan.id, [
+    { matchKey: "match:301", stake: 1.25, odds: 2.04 },
+    { matchKey: "match:302", stake: 0, odds: 2.0 }
+  ]);
+  assert.equal(result.placedCount, 1);
+  assert.equal(result.skipped, 1);
+  assert.equal(result.bets[0].stake, 1.25);
+  assert.equal(result.bets[0].odds, 2.04);
+  assert.equal(result.state.balance, 98.75);
+  assert.equal(result.state.openBets.length, 1);
+  assert.equal(result.state.pendingPlan, null);
+  assert.equal(result.state.transactions.filter(tx => tx.type === "stake").reduce((sum, tx) => sum + tx.amount, 0), 1.25);
+  assert.equal(bank.validateState(result.state), result.state);
+});
+
+test("portfolio reconciliation rejects worse actual odds or oversized actual stake atomically", () => {
+  const initial = bank.createInitialState(100);
+  const portfolio = bank.recommendPortfolio(initial, [
+    { matchKey: "match:401", matchId: 401, match: "ATP · Player E — Player F", player: "Player E", opponent: "Player F", side: "A", probability: 0.62, odds: 2.1, freshnessLevel: "good" }
+  ]);
+  const planned = bank.savePortfolioPlan(initial, portfolio.suggestions);
+  assert.throws(() => bank.reconcilePortfolioPlan(planned, planned.pendingPlan.id, [
+    { matchKey: "match:401", stake: 1, odds: 1.8 }
+  ]), /Коэффициент ниже/);
+  assert.throws(() => bank.reconcilePortfolioPlan(planned, planned.pendingPlan.id, [
+    { matchKey: "match:401", stake: 100, odds: 2.1 }
+  ]), /рекомендуемый лимит/);
+  assert.equal(planned.balance, 100);
+  assert.equal(planned.openBets.length, 0);
+  assert.ok(planned.pendingPlan);
+});
+
