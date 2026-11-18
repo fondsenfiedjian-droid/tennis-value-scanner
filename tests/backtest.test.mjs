@@ -298,4 +298,6 @@ test("backtest reports year-by-surface counts, metrics and sample quality", () =
   assert.equal(report.breakdowns.byYearAndSurface["2025"].Unknown.matches, 1);
   assert.equal(report.breakdowns.byYearAndSurface["2025"].Unknown.sampleQuality, "low");
   assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.metrics.elo.matches, 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.calibration.elo.bins.reduce((sum, bin) => sum + bin.matches, 0), 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.calibration.elo.expectedCalibrationError, 50);
 });
