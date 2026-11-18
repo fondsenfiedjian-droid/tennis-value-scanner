@@ -678,7 +678,7 @@ test("result check batches rotate by oldest check time instead of starving later
   }));
   assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(rows,now,10))),[15,14,13,12,11]);
   const next=rows.map(row=>({...row,resultCheckedAt:row.matchId>10?now:row.resultCheckedAt}));
-  assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(next,now+31*60*1000,10))),[15,14,13,12,11,10,9,8,7,6]);
+  assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(next,now+31*60*1000,10))),[10,9,8,7,6,5,4,3,2,1]);
 });
 
 test("result check selector ignores future, too-recent and invalid match records", () => {
