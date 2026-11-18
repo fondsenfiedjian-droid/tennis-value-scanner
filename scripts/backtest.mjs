@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 export function parseCsv(text) {
-  text = text.replace(/^\\uFEFF/, "");
+  text = text.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false, closedQuote = false, line = 1;
   const pushField = () => { row.push(field); field = ""; closedQuote = false; };
