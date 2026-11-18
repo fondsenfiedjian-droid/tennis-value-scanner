@@ -887,7 +887,11 @@
     }catch(error){alert('Не удалось восстановить банкролл: '+error.message);return false;}
   }
   function renderBankroll(){
-    const state=readBankrollState();
+    let state=readBankrollState();
+    if(state&&state.pendingPlan){
+      const expiry=TVSBankroll.expirePortfolioPlan(state);
+      if(expiry.expired&&persistBankrollState(expiry.state))state=expiry.state;
+    }
     if(!state){
       $('#bankBalance').textContent='Ошибка';
       $('#bankOpenList').innerHTML='<div class="panel empty">Данные банкролла не загружены: '+escapeHtml(bankrollLoadError?.message||'неизвестная ошибка')+'. Они не были перезаписаны. Восстанови резервную копию.</div>';
