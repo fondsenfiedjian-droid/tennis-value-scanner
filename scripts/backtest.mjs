@@ -70,7 +70,7 @@ export function runBacktest(matches, options = {}) {
   if (options.evaluationEnd != null && !evaluationEnd) throw new RangeError("Invalid evaluationEnd; expected a real YYYYMMDD date");
   if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
-  const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
+  const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 })) }]));
   const byYear = new Map(), bySurfaceMetrics = new Map();
   const addMetric = (bucket, probability) => {
     bucket.n++;
