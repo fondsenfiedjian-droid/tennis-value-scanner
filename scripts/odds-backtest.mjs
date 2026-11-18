@@ -124,7 +124,8 @@ export function simulateBankrollStrategies(selections, options = {}) {
           const fullKelly = Math.max(0, (b * probability - q) / b);
           desired = equity * fullKelly * kellyFraction;
         }
-        const singleLimit = strategy.mode === "flat" ? Infinity : maxSingle;
+        // Apply the live per-bet cap to every strategy, including the €1 benchmark.
+        const singleLimit = maxSingle;
         const stake = Math.round(Math.min(desired, singleLimit, remainingExposure, Math.max(0, balance - reserved)) * 100) / 100;
         if (stake < 0.01) continue;
         reserved += stake;
@@ -156,7 +157,7 @@ export function simulateBankrollStrategies(selections, options = {}) {
   }
   const report = {
     startingBankroll, distinctMatches: unique.size, strategies: reports,
-    methodology: "One highest-EV selection per match. Stakes are allocated in descending EV order in calendar-day batches and each day's outcomes are settled together. This approximates same-day exposure; intraday start/end times, commission, void rules, limits and execution slippage are not modelled."
+    methodology: "One highest-EV selection per match. Stakes are allocated in descending EV order in calendar-day batches; every strategy, including the flat €1 benchmark, is capped at 2% of starting-day equity per bet and 8% aggregate same-day exposure, matching the live per-bet and exposure limits. Each day's outcomes are settled together. This approximates same-day exposure; intraday start/end times, commission, void rules, limits and execution slippage are not modelled."
   };
   if (!options.skipBreakdowns) {
     report.byTour = buildBankrollBreakdown([...unique.values()], "tour", startingBankroll);
