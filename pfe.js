@@ -123,6 +123,17 @@
     };
   }
 
+  // Exact probability of holding a standard advantage-scoring service game from point-win probability.
+  function calculateHoldProbability(pointWinProbability) {
+    const p = Number(pointWinProbability);
+    if (!Number.isFinite(p) || p < 0 || p > 1) return null;
+    const q = 1 - p;
+    const beforeDeuce = Math.pow(p, 4) * (1 + 4 * q + 10 * q * q);
+    const reachDeuce = 20 * Math.pow(p, 3) * Math.pow(q, 3);
+    const winFromDeuce = (p === 0 && q === 0) ? 0.5 : (p * p) / (p * p + q * q || 1);
+    return clamp(beforeDeuce + reachDeuce * winFromDeuce, 0, 1);
+  }
+
   function createRandom(seed) {
     let state = (Number(seed) >>> 0) || 0x9e3779b9;
     return function () {
@@ -474,5 +485,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, buildModelHistoryRecords, evaluateModelHistory };
 });
