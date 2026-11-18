@@ -21,7 +21,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
     sandbox
   );
   return sandbox.archiveFns;
