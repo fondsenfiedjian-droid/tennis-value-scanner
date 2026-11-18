@@ -846,6 +846,111 @@
     };
   }
 
+  function compareModelHistory(records, options = {}) {
+    const source = Array.isArray(records) ? records : [];
+    const requested = Array.isArray(options.modelIds) && options.modelIds.length
+      ? [...new Set(options.modelIds.filter(id => MODEL_REGISTRY.some(model => model.id === id)))]
+      : ["general-elo-v2", "market-consensus"];
+    const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
+    const minValidation = Number.isInteger(options.minValidation) ? clamp(options.minValidation, 5, 1000) : 10;
+    const windows = [...new Set((Array.isArray(options.stabilityWindows) ? options.stabilityWindows : [10, 20, 30, 50])
+      .filter(value => Number.isInteger(value) && value >= 5 && value <= 500))].sort((a, b) => a - b);
+    const registry = new Map(MODEL_REGISTRY.map(model => [model.id, model]));
+    const byMatch = new Map(), rejected = [];
+    for (const row of source) {
+      const modelId = typeof row?.modelId === "string" ? row.modelId.trim() : "";
+      if (!requested.includes(modelId)) continue;
+      const matchId = String(row?.matchId ?? "").trim();
+      const probability = finiteProbability(row?.probability);
+      const outcome = row?.outcome;
+      const capturedAt = Date.parse(row?.capturedAt);
+      const matchStart = Date.parse(row?.matchStart);
+      let reason = null;
+      if (!matchId) reason = "missing_match_id";
+      else if (probability === null) reason = "invalid_probability";
+      else if (outcome !== 0 && outcome !== 1) reason = "invalid_outcome";
+      else if (row?.resultVerified !== true) reason = "unverified_result";
+      else if (!Number.isFinite(capturedAt) || !Number.isFinite(matchStart) || capturedAt >= matchStart) reason = "not_pre_match";
+      if (reason) { rejected.push({ modelId, matchId: matchId || null, reason }); continue; }
+      if (!byMatch.has(matchId)) byMatch.set(matchId, new Map());
+      const models = byMatch.get(matchId);
+      if (models.has(modelId)) {
+        rejected.push({ modelId, matchId, reason: "duplicate_match_model" });
+        models.delete(modelId);
+        continue;
+      }
+      models.set(modelId, { modelId, matchId, probability, outcome, capturedAt, matchStart });
+    }
+    const matched = [];
+    let excludedOutcomeConflict = 0, excludedScheduleConflict = 0, excludedUnpaired = 0;
+    for (const [matchId, models] of byMatch) {
+      if (!requested.every(id => models.has(id))) { excludedUnpaired++; continue; }
+      const rows = requested.map(id => models.get(id));
+      const outcomes = new Set(rows.map(row => row.outcome));
+      const starts = rows.map(row => row.matchStart);
+      if (outcomes.size !== 1) { excludedOutcomeConflict++; continue; }
+      if (Math.max(...starts) - Math.min(...starts) > 60000) { excludedScheduleConflict++; continue; }
+      matched.push({
+        matchId, matchStart: Math.min(...starts),
+        rows: Object.fromEntries(rows.map(row => [row.modelId, row]))
+      });
+    }
+    matched.sort((a, b) => a.matchStart - b.matchStart || a.matchId.localeCompare(b.matchId));
+    const splitAt = Math.floor(matched.length * 0.7);
+    const trainingMatches = matched.slice(0, splitAt), validationMatches = matched.slice(splitAt);
+    const enoughData = trainingMatches.length >= minTraining && validationMatches.length >= minValidation;
+    const models = requested.map(modelId => {
+      const model = registry.get(modelId);
+      const train = trainingMatches.map(match => match.rows[modelId]);
+      const validation = validationMatches.map(match => match.rows[modelId]);
+      const trainingScore = scorePredictions(train), validationScore = scorePredictions(validation);
+      const rawWeight = trainingScore.brierScore === null ? 1
+        : clamp(1 + (0.25 - trainingScore.brierScore) * 8, 0.5, 1.5);
+      const shrinkage = enoughData ? train.length / (train.length + 30) : 0;
+      const stability = windows.filter(window => window <= validation.length).map(window => {
+        const sample = validation.slice(-window);
+        return { window, ...scorePredictions(sample) };
+      });
+      return {
+        modelId, name: model?.name || modelId, dependencyGroup: model?.dependencyGroup || null,
+        training: trainingScore, validation: validationScore,
+        rawWeight: enoughData ? rawWeight : null,
+        calibratedWeight: enoughData ? 1 + (rawWeight - 1) * shrinkage : 1,
+        status: enoughData ? "validated" : "insufficient_sample",
+        stability
+      };
+    });
+    const referenceId = requested.includes("general-elo-v2") ? "general-elo-v2" : requested[0];
+    const reference = models.find(model => model.modelId === referenceId);
+    const comparisons = models.filter(model => model.modelId !== referenceId).map(model => ({
+      modelId: model.modelId, referenceModelId: referenceId,
+      validationDeltaBrier: model.validation.brierScore !== null && reference?.validation.brierScore !== null
+        ? model.validation.brierScore - reference.validation.brierScore : null,
+      validationDeltaLogLoss: model.validation.logLoss !== null && reference?.validation.logLoss !== null
+        ? model.validation.logLoss - reference.validation.logLoss : null,
+      stability: model.stability.map(window => {
+        const refWindow = reference?.stability.find(item => item.window === window.window);
+        return {
+          window: window.window,
+          deltaBrier: window.brierScore !== null && refWindow?.brierScore !== null
+            ? window.brierScore - refWindow.brierScore : null,
+          deltaLogLoss: window.logLoss !== null && refWindow?.logLoss !== null
+            ? window.logLoss - refWindow.logLoss : null
+        };
+      })
+    }));
+    return {
+      status: enoughData ? "evaluated" : "insufficient_data",
+      modelIds: requested, matchedSampleSize: matched.length,
+      trainingSampleSize: trainingMatches.length, validationSampleSize: validationMatches.length,
+      split: "chronological_70_30_paired_matches",
+      excluded: { unpaired: excludedUnpaired, outcomeConflict: excludedOutcomeConflict,
+        scheduleConflict: excludedScheduleConflict, invalid: rejected.length },
+      models, comparisons, rejected, minTraining, minValidation,
+      note: "Сравнение выполняется только на общих матчах с одинаковым подтверждённым исходом. Веса вычисляются по ранней обучающей части; окна устойчивости — только по отложенной части. Меньший Brier Score и Log Loss лучше."
+    };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -899,5 +1004,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, runMatchMonteCarlo, buildModelHistoryRecords, buildMarketHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, normalizeRecentFormProfile, deriveServeReturnMatchInputs, calculateHoldProbability, calculateTiebreakWinProbability, calculateSetWinProbability, calculateMatchWinProbability, runMatchMonteCarlo, buildModelHistoryRecords, buildMarketHistoryRecords, evaluateModelHistory, compareModelHistory };
 });
