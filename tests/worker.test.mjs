@@ -1338,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1402,7 +1402,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1418,7 +1418,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1607,7 +1607,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
 
 
@@ -1826,7 +1826,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
 
 
@@ -1905,7 +1905,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
 
 
@@ -1933,7 +1933,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
 
 
@@ -2000,5 +2000,67 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v59/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
+});
+
+
+test("outcome dispersion diagnostics normalize returns and identify top-win concentration", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(1000);
+  const add = (key, outcome, odds, stake) => {
+    const placed = api.placeBet(state, {
+      matchKey: key, match: key, probability: 0.7, odds, stake,
+      options: { minOdds: 1.01, minEv: -10, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
+    });
+    state = api.settleBet(placed.state, placed.bet.id, outcome);
+  };
+  add("dispersion-win-a", "won", 2, 10);
+  add("dispersion-loss", "lost", 2, 20);
+  add("dispersion-win-b", "won", 3, 10);
+  add("dispersion-void", "void", 2, 10);
+  const stats = api.getOutcomeDispersionStats(state);
+  assert.equal(stats.sampleSize, 3);
+  assert.equal(stats.voids, 1);
+  assert.equal(stats.excluded, 0);
+  assert.equal(stats.netProfit, 10);
+  assert.equal(stats.meanReturnPercent, 66.67);
+  assert.equal(stats.medianReturnPercent, 100);
+  assert.equal(stats.largestWin, 20);
+  assert.equal(stats.largestLoss, -20);
+  assert.equal(stats.topThreeWinSharePercent, 100);
+  assert.equal(stats.netProfitWithoutTopThreeWins, -20);
+  assert.equal(api.getSummary(state).outcomeDispersion.sampleSize, 3);
+});
+
+test("outcome dispersion diagnostics exclude malformed and superseded settlement records", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey: "dispersion-revision", matchId: 9911, side: "A",
+    match: "Player A — Player B", player: "Player A", opponent: "Player B",
+    probability: 0.7, odds: 2, stake: 5
+  });
+  const first = api.settleVerifiedResults(placed.state, [
+    { matchId: 9911, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]).state;
+  const revised = api.settleVerifiedResults(first, [
+    { matchId: 9911, resultOutcome: "completed", resultWinner: 2, resultVersion: 2 }
+  ]).state;
+  const stats = api.getOutcomeDispersionStats(revised);
+  assert.equal(stats.sampleSize, 1);
+  assert.equal(stats.netProfit, -5);
+  const malformed = JSON.parse(JSON.stringify(revised));
+  malformed.transactions.find(tx => tx.type === "settlement").profit = 0;
+  const excluded = api.getOutcomeDispersionStats(malformed);
+  assert.equal(excluded.sampleSize, 0);
+  assert.equal(excluded.excluded, 1);
+});
+
+test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
+  assert.ok(frontendSource.includes("summary.outcomeDispersion"));
+  assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
+  assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
