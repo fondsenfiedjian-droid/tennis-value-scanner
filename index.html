@@ -29,6 +29,7 @@
     .section-head h2{font-size:16px;margin:0}.linkbtn{border:0;background:transparent;color:var(--blue);font-size:12px}
     .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:#152238;color:#cbd6e5;padding:8px 12px;border-radius:999px;font-size:12px}
     .chip.on{background:#173d31;border-color:#24764f;color:#8bf0b3}
+    .chip:disabled{opacity:.48;cursor:not-allowed}
     .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
     .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#0d1726ee;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
@@ -114,7 +115,21 @@
     $('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   }));
-  document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('on')));
+  // Only match-winner odds are currently supported by the data feed.
+  const marketButtons=[...document.querySelectorAll('.chip')];
+  marketButtons.forEach(btn=>{
+    if(btn.dataset.market!=='winner'){
+      btn.disabled=true;
+      btn.title='Этот рынок пока не подключён к источнику Winamax';
+      btn.textContent += ' · скоро';
+      btn.classList.remove('on');
+    }else{
+      btn.addEventListener('click',()=>{
+        btn.classList.toggle('on');
+        if(window.cachedMatches)renderMatches(window.cachedMatches);
+      });
+    }
+  });
   const modal=$('#settingsModal');
   const open=()=>modal.classList.add('show'), close=()=>modal.classList.remove('show');
   $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=close;
@@ -198,7 +213,9 @@
       const eventParts=String(o.eventName||'').split(/\s+-\s+/);
       if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
       if(!((home===a&&away===b)||(home===b&&away===a)))return false;
-      if(tournament&&normalizePlayer(o.competition)!==tournament)return false;
+      // Tournament labels differ between providers (for example, "ATP Finals"
+      // vs "Nitto ATP Finals"). Player pair, event ID and start time are the
+      // primary identity checks; do not reject a valid market on label wording.
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
       const value=Number(o.oddsDecimal);
@@ -247,7 +264,8 @@
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const minOdds=Number($('#minOdds').value||1.5);
       const maxOdds=Number($('#maxOdds').value||5);
-      const matched=oddsForMatch(m).filter(o=>{
+      const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
+      const matched=(winnerEnabled?oddsForMatch(m):[]).filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
       });
