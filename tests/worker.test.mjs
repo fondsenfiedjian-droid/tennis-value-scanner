@@ -74,6 +74,17 @@ test("Elo values outside the accepted range are rejected", () => {
   assert.equal(findElo({ overall_elo: -10 }), null);
 });
 
+test("Elo extraction rejects booleans, arrays, objects, and non-decimal strings", () => {
+  assert.equal(findElo({ overall_elo: true }), null);
+  assert.equal(findElo({ overall_elo: [1800] }), null);
+  assert.equal(findElo({ overall_elo: { value: 1800 } }), null);
+  assert.equal(findElo({ overall_elo: "0x708" }), null);
+});
+
+test("invalid typed overall Elo falls back to a valid numeric-string Elo", () => {
+  assert.equal(findElo({ overall_elo: false, elo: "1660.5" }), 1660.5);
+});
+
 test("cyclic profile objects do not cause recursion failure", () => {
   const profile = { elo: 1777 };
   profile.self = profile;
