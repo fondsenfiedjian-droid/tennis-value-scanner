@@ -44,11 +44,23 @@ function findElo(profile) {
 }
 
 async function getPlayerProfile(playerId, apiKey) {
+  // Elo profiles are effectively static for this model; cache them for seven days.
+  const cache = caches.default;
+  const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-profile/" + encodeURIComponent(playerId));
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached.json();
+
   const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId), {
     headers: { "X-API-Key": apiKey, "Accept": "application/json" }
   });
   if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
-  return res.json();
+  const profile = await res.json();
+  const cacheResponse = new Response(JSON.stringify(profile), {
+    status: 200,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=604800" }
+  });
+  await cache.put(cacheKey, cacheResponse);
+  return profile;
 }
 
 export default {
@@ -66,7 +78,7 @@ export default {
         service: "tennis-value-api",
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
-        endpoints: ["/health", "/matches?status=upcoming", "/matches?status=live", "/odds", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/odds", "/predict"]
       });
     }
 
@@ -127,6 +139,21 @@ export default {
         return response(payload);
       } catch (error) {
         return response({ error: "Could not retrieve odds from Apify" }, 502);
+      }
+    }
+
+    if (path === "/usage") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+      try {
+        // Live Tennis documents /usage as quota-exempt.
+        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/usage", {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        });
+        const body = await upstream.json();
+        return response(body, upstream.status);
+      } catch (error) {
+        return response({ error: "Could not retrieve API usage" }, 502);
       }
     }
 
