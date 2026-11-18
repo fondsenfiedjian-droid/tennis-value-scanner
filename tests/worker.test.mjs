@@ -867,20 +867,13 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
   assert.ok(confirmed.state.balance < 100);
   assert.equal(confirmed.bets[0].matchId, 101);
   assert.throws(() => api.confirmPortfolioPlan(planned, "wrong-plan"), /не найден/);
-});
-
-test("pending portfolio can be cancelled without changing financial records", () => {
-  const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
-  const api = sandbox.bankrollApi;
-  const initial = api.createInitialState(100);
-  const portfolio = api.recommendPortfolio(initial, [{
+  const secondPortfolio = api.recommendPortfolio(initial, [{
     matchKey: "match:202", match: "WTA · Player C — Player D",
     player: "Player C", opponent: "Player D", probability: 0.6,
     odds: 2.0, freshnessLevel: "medium", stakeMultiplier: 0.5
   }]);
-  const planned = api.savePortfolioPlan(initial, portfolio.suggestions);
-  const cancelled = api.cancelPortfolioPlan(planned, planned.pendingPlan.id);
+  const secondPlan = api.savePortfolioPlan(initial, secondPortfolio.suggestions);
+  const cancelled = api.cancelPortfolioPlan(secondPlan, secondPlan.pendingPlan.id);
   assert.equal(cancelled.pendingPlan, null);
   assert.equal(cancelled.balance, 100);
   assert.equal(cancelled.openBets.length, 0);
