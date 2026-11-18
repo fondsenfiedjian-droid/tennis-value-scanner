@@ -2405,7 +2405,7 @@ test("PFE builds one immutable pre-match history observation per model and match
     capturedAt: Date.parse("2025-01-01T10:00:00Z"),
     matchDate: "2025-01-01T12:00:00Z", captureStatus: "upcoming",
     resultOutcome: "completed", resultWinner: 1, resultCheckedAt: Date.parse("2025-01-02T10:00:00Z"),
-    modelVersion: "2"
+    modelVersion: "2", surface: "Clay", tour: "ATP"
   };
   const result = sandbox.pfe.buildModelHistoryRecords([
     base,
