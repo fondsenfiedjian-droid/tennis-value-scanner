@@ -256,6 +256,7 @@ export function runBacktest(matches, options = {}) {
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
+          addCalibration(yearSurfaceBucket.metrics[name], favouriteProbability, favouriteWon);
           yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
         }
       }
@@ -379,7 +380,8 @@ export function runBacktest(matches, options = {}) {
     byYearAndSurfaceReport[year][surface] = {
       matches: bucket.matches,
       sampleQuality: bucket.matches < 30 ? "low" : bucket.matches < 100 ? "limited" : "larger_sample",
-      metrics: formatMetrics(bucket.metrics)
+      metrics: formatMetrics(bucket.metrics),
+      calibration: Object.fromEntries(Object.entries(bucket.metrics).map(([name, metric]) => [name, formatCalibration(metric)]))
     };
   }
 
