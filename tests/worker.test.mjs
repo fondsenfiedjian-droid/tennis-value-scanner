@@ -1672,7 +1672,7 @@ test("prediction reliability is transparent, excludes unavailable calibration an
   const end = frontendSource.indexOf("function freshnessStakeMultiplier(", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.assess = assessPredictionReliability;", sandbox);
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.assess = assessPredictionReliability;", sandbox);
   const assess = sandbox.assess;
   const base = {
     freshness: { level: "good", details: "fresh" },
