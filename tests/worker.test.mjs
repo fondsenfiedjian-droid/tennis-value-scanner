@@ -281,11 +281,11 @@ test("daily best bet respects the configured minimum EV and odds floor", () => {
   const sandbox = { Number };
   vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.select = selectBestBet;", sandbox);
   const bets = [
-    { player: "A", odds: 2.4, ev: 2.9, freshnessLevel: "high" },
-    { player: "B", odds: 1.8, ev: 20, freshnessLevel: "high" },
+    { player: "A", odds: 2.4, ev: 2.9, freshnessLevel: "good" },
+    { player: "B", odds: 1.8, ev: 20, freshnessLevel: "good" },
     { player: "C", odds: 2.1, ev: 6, freshnessLevel: "limited" },
     { player: "D", odds: 2.2, ev: 4, freshnessLevel: "medium" },
-    { player: "E", odds: 2.05, ev: 5, freshnessLevel: "high" }
+    { player: "E", odds: 2.05, ev: 5, freshnessLevel: "good" }
   ];
   assert.equal(sandbox.select(bets, 3).player, "E");
   assert.equal(sandbox.select(bets, 7), null);
