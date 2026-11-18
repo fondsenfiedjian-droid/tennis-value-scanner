@@ -315,7 +315,7 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   assert.equal(readPredictionArchive().length, 4);
 });
 
-test("archive import validates records, merges duplicates, and keeps newest 600", () => {
+test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
     odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800, ratingAsOf: "not-a-date" };
@@ -329,8 +329,13 @@ test("archive import validates records, merges duplicates, and keeps newest 600"
   assert.equal(result.rows.find(item => item.matchKey === "m2").ratingAsOf, null);
   const many = Array.from({ length: 605 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
   const capped = mergePredictionArchive([], many);
-  assert.equal(capped.rows.length, 600);
-  assert.equal(capped.rows[0].capturedAt, 6);
+  assert.equal(capped.rows.length, 605);
+  assert.equal(capped.rows[0].capturedAt, 1);
+  const mixed = many.map((item, i) => i === 0 ? { ...item, resultOutcome: "completed", resultWinner: 1 } : item);
+  const retained = mergePredictionArchive([], mixed.slice(0, 3005));
+  assert.equal(retained.rows.length, 3000);
+  assert.ok(retained.rows.some(item => item.matchKey === "m0"), "verified completed records take priority over pending snapshots");
+  assert.equal(retained.dropped, 5);
 });
 
 test("predict rejects the same player ID on both sides before API calls", async () => {
