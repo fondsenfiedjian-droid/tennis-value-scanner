@@ -27,7 +27,7 @@ function makeArchiveStore(seed = [], options = {}) {
   return sandbox.archiveFns;
 }
 
-function makeFakeIndexedDB() {
+function makeFakeIndexedDB(options = {}) {
   const state = { records: [], meta: new Map(), nextId: 1 };
   const stores = new Set();
   const db = {
@@ -44,7 +44,7 @@ function makeFakeIndexedDB() {
               return request;
             },
             clear() { state.records = []; },
-            add(row) { state.records.push({ ...row, id: state.nextId++ }); }
+            add(row) { if (options.failAdds) throw new Error('Simulated IndexedDB quota failure'); state.records.push({ ...row, id: state.nextId++ }); }
           };
           return {
             get(key) {
@@ -361,6 +361,19 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("failed IndexedDB transaction leaves the localStorage recovery copy readable", async () => {
+  const indexedDB = makeFakeIndexedDB({ failAdds: true });
+  const store = makeArchiveStore([], { indexedDB });
+  await store.initializeArchiveStorage();
+  const row = { matchKey: "fallback", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000002 };
+  store.persistPredictionArchive([row]);
+  const flushed = await store.flushArchiveWrites();
+  assert.equal(flushed.ok, false);
+  assert.equal(store.readPredictionArchive().length, 1);
+  assert.equal(store.readPredictionArchive()[0].matchKey, "fallback");
 });
 
 test("IndexedDB retains the full archive when the localStorage backup is full", async () => {
