@@ -1287,7 +1287,7 @@ test("Elo plausibility audit flags unusual ratings without rejecting them", () =
   assert.equal(check(3201).status, "review");
   assert.equal(check(5001).status, "invalid");
   assert.equal(check(NaN).status, "invalid");
-  assert.match(check(600).reason, /проверки/);
+  assert.match(check(600).reason, /провер/);
 });
 
 test("prediction UI warns about unusual Elo without suppressing the calculation", () => {
