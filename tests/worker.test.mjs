@@ -2109,6 +2109,20 @@ test("outcome dispersion diagnostics are shown in the selected bankroll interfac
 });
 
 
+test("PFE player stats loader accepts numeric IDs and rejects malformed IDs before fetching", () => {
+  const start = frontendSource.indexOf("async function loadPfePlayerStats(");
+  const end = frontendSource.indexOf("\n  function explicitMatchBestOf", start);
+  assert.ok(start >= 0 && end > start);
+  const loader = frontendSource.slice(start, end);
+  const match = loader.match(/if\(!\/(.+?)\/\.test\(id\)/);
+  assert.ok(match, "player ID validation regex must exist");
+  const idPattern = new RegExp(match[1]);
+  assert.equal(idPattern.test("123"), true);
+  assert.equal(idPattern.test("987654321"), true);
+  assert.equal(idPattern.test("abc"), false);
+  assert.equal(idPattern.test("12/3"), false);
+});
+
 test("PFE player stats are connected read-only and score simulation is gated by verified inputs and explicit format", () => {
   const start = frontendSource.indexOf("function explicitMatchBestOf(");
   const end = frontendSource.indexOf("\n  async function loadPredictions", start);
