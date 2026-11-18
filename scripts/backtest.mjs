@@ -56,6 +56,76 @@ const dateKey = value => {
 };
 const pairKey = (a, b) => Number(a) < Number(b) ? a + ":" + b : b + ":" + a;
 
+const clampProbability = value => Math.min(1 - 1e-9, Math.max(1e-9, value));
+const logit = value => Math.log(clampProbability(value) / (1 - clampProbability(value)));
+const logistic = value => value >= 0 ? 1 / (1 + Math.exp(-value)) : Math.exp(value) / (1 + Math.exp(value));
+
+/**
+ * Fit a two-parameter logistic recalibration on favourite probabilities.
+ * The weak penalty shrinks the fit toward the identity transform (intercept 0,
+ * slope 1), reducing instability when the training sample is imperfect.
+ */
+export function fitLogisticCalibration(observations, options = {}) {
+  const minMatches = Number.isInteger(options.minMatches) ? options.minMatches : 200;
+  const rows = observations.filter(item =>
+    Number.isFinite(item.probability) && item.probability >= 0.5 && item.probability <= 1 &&
+    Number.isFinite(item.outcome) && item.outcome >= 0 && item.outcome <= 1
+  ).map(item => ({ x: logit(item.probability), y: item.outcome }));
+  if (rows.length < minMatches) return null;
+  const penalty = Number.isFinite(options.penalty) && options.penalty >= 0 ? options.penalty : 0.01;
+  let intercept = 0, slope = 1;
+  for (let iteration = 0; iteration < 60; iteration++) {
+    let g0 = -penalty * intercept;
+    let g1 = -penalty * (slope - 1);
+    let h00 = penalty, h01 = 0, h11 = penalty;
+    for (const row of rows) {
+      const fitted = logistic(intercept + slope * row.x);
+      const weight = fitted * (1 - fitted);
+      const residual = row.y - fitted;
+      g0 += residual;
+      g1 += residual * row.x;
+      h00 += weight;
+      h01 += weight * row.x;
+      h11 += weight * row.x * row.x;
+    }
+    const determinant = h00 * h11 - h01 * h01;
+    if (!Number.isFinite(determinant) || determinant < 1e-12) return null;
+    const step0 = (g0 * h11 - g1 * h01) / determinant;
+    const step1 = (g1 * h00 - g0 * h01) / determinant;
+    intercept += step0;
+    slope += step1;
+    if (!Number.isFinite(intercept) || !Number.isFinite(slope)) return null;
+    if (Math.max(Math.abs(step0), Math.abs(step1)) < 1e-8) break;
+  }
+  return { matches: rows.length, intercept: Number(intercept.toFixed(6)), slope: Number(slope.toFixed(6)) };
+}
+
+export function scoreFavouriteCalibration(observations) {
+  if (!observations.length) return { matches: 0, brier: null, logLoss: null, ece: null };
+  const bins = Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 }));
+  let brier = 0, logLoss = 0;
+  for (const item of observations) {
+    const p = clampProbability(item.probability);
+    const y = item.outcome;
+    brier += (p - y) ** 2;
+    logLoss -= y * Math.log(p) + (1 - y) * Math.log(1 - p);
+    const index = Math.min(9, Math.max(0, Math.floor((p - 0.5) * 20)));
+    bins[index].n++;
+    bins[index].predicted += p;
+    bins[index].wins += y;
+  }
+  const ece = bins.reduce((sum, bin) => sum + (bin.n
+    ? bin.n * Math.abs(bin.predicted / bin.n - bin.wins / bin.n)
+    : 0), 0) / observations.length;
+  return {
+    matches: observations.length,
+    brier: Number((brier / observations.length).toFixed(5)),
+    logLoss: Number((logLoss / observations.length).toFixed(5)),
+    ece: Number((ece * 100).toFixed(2))
+  };
+}
+
+
 function addResult(map, id, won, surface) {
   if (!map.has(id)) map.set(id, []);
   map.get(id).push({ won, surface });
@@ -72,6 +142,7 @@ export function runBacktest(matches, options = {}) {
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 })) }]));
   const byYear = new Map(), bySurfaceMetrics = new Map();
+  const yearlyObservations = new Map();
   const addMetric = (bucket, probability) => {
     bucket.n++;
     bucket.brier += (probability - 1) ** 2;
@@ -157,6 +228,7 @@ export function runBacktest(matches, options = {}) {
       if (insideEvaluationWindow) {
         const year = date.slice(0, 4);
         if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
+        if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
         const surfaceKey = match.surface ?? "Unknown";
         if (!bySurfaceMetrics.has(surfaceKey)) bySurfaceMetrics.set(surfaceKey, makeMetricBucket());
         for (const [name, delta] of Object.entries(features)) {
@@ -169,6 +241,7 @@ export function runBacktest(matches, options = {}) {
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
+          yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
         }
       }
       updates.push(match);
@@ -225,6 +298,52 @@ export function runBacktest(matches, options = {}) {
   }
 
   const evaluatedMatches = totals.elo.n;
+
+  const calibrationValidation = [];
+  const years = [...yearlyObservations.keys()].sort();
+  for (let yearIndex = 1; yearIndex < years.length; yearIndex++) {
+    const trainingYear = years[yearIndex - 1];
+    const evaluationYear = years[yearIndex];
+    if (Number(evaluationYear) !== Number(trainingYear) + 1) continue;
+    for (const name of ["elo", "surface", "form", "h2h", "combined"]) {
+      const training = yearlyObservations.get(trainingYear)[name];
+      const evaluation = yearlyObservations.get(evaluationYear)[name];
+      const calibrator = fitLogisticCalibration(training);
+      const raw = scoreFavouriteCalibration(evaluation);
+      if (!calibrator) {
+        calibrationValidation.push({ trainingYear, evaluationYear, candidate: name, scope: "tour", status: "insufficient_training_data", trainingMatches: training.length, raw });
+        continue;
+      }
+      const calibratedObservations = evaluation.map(item => ({
+        probability: logistic(calibrator.intercept + calibrator.slope * logit(item.probability)),
+        outcome: item.outcome
+      }));
+      calibrationValidation.push({
+        trainingYear, evaluationYear, candidate: name, scope: "tour",
+        trainingMatches: training.length, calibrator,
+        raw, calibrated: scoreFavouriteCalibration(calibratedObservations)
+      });
+
+      const surfaces = [...new Set(training.map(item => item.surface))].sort();
+      for (const surfaceName of surfaces) {
+        const surfaceTraining = training.filter(item => item.surface === surfaceName);
+        const surfaceEvaluation = evaluation.filter(item => item.surface === surfaceName);
+        const surfaceCalibrator = fitLogisticCalibration(surfaceTraining);
+        if (!surfaceCalibrator || surfaceEvaluation.length === 0) continue;
+        const transformed = surfaceEvaluation.map(item => ({
+          probability: logistic(surfaceCalibrator.intercept + surfaceCalibrator.slope * logit(item.probability)),
+          outcome: item.outcome
+        }));
+        calibrationValidation.push({
+          trainingYear, evaluationYear, candidate: name, scope: "surface",
+          surface: surfaceName, trainingMatches: surfaceTraining.length,
+          raw: scoreFavouriteCalibration(surfaceEvaluation),
+          calibrated: scoreFavouriteCalibration(transformed),
+          calibrator: surfaceCalibrator
+        });
+      }
+    }
+  }
   return {
     matches: uniqueClean.length,
     excluded: matches.length - clean.length,
@@ -236,6 +355,7 @@ export function runBacktest(matches, options = {}) {
     warmupMatches: evaluationStart ? uniqueClean.filter(match => match.date < evaluationStart).length : 0,
     metrics: formatMetrics(totals),
     calibration: Object.fromEntries(Object.entries(totals).map(([name, bucket]) => [name, formatCalibration(bucket)])),
+    calibrationValidation,
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
       bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
