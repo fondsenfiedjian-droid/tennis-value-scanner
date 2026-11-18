@@ -566,7 +566,11 @@
         const current=latestByOutcome[side];
         if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=quote;
       }
-      if(latestByOutcome.home&&latestByOutcome.away)selected.push(...Object.values(latestByOutcome));
+      if(latestByOutcome.home&&latestByOutcome.away){
+        const homeScrapedAt=Date.parse(latestByOutcome.home.scrapedAt),awayScrapedAt=Date.parse(latestByOutcome.away.scrapedAt);
+        if(!Number.isFinite(homeScrapedAt)||!Number.isFinite(awayScrapedAt)||Math.abs(homeScrapedAt-awayScrapedAt)>30*60*1000)continue;
+        selected.push(...Object.values(latestByOutcome));
+      }
     }
     return selected;
   }
