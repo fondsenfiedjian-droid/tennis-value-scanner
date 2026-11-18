@@ -410,7 +410,7 @@
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
         resultOutcome:typeof row.resultOutcome==='string'?row.resultOutcome:null,
         resultWinner:[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null,
-        resultVersion:Number.isSafeInteger(Number(row.resultVersion))?Number(row.resultVersion):null,
+        resultVersion:row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null,
         resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',capturedAt};
     }).filter(Boolean);
@@ -430,7 +430,7 @@
     if(!Number.isSafeInteger(id)||id<=0)return {rows,updated:0};
     const outcome=typeof result.outcome==='string'?result.outcome:null;
     const settled=['completed','retired','walkover','default','abandoned','unresolved'].includes(outcome)||result.status==='cancelled';
-    const version=Number.isSafeInteger(Number(result.result_version))?Number(result.result_version):null;
+    const version=result.result_version!==null&&result.result_version!==undefined&&Number.isSafeInteger(Number(result.result_version))&&Number(result.result_version)>=1?Number(result.result_version):null;
     let updated=0;
     const next=rows.map(row=>{
       if(Number(row.matchId)!==id)return row;
