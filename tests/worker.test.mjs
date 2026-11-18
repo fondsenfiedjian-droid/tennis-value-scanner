@@ -160,6 +160,21 @@ test("matches rejects unsupported HTTP methods", async () => {
   assert.equal(result.status, 405);
 });
 
+test("cache timestamps reject stale, invalid, and implausibly future data", () => {
+  const start = frontendSource.indexOf("function isFreshCacheTimestamp(");
+  const end = frontendSource.indexOf("const ODDS_CACHE_TTL", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Date, Number };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.isFresh = isFreshCacheTimestamp;", sandbox);
+  const now = 1_800_000_000_000;
+  assert.equal(sandbox.isFresh(now - 60_000, 600_000, now), true);
+  assert.equal(sandbox.isFresh(now - 700_000, 600_000, now), false);
+  assert.equal(sandbox.isFresh(now + 60_000, 600_000, now), true);
+  assert.equal(sandbox.isFresh(now + 6 * 60_000, 600_000, now), false);
+  assert.equal(sandbox.isFresh(NaN, 600_000, now), false);
+  assert.equal(sandbox.isFresh(0, 600_000, now), false);
+});
+
 test("frontend inline JavaScript parses without syntax errors", () => {
   const start = frontendSource.indexOf("<script>");
   const end = frontendSource.indexOf("</script>", start);
