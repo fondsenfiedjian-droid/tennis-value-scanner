@@ -820,22 +820,23 @@ test("archive prediction accuracy gives exact 50 percent Elo ties half credit", 
 test("archive rejects conflicting results at the same version and unversioned regressions", () => {
   const { applyVerifiedMatchResult } = makeArchiveStore();
   const rows = [
-    { matchId: 321, matchKey: "321", side: "A", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
-    { matchId: 321, matchKey: "321", side: "B", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
-    { matchId: 654, matchKey: "654", side: "A", resultOutcome: "completed", resultWinner: 2, resultVersion: 3 }
+    { matchId: 321, matchKey: "321", side: "A", player:"Player One", opponent:"Player Two", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
+    { matchId: 321, matchKey: "321", side: "B", player:"Player Two", opponent:"Player One", resultOutcome: "completed", resultWinner: 1, resultVersion: 4 },
+    { matchId: 654, matchKey: "654", side: "A", player:"Player One", opponent:"Player Two", resultOutcome: "completed", resultWinner: 2, resultVersion: 3 }
   ];
+  const apiPlayers={players:{p1:{name:"Player One"},p2:{name:"Player Two"}}};
   const sameVersionConflict = applyVerifiedMatchResult(rows, {
-    id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 4
+    ...apiPlayers, id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 4
   }, 900);
   assert.equal(sameVersionConflict.updated, 0);
   assert.equal(sameVersionConflict.rows[0].resultWinner, 1);
   const unversionedRegression = applyVerifiedMatchResult(sameVersionConflict.rows, {
-    id: 654, status: "completed", outcome: "completed", winner: 1
+    ...apiPlayers, id: 654, status: "completed", outcome: "completed", winner: 1
   }, 901);
   assert.equal(unversionedRegression.updated, 0);
   assert.equal(unversionedRegression.rows[2].resultWinner, 2);
   const newer = applyVerifiedMatchResult(unversionedRegression.rows, {
-    id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 5
+    ...apiPlayers, id: 321, status: "completed", outcome: "completed", winner: 2, result_version: 5
   }, 902);
   assert.equal(newer.updated, 2);
   assert.equal(newer.rows[0].resultWinner, 2);
@@ -843,9 +844,9 @@ test("archive rejects conflicting results at the same version and unversioned re
 
 test("archive accepts the first unversioned official result for a record with no result version", () => {
   const { applyVerifiedMatchResult } = makeArchiveStore();
-  const rows = [{ matchId: 987, matchKey: "987", side: "A", resultVersion: null }];
+  const rows = [{ matchId: 987, matchKey: "987", side: "A", player:"Player One", opponent:"Player Two", resultVersion: null }];
   const applied = applyVerifiedMatchResult(rows, {
-    id: 987, status: "completed", outcome: "completed", winner: 1
+    id: 987, players:{p1:{name:"Player One"},p2:{name:"Player Two"}}, status: "completed", outcome: "completed", winner: 1
   }, 1000);
   assert.equal(applied.updated, 1);
   assert.equal(applied.rows[0].resultOutcome, "completed");
