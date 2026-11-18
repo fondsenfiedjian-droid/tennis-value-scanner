@@ -1338,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1402,7 +1402,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1418,7 +1418,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1607,7 +1607,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
 });
 
 
@@ -1826,7 +1826,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v56/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v57/);
 });
 
 
@@ -1858,7 +1858,7 @@ test("segment ROI follows the latest verified result revision without double-cou
 
 test("segment performance groups settled bets by original odds and EV, not settlement prices", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   let state = api.createInitialState(1000);
   const add = (key, odds, probability, outcome) => {
@@ -1889,7 +1889,7 @@ test("segment performance groups settled bets by original odds and EV, not settl
 
 test("odds and EV segmentation keeps missing source values unknown and labels are displayed", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   let state = api.createInitialState(100);
   const placed = api.placeBet(state, {
