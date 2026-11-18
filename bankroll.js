@@ -274,13 +274,24 @@
         const outcome = (snapshot.side === "A" ? 1 : 2) === result.winner ? "won" : "lost";
         const payout = outcome === "won" ? roundMoney(snapshot.stake * snapshot.odds) : 0;
         const profit = outcome === "won" ? roundMoney(payout - snapshot.stake) : -snapshot.stake;
-        state.balance = roundMoney(state.balance + payout - transaction.amount);
-        transaction.amount = payout;
-        transaction.balanceDelta = payout;
-        transaction.stake = snapshot.stake;
-        transaction.profit = profit;
-        transaction.outcome = outcome;
+        const oldPayout = transaction.amount;
+        state.balance = roundMoney(state.balance + payout - oldPayout);
+        transaction.type = "settlement_reversed";
+        transaction.profit = 0;
+        transaction.outcome = "superseded_by_result_revision";
         transaction.resultVersion = result.version;
+        appendTransaction(state, {
+          id: "tx-" + makeId(), type: "settlement_reversal", amount: oldPayout,
+          balanceDelta: -oldPayout, betId: transaction.betId,
+          note: "Отменён предыдущий расчёт после исправления результата"
+        });
+        appendTransaction(state, {
+          id: "tx-" + makeId(), type: "settlement", amount: payout,
+          balanceDelta: payout, stake: snapshot.stake, profit, outcome,
+          betId: transaction.betId, note: snapshot.match, source: "verified",
+          matchId: transaction.matchId, side: transaction.side,
+          resultVersion: result.version, betSnapshot: snapshot
+        });
         corrected.push({ betId: transaction.betId, matchId: transaction.matchId, outcome });
       } else {
         const oldPayout = transaction.amount;
