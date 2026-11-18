@@ -789,7 +789,7 @@
     return {rows,added,updated,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
   function normalizeResultPlayerName(value){
-    return String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim().replace(/\\s+/g,' ');
+    return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
   }
   function resultPlayerId(value){
     const id=Number(value);
