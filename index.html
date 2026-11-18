@@ -753,17 +753,18 @@
       catch(error){alert(error.message);}
     });
   }
-  function addBestBetToBankroll(best){
+  function addPortfolioToBankroll(suggestions){
     try{
-      const state=readBankrollState();
+      let state=readBankrollState();
       if(!state)throw new Error('Банкролл недоступен.');
-      const rec=TVSBankroll.recommendStake(state,best.probability/100,best.odds);
-      if(!rec.eligible)throw new Error(rec.reason);
-      const match=best.match;
-      const title=(match.tournament_name||match.tournament||match.event_name||match.competition||'Теннис')+' · '+(best.player+' — '+best.opponent);
-      if(!confirm('Добавить виртуальную запись ставки?\n'+title+'\nКоэффициент: '+best.odds.toFixed(2)+'\nEV: '+best.ev.toFixed(2)+'%\nРазмер: '+formatEuro(rec.stake)+'\nДеньги букмекеру не отправляются.'))return;
-      const placed=TVSBankroll.placeBet(state,{probability:best.probability/100,odds:best.odds,match:title,player:best.player,opponent:best.opponent});
-      if(persistBankrollState(placed.state)){renderBankroll();alert('Ставка добавлена в финансовый журнал.');}
+      if(!Array.isArray(suggestions)||!suggestions.length)throw new Error('Нет ставок для распределения.');
+      const total=suggestions.reduce((sum,item)=>sum+Number(item.stake),0);
+      const lines=suggestions.map(item=>item.player+' — '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)).join('\n');
+      if(!confirm('Добавить виртуальные записи в журнал?\n'+lines+'\nИтого: '+formatEuro(total)+'\nДеньги букмекеру не отправляются.'))return;
+      for(const item of suggestions){
+        state=TVSBankroll.placeBet(state,{probability:item.probability,odds:item.odds,stake:item.stake,match:item.match,player:item.player,opponent:item.opponent,bookmaker:item.bookmaker}).state;
+      }
+      if(persistBankrollState(state)){renderBankroll();alert('Распределение сохранено в финансовом журнале.');}
     }catch(error){alert(error.message);}
   }
   function showMain(){
@@ -937,11 +938,18 @@
     const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
     const tournament=best.match.tournament_name||best.match.tournament||best.match.event_name||best.match.competition||'Турнир не указан';
     const bankrollState=readBankrollState();
-    const stakeHint=bankrollState?TVSBankroll.recommendStake(bankrollState,best.probability/100,best.odds):{eligible:false,reason:'Банкролл недоступен'};
-    const stakeAction=stakeHint.eligible?'<br><b>Рекомендуемая сумма: '+formatEuro(stakeHint.stake)+'</b> · риск ограничен лимитами банка<br><button id="addBestBetToBank" class="chip on" style="margin-top:9px">Добавить в журнал ставок</button>':'<br><span class="model-muted">Ставка не допущена к распределению банка: '+escapeHtml(stakeHint.reason)+'</span>';
+    const portfolio=bankrollState?TVSBankroll.recommendPortfolio(bankrollState,bets.map(bet=>{
+      const matchDateValue=matchDate(bet.match);
+      const rawId=bet.match.id??bet.match.match_id??bet.match.event_id;
+      const matchKey=rawId!==undefined&&rawId!==null?'id:'+String(rawId):[bet.player,bet.opponent].sort().join('|')+'|'+(matchDateValue?matchDateValue.toISOString():'');
+      const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
+      return {matchKey,match:matchTitle,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:'Winamax'};
+    })):{suggestions:[],totalStake:0};
+    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+formatEuro(item.stake)).join('<br>');
+    const stakeAction=portfolio.suggestions.length?'<br><b>Распределение банка: '+portfolio.suggestions.length+' ставки · всего '+formatEuro(portfolio.totalStake)+'</b><br>'+portfolioLines+'<br><button id="addPortfolioToBank" class="chip on" style="margin-top:9px">Распределить по этим ставкам</button>':'<br><span class="model-muted">Сейчас нет ставок, прошедших лимиты банка и минимальный EV.</span>';
     box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · Winamax <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.'+stakeAction+'</div>';
-    const addButton=$('#addBestBetToBank');
-    if(addButton)addButton.onclick=()=>addBestBetToBankroll(best);
+    const addButton=$('#addPortfolioToBank');
+    if(addButton)addButton.onclick=()=>addPortfolioToBankroll(portfolio.suggestions);
   }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
