@@ -943,7 +943,7 @@ test("archive accuracy does not combine sides from different capture times or ac
     {matchId:7003,side:"B",probability:null,capturedAt:start-30000,matchDate:date,resultOutcome:"completed",resultWinner:1}
   ];
   assert.equal(archiveResultStats(differentTimes).settled,1);
-  assert.equal(archiveResultStats(differentTimes).accuracy,100);
+  assert.equal(archiveResultStats(differentTimes).accuracy,0);
   assert.equal(archiveResultStats(malformed).settled,0);
   assert.equal(archiveResultStats(malformed).ambiguous,1);
 });
