@@ -106,8 +106,10 @@ A dependency-free chronological backtest is available for Jeff Sackmann-style AT
 Run it with Node.js 22:
 
 ```sh
-node scripts/backtest.mjs path/to/atp_matches_2024.csv path/to/atp_matches_2025.csv
+node scripts/backtest.mjs --from 20240101 --to 20251231 path/to/atp_matches_2022.csv path/to/atp_matches_2023.csv path/to/atp_matches_2024.csv path/to/atp_matches_2025.csv
 ```
+
+The files before `--from` are used only to build historical ratings, surface records, recent form and head-to-head history. They are warm-up data and do not contribute to the reported metrics. The optional `--to` sets the final evaluation date. Dates use the dataset's `YYYYMMDD` format.
 
 The report compares five exploratory candidates: overall Elo, a surface-Elo blend, Elo plus recent form, Elo plus head-to-head, and a combined variant. It reports Brier score, log loss and winner-pick accuracy. Lower Brier score and log loss are better; accuracy alone is not a calibration metric, and none of these metrics represents betting profit or ROI.
 
