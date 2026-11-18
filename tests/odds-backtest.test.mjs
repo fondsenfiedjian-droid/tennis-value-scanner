@@ -60,18 +60,20 @@ test("odds backtest rejects conflicting results for one match ID", () => {
 
 test("scanner semicolon CSV archive is paired into pre-match snapshots and settled outcomes", () => {
   const csv = [
-    "capturedAt;matchDate;matchId;player;opponent;side;odds;probability;resultOutcome;resultWinner",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;Player A;Player B;A;2.20;50;completed;1",
-    "1735725600000;2025-01-01T12:00:00.000Z;77;Player B;Player A;B;1.80;50;completed;1",
-    "1735729200000;2025-01-01T12:00:00.000Z;77;Player A;Player B;A;2.00;50;completed;1",
-    "1735729200000;2025-01-01T12:00:00.000Z;77;Player B;Player A;B;1.90;50;completed;1",
-    "1735725600000;2025-01-01T12:00:00.000Z;88;Other A;Other B;A;2.10;50;retired;1"
+    "capturedAt;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;resultOutcome;resultWinner",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;completed;1",
+    "1735725600000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;completed;1",
+    "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;completed;1",
+    "1735729200000;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;completed;1",
+    "1735725600000;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
   ].join("\n");
   const parsed = parseCsv(csv, { delimiter: ";" });
   const adapted = adaptScannerArchiveRows(parsed);
   assert.equal(adapted.rows.length, 2);
   assert.equal(adapted.ignored, 1);
   assert.equal(adapted.rows[0].probability_a, 0.5);
+  assert.equal(adapted.rows[0].tour, "atp");
+  assert.equal(adapted.rows[0].surface, "Hard");
   const report = runOddsBacktest(adapted.rows, { minEv: 0.03, minOdds: 1.9 });
   assert.equal(report.matches, 1);
   assert.equal(report.bets, 1);
