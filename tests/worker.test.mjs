@@ -479,7 +479,7 @@ test("archive merge preserves official result status and restatement metadata", 
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
-    odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800, ratingAsOf: "not-a-date" };
+    odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800, ratingAsOf: "not-a-date", tour: "wta", surface: "Clay" };
   const result = mergePredictionArchive([row], [row,
     { ...row, matchKey: "m2", capturedAt: 2000, ev: 999 },
     { ...row, odds: 1, matchKey: "bad" }]);
@@ -488,6 +488,8 @@ test("archive import validates records, merges duplicates, and retains up to 300
   assert.equal(result.rows.length, 2);
   assert.equal(result.rows.find(item => item.matchKey === "m2").ev, 8);
   assert.equal(result.rows.find(item => item.matchKey === "m2").ratingAsOf, null);
+  assert.equal(result.rows.find(item => item.matchKey === "m2").tour, "wta");
+  assert.equal(result.rows.find(item => item.matchKey === "m2").surface, "Clay");
   const many = Array.from({ length: 3005 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
   const capped = mergePredictionArchive([], many);
   assert.equal(capped.rows.length, 3000);
