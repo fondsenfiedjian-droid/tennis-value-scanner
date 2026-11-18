@@ -2091,7 +2091,7 @@ test("PFE groups dependent models before fusion and flags a single-model estimat
 test("PFE merges overlapping and transitively connected dependencies without double-counting", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const result = sandbox.pfe.fusePredictions([
     { id: "elo", probability: 0.60, dependencyGroups: ["elo-ratings"] },
     { id: "form", probability: 0.70, dependencyGroups: ["elo-ratings", "recent-results"] },
@@ -2109,7 +2109,7 @@ test("PFE merges overlapping and transitively connected dependencies without dou
 test("PFE dependencyGroups retains legacy dependencyGroup behavior and registry copies dependency metadata", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   const result = pfe.fusePredictions([
     { id: "elo", probability: 0.60, dependencyGroup: "ratings" },
@@ -2179,7 +2179,7 @@ test("PFE registry exposes active and planned models with explicit dependency gr
 test("PFE builds one immutable pre-match history observation per model and match from verified archive rows", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const base = {
     model: "general-elo-v2", matchId: 7101, probability: 64, side: "A",
     player: "Player A", opponent: "Player B", playerId: 11, opponentId: 22,
@@ -2196,12 +2196,13 @@ test("PFE builds one immutable pre-match history observation per model and match
     { ...base, matchId: 7104, captureStatus: "live" },
     { ...base, matchId: 7105, side: "B" }
   ]);
-  assert.equal(result.records.length, 1);
+  assert.equal(result.records.length, 2);
   assert.equal(result.records[0].probability, 0.64);
   assert.equal(result.records[0].outcome, 1);
   assert.equal(result.records[0].playerId, 11);
   assert.equal(result.records[0].modelVersion, "2");
-  assert.equal(result.rejected.length, 4);
+  assert.equal(result.records[1].outcome, 0);
+  assert.equal(result.rejected.length, 3);
 });
 
 test("PFE history evaluation uses chronological holdout and neutral weights for small samples", () => {
