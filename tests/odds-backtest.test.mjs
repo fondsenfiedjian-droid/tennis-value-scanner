@@ -375,6 +375,22 @@ test("threshold sensitivity marks one-day archives as insufficient rather than a
 });
 
 
+test("archive coverage audits model rating dates without treating same-day dates as proven pre-match", () => {
+  const rows = [
+    { ...base, rating_as_of_a: "2024-12-31", rating_as_of_b: "2025-01-01",
+      odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, rating_as_of_a: "2025-01-02", rating_as_of_b: "2025-02-30",
+      odds_captured_at: "2025-01-01T11:00:00Z" }
+  ];
+  const coverage = runOddsBacktest(rows).archiveCoverage.ratingDateCoverage;
+  assert.equal(coverage.provided, 4);
+  assert.equal(coverage.missing, 0);
+  assert.equal(coverage.invalid, 1);
+  assert.equal(coverage.beforeMatchDate, 1);
+  assert.equal(coverage.sameMatchDate, 1);
+  assert.equal(coverage.afterMatchDate, 1);
+});
+
 test("archive coverage reports date span, bookmaker, tours, surfaces and snapshot depth", () => {
   const rows = [
     { ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T10:00:00Z" },
