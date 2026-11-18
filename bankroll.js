@@ -232,7 +232,26 @@
     const groups = {
       surface: { label: "Покрытие", normalize: normalizePerformanceSurface },
       tour: { label: "Категория турнира", normalize: normalizePerformanceTour },
-      bookmaker: { label: "Букмекер", normalize: value => typeof value === "string" && value.trim() ? value.trim().slice(0, 60) : null }
+      bookmaker: { label: "Букмекер", normalize: value => typeof value === "string" && value.trim() ? value.trim().slice(0, 60) : null },
+      oddsBand: { label: "Диапазон коэффициента", normalize: value => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 1) return null;
+        if (n < 1.5) return "1.01–1.49";
+        if (n < 1.8) return "1.50–1.79";
+        if (n < 2.1) return "1.80–2.09";
+        if (n < 2.5) return "2.10–2.49";
+        if (n < 3) return "2.50–2.99";
+        return "3.00+";
+      } },
+      evBand: { label: "Диапазон EV", normalize: value => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        if (n < 0) return "Отрицательный";
+        if (n < 5) return "0–4.99%";
+        if (n < 10) return "5–9.99%";
+        if (n < 15) return "10–14.99%";
+        return "15%+";
+      } }
     };
     const output = {};
     for (const [key, dimension] of Object.entries(groups)) {
@@ -248,7 +267,8 @@
       for (const tx of state.transactions) {
         if (tx.type !== "settlement") continue;
         const snapshot = tx.betSnapshot && typeof tx.betSnapshot === "object" ? tx.betSnapshot : {};
-        let rawValue = tx[key] ?? snapshot[key];
+        let rawValue = key === "oddsBand" ? (snapshot.odds ?? tx.actualOdds) :
+          key === "evBand" ? (snapshot.ev ?? tx.ev) : tx[key] ?? snapshot[key];
         if ((key === "surface" || key === "tour") && !dimension.normalize(rawValue)) {
           const matchId = Number(tx.matchId ?? snapshot.matchId);
           const side = tx.side ?? snapshot.side;
