@@ -9,6 +9,9 @@ const frontendSource = readFileSync(new URL("../index.html", import.meta.url), "
 const archiveStart = frontendSource.indexOf("const ARCHIVE_KEY=");
 const archiveEnd = frontendSource.indexOf("function renderArchive()", archiveStart);
 const archiveSource = frontendSource.slice(archiveStart, archiveEnd);
+const ratingDateStart = frontendSource.indexOf("function validRatingDate(");
+const ratingDateEnd = frontendSource.indexOf("function isValidPredictionResult(", ratingDateStart);
+const ratingDateSource = frontendSource.slice(ratingDateStart, ratingDateEnd);
 function makeArchiveStore() {
   const data = {};
   const localStorage = {
@@ -18,7 +21,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -198,6 +201,15 @@ test("cache timestamps reject stale, invalid, and implausibly future data", () =
   assert.equal(sandbox.isFresh(0, 600_000, now), false);
 });
 
+test("rating update dates accept valid ISO dates and reject malformed dates", () => {
+  const sandbox = { Date, Number };
+  vm.runInNewContext(ratingDateSource + "\nglobalThis.validateDate = validRatingDate;", sandbox);
+  assert.equal(sandbox.validateDate("2026-11-18"), "2026-11-18");
+  assert.equal(sandbox.validateDate("2026-02-30"), null);
+  assert.equal(sandbox.validateDate("not-a-date"), null);
+  assert.equal(sandbox.validateDate(null), null);
+});
+
 test("frontend rejects malformed prediction payloads before display or caching", () => {
   const start = frontendSource.indexOf("function isValidPredictionResult(");
   const end = frontendSource.indexOf("async function loadPredictions(", start);
@@ -237,13 +249,15 @@ test("archive stores both priced player outcomes with calculated EV", () => {
     playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10"
   }};
   savePredictionSnapshot(match, element, {
-    probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800
+    probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800,
+    ratingsAsOfA: "2026-11-10", ratingsAsOfB: "2026-11-11"
   });
   const rows = readPredictionArchive();
   assert.equal(rows.length, 2);
   assert.equal(rows.find(row => row.side === "A").matchId, 123);
   assert.equal(rows.find(row => row.side === "A").ev, 8);
   assert.equal(rows.find(row => row.side === "B").ev, -16);
+  assert.equal(rows.find(row => row.side === "A").ratingAsOf, "2026-11-10");
 });
 
 test("archive suppresses identical snapshots but records changed odds", () => {
