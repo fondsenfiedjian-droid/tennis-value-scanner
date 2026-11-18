@@ -394,6 +394,8 @@
   const MAX_ARCHIVE_ENTRIES=3000;
   let archiveDbPromise=null;
   let archiveWriteQueue=Promise.resolve();
+  let archiveMemoryRows=null;
+  let archiveWriteError=null;
   let archiveStorageMode='local';
   function openArchiveDatabase(){
     if(typeof indexedDB==='undefined')return Promise.resolve(null);
@@ -412,6 +414,7 @@
     return archiveDbPromise;
   }
   function readPredictionArchive(){
+    if(Array.isArray(archiveMemoryRows))return archiveMemoryRows.map(row=>({...row}));
     try{const rows=JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows.filter(x=>x&&typeof x==='object'):[];}
     catch(e){return [];}
   }
@@ -430,7 +433,7 @@
   async function initializeArchiveStorage(){
     try{
       const db=await openArchiveDatabase();
-      if(!db)return {mode:'local',migrated:false};
+      if(!db){archiveMemoryRows=readPredictionArchive();return {mode:'local',migrated:false};}
       const state=await new Promise((resolve,reject)=>{
         const tx=db.transaction(['records','meta'],'readonly');
         const rowsRequest=tx.objectStore('records').getAll();
@@ -454,33 +457,46 @@
       if(!state.initialized){migrated=legacy.length>0;await writeArchiveDatabase(db,rows,true);}
       else if(rows.length!==state.rows.length||legacy.length)await writeArchiveDatabase(db,rows,true);
       rows=limitPredictionArchive(rows);
+      archiveMemoryRows=rows.map(row=>({...row}));
       try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}
       archiveStorageMode='indexeddb';
       return {mode:'indexeddb',migrated,records:rows.length};
     }catch(error){
+      archiveMemoryRows=readPredictionArchive();
       archiveStorageMode='local';
       return {mode:'local',error:error.message};
     }
   }
   function queueArchiveDatabaseWrite(rows){
-    if(archiveStorageMode!=='indexeddb')return;
+    if(archiveStorageMode!=='indexeddb')return Promise.resolve(false);
     const snapshot=rows.map(row=>({...row}));
+    archiveWriteError=null;
     archiveWriteQueue=archiveWriteQueue.then(async()=>{
       const db=await openArchiveDatabase();
       if(!db)throw new Error('IndexedDB недоступна');
       await writeArchiveDatabase(db,snapshot,true);
+      return true;
     }).catch(error=>{
+      archiveWriteError=error;
       archiveStorageMode='local';
       console.warn('Архив IndexedDB недоступен; используется локальная резервная копия:',error);
+      return false;
     });
+    return archiveWriteQueue;
+  }
+  async function flushArchiveWrites(){
+    await archiveWriteQueue;
+    return {ok:!archiveWriteError,error:archiveWriteError};
   }
   function limitPredictionArchive(rows,limit=MAX_ARCHIVE_ENTRIES){
     const priority=row=>row.resultOutcome==='completed'&&[1,2].includes(Number(row.resultWinner))?3:row.resultOutcome?2:1;
     return rows.slice().sort((a,b)=>priority(b)-priority(a)||Number(b.capturedAt)-Number(a.capturedAt)).slice(0,limit).sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
   }
   function persistPredictionArchive(rows){
+    const normalized=limitPredictionArchive(rows);
+    archiveMemoryRows=normalized.map(row=>({...row}));
     for(const limit of [MAX_ARCHIVE_ENTRIES,2000,1000,600,300]){
-      const kept=limitPredictionArchive(rows,limit);
+      const kept=limitPredictionArchive(normalized,limit);
       try{
         localStorage.setItem(ARCHIVE_KEY,JSON.stringify(kept));
         queueArchiveDatabaseWrite(kept);
