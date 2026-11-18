@@ -769,13 +769,39 @@
     const rows=limitPredictionArchive(merged);
     return {rows,added,updated,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
+  function normalizeResultPlayerName(value){
+    return String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+  }
+  function validateArchivedMatchIdentity(rows,result,id){
+    const p1=normalizeResultPlayerName(result?.players?.p1?.name);
+    const p2=normalizeResultPlayerName(result?.players?.p2?.name);
+    if(!p1||!p2||p1===p2)return false;
+    const matchRows=rows.filter(row=>Number(row.matchId)===id&&['A','B'].includes(row.side));
+    if(!matchRows.length)return false;
+    let matched=0;
+    for(const row of matchRows){
+      const player=normalizeResultPlayerName(row.player);
+      const opponent=normalizeResultPlayerName(row.opponent);
+      if(!player||!opponent)return false;
+      const expectedPlayer=row.side==='A'?p1:p2;
+      const expectedOpponent=row.side==='A'?p2:p1;
+      if(player!==expectedPlayer||opponent!==expectedOpponent)return false;
+      matched++;
+    }
+    return matched>0;
+  }
   function applyVerifiedMatchResult(rows, result, now=Date.now()){
     const id=Number(result?.id),winner=Number(result?.winner);
-    if(!Number.isSafeInteger(id)||id<=0)return {rows,updated:0};
+    if(!Number.isSafeInteger(id)||id<=0||!validateArchivedMatchIdentity(rows,result,id))return {rows,updated:0,reason:'identity_mismatch'};
+    const knownOutcomes=['completed','retired','walkover','default','abandoned','unresolved'];
     const outcome=typeof result.outcome==='string'?result.outcome:null;
-    const settled=['completed','retired','walkover','default','abandoned','unresolved'].includes(outcome)||result.status==='cancelled';
+    const isCancelled=result.status==='cancelled'&&outcome===null;
+    if(!isCancelled&&(!outcome||!knownOutcomes.includes(outcome)))return {rows,updated:0,reason:'unknown_outcome'};
+    if(outcome==='completed'&&![1,2].includes(winner))return {rows,updated:0,reason:'completed_without_winner'};
+    const settled=knownOutcomes.includes(outcome)||isCancelled;
+    const normalizedOutcome=isCancelled?'cancelled':outcome;
     const version=result.result_version!==null&&result.result_version!==undefined&&Number.isSafeInteger(Number(result.result_version))&&Number(result.result_version)>=1?Number(result.result_version):null;
-    if(result.result_version!==null&&result.result_version!==undefined&&version===null)return {rows,updated:0};
+    if(result.result_version!==null&&result.result_version!==undefined&&version===null)return {rows,updated:0,reason:'invalid_version'};
     let updated=0;
     const next=rows.map(row=>{
       if(Number(row.matchId)!==id)return row;
@@ -784,11 +810,11 @@
       const oldWinner=[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null;
       const nextWinner=[1,2].includes(winner)?winner:null;
       if(oldVersion!==null&&(version===null||version<oldVersion))return row;
-      if(oldOutcome!==null&&version===oldVersion&&(outcome!==oldOutcome||nextWinner!==oldWinner))return row;
-      if(oldOutcome!==null&&oldVersion===null&&version===null&&(outcome!==oldOutcome||nextWinner!==oldWinner))return row;
+      if(oldOutcome!==null&&version===oldVersion&&(normalizedOutcome!==oldOutcome||nextWinner!==oldWinner))return row;
+      if(oldOutcome!==null&&oldVersion===null&&version===null&&(normalizedOutcome!==oldOutcome||nextWinner!==oldWinner))return row;
       const nextRow={...row,resultCheckedAt:now};
       if(settled){
-        nextRow.resultOutcome=outcome||'cancelled';
+        nextRow.resultOutcome=normalizedOutcome;
         nextRow.resultWinner=[1,2].includes(winner)?winner:null;
         nextRow.resultVersion=version;
         nextRow.resultStatus=result.status||null;
@@ -797,7 +823,7 @@
       updated++;
       return nextRow;
     });
-    return {rows:next,updated};
+    return {rows:next,updated,reason:updated?'accepted':'stale_or_duplicate'};
   }
   function stampResultCheck(rows, matchId, now=Date.now()){
     const id=Number(matchId);
