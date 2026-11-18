@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseCsv, runBacktest } from "../scripts/backtest.mjs";
+import { fitLogisticCalibration, parseCsv, runBacktest, scoreFavouriteCalibration } from "../scripts/backtest.mjs";
 
 test("CSV parser handles quoted commas, escaped quotes and CRLF", () => {
   const rows = parseCsv('name,note\r\n"Smith, John","said ""hello"""\r\n');
@@ -144,4 +144,50 @@ test("calibration details are separate from scalar metric summaries", () => {
   assert.deepEqual(Object.keys(report.metrics), ["elo", "surface", "form", "h2h", "combined"]);
   assert.equal(report.metrics.elo.matches, 1);
   assert.equal(report.calibration.elo.bins.length, 10);
+});
+
+
+test("logistic favourite recalibration learns a monotonic slope and preserves the 50% anchor", () => {
+  const sigmoid = value => 1 / (1 + Math.exp(-value));
+  const probabilities = [0.55, 0.62, 0.7, 0.78, 0.86];
+  const observations = [];
+  for (const probability of probabilities) {
+    const targetRate = sigmoid(1.45 * Math.log(probability / (1 - probability)));
+    for (let i = 0; i < 400; i++) {
+      observations.push({ probability, outcome: i < Math.round(targetRate * 400) ? 1 : 0 });
+    }
+  }
+  const fitted = fitLogisticCalibration(observations);
+  assert.ok(fitted);
+  assert.equal(fitted.intercept, 0);
+  assert.ok(fitted.slope > 1.2 && fitted.slope < 1.7);
+  assert.equal(fitLogisticCalibration(observations.slice(0, 199)), null);
+});
+
+test("favourite recalibration validation trains on the prior year and scores the next year", () => {
+  const rows = [];
+  for (const year of ["2024", "2025"]) {
+    for (let i = 0; i < 205; i++) {
+      rows.push({
+        tourney_date: year + "0101",
+        tourney_id: year + "-T",
+        match_num: String(i + 1),
+        winner_id: String(i * 2 + 1),
+        loser_id: String(i * 2 + 2),
+        score: "6-4 6-4",
+        surface: "Hard"
+      });
+    }
+  }
+  const report = runBacktest(rows);
+  const validation = report.calibrationValidation.find(item =>
+    item.trainingYear === "2024" && item.evaluationYear === "2025" &&
+    item.candidate === "elo" && item.scope === "tour"
+  );
+  assert.ok(validation);
+  assert.equal(validation.trainingMatches, 205);
+  assert.equal(validation.raw.matches, 205);
+  assert.equal(validation.calibrated.matches, 205);
+  assert.equal(validation.calibrator.intercept, 0);
+  assert.equal(scoreFavouriteCalibration([{ probability: 0.5, outcome: 0.5 }]).brier, 0);
 });
