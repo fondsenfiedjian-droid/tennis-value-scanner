@@ -187,6 +187,10 @@
     <div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="bankMaxDrawdown">—</div></div>
   </div>
   <div class="panel">
+    <div class="section-head"><h2>Результаты по букмекерам</h2><span class="muted">фактический журнал</span></div>
+  <div class="archive-list" id="bankBookmakerStats"><div class="panel empty">Пока нет записанных ставок.</div></div>
+  </div>
+  <div class="panel">
     <b>Операции с деньгами</b>
     <div class="field"><label for="bankAmount">Сумма, €</label><input id="bankAmount" type="number" min="0.01" max="1000000" step="0.01" placeholder="Например, 20"></div>
     <div class="actions"><button id="bankDeposit" class="primary">Пополнить</button><button id="bankWithdraw">Снять</button></div>
@@ -1026,6 +1030,12 @@
     $('#bankCurrentDrawdown').textContent=formatEuro(summary.currentDrawdown)+' · '+summary.currentDrawdownPercent.toFixed(2)+'%';
     $('#bankMaxDrawdown').textContent=formatEuro(summary.maxDrawdown)+' · '+summary.maxDrawdownPercent.toFixed(2)+'%';
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
+    const bookmakerStats=TVSBankroll.getBookmakerSummary(state);
+    $('#bankBookmakerStats').innerHTML=bookmakerStats.length?bookmakerStats.map(item=>{
+      const profitClass=item.profit>0?'model-positive':item.profit<0?'model-negative':'';
+      const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
+      return '<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Прибыль: <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span> · ROI '+roi+'</div><div class="archive-meta">Выигрыши '+item.wins+' · проигрыши '+item.losses+' · возвраты '+item.voids+' · рассчитано ставок '+item.settledBets+'</div><div class="archive-meta">Оборот без возвратов '+formatEuro(item.totalStaked)+' · возвращено '+formatEuro(item.voidedStake)+' · открыто '+item.openBets+' на '+formatEuro(item.openStake)+'</div></div>';
+    }).join(''):'<div class="panel empty">Пока нет записанных ставок по букмекерам.</div>';
     $('#bankTxCount').textContent=state.transactions.length+' операций · результаты: '+summary.verifiedSettledBets+' по API, '+summary.manualSettledBets+' вручную';
     const pendingPlan=state.pendingPlan;
     $('#bankPendingPlan').innerHTML=pendingPlan
