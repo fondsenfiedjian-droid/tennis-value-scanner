@@ -1,1 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101827">
+  <title>Tennis Value Scanner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--panel2:#1a2940;--line:#26364e;--muted:#93a4bb;--text:#f3f6fb;--green:#35d07f;--blue:#68a9ff;--amber:#f4bd58}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#101b2d 0,#0b1220 45%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+    button,input,select{font:inherit}button{cursor:pointer}
+    .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom))}
+    header{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 18px}
+    .brand{font-size:18px;font-weight:850;letter-spacing:.07em}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .status{border:1px solid #286547;color:#7de6a8;background:#123323;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700}
+    .datebar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
+    .datebar strong{font-size:20px}.datebar span{font-size:12px;color:var(--muted)}
+    .tabs{display:flex;gap:8px;background:#0c1524;border:1px solid var(--line);padding:5px;border-radius:14px;margin-bottom:14px}
+    .tab{flex:1;border:0;background:transparent;color:var(--muted);padding:10px 6px;border-radius:10px;font-weight:700}
+    .tab.active{background:#253750;color:white}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .panel{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:17px;padding:15px}
+    .stat-num{font-size:27px;font-weight:850;margin:3px 0}.muted{color:var(--muted);font-size:12px}
+    .refresh{width:100%;border:0;border-radius:15px;background:linear-gradient(100deg,#16834e,#20b86b);color:white;font-weight:850;padding:16px;margin:2px 0 16px;box-shadow:0 8px 24px #0a8b4d30}
+    .refresh:disabled{opacity:.65}
+    .section-head{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px}
+    .section-head h2{font-size:16px;margin:0}.linkbtn{border:0;background:transparent;color:var(--blue);font-size:12px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:#152238;color:#cbd6e5;padding:8px 12px;border-radius:999px;font-size:12px}
+    .chip.on{background:#173d31;border-color:#24764f;color:#8bf0b3}
+    .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
+    .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
+    .bottom{position:fixed;bottom:0;left:0;right:0;background:#0d1726ee;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#8ce9b0;background:#163529}
+    .nav b{display:block;font-size:18px;margin-bottom:3px}
+    .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
+    .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#111d2e;border:1px solid var(--line);border-radius:22px;padding:18px}
+    .modal h2{margin:0 0 16px;font-size:19px}.field{margin:13px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+    input[type=number],select{width:100%;background:#0b1524;border:1px solid var(--line);border-radius:11px;padding:12px;color:var(--text)}
+    .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:8px;align-items:center;background:#17253a;padding:10px;border-radius:10px;font-size:13px}
+    .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#1b2a40;color:white;font-weight:700}.actions .primary{background:#16834e;border-color:#16834e}
+    .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
+    @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
+    <div class="status">ИНТЕРФЕЙС · DEMO</div>
+  </header>
 
+  <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-day="today">Сегодня</button>
+    <button class="tab" data-day="tomorrow">Завтра</button>
+  </div>
+
+  <div class="stats">
+    <div class="panel"><div class="muted">Валуйных ставок</div><div class="stat-num" id="valueCount">—</div><div class="muted">после проверки модели</div></div>
+    <div class="panel"><div class="muted">Матчей проверено</div><div class="stat-num" id="matchCount">—</div><div class="muted">за последнее обновление</div></div>
+  </div>
+
+  <button class="refresh" id="refreshBtn">↻ &nbsp; ОБНОВИТЬ ДАННЫЕ</button>
+
+  <div class="section-head"><h2>Рынки</h2><button class="linkbtn" id="settingsOpen">Настроить →</button></div>
+  <div class="chips" id="marketChips">
+    <button class="chip on" data-market="winner">Победитель</button>
+    <button class="chip on" data-market="totals">Тоталы</button>
+    <button class="chip on" data-market="handicap">Форы</button>
+    <button class="chip on" data-market="sets">Сеты</button>
+  </div>
+
+  <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
+  <div class="panel empty">
+    <div class="empty-icon">🎾</div>
+    <strong>Данные ещё не загружены</strong>
+    <div class="muted">Нажми «Обновить данные» после подключения источника коэффициентов.</div>
+  </div>
+  <div class="notice"><b>Важно:</b> сейчас это рабочий макет интерфейса. Реальные матчи и коэффициенты не подставляются. Подключение Apify и расчёт EV будут следующим этапом.</div>
+</div>
+
+<div class="bottom"><div class="nav">
+  <button class="active"><b>⌂</b>Главная</button>
+  <button id="navMatches"><b>🎾</b>Матчи</button>
+  <button id="navStats"><b>▥</b>Статистика</button>
+  <button id="navSettings"><b>⚙</b>Настройки</button>
+</div></div>
+
+<div class="modal-back" id="settingsModal">
+  <div class="modal">
+    <h2>Настройки сканера</h2>
+    <div class="field"><label for="minEv">Минимальный EV, %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
+    <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1" max="100" step="0.05" value="1.50"></div>
+    <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="1000" step="0.1" value="5.00"></div>
+    <div class="field"><label>Турниры</label><div class="checkgrid">
+      <label class="check"><input type="checkbox" checked> ATP</label><label class="check"><input type="checkbox" checked> WTA</label>
+      <label class="check"><input type="checkbox" checked> Challenger</label><label class="check"><input type="checkbox"> ITF</label>
+    </div></div>
+    <div class="field"><label for="refreshRate">Автообновление</label><select id="refreshRate"><option value="0">Выключено</option><option value="30">Каждые 30 минут</option><option value="60" selected>Каждый час</option><option value="180">Каждые 3 часа</option></select></div>
+    <div class="foot">Настройки сохраняются на этом устройстве. Автообновление начнёт работать после подключения серверного источника данных.</div>
+    <div class="actions"><button id="cancelSettings">Отмена</button><button class="primary" id="saveSettings">Сохранить</button></div>
+  </div>
+</div>
+<script>
+  const $ = s => document.querySelector(s);
+  const now = new Date();
+  $('#dateText').textContent = now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  let selectedDay = 'today';
+  document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===btn));
+    selectedDay=btn.dataset.day; $('#dayTitle').textContent=selectedDay==='today'?'Сегодня':'Завтра';
+    const d=new Date(); if(selectedDay==='tomorrow') d.setDate(d.getDate()+1);
+    $('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  }));
+  document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>btn.classList.toggle('on')));
+  const modal=$('#settingsModal');
+  const open=()=>modal.classList.add('show'), close=()=>modal.classList.remove('show');
+  $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=close;
+  modal.addEventListener('click',e=>{if(e.target===modal)close()});
+  const saved=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
+  ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  $('#saveSettings').onclick=()=>{
+    const data={}; ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>data[id]=$('#'+id).value);
+    localStorage.setItem('tvs-settings',JSON.stringify(data)); close();
+    $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
+  };
+  $('#refreshBtn').onclick=()=>alert('Источник данных ещё не подключён. Следующий этап — безопасное подключение Apify через сервер.');
+  $('#navMatches').onclick=()=>alert('Список матчей появится после подключения источника расписания.');
+  $('#navStats').onclick=()=>alert('Статистика и история ставок будут подключены на следующем этапе.');
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+                                                                                                                                </html>
