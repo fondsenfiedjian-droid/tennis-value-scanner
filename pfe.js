@@ -506,11 +506,16 @@
     }
     const required = ["firstServePointsWon", "secondServePointsWon", "serviceGamesWon",
       "firstServeReturnPointsWon", "secondServeReturnPointsWon", "returnGamesWon"];
-    const ready = required.every(name => metrics[name] && metrics[name].matches > 0);
-    const status = matchesWithStats < minMatches ? "insufficient_sample" : ready ? "ready_for_modeling" : "partial";
+    const requiredPresent = required.every(name => Boolean(metrics[name]));
+    const requiredSampleReady = requiredPresent && required.every(name => metrics[name].matches >= minMatches);
+    const ready = requiredSampleReady;
+    const insufficientMetricSample = requiredPresent && !requiredSampleReady;
+    const status = matchesWithStats < minMatches || insufficientMetricSample
+      ? "insufficient_sample" : ready ? "ready_for_modeling" : "partial";
     return {
-      status, reason: status === "insufficient_sample" ? "insufficient_match_sample" :
-        status === "partial" ? "required_serve_return_metrics_missing" : null,
+      status, reason: status === "insufficient_sample"
+        ? insufficientMetricSample ? "insufficient_metric_sample" : "insufficient_match_sample"
+        : status === "partial" ? "required_serve_return_metrics_missing" : null,
       matches, matchesWithStats, matchesIncomplete, availableMetrics: Object.keys(metrics).length,
       requiredMetrics: required.length, minMatches, metrics,
       source: "Live Tennis API PlayerServeReturn",
