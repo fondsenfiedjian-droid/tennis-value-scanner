@@ -81,6 +81,25 @@
     return roundMoney(state.openBets.reduce((sum, bet) => sum + bet.stake, 0));
   }
 
+  function normalizeMatchKey(value) {
+    return typeof value === "string" ? value.trim().toLocaleLowerCase() : "";
+  }
+
+  function matchIdentity(item) {
+    const rawId = Number(item?.matchId);
+    return {
+      id: Number.isSafeInteger(rawId) && rawId > 0 ? rawId : null,
+      key: normalizeMatchKey(item?.matchKey || item?.match || ""),
+      label: normalizeMatchKey(item?.match || "")
+    };
+  }
+
+  function identitiesOverlap(a, b) {
+    return (a.id !== null && b.id !== null && a.id === b.id) ||
+      (a.key && b.key && a.key === b.key) ||
+      (a.label && b.label && a.label === b.label);
+  }
+
   function bankrollEquity(state) {
     return roundMoney(state.balance + totalOpenStake(state));
   }
@@ -216,10 +235,8 @@
 
   function recommendPortfolio(input, candidates, options = {}) {
     let simulated = cloneState(input);
-    const seenMatches = new Set();
-    const existingMatchIds = new Set(simulated.openBets.map(bet => Number(bet.matchId)).filter(id => Number.isSafeInteger(id) && id > 0));
-    const existingMatchKeys = new Set(simulated.openBets.map(bet => String(bet.matchKey || "").trim()).filter(Boolean));
-    const existingMatchLabels = new Set(simulated.openBets.map(bet => String(bet.match || "").trim().toLocaleLowerCase()).filter(Boolean));
+    const seenIdentities = [];
+    const existingIdentities = simulated.openBets.map(matchIdentity);
     const ordered = (Array.isArray(candidates) ? candidates : [])
       .filter(item => item && Number.isFinite(Number(item.probability)) && Number(item.probability) > 0 && Number(item.probability) < 1 &&
         Number.isFinite(Number(item.odds)) && Number(item.odds) > 1)
@@ -228,13 +245,10 @@
         ((Number(a.probability) * Number(a.odds) - 1) * 100));
     const suggestions = [];
     for (const candidate of ordered) {
-      const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
-      const matchId = Number(candidate.matchId);
-      const matchLabel = String(candidate.match || "").trim().toLocaleLowerCase();
-      if (seenMatches.has(matchKey) ||
-          (Number.isSafeInteger(matchId) && matchId > 0 && existingMatchIds.has(matchId)) ||
-          existingMatchKeys.has(matchKey) ||
-          (matchLabel && existingMatchLabels.has(matchLabel))) continue;
+      const identity = matchIdentity(candidate);
+      if (!identity.key) identity.key = normalizeMatchKey([candidate.player, candidate.opponent].join("|"));
+      if (seenIdentities.some(existing => identitiesOverlap(existing, identity)) ||
+          existingIdentities.some(existing => identitiesOverlap(existing, identity))) continue;
       const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
       const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
       if (!recommendation.eligible) continue;
@@ -248,7 +262,7 @@
         options: cfg
       });
       simulated = placed.state;
-      seenMatches.add(matchKey);
+      seenIdentities.push(identity);
       suggestions.push({ ...candidate, stake: placed.bet.stake, ev: placed.bet.ev, recommendation });
     }
     return {
@@ -266,15 +280,19 @@
     }
     if (state.pendingPlan) throw new Error("Сначала подтвердите или отмените уже сохранённый план портфеля.");
     if (!Array.isArray(suggestions) || !suggestions.length) throw new Error("Нет ставок для планирования.");
-    const seen = new Set();
+    const seenIdentities = [];
+    const existingIdentities = state.openBets.map(matchIdentity);
     const clean = suggestions.map(item => {
       const probability = Number(item.probability), odds = Number(item.odds), stake = roundMoney(Number(item.stake));
-      const matchKey = String(item.matchKey || item.match || "").trim();
-      if (!matchKey || seen.has(matchKey) || !Number.isFinite(probability) || probability <= 0 || probability >= 1 ||
+      const identity = matchIdentity(item);
+      if (!identity.key || seenIdentities.some(existing => identitiesOverlap(existing, identity)) ||
+          existingIdentities.some(existing => identitiesOverlap(existing, identity)) ||
+          !Number.isFinite(probability) || probability <= 0 || probability >= 1 ||
           !Number.isFinite(odds) || odds <= 1 || !Number.isFinite(stake) || stake < 0.01) {
         throw new Error("План содержит некорректную или повторную ставку.");
       }
-      seen.add(matchKey);
+      seenIdentities.push(identity);
+      const matchKey = String(item.matchKey || item.match || "").trim();
       return {
         matchKey, matchId: Number.isSafeInteger(Number(item.matchId)) && Number(item.matchId) > 0 ? Number(item.matchId) : null,
         match: String(item.match || "").slice(0, 200), player: String(item.player || "").slice(0, 100),
