@@ -200,6 +200,9 @@
 
   function savePortfolioPlan(input, suggestions) {
     const state = cloneState(input);
+    if (state.pendingPlan && (!Number.isFinite(Date.parse(state.pendingPlan.expiresAt)) || Date.parse(state.pendingPlan.expiresAt) <= Date.now())) {
+      state.pendingPlan = null;
+    }
     if (state.pendingPlan) throw new Error("Сначала подтвердите или отмените уже сохранённый план портфеля.");
     if (!Array.isArray(suggestions) || !suggestions.length) throw new Error("Нет ставок для планирования.");
     const seen = new Set();
@@ -274,6 +277,13 @@
     })));
   }
 
+  function expirePortfolioPlan(input, now = Date.now()) {
+    const state = cloneState(input);
+    const plan = state.pendingPlan;
+    const expired = Boolean(plan && (!Number.isFinite(Date.parse(plan.expiresAt)) || Date.parse(plan.expiresAt) <= now));
+    if (expired) state.pendingPlan = null;
+    return { state, expired };
+  }
   function cancelPortfolioPlan(input, planId) {
     const state = cloneState(input);
     if (!state.pendingPlan || state.pendingPlan.id !== planId) throw new Error("План портфеля не найден.");
@@ -476,5 +486,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
