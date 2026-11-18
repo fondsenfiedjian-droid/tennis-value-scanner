@@ -1408,7 +1408,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
   assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
@@ -1473,7 +1473,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1489,7 +1489,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1678,7 +1678,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -1897,7 +1897,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -1976,7 +1976,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -2004,7 +2004,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -2071,7 +2071,7 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -2134,7 +2134,7 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
 test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
   assert.ok(frontendSource.includes("summary.outcomeDispersion"));
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 
@@ -2260,7 +2260,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v89/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v90/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -2847,6 +2847,53 @@ test("PFE paired history compares Elo and market only on identical verified matc
   assert.equal(result.comparisons[0].stability.length, 2);
   assert.ok(result.comparisons[0].validationDeltaBrier > 0);
   assert.ok(result.comparisons[0].validationDeltaLogLoss > 0);
+});
+
+
+test("PFE paired comparison scores the neutral Elo-market fusion against Elo and a 50 percent baseline", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const rows = [];
+  for (let i = 0; i < 60; i++) {
+    const start = Date.parse("2025-01-01T12:00:00Z") + i * 86400000;
+    const outcome = i % 2;
+    const base = { matchId: String(3000 + i), outcome, resultVerified: true,
+      capturedAt: new Date(start - 3600000).toISOString(), matchStart: new Date(start).toISOString(),
+      surface: i % 2 ? "hard" : "clay", tour: i % 3 ? "atp" : "wta" };
+    rows.push({ ...base, modelId: "general-elo-v2", probability: outcome ? 0.7 : 0.3 });
+    rows.push({ ...base, modelId: "market-consensus", probability: outcome ? 0.6 : 0.4 });
+  }
+  const result = sandbox.pfe.compareModelHistory(rows, { minTraining: 5, minValidation: 5 });
+  assert.equal(result.status, "evaluated");
+  assert.equal(result.trainingScores.combined.sampleSize, 42);
+  assert.equal(result.validationScores.combined.sampleSize, 18);
+  assert.equal(result.validationScores.baseline.sampleSize, 18);
+  assert.ok(result.validationScores.combined.brierScore < result.validationScores.models["general-elo-v2"].brierScore);
+  assert.ok(result.validationScores.combined.brierScore < result.validationScores.baseline.brierScore);
+  assert.ok(result.segments.some(row => row.dimension === "surface" && row.value === "hard"));
+  assert.ok(result.segments.some(row => row.dimension === "tour" && row.value === "atp"));
+  assert.ok(result.segments.every(row => row.trainingSampleSize + row.validationSampleSize <= 60));
+});
+
+test("PFE segment comparisons retain one global chronological split and mark small segments preliminary", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    const start = Date.parse("2025-01-01T12:00:00Z") + i * 86400000;
+    const base = { matchId: String(4000 + i), outcome: i % 2, resultVerified: true,
+      capturedAt: new Date(start - 3600000).toISOString(), matchStart: new Date(start).toISOString(),
+      surface: i < 6 ? "grass" : "hard", tour: "challenger" };
+    rows.push({ ...base, modelId: "general-elo-v2", probability: 0.55 });
+    rows.push({ ...base, modelId: "market-consensus", probability: 0.55 });
+  }
+  const result = sandbox.pfe.compareModelHistory(rows, { minTraining: 10, minValidation: 10 });
+  const grass = result.segments.find(row => row.dimension === "surface" && row.value === "grass");
+  assert.ok(grass);
+  assert.equal(grass.status, "preliminary");
+  assert.equal(grass.trainingSampleSize + grass.validationSampleSize, 6);
 });
 
 test("PFE paired comparison remains neutral when the common sample is too small", () => {
