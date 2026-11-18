@@ -938,7 +938,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v32/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v33/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1021,4 +1021,23 @@ test("PWA app shell advances cache after multi-bookmaker quote selection changes
   assert.match(serviceWorkerSource, /tennis-value-static-v32/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
+});
+
+
+test("bankroll preserves bookmaker attribution from placement through settlement", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const placed = api.placeBet(state, {
+    matchKey: "bookmaker-audit-1", match: "Player A — Player B",
+    player: "Player A", opponent: "Player B", bookmaker: "Betclic",
+    probability: 0.62, odds: 2.1, stake: 2
+  });
+  state = placed.state;
+  assert.equal(placed.bet.bookmaker, "Betclic");
+  assert.equal(state.transactions.at(-1).bookmaker, "Betclic");
+  state = api.settleBet(state, placed.bet.id, "won");
+  assert.equal(state.transactions.at(-1).bookmaker, "Betclic");
+  assert.equal(state.transactions.at(-1).betSnapshot.bookmaker, "Betclic");
 });
