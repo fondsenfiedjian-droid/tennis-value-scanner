@@ -189,7 +189,7 @@ async function main() {
   let archiveIgnored = 0;
   for (const file of files) {
     const raw = await readFile(file, "utf8");
-    const delimiter = raw.replace(/^\\uFEFF/, "").split(/\\r?\\n/, 1)[0].includes(";") ? ";" : ",";
+    const delimiter = raw.replace(/^\uFEFF/, "").split(/\r?\n/, 1)[0].includes(";") ? ";" : ",";
     const parsed = parseCsv(raw, { delimiter });
     if (parsed.length && ["capturedAt", "matchDate", "resultOutcome", "resultWinner", "side"].every(key => key in parsed[0])) {
       const adapted = adaptScannerArchiveRows(parsed);
