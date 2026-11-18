@@ -183,7 +183,7 @@ function wilsonInterval(wins, total, z = 1.96) {
   const p = wins / total, z2 = z * z, denominator = 1 + z2 / total;
   const center = (p + z2 / (2 * total)) / denominator;
   const margin = z * Math.sqrt((p * (1 - p) / total) + z2 / (4 * total * total)) / denominator;
-  return { lowerPercent: Number(Math.max(0, center - margin).toFixed(2)), upperPercent: Number(Math.min(1, center + margin).toFixed(2)) };
+  return { lowerPercent: Number((Math.max(0, center - margin) * 100).toFixed(2)), upperPercent: Number((Math.min(1, center + margin) * 100).toFixed(2)) };
 }
 
 function performanceSummary(selections) {
