@@ -1338,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
   assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
@@ -1403,7 +1403,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1419,7 +1419,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1608,7 +1608,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -1827,7 +1827,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -1906,7 +1906,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -1934,7 +1934,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -2001,7 +2001,7 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -2064,7 +2064,7 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
 test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
   assert.ok(frontendSource.includes("summary.outcomeDispersion"));
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v65/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v66/);
 });
 
 
@@ -2252,6 +2252,45 @@ test("PFE serve-return adapter respects ULTRA availability, sample sizes and mis
 test("PFE interface states that serve-return model requires verified ULTRA data and does not activate without it", () => {
   assert.ok(frontendSource.includes("Модуль подачи и приёма ожидает проверенные агрегаты ULTRA"));
   assert.ok(frontendSource.includes("без них модель не активируется"));
+});
+
+test("PFE recent-form adapter filters non-completed and out-of-window matches and computes recency weighting", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const now = Date.parse("2026-11-18T12:00:00Z");
+  const daysAgo = days => new Date(now - days * 86400000).toISOString();
+  const recent = [
+    { match_id: 1, date: daysAgo(1), won: true, outcome: "completed", surface: "hard", level: "atp" },
+    { match_id: 2, date: daysAgo(10), won: true, outcome: "completed", surface: "hard", level: "atp" },
+    { match_id: 3, date: daysAgo(20), won: false, outcome: "completed", surface: "clay", level: "atp" },
+    { match_id: 4, date: daysAgo(30), won: false, outcome: "completed", surface: "grass", level: "wta" },
+    { match_id: 5, date: daysAgo(40), won: true, outcome: "completed", surface: "hard", level: "challenger" },
+    { match_id: 6, date: daysAgo(5), won: true, outcome: "retired", surface: "hard" },
+    { match_id: 7, date: daysAgo(220), won: true, outcome: "completed", surface: "hard" },
+    { match_id: 1, date: daysAgo(2), won: false, outcome: "completed", surface: "hard" },
+    { match_id: 8, date: daysAgo(-1), won: true, outcome: "completed", surface: "hard" }
+  ];
+  const pfe = sandbox.pfe;
+  const result = pfe.normalizeRecentFormProfile({ player: { id: 123 }, records: { recent } }, { now, playerId: 123 });
+  assert.equal(result.status, "insufficient_sample");
+  assert.equal(result.sampleSize, 5);
+  assert.equal(result.wins, 3);
+  assert.equal(result.losses, 2);
+  assert.equal(result.excluded.non_completed, 1);
+  assert.equal(result.excluded.outside_window, 2);
+  assert.equal(result.excluded.duplicate, 1);
+  assert.ok(result.recencyWeightedWinRate > result.winRate);
+  assert.equal(result.bySurface.hard.matches, 3);
+  assert.equal(pfe.normalizeRecentFormProfile({ player: { id: 456 }, records: { recent } }, { playerId: 123 }).reason,
+    "player_identity_mismatch");
+  const ready = pfe.normalizeRecentFormProfile({ player: { id: 123 }, records: { recent } }, { now, minMatches: 5 });
+  assert.equal(ready.status, "ready_for_modeling");
+});
+
+test("PFE recent-form UI explains PRO access and dependency with Elo", () => {
+  assert.ok(frontendSource.includes("Форма игроков требует PRO-историю завершённых матчей"));
+  assert.ok(frontendSource.includes("учитывается как зависимая от Elo информация"));
 });
 
 test("PFE history evaluation uses chronological holdout and neutral weights for small samples", () => {
