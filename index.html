@@ -75,7 +75,7 @@
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
-  <div class="notice"><b>Важно:</b> сейчас загружается расписание матчей. Коэффициенты Winamax и расчёт положительного EV ещё не подключены.</div>
+  <div class="notice"><b>Статус:</b> расписание и коэффициенты Winamax подключены. Расчёт вероятностей и EV пока не реализован — коэффициенты сами по себе не являются рекомендацией к ставке.</div>
 </div>
 
 <div class="bottom"><div class="nav">
@@ -141,6 +141,21 @@
     if(!raw)return null;
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
+  let cachedOdds = [];
+  function normalizePlayer(s){
+    return String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  function oddsForMatch(m){
+    const p=m.players||{};
+    const a=normalizePlayer(playerName(p.p1||m.player1));
+    const b=normalizePlayer(playerName(p.p2||m.player2));
+    return cachedOdds.filter(o=>{
+      const names=String(o.eventName||'').split(/\\s+-\\s+/);
+      if(names.length!==2)return false;
+      const x=normalizePlayer(names[0]),y=normalizePlayer(names[1]);
+      return (x===a&&y===b)||(x===b&&y===a);
+    });
+  }
   function renderMatches(all){
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
@@ -153,7 +168,9 @@
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
-      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
+      const matched=oddsForMatch(m);
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>escapeHtml(o.outcome==='home'?'1':'2')+' <b>'+escapeHtml(o.oddsDecimal)+'</b>').join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
     }).join('');
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
@@ -167,8 +184,13 @@
       const matches=extractMatches(payload);
       if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
+      try{
+        const oddsRes=await fetch(API+'/odds',{cache:'no-store'});
+        const oddsPayload=await oddsRes.json();
+        if(oddsRes.ok&&Array.isArray(oddsPayload.items))cachedOdds=oddsPayload.items;
+      }catch(oddsError){cachedOdds=[];}
       renderMatches(matches);
-      $('#filterSummary').textContent='Источник: Live Tennis API';
+      $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов';
     }catch(err){
       $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
       $('#matchCount').textContent='—';
