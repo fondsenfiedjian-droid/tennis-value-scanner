@@ -67,7 +67,9 @@
 
   function cloneState(state) {
     validateState(state);
-    const copy = JSON.parse(JSON.stringify(state));\n    if (copy.pendingPlan === undefined) copy.pendingPlan = null;\n    return copy;
+    const copy = JSON.parse(JSON.stringify(state));
+    if (copy.pendingPlan === undefined) copy.pendingPlan = null;
+    return copy;
   }
 
   function totalOpenStake(state) {
