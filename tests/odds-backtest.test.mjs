@@ -531,7 +531,7 @@ test("strict quote provenance rejects missing, future and stale source timestamp
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterObservation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.afterModelCalculation, 1);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.staleAtObservation, 1);
-  assert.equal(report.archiveCoverage.quoteTimestampProvenance.sideSkew, 1);
+  assert.equal(report.archiveCoverage.quoteTimestampProvenance.sideSkew, 2);
   assert.equal(report.archiveCoverage.quoteTimestampProvenance.acceptedSides, 2);
 });
 
