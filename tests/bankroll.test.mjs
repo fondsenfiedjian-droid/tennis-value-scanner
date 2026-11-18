@@ -54,6 +54,22 @@ test("winning, losing and void settlements update balance and realized profit co
   assert.equal(bank.realizedProfit(voided), 0);
 });
 
+test("ROI denominator excludes voided stakes while voids remain separately counted", () => {
+  let state = bank.createInitialState(100);
+  let placed = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2 });
+  state = bank.settleBet(placed.state, placed.bet.id, "void");
+  placed = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2 });
+  state = bank.settleBet(placed.state, placed.bet.id, "lost");
+
+  const summary = bank.getSummary(state);
+  assert.equal(summary.totalStaked, 4);
+  assert.equal(summary.settledStake, 2);
+  assert.equal(summary.voidedStake, 2);
+  assert.equal(summary.voidedBets, 1);
+  assert.equal(summary.realizedProfit, -2);
+  assert.equal(summary.roiPercent, -100);
+});
+
 test("deposits and withdrawals affect cash balance but not betting profit", () => {
   let state = bank.createInitialState(100);
   state = bank.addDeposit(state, 25, "Пополнение");
