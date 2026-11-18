@@ -319,6 +319,19 @@ test("frontend rejects malformed prediction payloads before display or caching",
   assert.ok(frontendSource.includes("else localStorage.removeItem(cacheKey)"));
 });
 
+test("market margin and no-vig edge are calculated only from one bookmaker", () => {
+  const start = frontendSource.indexOf("function calculateMarketContext(");
+  const end = frontendSource.indexOf("function isValidPredictionResult(", start);
+  const sandbox = { Number, String };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.calculate = calculateMarketContext;", sandbox);
+  const result = sandbox.calculate(1.8, 2.1, "Winamax", "winamax", 0.6, 0.4);
+  assert.ok(Math.abs(result.marginPercent - 3.1746031746) < 1e-8);
+  assert.ok(Math.abs(result.marketProbabilityA - 53.8461538462) < 1e-8);
+  assert.ok(Math.abs(result.edgeA - 6.1538461538) < 1e-8);
+  assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Betclic", 0.6, 0.4), null);
+  assert.equal(sandbox.calculate(1, 2.1, "Winamax", "Winamax", 0.6, 0.4), null);
+});
+
 test("frontend validates precise Elo probabilities against fair odds without rounding drift", () => {
   const start = frontendSource.indexOf("function isValidPredictionResult(");
   const end = frontendSource.indexOf("async function loadPredictions(", start);
@@ -1325,7 +1338,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v53/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1389,7 +1402,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v53/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1405,7 +1418,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v53/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1594,7 +1607,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v52/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v53/);
 });
 
 
