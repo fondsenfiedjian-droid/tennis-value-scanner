@@ -723,6 +723,8 @@
           errors++;
         }
       }
+      const archiveFlush=await flushArchiveWrites();
+      if(!archiveFlush.ok)errors++;
       renderArchive();
       alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
@@ -756,9 +758,10 @@
       const backup=readArchiveBackup(payload);
       const result=mergePredictionArchive(readPredictionArchive(),backup.records);
       const stored=persistPredictionArchive(result.rows);
+      const archiveFlush=await flushArchiveWrites();
       if(!stored.saved)throw new Error('Недостаточно места в памяти браузера. Сначала экспортируйте резервную копию и освободите место.');
       renderArchive();
-      alert('Импорт завершён. Формат: '+(backup.legacy?'старый v1':'v2, проверка целостности пройдена')+'. Добавлено: '+result.added+'. Дубликатов и некорректных записей: '+result.ignored+'. Не помещено в локальный архив: '+(result.dropped+stored.dropped)+'. Лимит: '+MAX_ARCHIVE_ENTRIES+' записей.');
+      alert('Импорт завершён. Формат: '+(backup.legacy?'старый v1':'v2, проверка целостности пройдена')+'. Добавлено: '+result.added+'. Дубликатов и некорректных записей: '+result.ignored+'. Не помещено в локальный архив: '+(result.dropped+stored.dropped)+'. Лимит: '+MAX_ARCHIVE_ENTRIES+' записей.'+(archiveFlush.ok?'':' Внимание: запись в IndexedDB не подтверждена; используется локальная копия, если она доступна.'));
     }catch(error){alert('Не удалось импортировать архив: '+error.message);}
   };
   function validRatingDate(value){
@@ -851,6 +854,7 @@
         const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),ev:result.evB,match:m};
         for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result);
+        await flushArchiveWrites();
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
         const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
