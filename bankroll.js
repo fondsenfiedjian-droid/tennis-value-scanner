@@ -317,7 +317,9 @@
     if (totalOpenStake(state) + requested > exposureLimit + 0.001) throw new Error("Ставка превышает общий лимит открытого риска.");
     const id = "bet-" + makeId();
     const record = {
-      id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,\n      plannedStake: bet.plannedStake === undefined ? null : roundMoney(Number(bet.plannedStake)),\n      plannedOdds: bet.plannedOdds === undefined ? null : Number(bet.plannedOdds),
+      id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,
+      plannedStake: bet.plannedStake === undefined ? null : roundMoney(Number(bet.plannedStake)),
+      plannedOdds: bet.plannedOdds === undefined ? null : Number(bet.plannedOdds),
       match: String(bet.match || "").slice(0, 200), matchKey: String(bet.matchKey || "").slice(0, 240), player: String(bet.player || "").slice(0, 100),
       opponent: String(bet.opponent || "").slice(0, 100), bookmaker: String(bet.bookmaker || "Winamax").slice(0, 60),
       matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
