@@ -286,8 +286,6 @@
         const oldPayout = transaction.amount;
         state.balance = roundMoney(state.balance - oldPayout);
         transaction.type = "settlement_reversed";
-        transaction.amount = 0;
-        transaction.balanceDelta = 0;
         transaction.profit = 0;
         transaction.outcome = "reopened_after_result_revision";
         transaction.resultVersion = result.version;
