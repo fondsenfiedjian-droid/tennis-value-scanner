@@ -351,6 +351,16 @@
     if(!raw)return null;
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
+  function archiveMatchDate(m){
+    const status=String(m?.status||'').toLowerCase();
+    const raw=status==='live'?(m.live_at||m.scheduled_time||m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date):(m.scheduled_time||m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date||m.live_at);
+    if(!raw)return null;
+    const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
+  }
+  function archiveCaptureStatus(m){
+    const status=String(m?.status||'').trim().toLowerCase();
+    return ['upcoming','live','completed','cancelled'].includes(status)?status:null;
+  }
   function isFreshCacheTimestamp(savedAt,maxAge,now=Date.now()){
     return Number.isFinite(savedAt)&&savedAt>0&&savedAt<=now+5*60*1000&&now-savedAt<=maxAge;
   }
@@ -694,7 +704,8 @@
     const sourceB=matchPlayers.p2||match.player2||{};
     const playerIdA=Number.isSafeInteger(Number(sourceA.id))&&Number(sourceA.id)>0?Number(sourceA.id):null;
     const playerIdB=Number.isSafeInteger(Number(sourceB.id))&&Number(sourceB.id)>0?Number(sourceB.id):null;
-    const date=matchDate(match);
+    const date=archiveMatchDate(match);
+    const captureStatus=archiveCaptureStatus(match);
     const rawMatchId=match.id??match.match_id;
     const numericMatchId=Number(rawMatchId);
     const matchId=Number.isSafeInteger(numericMatchId)&&numericMatchId>0?numericMatchId:null;
@@ -715,7 +726,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&String(row.bookmaker||'')===entry.bookmaker&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,captureStatus,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -733,6 +744,7 @@
         !Number.isFinite(probability)||probability<0||probability>100||
         !Number.isFinite(ev)||!Number.isFinite(capturedAt)||capturedAt<=0)return null;
       return {matchKey:row.matchKey.slice(0,256),matchDate:typeof row.matchDate==='string'?row.matchDate:null,
+        captureStatus:['upcoming','live','completed','cancelled'].includes(String(row.captureStatus||'').toLowerCase())?String(row.captureStatus).toLowerCase():null,
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
         tour:['atp','wta','challenger','itf','juniors'].includes(String(row.tour||'').toLowerCase())?String(row.tour).toLowerCase():'',
         surface:typeof row.surface==='string'?row.surface.slice(0,40):'',
@@ -999,9 +1011,14 @@
       if(![1,2].includes(winner)){ambiguous++;continue;}
       const sideRows=group.filter(row=>row.side==='A'||row.side==='B');
       if(!sideRows.length)continue;
-      const matchDate=sideRows.map(row=>Date.parse(row.matchDate)).find(value=>Number.isFinite(value)&&value>0);
+      const hasCaptureStatus=sideRows.some(row=>typeof row.captureStatus==='string'&&row.captureStatus);
+      const preMatchRows=hasCaptureStatus?sideRows.filter(row=>row.captureStatus==='upcoming'):sideRows;
+      if(hasCaptureStatus&&preMatchRows.length<sideRows.length)postStart++;
+      if(!preMatchRows.length){if(hasCaptureStatus&&sideRows.every(row=>row.captureStatus!=='upcoming'))continue;}
+      const candidateRows=preMatchRows.length?preMatchRows:sideRows;
+      const matchDate=candidateRows.map(row=>Date.parse(row.matchDate)).find(value=>Number.isFinite(value)&&value>0);
       if(!Number.isFinite(matchDate)){missingStart++;continue;}
-      const timed=sideRows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
+      const timed=candidateRows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
       const preMatch=timed.filter(row=>Number(row.capturedAt)<matchDate);
       if(timed.some(row=>Number(row.capturedAt)>=matchDate))postStart++;
       if(!preMatch.length){if(!timed.length)invalid++;continue;}
