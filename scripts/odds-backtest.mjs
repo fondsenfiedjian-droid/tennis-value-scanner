@@ -67,12 +67,98 @@ export function adaptScannerArchiveRows(rows) {
   return { rows: adapted, ignored };
 }
 
+export function simulateBankrollStrategies(selections, options = {}) {
+  const startingBankroll = Number.isFinite(options.startingBankroll) && options.startingBankroll > 0
+    ? Math.round(options.startingBankroll * 100) / 100 : 100;
+  const maxStakePercent = 2, maxExposurePercent = 8, kellyFraction = 0.25;
+  const unique = new Map();
+  for (const selection of selections || []) {
+    const key = String(selection.matchId);
+    const previous = unique.get(key);
+    if (!previous || selection.expectedValue > previous.expectedValue) unique.set(key, selection);
+  }
+  const byDay = new Map();
+  for (const selection of unique.values()) {
+    const start = timestamp(selection.matchStart);
+    if (start === null || !validOdds(Number(selection.odds)) ||
+        !Number.isFinite(Number(selection.modelProbability)) ||
+        Number(selection.modelProbability) <= 0 || Number(selection.modelProbability) >= 1 ||
+        !["A", "B"].includes(selection.winner)) continue;
+    const day = new Date(start).toISOString().slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(selection);
+  }
+  const strategies = {
+    flat1Euro: { label: "Flat €1", mode: "flat" },
+    bankroll1Percent: { label: "1% bankroll", mode: "percent", percent: 1 },
+    bankroll2Percent: { label: "2% bankroll", mode: "percent", percent: 2 },
+    quarterKelly: { label: "Quarter Kelly (2% cap)", mode: "kelly" }
+  };
+  const reports = {};
+  for (const [key, strategy] of Object.entries(strategies)) {
+    let balance = startingBankroll, peak = startingBankroll, maxDrawdown = 0;
+    let totalStaked = 0, wins = 0, losses = 0, bets = 0;
+    for (const day of [...byDay.keys()].sort()) {
+      const daily = byDay.get(day).slice().sort((a, b) =>
+        Number(b.expectedValue) - Number(a.expectedValue) || String(a.matchId).localeCompare(String(b.matchId)));
+      let reserved = 0;
+      const placed = [];
+      const equity = balance;
+      for (const selection of daily) {
+        const odds = Number(selection.odds), probability = Number(selection.modelProbability);
+        const maxSingle = equity * maxStakePercent / 100;
+        const maxPortfolio = equity * maxExposurePercent / 100;
+        const remainingExposure = Math.max(0, maxPortfolio - reserved);
+        let desired;
+        if (strategy.mode === "flat") desired = 1;
+        else if (strategy.mode === "percent") desired = equity * strategy.percent / 100;
+        else {
+          const b = odds - 1, q = 1 - probability;
+          const fullKelly = Math.max(0, (b * probability - q) / b);
+          desired = equity * fullKelly * kellyFraction;
+        }
+        const stake = Math.round(Math.min(desired, maxSingle, remainingExposure, Math.max(0, balance - reserved)) * 100) / 100;
+        if (stake < 0.01) continue;
+        reserved += stake;
+        placed.push({ selection, stake });
+      }
+      balance = Math.round((balance - reserved) * 100) / 100;
+      for (const item of placed) {
+        bets++;
+        totalStaked += item.stake;
+        if (item.selection.won) {
+          wins++;
+          balance += item.stake * Number(item.selection.odds);
+        } else losses++;
+      }
+      balance = Math.round(balance * 100) / 100;
+      peak = Math.max(peak, balance);
+      if (peak > 0) maxDrawdown = Math.max(maxDrawdown, (peak - balance) / peak * 100);
+    }
+    const profit = Math.round((balance - startingBankroll) * 100) / 100;
+    reports[key] = {
+      label: strategy.label, bets, wins, losses,
+      totalStaked: Number(totalStaked.toFixed(2)),
+      endingBankroll: Number(balance.toFixed(2)),
+      profit,
+      roiPercent: totalStaked ? Number((profit / totalStaked * 100).toFixed(2)) : null,
+      hitRatePercent: bets ? Number((wins / bets * 100).toFixed(2)) : null,
+      maxDrawdownPercent: Number(maxDrawdown.toFixed(2))
+    };
+  }
+  return {
+    startingBankroll, distinctMatches: unique.size, strategies: reports,
+    methodology: "One highest-EV selection per match. Stakes are allocated in descending EV order in calendar-day batches and each day's outcomes are settled together. This approximates same-day exposure; intraday start/end times, commission, void rules, limits and execution slippage are not modelled."
+  };
+}
+
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
   const stake = Number.isFinite(options.stake) && options.stake > 0 ? options.stake : 1;
   if (minEv < 0 || minEv > 10) throw new RangeError("minEv must be between 0 and 10");
   if (minOdds <= 1 || minOdds > 1000) throw new RangeError("minOdds must be greater than 1 and no greater than 1000");
+  if (options.startingBankroll !== undefined && (!Number.isFinite(options.startingBankroll) || options.startingBankroll <= 0 || options.startingBankroll > 100000000)) throw new RangeError("startingBankroll must be positive and no greater than 100000000");
   if (!(stake > 0)) throw new RangeError("stake must be positive");
 
   const matches = new Map();
@@ -129,7 +215,7 @@ export function runOddsBacktest(rows, options = {}) {
         : null;
       if (clv !== null) { clvTotal += clv; clvCount++; }
       bets.push({
-        matchId: match.id, side: candidate.side, player: candidate.player,
+        matchId: match.id, matchStart: new Date(match.start).toISOString(), side: candidate.side, player: candidate.player,
         odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
         expectedValue: Number((ev * 100).toFixed(2)),
         winner: match.winner, won: candidate.outcome, stake,
@@ -163,6 +249,7 @@ export function runOddsBacktest(rows, options = {}) {
       selection: "model EV and minimum odds thresholds",
       warning: "Results are only as representative as the supplied historical snapshots; they exclude limits, commission, voids, and execution slippage."
     },
+    bankrollSimulation: simulateBankrollStrategies(bets, { startingBankroll: options.startingBankroll }),
     selections: bets
   };
 }
@@ -172,16 +259,16 @@ async function main() {
   const files = [];
   const options = {};
   for (let i = 0; i < args.length; i++) {
-    if (["--min-ev", "--min-odds", "--stake"].includes(args[i])) {
+    if (["--min-ev", "--min-odds", "--stake", "--bankroll"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
-      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : "stake";
+      const key = args[i] === "--min-ev" ? "minEv" : args[i] === "--min-odds" ? "minOdds" : args[i] === "--bankroll" ? "startingBankroll" : "stake";
       const value = Number(args[++i]);
       options[key] = key === "minEv" ? value / 100 : value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
   }
   if (!files.length) {
-    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] odds-history.csv");
+    console.error("Usage: node scripts/odds-backtest.mjs [--min-ev 3] [--min-odds 1.90] [--stake 1] [--bankroll 100] odds-history.csv");
     process.exitCode = 2;
     return;
   }
