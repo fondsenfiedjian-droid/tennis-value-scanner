@@ -2480,7 +2480,7 @@ test("PFE tie-break, set and match models are symmetric and respond to stronger 
 test("PFE analytical match probability tracks point-by-point simulation with between-set service rotation", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   for (const [pointA, pointB, bestOf] of [[0.64, 0.58, 3], [0.66, 0.54, 5], [0.57, 0.63, 3]]) {
     const exact = pfe.calculateMatchWinProbability(pointA, pointB, { bestOf });
