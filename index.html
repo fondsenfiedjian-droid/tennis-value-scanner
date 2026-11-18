@@ -499,11 +499,18 @@
       const kept=limitPredictionArchive(normalized,limit);
       try{
         localStorage.setItem(ARCHIVE_KEY,JSON.stringify(kept));
-        queueArchiveDatabaseWrite(kept);
-        return {saved:kept.length,dropped:rows.length-kept.length,storage:archiveStorageMode};
+        if(archiveStorageMode==='indexeddb'){
+          queueArchiveDatabaseWrite(normalized);
+          return {saved:normalized.length,dropped:rows.length-normalized.length,storage:'indexeddb',backupRecords:kept.length};
+        }
+        archiveMemoryRows=kept.map(row=>({...row}));
+        return {saved:kept.length,dropped:rows.length-kept.length,storage:'local'};
       }catch(error){
         if(limit===300){
-          if(archiveStorageMode==='indexeddb'){queueArchiveDatabaseWrite(kept);return {saved:kept.length,dropped:rows.length-kept.length,storage:'indexeddb',warning:error};}
+          if(archiveStorageMode==='indexeddb'){
+            queueArchiveDatabaseWrite(normalized);
+            return {saved:normalized.length,dropped:rows.length-normalized.length,storage:'indexeddb',warning:error};
+          }
           return {saved:0,dropped:rows.length,error};
         }
       }
