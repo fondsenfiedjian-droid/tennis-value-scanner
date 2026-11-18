@@ -886,7 +886,7 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
 });
 
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v25/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v26/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
