@@ -62,6 +62,8 @@ test("deposits and withdrawals affect cash balance but not betting profit", () =
   assert.equal(bank.realizedProfit(state), 0);
   assert.equal(bank.getSummary(state).deposits, 125);
   assert.equal(bank.getSummary(state).withdrawals, 10);
+  assert.equal(bank.getSummary(state).totalInflow, 125);
+  assert.equal(bank.getSummary(state).totalOutflow, 10);
   assert.throws(() => bank.addWithdrawal(state, 116), /превышает/);
 });
 
