@@ -2328,10 +2328,11 @@ test("PFE point-by-point match simulation is reproducible, bounded and reports s
   assert.equal(bestOfFive.bestOf, 5);
   assert.ok(bestOfFive.averageSets >= 3 && bestOfFive.averageSets <= 5);
   assert.ok(bestOfFive.topScorelines.every(row => /^(3-0|3-1|3-2|0-3|1-3|2-3) /.test(row.score)));
-  const swapped = pfe.runMatchMonteCarlo(0.58, 0.64, { iterations: 10000, seed: 23 });
-  const equal = pfe.runMatchMonteCarlo(0.6, 0.6, { iterations: 10000, seed: 23 });
-  assert.ok(Math.abs(equal.probabilityA - 0.5) < 0.03);
-  assert.ok(Math.abs(equal.probabilityA + swapped.probabilityA - 1) < 0.04);
+  const forward = pfe.runMatchMonteCarlo(0.64, 0.58, { iterations: 20000, seed: 23 });
+  const swapped = pfe.runMatchMonteCarlo(0.58, 0.64, { iterations: 20000, seed: 23 });
+  const equal = pfe.runMatchMonteCarlo(0.6, 0.6, { iterations: 20000, seed: 41 });
+  assert.ok(Math.abs(equal.probabilityA - 0.5) < 0.02);
+  assert.ok(Math.abs(forward.probabilityA + swapped.probabilityA - 1) < 0.04);
   assert.equal(pfe.runMatchMonteCarlo(-0.1, 0.6).status, "invalid");
   assert.equal(pfe.runMatchMonteCarlo(0.6, 0.6, { bestOf: 7 }).reason, "unsupported_match_format");
 });
