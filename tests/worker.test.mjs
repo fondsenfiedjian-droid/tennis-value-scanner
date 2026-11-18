@@ -2065,3 +2065,58 @@ test("outcome dispersion diagnostics are shown in the selected bankroll interfac
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
   assert.match(serviceWorkerSource, /tennis-value-static-v60/);
 });
+
+
+test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const pfe = sandbox.pfe;
+  const single = pfe.fusePredictions([{ id: "elo", probability: 0.61 }]);
+  assert.equal(single.status, "provisional");
+  assert.equal(single.probability, 0.61);
+  const fused = pfe.fusePredictions([
+    { id: "elo", probability: 0.62, dependencyGroup: "results", quality: 1 },
+    { id: "form", probability: 0.70, dependencyGroup: "results", quality: 1 },
+    { id: "serve", probability: 0.54, dependencyGroup: "serve", quality: 1 }
+  ]);
+  assert.equal(fused.independentGroups, 2);
+  assert.equal(fused.modelCount, 3);
+  assert.equal(fused.status, "consensus");
+  assert.ok(Math.abs(fused.probability - 0.60) < 1e-12);
+  assert.equal(fused.groups.find(group => group.dependencyGroup === "results").probability, 0.66);
+});
+
+test("PFE rejects invalid inputs, detects model conflict and keeps calibrated weights bounded", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const result = sandbox.pfe.fusePredictions([
+    { id: "a", probability: 0.8, calibratedWeight: 2 },
+    { id: "b", probability: 0.5, calibratedWeight: 1 },
+    { id: "bad", probability: 1.2 },
+    { id: "a", probability: 0.6 }
+  ]);
+  assert.equal(result.status, "conflict");
+  assert.equal(result.rejected.length, 2);
+  assert.ok(result.probability > 0.69 && result.probability < 0.71);
+});
+
+test("PFE Monte Carlo is reproducible and labels the limits of its stress simulation", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
+  const models = [
+    { id: "elo", probability: 0.62, dependencyGroup: "rating", uncertainty: 0.03 },
+    { id: "serve", probability: 0.58, dependencyGroup: "serve", uncertainty: 0.02 }
+  ];
+  const first = sandbox.pfe.runMonteCarlo(models, { iterations: 1000, seed: 42 });
+  const second = sandbox.pfe.runMonteCarlo(models, { iterations: 1000, seed: 42 });
+  assert.deepEqual(JSON.parse(JSON.stringify(first)), JSON.parse(JSON.stringify(second)));
+  assert.equal(first.iterations, 1000);
+  assert.equal(first.hasUncertaintyInputs, true);
+  assert.ok(first.forecastInterval90[0] < first.forecastInterval90[1]);
+  const fixed = sandbox.pfe.runMonteCarlo([{ id: "elo", probability: 0.62 }], { iterations: 100 });
+  assert.equal(fixed.hasUncertaintyInputs, false);
+  assert.match(fixed.note, /не симуляция розыгрышей или счёта|неинформативен/);
+});
