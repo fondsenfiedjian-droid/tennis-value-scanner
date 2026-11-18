@@ -2958,7 +2958,7 @@ test("PFE does not understate uncertainty inside correlated dependency groups", 
   assert.ok(Math.abs(result.groups[0].uncertainty - 0.15) < 1e-12);
   assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
 });
-\n
+
 test("settings provide a persistent app-wide switch between black and olive skins", () => {
   assert.ok(frontendSource.includes('id="skinSelect"'));
   assert.ok(frontendSource.includes('value="black"'));
@@ -2974,7 +2974,7 @@ test("settings provide a persistent app-wide switch between black and olive skin
 test("PFE fixed-weight sensitivity evaluates five Elo/market ratios on one chronological holdout", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const rows = [];
   for (let i = 0; i < 80; i++) {
     const start = Date.parse("2025-01-01T12:00:00Z") + i * 86400000;
@@ -3005,7 +3005,7 @@ test("PFE fixed-weight sensitivity evaluates five Elo/market ratios on one chron
 test("PFE fixed-weight sensitivity stays empty when Elo and market are not both selected", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const rows = Array.from({ length: 20 }, (_, i) => ({
     modelId: "general-elo-v2", matchId: "single-" + i, probability: 0.6,
     outcome: i % 2, resultVerified: true,
