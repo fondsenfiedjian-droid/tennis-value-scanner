@@ -178,7 +178,7 @@ export default {
       }
 
       try {
-        // Cache identical match queries for three minutes to protect the free API quota.
+        // Cache identical match queries for fifteen minutes to protect the free API quota.
         const cache = caches.default;
         const cacheUrl = new URL(request.url);
         const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
