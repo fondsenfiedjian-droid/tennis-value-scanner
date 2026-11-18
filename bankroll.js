@@ -250,7 +250,7 @@
       if (stake === 0) { skipped++; continue; }
       const odds = Number(actual.odds);
       if (!Number.isFinite(odds) || odds <= 1) throw new Error("Укажите фактический коэффициент больше 1 для матча: " + item.match);
-      const result = placeBet(state, { ...item, stake, odds });
+      const result = placeBet(state, { ...item, stake, odds, plannedStake: item.stake, plannedOdds: item.odds });
       state = result.state;
       placed.push(result.bet);
     }
@@ -317,7 +317,7 @@
     if (totalOpenStake(state) + requested > exposureLimit + 0.001) throw new Error("Ставка превышает общий лимит открытого риска.");
     const id = "bet-" + makeId();
     const record = {
-      id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,
+      id, stake: requested, odds, probability, ev: (probability * odds - 1) * 100,\n      plannedStake: bet.plannedStake === undefined ? null : roundMoney(Number(bet.plannedStake)),\n      plannedOdds: bet.plannedOdds === undefined ? null : Number(bet.plannedOdds),
       match: String(bet.match || "").slice(0, 200), matchKey: String(bet.matchKey || "").slice(0, 240), player: String(bet.player || "").slice(0, 100),
       opponent: String(bet.opponent || "").slice(0, 100), bookmaker: String(bet.bookmaker || "Winamax").slice(0, 60),
       matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
@@ -326,7 +326,7 @@
     };
     state.balance = roundMoney(state.balance - requested);
     state.openBets.push(record);
-    appendTransaction(state, { id: "tx-" + makeId(), type: "stake", amount: requested, balanceDelta: -requested, betId: id, note: record.match });
+    appendTransaction(state, { id: "tx-" + makeId(), type: "stake", amount: requested, balanceDelta: -requested, betId: id, plannedStake: record.plannedStake, plannedOdds: record.plannedOdds, actualStake: requested, actualOdds: odds, note: record.match });
     return { state, bet: record, recommendation };
   }
 
