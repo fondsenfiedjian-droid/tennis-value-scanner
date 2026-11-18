@@ -753,6 +753,14 @@
       catch(error){alert(error.message);}
     });
   }
+  function reconcileBankrollWithArchive(){
+    const state=readBankrollState();
+    if(!state||!state.openBets.length)return 0;
+    const result=TVSBankroll.settleVerifiedResults(state,readPredictionArchive());
+    if(!result.settled.length)return 0;
+    if(persistBankrollState(result.state)){renderBankroll();return result.settled.length;}
+    return 0;
+  }
   function addPortfolioToBankroll(suggestions){
     try{
       let state=readBankrollState();
@@ -762,7 +770,7 @@
       const lines=suggestions.map(item=>item.player+' — '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)).join('\n');
       if(!confirm('Добавить виртуальные записи в журнал?\n'+lines+'\nИтого: '+formatEuro(total)+'\nДеньги букмекеру не отправляются.'))return;
       for(const item of suggestions){
-        state=TVSBankroll.placeBet(state,{probability:item.probability,odds:item.odds,stake:item.stake,match:item.match,player:item.player,opponent:item.opponent,bookmaker:item.bookmaker}).state;
+        state=TVSBankroll.placeBet(state,{probability:item.probability,odds:item.odds,stake:item.stake,match:item.match,player:item.player,opponent:item.opponent,bookmaker:item.bookmaker,matchId:item.matchId,side:item.side}).state;
       }
       if(persistBankrollState(state)){renderBankroll();alert('Распределение сохранено в финансовом журнале.');}
     }catch(error){alert(error.message);}
@@ -844,7 +852,8 @@
       const archiveFlush=await flushArchiveWrites();
       if(!archiveFlush.ok)errors++;
       renderArchive();
-      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+      const bankrollSettled=reconcileBankrollWithArchive();
+      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Автоматически рассчитано ставок: '+bankrollSettled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
   };
   $('#archiveExport').onclick=async()=>{
@@ -943,7 +952,7 @@
       const rawId=bet.match.id??bet.match.match_id??bet.match.event_id;
       const matchKey=rawId!==undefined&&rawId!==null?'id:'+String(rawId):[bet.player,bet.opponent].sort().join('|')+'|'+(matchDateValue?matchDateValue.toISOString():'');
       const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
-      return {matchKey,match:matchTitle,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:'Winamax'};
+      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:'Winamax'};
     })):{suggestions:[],totalStake:0};
     const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+formatEuro(item.stake)).join('<br>');
     const stakeAction=portfolio.suggestions.length?'<br><b>Распределение банка: '+portfolio.suggestions.length+' ставки · всего '+formatEuro(portfolio.totalStake)+'</b><br>'+portfolioLines+'<br><button id="addPortfolioToBank" class="chip on" style="margin-top:9px">Распределить по этим ставкам</button>':'<br><span class="model-muted">Сейчас нет ставок, прошедших лимиты банка и минимальный EV.</span>';
@@ -1086,7 +1095,7 @@
   readBankrollState();
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
-  archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();});
+  archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();reconcileBankrollWithArchive();});
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
