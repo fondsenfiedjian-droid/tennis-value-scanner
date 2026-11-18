@@ -885,8 +885,29 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
   assert.equal(cancelled.transactions.length, initial.transactions.length);
 });
 
+test("expired portfolio plans are cleared automatically and cannot block the next plan", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const initial = api.createInitialState(100);
+  const suggestions = api.recommendPortfolio(initial, [{
+    matchKey: "match:expiry-1", match: "ATP · Expiry A — Expiry B",
+    probability: 0.62, odds: 2.1
+  }]).suggestions;
+  const planned = api.savePortfolioPlan(initial, suggestions);
+  const expiredAt = Date.parse(planned.pendingPlan.expiresAt) + 1;
+  const expired = api.expirePortfolioPlan(planned, expiredAt);
+  assert.equal(expired.expired, true);
+  assert.equal(expired.state.pendingPlan, null);
+  assert.equal(expired.state.balance, 100);
+  assert.equal(expired.state.openBets.length, 0);
+  assert.throws(() => api.reconcilePortfolioPlan(planned, planned.pendingPlan.id, []), /устарел/);
+  const nextPlan = api.savePortfolioPlan(expired.state, suggestions);
+  assert.ok(nextPlan.pendingPlan);
+  assert.notEqual(nextPlan.pendingPlan.id, planned.pendingPlan.id);
+});
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v26/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v27/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
