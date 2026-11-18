@@ -854,6 +854,16 @@
       bankrollState=state;bankrollLoadError=null;return true;
     }catch(error){alert('Не удалось сохранить банкролл: '+error.message);return false;}
   }
+  function restoreBankrollBackup(state){
+    try{
+      TVSBankroll.validateState(state);
+      const serialized=JSON.stringify(TVSBankroll.serializeBackup(state));
+      localStorage.setItem(BANKROLL_KEY,serialized);
+      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(BANKROLL_KEY)));
+      if(JSON.stringify(verified)!==JSON.stringify(state))throw new Error('Контрольная проверка восстановленных данных не пройдена.');
+      bankrollState=verified;bankrollLoadError=null;return true;
+    }catch(error){alert('Не удалось восстановить банкролл: '+error.message);return false;}
+  }
   function renderBankroll(){
     const state=readBankrollState();
     if(!state){
@@ -956,8 +966,8 @@
     if(file.size>1024*1024){alert('Файл слишком большой. Максимум 1 МБ.');return;}
     try{
       const payload=JSON.parse(await file.text()),restored=TVSBankroll.parseBackup(payload);
-      if(!confirm('Заменить текущий банкролл данными резервной копии?'))return;
-      if(persistBankrollState(restored))renderBankroll();
+      if(!confirm('Заменить текущий банкролл данными резервной копии? Текущие записи будут заменены.'))return;
+      if(restoreBankrollBackup(restored))renderBankroll();
     }catch(error){alert('Не удалось восстановить банкролл: '+error.message);}
   };
   $('#archiveCheckResults').onclick=async()=>{
