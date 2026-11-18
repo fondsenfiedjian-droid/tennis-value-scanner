@@ -2272,7 +2272,7 @@ test("PFE recent-form adapter filters non-completed and out-of-window matches an
     { match_id: 8, date: daysAgo(-1), won: true, outcome: "completed", surface: "hard" }
   ];
   const pfe = sandbox.pfe;
-  const result = pfe.normalizeRecentFormProfile({ player: { id: 123 }, records: { recent } }, { now, playerId: 123 });
+  const result = pfe.normalizeRecentFormProfile({ player: { id: 123 }, records: { recent } }, { now, playerId: 123, minMatches: 6 });
   assert.equal(result.status, "insufficient_sample");
   assert.equal(result.sampleSize, 5);
   assert.equal(result.wins, 3);
