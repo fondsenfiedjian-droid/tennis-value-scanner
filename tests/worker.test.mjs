@@ -2826,7 +2826,7 @@ test("PFE paired history compares Elo and market only on identical verified matc
       capturedAt: new Date(start - 3600000).toISOString(),
       matchStart: new Date(start).toISOString() };
     rows.push({ ...base, modelId: "general-elo-v2", probability: outcome ? 0.7 : 0.3 });
-    rows.push({ ...base, modelId: "market-consensus", probability: outcome ? 0.65 : 0.35 });
+    rows.push({ ...base, modelId: "market-consensus", outcome: i === 0 ? 1 - outcome : outcome, probability: outcome ? 0.65 : 0.35 });
   }
   rows.push({ modelId: "market-consensus", matchId: "unpaired", probability: 0.9, outcome: 1,
     capturedAt: "2025-04-01T10:00:00Z", matchStart: "2025-04-01T12:00:00Z", resultVerified: true });
@@ -2835,11 +2835,12 @@ test("PFE paired history compares Elo and market only on identical verified matc
     minTraining: 5, minValidation: 5, stabilityWindows: [5, 10, 20]
   });
   assert.equal(result.status, "evaluated");
-  assert.equal(result.matchedSampleSize, 60);
-  assert.equal(result.trainingSampleSize, 42);
+  assert.equal(result.matchedSampleSize, 59);
+  assert.equal(result.trainingSampleSize, 41);
   assert.equal(result.validationSampleSize, 18);
   assert.equal(result.excluded.unpaired, 1);
   assert.equal(result.excluded.outcomeConflict, 1);
+  assert.equal(result.excluded.invalid, 1);
   assert.equal(result.models.length, 2);
   assert.equal(result.models[0].validation.sampleSize, 18);
   assert.equal(result.models[1].validation.sampleSize, 18);
