@@ -54,6 +54,10 @@ The Worker converts the difference between the two general Elo ratings into a wi
 
 Player B receives the complementary probability (`1 - P(A)`). Model probabilities are calculated from Elo ratings alone; bookmaker odds are not inputs to the probability calculation. Fair odds are `1 / probability`. Expected value uses the offered decimal price: `EV (%) = (probability × decimal odds - 1) × 100`. EV is only as reliable as the underlying probability estimate and is not a measured return.
 
+## Live data freshness indicator
+
+Each calculated match card labels the freshness of its inputs separately from the model probability. The label is **high** only when both player Elo update dates are known and no older than 14 days and the matched Winamax quote is no older than 30 minutes. It is **medium** when both rating dates are known and no older than 30 days and the quote is no older than 90 minutes. Missing dates, older ratings, or unknown/out-of-window quote age produce a **limited** label. This is a data-recency diagnostic, not a confidence interval, win probability, or guarantee that a price remains available.
+
 ## Model limitations
 
 The current model uses general player Elo ratings. Where the provider publishes `stats.ratings_as_of`, the app displays each player's rating date and stores it with the prediction snapshot and CSV export; a missing date is shown as unavailable rather than guessed. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. Positive EV is a model estimate, not a guarantee of profit.
