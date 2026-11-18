@@ -144,14 +144,14 @@
   }
   let cachedOdds = [];
   function normalizePlayer(s){
-    return String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
   function oddsForMatch(m){
     const p=m.players||{};
     const a=normalizePlayer(playerName(p.p1||m.player1));
     const b=normalizePlayer(playerName(p.p2||m.player2));
     return cachedOdds.filter(o=>{
-      const names=String(o.eventName||'').split(/\\s+-\\s+/);
+      const names=String(o.eventName||'').split(/\s+-\s+/);
       if(names.length!==2)return false;
       const x=normalizePlayer(names[0]),y=normalizePlayer(names[1]);
       return (x===a&&y===b)||(x===b&&y===a);
@@ -170,7 +170,7 @@
       const tournament=m.tournament_name||m.tournament||m.event_name||m.competition||'Турнир не указан';
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const matched=oddsForMatch(m);
-      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\\s+-\\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
+      const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\s+-\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
       return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
     }).join('');
   }
