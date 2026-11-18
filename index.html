@@ -312,7 +312,7 @@
     for(const {i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
       const idA=el.dataset.playerA,idB=el.dataset.playerB;
-      const cacheKey='tvs-elo-'+idA+'-'+idB;
+      const cacheKey='tvs-elo-v2-'+idA+'-'+idB;
       let result=null;
       try{
         const cached=localStorage.getItem(cacheKey);
