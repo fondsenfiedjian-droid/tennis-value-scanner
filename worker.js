@@ -89,7 +89,7 @@ export default {
         service: "tennis-value-api",
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/odds", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/odds", "/predict"]
       });
     }
 
@@ -165,6 +165,39 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    if (path === "/result") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+      const id = url.searchParams.get("id") || "";
+      if (!/^\\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+        return response({ error: "id must be a positive integer" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__match-result/" + id);
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        });
+        const body = await upstream.json();
+        const result = response(body, upstream.status);
+        if (upstream.ok) {
+          await cache.put(cacheKey, new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=60" }
+          }));
+        }
+        return result;
+      } catch (error) {
+        return response({ error: "Could not retrieve match result" }, 502);
       }
     }
 
