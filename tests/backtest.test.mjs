@@ -282,3 +282,20 @@ test("held-out calibration labels small evaluation samples instead of implying s
   assert.equal(validation.evaluationSampleQuality, "low");
   assert.equal(validation.raw.matches, 29);
 });
+
+
+test("backtest reports year-by-surface counts, metrics and sample quality", () => {
+  const rows = [
+    { tourney_date: "20240101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4", surface: "Hard" },
+    { tourney_date: "20240102", tourney_id: "A", match_num: "2", winner_id: "2", loser_id: "1", score: "6-4", surface: "Clay" },
+    { tourney_date: "20250101", tourney_id: "B", match_num: "1", winner_id: "3", loser_id: "4", score: "6-4", surface: "Hard" },
+    { tourney_date: "20250102", tourney_id: "B", match_num: "2", winner_id: "4", loser_id: "3", score: "6-4", surface: "Unknown court" }
+  ];
+  const report = runBacktest(rows);
+  assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.matches, 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2024"].Clay.matches, 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2025"].Hard.matches, 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2025"].Unknown.matches, 1);
+  assert.equal(report.breakdowns.byYearAndSurface["2025"].Unknown.sampleQuality, "low");
+  assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.metrics.elo.matches, 1);
+});
