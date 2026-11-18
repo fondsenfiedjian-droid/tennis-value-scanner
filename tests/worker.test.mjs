@@ -1828,3 +1828,29 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.match(frontendSource, /Доходность по сегментам/);
   assert.match(serviceWorkerSource, /tennis-value-static-v56/);
 });
+
+
+
+test("segment ROI follows the latest verified result revision without double-counting superseded settlements", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey: "segment-revision", matchId: 8801, side: "A",
+    match: "Player A — Player B", player: "Player A", opponent: "Player B",
+    bookmaker: "Winamax", surface: "Hard", tour: "atp",
+    probability: 0.7, odds: 2.1, stake: 2
+  });
+  const first = [{ matchId: 8801, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }];
+  const settled = api.settleVerifiedResults(placed.state, first).state;
+  const revised = [{ matchId: 8801, resultOutcome: "completed", resultWinner: 2, resultVersion: 2 }];
+  const corrected = api.settleVerifiedResults(settled, revised).state;
+  const performance = api.getSegmentPerformance(corrected, []);
+  const hard = performance.surface.find(row => row.name === "Хард");
+  assert.equal(hard.settledBets, 1);
+  assert.equal(hard.wins, 0);
+  assert.equal(hard.losses, 1);
+  assert.equal(hard.profit, -2);
+  assert.equal(hard.roiPercent, -100);
+  assert.equal(performance.bookmaker.find(row => row.name === "Winamax").settledBets, 1);
+});
