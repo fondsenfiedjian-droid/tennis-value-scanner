@@ -911,13 +911,23 @@
     $('#bankTxCount').textContent=state.transactions.length+' операций · результаты: '+summary.verifiedSettledBets+' по API, '+summary.manualSettledBets+' вручную';
     const pendingPlan=state.pendingPlan;
     $('#bankPendingPlan').innerHTML=pendingPlan
-      ?'<div class="archive-item"><b>План ожидает ручного размещения в Winamax</b><div class="archive-meta">Создан: '+escapeHtml(new Date(pendingPlan.createdAt).toLocaleString('ru-RU'))+' · действует до '+escapeHtml(new Date(pendingPlan.expiresAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))+'</div>'+pendingPlan.suggestions.map(item=>'<div>'+escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': <b>'+formatEuro(item.stake)+'</b> · кэф. '+Number(item.odds).toFixed(2)+'</div>').join('')+'<div><b>Итого: '+formatEuro(pendingPlan.totalStake)+'</b></div><div class="stats-actions"><button id="confirmPortfolioPlan">Я разместил весь портфель в Winamax</button><button id="cancelPortfolioPlan">Отменить план</button></div><div class="archive-meta">До подтверждения план не списывает деньги и не считается сделанной ставкой. Подтверждайте только после ручного размещения всех ставок по указанным суммам и коэффициентам.</div></div>'
+      ?'<div class="archive-item"><b>Сверка фактических ставок Winamax</b><div class="archive-meta">Создан: '+escapeHtml(new Date(pendingPlan.createdAt).toLocaleString('ru-RU'))+' · план действует до '+escapeHtml(new Date(pendingPlan.expiresAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))+'</div><div class="archive-meta">После ручного размещения внесите реальные сумму и коэффициент. Если ставку не делали — укажите сумму 0. Плановые значения уже подставлены.</div>'+pendingPlan.suggestions.map((item,index)=>'<div style="border-top:1px solid var(--line);padding:10px 0"><b>'+escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+'</b><div class="archive-meta">План: '+formatEuro(item.stake)+' · кэф. '+Number(item.odds).toFixed(2)+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px"><label class="field">Фактическая сумма, €<input data-plan-stake="'+index+'" type="number" min="0" max="1000000" step="0.01" value="'+Number(item.stake).toFixed(2)+'" style="width:100%"></label><label class="field">Фактический кэф.<input data-plan-odds="'+index+'" type="number" min="1.01" max="1000" step="0.01" value="'+Number(item.odds).toFixed(2)+'" style="width:100%"></label></div></div>').join('')+'<div><b>Плановая сумма: '+formatEuro(pendingPlan.totalStake)+'</b></div><div class="stats-actions"><button id="confirmPortfolioPlan">Сверить и внести фактические ставки</button><button id="cancelPortfolioPlan">Отменить план</button></div><div class="archive-meta">Сумма 0 означает, что ставка не была размещена. Фактическая сумма и коэффициент проверяются по лимитам риска и минимальному EV. До сверки финансовый журнал не меняется.</div></div>'
       :'<div class="panel empty">Нет ожидающего плана.</div>';
     if(pendingPlan){
       $('#confirmPortfolioPlan').onclick=()=>{
-        if(!confirm('Подтвердить, что ВСЕ ставки из плана уже вручную размещены в Winamax по указанным суммам и коэффициентам? Только после этого они попадут в журнал и уменьшат свободный баланс.'))return;
-        try{const result=TVSBankroll.confirmPortfolioPlan(readBankrollState(),pendingPlan.id);if(persistBankrollState(result.state)){renderBankroll();alert('Фактически размещённые ставки внесены в журнал.');}}
-        catch(error){alert(error.message);}
+        const actuals=pendingPlan.suggestions.map((item,index)=>({
+          matchKey:item.matchKey,
+          stake:Number($('#bankPendingPlan [data-plan-stake="'+index+'"]').value),
+          odds:Number($('#bankPendingPlan [data-plan-odds="'+index+'"]').value)
+        }));
+        if(!confirm('Сверить фактические суммы и коэффициенты? В журнал попадут только позиции с суммой больше нуля.'))return;
+        try{
+          const result=TVSBankroll.reconcilePortfolioPlan(readBankrollState(),pendingPlan.id,actuals);
+          if(persistBankrollState(result.state)){
+            renderBankroll();
+            alert('Сверка завершена. В журнал внесено ставок: '+result.placedCount+'. Не размещено: '+result.skipped+'.');
+          }
+        }catch(error){alert('Журнал не изменён: '+error.message);}
       };
       $('#cancelPortfolioPlan').onclick=()=>{
         if(!confirm('Отменить ожидающий план? Финансовый журнал не изменится.'))return;
