@@ -141,7 +141,8 @@
     <div class="panel"><div class="muted">Общий капитал</div><div class="stat-num" id="bankEquity">—</div></div>
     <div class="panel"><div class="muted">Реализованная прибыль</div><div class="stat-num" id="bankProfit">—</div></div>
     <div class="panel"><div class="muted">Всего поставлено</div><div class="stat-num" id="bankTotalStaked">—</div></div>
-    <div class="panel"><div class="muted">ROI рассчитанных ставок</div><div class="stat-num" id="bankRoi">—</div></div>
+    <div class="panel"><div class="muted">ROI без возвратов</div><div class="stat-num" id="bankRoi">—</div></div>
+    <div class="panel"><div class="muted">Возвращено ставок</div><div class="stat-num" id="bankVoids">—</div></div>
     <div class="panel"><div class="muted">Приход всех операций</div><div class="stat-num" id="bankInflow">—</div></div>
     <div class="panel"><div class="muted">Расход всех операций</div><div class="stat-num" id="bankOutflow">—</div></div>
     <div class="panel"><div class="muted">Внешние пополнения</div><div class="stat-num" id="bankDeposits">—</div></div>
@@ -793,6 +794,7 @@
     $('#bankProfit').textContent=(summary.realizedProfit>0?'+':'')+formatEuro(summary.realizedProfit);
     $('#bankTotalStaked').textContent=formatEuro(summary.totalStaked);
     $('#bankRoi').textContent=summary.roiPercent===null?'—':(summary.roiPercent>0?'+':'')+summary.roiPercent.toFixed(2)+'%';
+    $('#bankVoids').textContent=summary.voidedBets+' · '+formatEuro(summary.voidedStake);
     $('#bankInflow').textContent=formatEuro(summary.totalInflow);
     $('#bankOutflow').textContent=formatEuro(summary.totalOutflow);
     $('#bankDeposits').textContent=formatEuro(summary.deposits);
