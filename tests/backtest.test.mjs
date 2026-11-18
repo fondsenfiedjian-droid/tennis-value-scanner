@@ -20,8 +20,8 @@ test("backtest excludes invalid IDs, dates and non-standard outcomes", () => {
 
 test("matches on the same date cannot leak results into each other's predictions", () => {
   const report = runBacktest([
-    { tourney_date: "20250101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
-    { tourney_date: "20250101", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Hard" }
+    { tourney_date: "20250101", tourney_id: "2025-A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250101", tourney_id: "2025-A", match_num: "2", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Hard" }
   ]);
   assert.equal(report.metrics.elo.matches, 2);
   assert.equal(report.metrics.elo.accuracy, 50);
