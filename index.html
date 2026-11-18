@@ -222,10 +222,20 @@
       return name;
     };
     const a=normalizeTournament(matchName),b=normalizeTournament(oddsName);
-    if(!a||!b)return true;
-    if(a===b)return true;
-    const tokensA=a.split(' '),tokensB=new Set(b.split(' '));
-    return tokensA.some(token=>token.length>2&&tokensB.has(token));
+    if(!a||!b||a===b)return true;
+    const tourOf=name=>{
+      if(/\\b(wta|women)\\b/.test(name))return 'wta';
+      if(/\\b(itf)\\b/.test(name))return 'itf';
+      if(/\\b(challenger)\\b/.test(name))return 'challenger';
+      if(/\\b(atp|men)\\b/.test(name))return 'atp';
+      return null;
+    };
+    const tourA=tourOf(a),tourB=tourOf(b);
+    if(tourA&&tourB&&tourA!==tourB)return false;
+    const ignored=new Set(['atp','wta','itf','challenger','men','women','main','draw','qualifying','qualification','series']);
+    const tokens=name=>name.split(' ').filter(token=>token.length>2&&!ignored.has(token));
+    const tokensA=tokens(a),tokensB=new Set(tokens(b));
+    return tokensA.some(token=>tokensB.has(token));
   }
   function oddsForMatch(m){
     const p=m.players||{};
