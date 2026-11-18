@@ -942,11 +942,11 @@
       if(authoritative[0].resultOutcome!=='completed'){excluded++;continue;}
       const winner=Number(authoritative[0].resultWinner);
       if(![1,2].includes(winner)){ambiguous++;continue;}
-      const sideARows=group.filter(row=>row.side==='A');
-      if(!sideARows.length)continue;
-      const matchDate=sideARows.map(row=>Date.parse(row.matchDate)).find(value=>Number.isFinite(value)&&value>0);
+      const sideRows=group.filter(row=>row.side==='A'||row.side==='B');
+      if(!sideRows.length)continue;
+      const matchDate=sideRows.map(row=>Date.parse(row.matchDate)).find(value=>Number.isFinite(value)&&value>0);
       if(!Number.isFinite(matchDate)){missingStart++;continue;}
-      const timed=sideARows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
+      const timed=sideRows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
       const preMatch=timed.filter(row=>Number(row.capturedAt)<matchDate);
       if(timed.some(row=>Number(row.capturedAt)>=matchDate))postStart++;
       if(!preMatch.length){if(!timed.length)invalid++;continue;}
@@ -955,7 +955,8 @@
       const probabilities=latest.map(row=>{
         if(row.probability===null||row.probability===undefined||row.probability==='')return null;
         const value=Number(row.probability);
-        return Number.isFinite(value)&&value>=0&&value<=100?value:null;
+        if(!Number.isFinite(value)||value<0||value>100)return null;
+        return row.side==='A'?value:100-value;
       });
       if(probabilities.some(value=>value===null)){invalid++;continue;}
       const unique=[...new Set(probabilities.map(value=>Number(value.toFixed(8))))];
