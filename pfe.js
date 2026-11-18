@@ -208,6 +208,48 @@
     return { sampleSize: n, brierScore: brier / n, logLoss: logLoss / n };
   }
 
+  function buildModelHistoryRecords(archiveRows) {
+    const rows = Array.isArray(archiveRows) ? archiveRows : [];
+    const byModelMatch = new Map();
+    const rejected = [];
+    for (const row of rows) {
+      const modelId = typeof row?.model === "string" ? row.model.trim() : "";
+      const matchId = String(row?.matchId ?? "").trim();
+      const probabilityPercent = Number(row?.probability);
+      const capturedAtMs = typeof row?.capturedAt === "number" ? row.capturedAt : Date.parse(row?.capturedAt);
+      const matchStartMs = Date.parse(row?.matchDate);
+      const resultCheckedAt = Number(row?.resultCheckedAt);
+      const winner = Number(row?.resultWinner);
+      let reason = null;
+      if (!MODEL_REGISTRY.some(model => model.id === modelId)) reason = "unknown_model";
+      else if (!matchId || !Number.isSafeInteger(Number(matchId)) || Number(matchId) <= 0) reason = "missing_match_id";
+      else if (!Number.isFinite(probabilityPercent) || probabilityPercent <= 0 || probabilityPercent >= 100) reason = "invalid_probability";
+      else if (!Number.isFinite(capturedAtMs) || !Number.isFinite(matchStartMs) || capturedAtMs >= matchStartMs) reason = "not_pre_match";
+      else if (row?.captureStatus && row.captureStatus !== "upcoming") reason = "not_upcoming_capture";
+      else if (row?.resultOutcome !== "completed" || ![1, 2].includes(winner) || !Number.isFinite(resultCheckedAt) || resultCheckedAt <= 0) reason = "result_not_verified";
+      else if (!["A", "B"].includes(row?.side) || typeof row?.player !== "string" || !row.player.trim() ||
+        typeof row?.opponent !== "string" || !row.opponent.trim() || row.player.trim() === row.opponent.trim()) reason = "invalid_player_identity";
+      if (reason) { rejected.push({ modelId: modelId || null, matchId: matchId || null, reason }); continue; }
+      const key = modelId + "::" + matchId;
+      const record = {
+        modelId, matchId, probability: probabilityPercent / 100,
+        outcome: (row.side === "A" ? winner === 1 : winner === 2) ? 1 : 0,
+        capturedAt: new Date(capturedAtMs).toISOString(),
+        matchStart: new Date(matchStartMs).toISOString(),
+        resultVerified: true,
+        side: row.side,
+        playerId: Number.isSafeInteger(Number(row.playerId)) && Number(row.playerId) > 0 ? Number(row.playerId) : null,
+        opponentId: Number.isSafeInteger(Number(row.opponentId)) && Number(row.opponentId) > 0 ? Number(row.opponentId) : null,
+        modelVersion: typeof row.modelVersion === "string" ? row.modelVersion : null
+      };
+      const previous = byModelMatch.get(key);
+      if (!previous || Date.parse(record.capturedAt) < Date.parse(previous.capturedAt)) byModelMatch.set(key, record);
+    }
+    return { records: [...byModelMatch.values()].sort((a, b) =>
+      a.modelId.localeCompare(b.modelId) || Date.parse(a.capturedAt) - Date.parse(b.capturedAt)),
+      rejected };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -261,5 +303,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, buildModelHistoryRecords, evaluateModelHistory };
 });
