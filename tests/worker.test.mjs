@@ -1006,3 +1006,19 @@ test("PWA app shell precaches the Winamax import module and advances cache versi
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
+
+
+test("odds matching supports provider-specific event IDs and keeps the best price per player side", () => {
+  assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\\.freeze/);
+  assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
+  assert.match(frontendSource, /const bestQuoteForSide=side=>matched\\.filter/);
+  assert.match(frontendSource, /data-bookmaker-a=/);
+  assert.match(frontendSource, /bookmaker:el\\.dataset\\.bookmakerA/);
+  assert.match(frontendSource, /escapeHtml\\(best\\.bookmaker\\|\\|'Winamax'\\)/);
+});
+
+test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
+  assert.match(serviceWorkerSource, /tennis-value-static-v32/);
+  assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
+  assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
+});
