@@ -689,6 +689,9 @@
     const maxQuoteAgeMinutes = Number.isFinite(Number(options?.maxQuoteAgeMinutes))
       ? clamp(Number(options.maxQuoteAgeMinutes), 1, 1440) : 90;
     const maxQuoteAgeMs = maxQuoteAgeMinutes * 60000;
+    const maxProviderQuoteSkewMinutes = Number.isFinite(Number(options?.maxProviderQuoteSkewMinutes))
+      ? clamp(Number(options.maxProviderQuoteSkewMinutes), 1, 180) : 30;
+    const maxProviderQuoteSkewMs = maxProviderQuoteSkewMinutes * 60000;
     const byMatch = new Map();
     const rejected = [];
     const staleMatches = new Set();
@@ -727,8 +730,7 @@
 
     const records = [];
     for (const [matchId, providers] of byMatch) {
-      const providerProbabilities = [];
-      const providerNames = [];
+      const selectedQuotes = [];
       let latestCapture = 0, earliestMatchStart = Infinity, selectedIdentity = null, selectedResult = null, rejectionReason = null;
       for (const provider of providers.values()) {
         const timestamps = [...provider.quotes.values()].sort((a, b) => b.capturedAt - a.capturedAt);
@@ -771,7 +773,7 @@
           }
           if (selectedIdentity && (selectedIdentity[0] !== identityA[0] || selectedIdentity[1] !== identityA[1])) {
             rejectionReason = "cross_bookmaker_identity_mismatch";
-            providerProbabilities.length = 0;
+            selectedQuotes.length = 0;
             selectedResult = null;
             selected = null;
             break;
@@ -798,13 +800,12 @@
         selectedIdentity ||= selected.identity;
         if (selectedResult && selectedResult.winner !== selected.winner) {
           rejectionReason = "conflicting_verified_result";
-          providerProbabilities.length = 0;
+          selectedQuotes.length = 0;
           selectedResult = null;
           break;
         }
         selectedResult ||= selected;
-        providerProbabilities.push(selected.probabilityA);
-        providerNames.push(provider.bookmaker);
+        selectedQuotes.push({ ...selected, bookmaker: provider.bookmaker });
         latestCapture = Math.max(latestCapture, selected.capturedAt);
         earliestMatchStart = Math.min(earliestMatchStart, selected.matchStart);
       }
@@ -812,11 +813,20 @@
         rejected.push({ matchId, reason: "post_start_capture" });
         continue;
       }
-      if (!providerProbabilities.length || !selectedResult) {
+      if (rejectionReason === "cross_bookmaker_identity_mismatch" ||
+          rejectionReason === "conflicting_verified_result") {
+        rejected.push({ matchId, reason: rejectionReason });
+        continue;
+      }
+      const alignedQuotes = selectedQuotes.filter(quote =>
+        latestCapture - quote.capturedAt <= maxProviderQuoteSkewMs);
+      if (!alignedQuotes.length || !selectedResult) {
         rejected.push({ matchId, reason: rejectionReason || (staleMatches.has(matchId)
           ? "stale_market_quote" : "no_complete_same_bookmaker_pair") });
         continue;
       }
+      const providerProbabilities = alignedQuotes.map(quote => quote.probabilityA);
+      const providerNames = alignedQuotes.map(quote => quote.bookmaker);
       const sorted = providerProbabilities.slice().sort((a, b) => a - b);
       const middle = Math.floor(sorted.length / 2);
       const probability = sorted.length % 2
