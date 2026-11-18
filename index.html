@@ -246,7 +246,9 @@
     const tour=String(value??'').trim().toLowerCase();
     return ['atp','wta','challenger','itf','juniors'].includes(tour)?tour:null;
   }
+  let predictionRenderId=0;
   function renderMatches(all){
+    predictionRenderId++;
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
     const tours=selectedTours().map(normalizeTour).filter(Boolean);
@@ -287,6 +289,7 @@
     loadPredictions(filtered);
   }
   async function loadPredictions(matches){
+    const renderId=++predictionRenderId;
     const candidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       return a&&b&&a.id&&b.id&&document.getElementById('model-'+i)?.hasAttribute('data-player-a');
@@ -306,6 +309,7 @@
           if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
           localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
         }
+        if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
         const fmt=(v)=>Number(v).toFixed(2);
@@ -319,9 +323,11 @@
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
         if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
       }catch(err){
+        if(renderId!==predictionRenderId)return;
         el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
       }
     }
+    if(renderId!==predictionRenderId)return;
     $('#valueCount').textContent=positive;
     if(!candidates.length)$('#valueCount').textContent='0';
   }
