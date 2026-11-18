@@ -431,7 +431,7 @@
       return {matchKey:row.matchKey.slice(0,256),matchDate:typeof row.matchDate==='string'?row.matchDate:null,
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
         player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
-        odds,probability,ev,rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,
+        odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
         resultOutcome:typeof row.resultOutcome==='string'?row.resultOutcome:null,
         resultWinner:[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null,
