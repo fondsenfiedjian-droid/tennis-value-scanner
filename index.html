@@ -773,8 +773,9 @@
     const groups=new Map();
     for(const row of rows){
       const odds=Number(row.odds),capturedAt=Number(row.capturedAt);
-      if(!Number.isFinite(odds)||odds<=1||!Number.isFinite(capturedAt))continue;
-      const key=String(row.matchId||row.matchKey)+'|'+String(row.side||'');
+      const matchKey=String(row.matchId||row.matchKey||'');
+      if(!matchKey||!['A','B'].includes(row.side)||!Number.isFinite(odds)||odds<=1||!Number.isFinite(capturedAt))continue;
+      const key=matchKey+'|'+row.side;
       if(!groups.has(key))groups.set(key,[]);
       groups.get(key).push({odds,capturedAt});
     }
