@@ -6,6 +6,14 @@ const cors = {
 
 const APIFY_DATASET_ID = "ZBWihC1oYU8Pq9uBo";
 
+function internalCacheRequest(request, pathname) {
+  const cacheUrl = new URL(request.url);
+  cacheUrl.pathname = pathname;
+  cacheUrl.search = "";
+  cacheUrl.hash = "";
+  return new Request(cacheUrl.toString(), { method: "GET" });
+}
+
 function response(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -304,7 +312,7 @@ export default {
       try {
         // Player statistics change more often than profile ratings; cache successful responses for one minute, matching the provider's cache window.
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-stats/" + encodeURIComponent(playerId));
+        const cacheKey = internalCacheRequest(request, "/__player-stats/" + encodeURIComponent(playerId));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -350,7 +358,7 @@ export default {
       }
       try {
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__match-result/" + id);
+        const cacheKey = internalCacheRequest(request, "/__match-result/" + id);
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
