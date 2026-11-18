@@ -223,7 +223,7 @@
   }
 
   function normalizePerformanceName(value) {
-    return typeof value === "string" ? value.normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() : "";
+    return typeof value === "string" ? value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() : "";
   }
 
   function getSegmentPerformance(state, archiveRows = []) {
