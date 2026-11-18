@@ -344,6 +344,17 @@ test("archive backup v2 detects corruption and preserves legacy v1 compatibility
   assert.deepEqual(JSON.parse(JSON.stringify(legacy.records)), records);
 });
 
+test("archive merge preserves official result status and restatement metadata", () => {
+  const { mergePredictionArchive } = makeArchiveStore();
+  const row = { matchKey: "m-result", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1000, resultOutcome: "completed",
+    resultWinner: 1, resultVersion: 2, resultCheckedAt: 2000,
+    resultStatus: "completed", resultRestatedAt: "2026-11-18T10:00:00Z" };
+  const merged = mergePredictionArchive([], [row]).rows[0];
+  assert.equal(merged.resultStatus, "completed");
+  assert.equal(merged.resultRestatedAt, "2026-11-18T10:00:00Z");
+});
+
 test("archive import validates records, merges duplicates, and retains up to 3000 entries", () => {
   const { mergePredictionArchive } = makeArchiveStore();
   const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
