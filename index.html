@@ -402,8 +402,8 @@
     const tournament=match.tournament_name||match.tournament||match.event_name||match.competition||'';
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
-      {side:'A',player:playerA,opponent:playerB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),rating:Number(result.ratingA)},
-      {side:'B',player:playerB,opponent:playerA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),rating:Number(result.ratingB)}
+      {side:'A',player:playerA,opponent:playerB,odds:Number(el.dataset.oddsA),probability:Number(result.probabilityA),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
+      {side:'B',player:playerB,opponent:playerA,odds:Number(el.dataset.oddsB),probability:Number(result.probabilityB),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
     ];
     let changed=false;
     for(const entry of entries){
@@ -411,7 +411,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,model:'general-elo-v2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -431,7 +431,7 @@
       return {matchKey:row.matchKey.slice(0,256),matchDate:typeof row.matchDate==='string'?row.matchDate:null,
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
         player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
-        odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,
+        odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,ratingAsOf:validRatingDate(row.ratingAsOf),
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
         resultOutcome:typeof row.resultOutcome==='string'?row.resultOutcome:null,
         resultWinner:[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null,
@@ -590,7 +590,7 @@
   $('#archiveExport').onclick=()=>{
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','matchDate','matchId','tournament','player','opponent','side','odds','probability','ev','rating','model','resultOutcome','resultWinner','resultVersion'];
+    const columns=['capturedAt','matchDate','matchId','tournament','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion'];
     const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
     const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -617,6 +617,11 @@
       alert('Импорт завершён. Добавлено: '+result.added+'. Пропущено некорректных записей: '+result.ignored+'. В архиве хранится до 600 последних записей.');
     }catch(error){alert('Не удалось импортировать архив: '+error.message);}
   };
+  function validRatingDate(value){
+    if(typeof value!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(value))return null;
+    const parsed=Date.parse(value+'T00:00:00Z');
+    return Number.isFinite(parsed)&&new Date(parsed).toISOString().slice(0,10)===value?value:null;
+  }
   function isValidPredictionResult(result){
     if(!result||typeof result!=='object'||Array.isArray(result))return false;
     const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
@@ -661,7 +666,8 @@
         const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>';
+        const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>';
         checked++;
         if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
         if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
