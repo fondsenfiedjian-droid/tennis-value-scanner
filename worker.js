@@ -337,11 +337,21 @@ export default {
             : upstream.status === 400 ? "invalid_player_or_doubles"
             : "upstream_error";
           const retryAfter = upstream.headers.get("Retry-After");
+          const rateLimit = upstream.status === 429 && stats && typeof stats === "object" && !Array.isArray(stats)
+            ? {
+                errorCode: typeof stats.error === "string" ? stats.error : null,
+                scope: typeof stats.scope === "string" ? stats.scope : null,
+                resetsAt: typeof stats.resets_at === "string" ? stats.resets_at : null,
+                retryAtEpoch: Number.isSafeInteger(stats.retry_at_epoch) && stats.retry_at_epoch > 0 ? stats.retry_at_epoch : null,
+                detail: typeof stats.detail === "string" ? stats.detail : null
+              }
+            : null;
           return response({
             error: "Live Tennis player statistics request failed",
             playerId,
             accessStatus,
-            upstreamStatus: upstream.status
+            upstreamStatus: upstream.status,
+            ...(rateLimit ? { rateLimit } : {})
           }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
         }
         if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
