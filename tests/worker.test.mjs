@@ -623,6 +623,8 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("const BANKROLL_KEY='tvs-bankroll-v1'"));
   assert.ok(frontendSource.includes("TVSBankroll.recommendPortfolio"));
   assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
+  assert.ok(frontendSource.includes("TVSBankroll.settleVerifiedResults"));
+  assert.ok(frontendSource.includes("reconcileBankrollWithArchive"));
   assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
   assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
   assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
