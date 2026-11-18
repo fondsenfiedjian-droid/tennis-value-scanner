@@ -146,6 +146,7 @@
     <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
     <div class="panel"><div class="muted">Коэффициент вырос</div><div class="stat-num" id="archiveOddsDrifted">0</div></div>
     <div class="panel"><div class="muted">Коэффициент не изменился</div><div class="stat-num" id="archiveOddsUnchanged">0</div></div>
+    <div class="panel"><div class="muted">Конфликтные снимки</div><div class="stat-num" id="archiveOddsConflicts">0</div></div>
   </div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
@@ -752,17 +753,24 @@
       if(!groups.has(key))groups.set(key,[]);
       groups.get(key).push({odds,capturedAt});
     }
-    let shortened=0,drifted=0,unchanged=0,comparable=0;
+    let shortened=0,drifted=0,unchanged=0,comparable=0,conflicting=0;
     for(const snapshots of groups.values()){
-      snapshots.sort((a,b)=>a.capturedAt-b.capturedAt);
-      if(snapshots.length<2)continue;
-      const first=snapshots[0].odds,last=snapshots[snapshots.length-1].odds;
+      const byTime=new Map();
+      let hasConflict=false;
+      for(const snapshot of snapshots){
+        if(byTime.has(snapshot.capturedAt)&&byTime.get(snapshot.capturedAt)!==snapshot.odds){hasConflict=true;break;}
+        byTime.set(snapshot.capturedAt,snapshot.odds);
+      }
+      if(hasConflict){conflicting++;continue;}
+      const ordered=[...byTime.entries()].sort((a,b)=>a[0]-b[0]).map(([capturedAt,odds])=>({capturedAt,odds}));
+      if(ordered.length<2)continue;
+      const first=ordered[0].odds,last=ordered[ordered.length-1].odds;
       comparable++;
       if(last<first)shortened++;
       else if(last>first)drifted++;
       else unchanged++;
     }
-    return {shortened,drifted,unchanged,comparable};
+    return {shortened,drifted,unchanged,comparable,conflicting};
   }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
@@ -778,6 +786,7 @@
     $('#archiveOddsShortened').textContent=movement.shortened;
     $('#archiveOddsDrifted').textContent=movement.drifted;
     $('#archiveOddsUnchanged').textContent=movement.unchanged;
+    $('#archiveOddsConflicts').textContent=movement.conflicting;
     $('#archiveUpdated').textContent=rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'';
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
