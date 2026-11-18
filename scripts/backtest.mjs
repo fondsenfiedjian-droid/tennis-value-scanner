@@ -3,30 +3,46 @@ import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 export function parseCsv(text) {
-  text = text.replace(/^\uFEFF/, "");
+  text = text.replace(/^\\uFEFF/, "");
   const rows = [];
-  let row = [], field = "", quoted = false;
+  let row = [], field = "", quoted = false, closedQuote = false, line = 1;
+  const pushField = () => { row.push(field); field = ""; closedQuote = false; };
+  const pushRow = () => {
+    pushField();
+    if (row.some(value => value !== "")) rows.push(row);
+    row = [];
+  };
+
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (quoted) {
       if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (ch === '"') quoted = false;
-      else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ",") { row.push(field); field = ""; }
-    else if (ch === "\n") {
-      row.push(field.replace(/\r$/, ""));
-      if (row.some(value => value !== "")) rows.push(row);
-      row = []; field = "";
-    } else field += ch;
+      else if (ch === '"') { quoted = false; closedQuote = true; }
+      else { field += ch; if (ch === "\n") line++; }
+      continue;
+    }
+    if (closedQuote && ch !== "," && ch !== "\n" && ch !== "\r") {
+      throw new SyntaxError(`Unexpected character after closing quote on line ${line}`);
+    }
+    if (ch === '"') {
+      if (field.length !== 0 || closedQuote) throw new SyntaxError(`Unexpected quote in unquoted field on line ${line}`);
+      quoted = true;
+    } else if (ch === ",") pushField();
+    else if (ch === "\n") { pushRow(); line++; }
+    else if (ch === "\r" && text[i + 1] === "\n") { /* CRLF handled by newline */ }
+    else if (ch === "\r") field += ch;
+    else field += ch;
   }
-  if (field !== "" || row.length) {
-    row.push(field.replace(/\r$/, ""));
-    if (row.some(value => value !== "")) rows.push(row);
-  }
+  if (quoted) throw new SyntaxError(`Unterminated quoted field at end of line ${line}`);
+  if (field !== "" || row.length || closedQuote) pushRow();
   if (!rows.length) return [];
   const headers = rows.shift();
-  return rows.map(values => Object.fromEntries(headers.map((key, i) => [key, values[i] ?? ""])));
+  if (headers.some(header => header === "")) throw new SyntaxError("CSV contains an empty header");
+  if (new Set(headers).size !== headers.length) throw new SyntaxError("CSV contains duplicate headers");
+  return rows.map((values, index) => {
+    if (values.length > headers.length) throw new SyntaxError(`CSV row ${index + 2} has more fields than the header`);
+    return Object.fromEntries(headers.map((key, i) => [key, values[i] ?? ""]));
+  });
 }
 
 const sigmoid = (a, b) => 1 / (1 + 10 ** ((b - a) / 400));
