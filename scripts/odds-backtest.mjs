@@ -235,25 +235,29 @@ export function runOddsBacktest(rows, options = {}) {
       { side: "A", player: match.playerA, odds: opening.oddsA, probability: opening.probabilityA, outcome: match.winner === "A" },
       { side: "B", player: match.playerB, odds: opening.oddsB, probability: 1 - opening.probabilityA, outcome: match.winner === "B" }
     ];
-    for (const candidate of candidates) {
-      const ev = candidate.probability * candidate.odds - 1;
-      if (candidate.odds < minOdds || ev < minEv) continue;
-      const profit = candidate.outcome ? stake * (candidate.odds - 1) : -stake;
-      const closeMarket = noVig(closing.oddsA, closing.oddsB);
-      const closeProbability = candidate.side === "A" ? closeMarket.a : closeMarket.b;
-      const clv = closing.captured > opening.captured
-        ? candidate.odds * closeProbability - 1
-        : null;
-      if (clv !== null) { clvTotal += clv; clvCount++; }
-      bets.push({
-        matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
-        odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
-        expectedValue: Number((ev * 100).toFixed(2)),
-        winner: match.winner, won: candidate.outcome, stake,
-        profit: Number(profit.toFixed(4)),
-        closingLineValue: clv === null ? null : Number((clv * 100).toFixed(2))
-      });
-    }
+    const qualifying = candidates
+      .map(candidate => ({ ...candidate, ev: candidate.probability * candidate.odds - 1 }))
+      .filter(candidate => candidate.odds >= minOdds && candidate.ev >= minEv)
+      .sort((a, b) => b.ev - a.ev || a.side.localeCompare(b.side));
+    // Match the live portfolio rule: never back both sides of one match.
+    const candidate = qualifying[0];
+    if (!candidate) continue;
+    const ev = candidate.ev;
+    const profit = candidate.outcome ? stake * (candidate.odds - 1) : -stake;
+    const closeMarket = noVig(closing.oddsA, closing.oddsB);
+    const closeProbability = candidate.side === "A" ? closeMarket.a : closeMarket.b;
+    const clv = closing.captured > opening.captured
+      ? candidate.odds * closeProbability - 1
+      : null;
+    if (clv !== null) { clvTotal += clv; clvCount++; }
+    bets.push({
+      matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
+      odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
+      expectedValue: Number((ev * 100).toFixed(2)),
+      winner: match.winner, won: candidate.outcome, stake,
+      profit: Number(profit.toFixed(4)),
+      closingLineValue: clv === null ? null : Number((clv * 100).toFixed(2))
+    });
   }
 
   const totalStake = bets.length * stake;
