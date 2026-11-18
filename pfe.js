@@ -498,7 +498,10 @@
         side: row.side,
         playerId: Number.isSafeInteger(Number(row.playerId)) && Number(row.playerId) > 0 ? Number(row.playerId) : null,
         opponentId: Number.isSafeInteger(Number(row.opponentId)) && Number(row.opponentId) > 0 ? Number(row.opponentId) : null,
-        modelVersion: typeof row.modelVersion === "string" ? row.modelVersion : null
+        modelVersion: typeof row.modelVersion === "string" ? row.modelVersion : null,
+        surface: typeof row.surface === "string" ? row.surface.trim().toLowerCase() : "",
+        tour: ["atp", "wta", "challenger", "itf", "juniors"].includes(String(row.tour || "").toLowerCase())
+          ? String(row.tour).toLowerCase() : ""
       };
       const previous = byModelMatch.get(key);
       if (!previous || Date.parse(record.capturedAt) < Date.parse(previous.capturedAt)) byModelMatch.set(key, record);
@@ -831,13 +834,24 @@
       const middle = Math.floor(sorted.length / 2);
       const probability = sorted.length % 2
         ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+      const selectedArchiveRows = selectedQuotes.flatMap(quote => {
+        const provider = providers.get(quote.bookmaker.toLocaleLowerCase());
+        const pair = provider?.quotes.get(String(quote.capturedAt));
+        return pair ? [pair.A[0], pair.B[0]] : [];
+      });
+      const surfaces = [...new Set(selectedArchiveRows.map(row => String(row.surface || "").trim().toLowerCase()).filter(Boolean))];
+      const tours = [...new Set(selectedArchiveRows.map(row => String(row.tour || "").trim().toLowerCase()).filter(Boolean))];
+      if (surfaces.length > 1 || tours.length > 1) {
+        rejected.push({ matchId, reason: "cross_quote_segment_mismatch" });
+        continue;
+      }
       records.push({
         modelId: "market-consensus", matchId, probability,
         outcome: selectedResult.winner === 1 ? 1 : 0,
         capturedAt: new Date(latestCapture).toISOString(),
         matchStart: new Date(earliestMatchStart).toISOString(),
         resultVerified: true, bookmakerCount: providerProbabilities.length,
-        bookmakers: providerNames
+        bookmakers: providerNames, surface: surfaces[0] || "", tour: tours[0] || ""
       });
     }
     return {
@@ -878,7 +892,11 @@
         rejected.push({ modelId, matchId, reason: "duplicate_match_model" });
         continue;
       }
-      models.set(modelId, { modelId, matchId, probability, outcome, capturedAt, matchStart });
+      models.set(modelId, {
+        modelId, matchId, probability, outcome, capturedAt, matchStart,
+        surface: typeof row.surface === "string" ? row.surface.trim().toLowerCase() : "",
+        tour: typeof row.tour === "string" ? row.tour.trim().toLowerCase() : ""
+      });
     }
     const matched = [];
     let excludedOutcomeConflict = 0, excludedScheduleConflict = 0, excludedUnpaired = 0;
@@ -889,8 +907,12 @@
       const starts = rows.map(row => row.matchStart);
       if (outcomes.size !== 1) { excludedOutcomeConflict++; continue; }
       if (Math.max(...starts) - Math.min(...starts) > 60000) { excludedScheduleConflict++; continue; }
+      const knownSurfaces = [...new Set(rows.map(row => row.surface).filter(Boolean))];
+      const knownTours = [...new Set(rows.map(row => row.tour).filter(Boolean))];
       matched.push({
         matchId, matchStart: Math.min(...starts),
+        surface: knownSurfaces.length === 1 ? knownSurfaces[0] : "",
+        tour: knownTours.length === 1 ? knownTours[0] : "",
         rows: Object.fromEntries(rows.map(row => [row.modelId, row]))
       });
     }
@@ -919,6 +941,39 @@
         stability
       };
     });
+    const makeScored = matches => {
+      const eloId = requested.includes("general-elo-v2") ? "general-elo-v2" : requested[0];
+      const modelRows = requested.map(id => matches.map(match => match.rows[id]));
+      const combinedRows = matches.map(match => ({
+        probability: requested.reduce((sum, id) => sum + match.rows[id].probability, 0) / requested.length,
+        outcome: match.rows[eloId].outcome
+      }));
+      const baselineRows = matches.map(match => ({ probability: 0.5, outcome: match.rows[eloId].outcome }));
+      return {
+        models: Object.fromEntries(requested.map((id, index) => [id, scorePredictions(modelRows[index])])),
+        combined: scorePredictions(combinedRows), baseline: scorePredictions(baselineRows)
+      };
+    };
+    const trainingScores = makeScored(trainingMatches), validationScores = makeScored(validationMatches);
+    const segmentGroups = [];
+    for (const dimension of ["surface", "tour"]) {
+      const values = [...new Set(matched.map(match => match[dimension]).filter(Boolean))].sort();
+      for (const value of values) {
+        const trainMatches = trainingMatches.filter(match => match[dimension] === value);
+        const validationSegment = validationMatches.filter(match => match[dimension] === value);
+        const train = makeScored(trainMatches), validation = makeScored(validationSegment);
+        const enoughSegment = trainMatches.length >= minTraining && validationSegment.length >= minValidation;
+        segmentGroups.push({
+          dimension, value, trainingSampleSize: trainMatches.length,
+          validationSampleSize: validationSegment.length, status: enoughSegment ? "validated" : "preliminary",
+          training: train, validation,
+          validationDeltaBrier: validation.combined.brierScore !== null && validation.models[requested[0]]?.brierScore !== null
+            ? validation.combined.brierScore - validation.models[requested[0]].brierScore : null,
+          validationDeltaLogLoss: validation.combined.logLoss !== null && validation.models[requested[0]]?.logLoss !== null
+            ? validation.combined.logLoss - validation.models[requested[0]].logLoss : null
+        });
+      }
+    }
     const referenceId = requested.includes("general-elo-v2") ? "general-elo-v2" : requested[0];
     const reference = models.find(model => model.modelId === referenceId);
     const comparisons = models.filter(model => model.modelId !== referenceId).map(model => ({
@@ -946,7 +1001,8 @@
       excluded: { unpaired: excludedUnpaired, outcomeConflict: excludedOutcomeConflict,
         scheduleConflict: excludedScheduleConflict, invalid: rejected.length },
       models, comparisons, rejected, minTraining, minValidation,
-      note: "Сравнение выполняется только на общих матчах с одинаковым подтверждённым исходом. Веса вычисляются по ранней обучающей части; окна устойчивости — только по отложенной части. Меньший Brier Score и Log Loss лучше."
+      trainingScores, validationScores, segments: segmentGroups,
+      note: "Объединённый прогноз — равновесное среднее независимых Elo и рынка, как при нейтральных весах PFE. Все сегменты используют общую хронологическую границу 70/30; малые сегменты предварительные. Базовый ориентир — постоянная вероятность 50%. Меньший Brier Score и Log Loss лучше."
     };
   }
 
