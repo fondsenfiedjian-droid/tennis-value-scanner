@@ -2969,3 +2969,48 @@ test("settings provide a persistent app-wide switch between black and olive skin
   assert.ok(frontendSource.includes('body[data-skin="olive"]'));
   assert.ok(frontendSource.includes('#626744'));
 });
+
+
+test("PFE fixed-weight sensitivity evaluates five Elo/market ratios on one chronological holdout", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const rows = [];
+  for (let i = 0; i < 80; i++) {
+    const start = Date.parse("2025-01-01T12:00:00Z") + i * 86400000;
+    const outcome = i % 2;
+    const base = { matchId: String(5000 + i), outcome, resultVerified: true,
+      capturedAt: new Date(start - 3600000).toISOString(),
+      matchStart: new Date(start).toISOString(),
+      surface: i % 2 ? "hard" : "clay", tour: i % 3 ? "atp" : "wta" };
+    rows.push({ ...base, modelId: "general-elo-v2", probability: outcome ? 0.62 : 0.38 });
+    rows.push({ ...base, modelId: "market-consensus", probability: outcome ? 0.78 : 0.22 });
+  }
+  const result = sandbox.pfe.compareModelHistory(rows, { minTraining: 10, minValidation: 5 });
+  assert.equal(result.weightSensitivity.length, 5);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.weightSensitivity.map(row => row.label))),
+    ["100/0", "75/25", "50/50", "25/75", "0/100"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.weightSensitivity.map(row => row.marketWeight))),
+    [0, 0.25, 0.5, 0.75, 1]);
+  assert.ok(result.weightSensitivity.every(row => row.training.sampleSize === 56));
+  assert.ok(result.weightSensitivity.every(row => row.validation.sampleSize === 24));
+  assert.ok(result.weightSensitivity.every(row => row.segments.some(segment =>
+    segment.dimension === "surface" && segment.value === "hard")));
+  assert.ok(result.weightSensitivity.every(row => row.segments.every(segment =>
+    segment.trainingSampleSize + segment.validationSampleSize <= 80)));
+  assert.equal(result.weightSensitivity[2].validation.brierScore,
+    result.validationScores.combined.brierScore);
+});
+
+test("PFE fixed-weight sensitivity stays empty when Elo and market are not both selected", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    modelId: "general-elo-v2", matchId: "single-" + i, probability: 0.6,
+    outcome: i % 2, resultVerified: true,
+    capturedAt: "2025-01-01T10:00:00Z", matchStart: "2025-01-01T12:00:00Z"
+  }));
+  const result = sandbox.pfe.compareModelHistory(rows, { modelIds: ["general-elo-v2"] });
+  assert.equal(result.weightSensitivity.length, 0);
+});
