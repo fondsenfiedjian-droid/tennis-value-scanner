@@ -689,6 +689,11 @@
   function savePredictionSnapshot(match,el,result){
     const playerA=el.dataset.nameA||result.playerA||'Игрок 1';
     const playerB=el.dataset.nameB||result.playerB||'Игрок 2';
+    const matchPlayers=match.players||{};
+    const sourceA=matchPlayers.p1||match.player1||{};
+    const sourceB=matchPlayers.p2||match.player2||{};
+    const playerIdA=Number.isSafeInteger(Number(sourceA.id))&&Number(sourceA.id)>0?Number(sourceA.id):null;
+    const playerIdB=Number.isSafeInteger(Number(sourceB.id))&&Number(sourceB.id)>0?Number(sourceB.id):null;
     const date=matchDate(match);
     const rawMatchId=match.id??match.match_id;
     const numericMatchId=Number(rawMatchId);
@@ -701,8 +706,8 @@
     el.dataset.surface=surface;
     const archive=readPredictionArchive(),now=Date.now();
     const entries=[
-      {side:'A',player:playerA,opponent:playerB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityA),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
-      {side:'B',player:playerB,opponent:playerA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityB),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
+      {side:'A',player:playerA,opponent:playerB,playerId:playerIdA,opponentId:playerIdB,odds:Number(el.dataset.oddsA),bookmaker:String(el.dataset.bookmakerA||''),probability:Number(result.probabilityA),rating:Number(result.ratingA),ratingAsOf:validRatingDate(result.ratingsAsOfA)},
+      {side:'B',player:playerB,opponent:playerA,playerId:playerIdB,opponentId:playerIdA,odds:Number(el.dataset.oddsB),bookmaker:String(el.dataset.bookmakerB||''),probability:Number(result.probabilityB),rating:Number(result.ratingB),ratingAsOf:validRatingDate(result.ratingsAsOfB)}
     ];
     let changed=false;
     for(const entry of entries){
@@ -710,7 +715,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&String(row.bookmaker||'')===entry.bookmaker&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&Math.abs(Number(row.rating)-entry.rating)<0.001&&row.ratingAsOf===entry.ratingAsOf&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,tour,surface,bookmaker:entry.bookmaker,player:entry.player,opponent:entry.opponent,playerId:entry.playerId,opponentId:entry.opponentId,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,ratingAsOf:entry.ratingAsOf,model:'general-elo-v2',capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -732,7 +737,9 @@
         tour:['atp','wta','challenger','itf','juniors'].includes(String(row.tour||'').toLowerCase())?String(row.tour).toLowerCase():'',
         surface:typeof row.surface==='string'?row.surface.slice(0,40):'',
         bookmaker:typeof row.bookmaker==='string'?row.bookmaker.trim().slice(0,60):'',
-        player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
+        player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),
+        playerId:Number.isSafeInteger(Number(row.playerId))&&Number(row.playerId)>0?Number(row.playerId):null,
+        opponentId:Number.isSafeInteger(Number(row.opponentId))&&Number(row.opponentId)>0?Number(row.opponentId):null,side:row.side,
         odds,probability,ev:Number(((probability/100*odds-1)*100).toFixed(2)),rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,ratingAsOf:validRatingDate(row.ratingAsOf),
         matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
         resultOutcome:['completed','retired','walkover','default','abandoned','unresolved','cancelled'].includes(row.resultOutcome)?row.resultOutcome:null,
@@ -773,8 +780,10 @@
     return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
   }
   function validateArchivedMatchIdentity(rows,result,id){
-    const p1=normalizeResultPlayerName(result?.players?.p1?.name);
-    const p2=normalizeResultPlayerName(result?.players?.p2?.name);
+    const apiP1=result?.players?.p1||{},apiP2=result?.players?.p2||{};
+    const p1=normalizeResultPlayerName(apiP1.name),p2=normalizeResultPlayerName(apiP2.name);
+    const apiP1Id=Number.isSafeInteger(Number(apiP1.id))&&Number(apiP1.id)>0?Number(apiP1.id):null;
+    const apiP2Id=Number.isSafeInteger(Number(apiP2.id))&&Number(apiP2.id)>0?Number(apiP2.id):null;
     if(!p1||!p2||p1===p2)return false;
     const matchRows=rows.filter(row=>Number(row.matchId)===id&&['A','B'].includes(row.side));
     if(!matchRows.length)return false;
@@ -786,6 +795,12 @@
       const expectedPlayer=row.side==='A'?p1:p2;
       const expectedOpponent=row.side==='A'?p2:p1;
       if(player!==expectedPlayer||opponent!==expectedOpponent)return false;
+      const apiPlayerId=row.side==='A'?apiP1Id:apiP2Id;
+      const apiOpponentId=row.side==='A'?apiP2Id:apiP1Id;
+      const storedPlayerId=Number.isSafeInteger(Number(row.playerId))&&Number(row.playerId)>0?Number(row.playerId):null;
+      const storedOpponentId=Number.isSafeInteger(Number(row.opponentId))&&Number(row.opponentId)>0?Number(row.opponentId):null;
+      if(storedPlayerId!==null&&apiPlayerId!==null&&storedPlayerId!==apiPlayerId)return false;
+      if(storedOpponentId!==null&&apiOpponentId!==null&&storedOpponentId!==apiOpponentId)return false;
       matched++;
     }
     return matched>0;
