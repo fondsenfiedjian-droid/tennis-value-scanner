@@ -47,6 +47,11 @@ function addResult(map, id, won, surface) {
 export function runBacktest(matches, options = {}) {
   const k = Number.isFinite(options.kFactor) ? options.kFactor : 32;
   const minSurfaceMatches = Number.isInteger(options.minSurfaceMatches) ? options.minSurfaceMatches : 5;
+  const evaluationStart = options.evaluationStart == null ? null : dateKey(options.evaluationStart);
+  const evaluationEnd = options.evaluationEnd == null ? null : dateKey(options.evaluationEnd);
+  if (options.evaluationStart != null && !evaluationStart) throw new RangeError("Invalid evaluationStart; expected a real YYYYMMDD date");
+  if (options.evaluationEnd != null && !evaluationEnd) throw new RangeError("Invalid evaluationEnd; expected a real YYYYMMDD date");
+  if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
   const clean = matches.map(row => {
@@ -85,13 +90,16 @@ export function runBacktest(matches, options = {}) {
         h2h: (ra - rb) + 60 * h2hDiff,
         combined: (ra - rb) + (useSurface ? 0.3 * ((surfaceA - surfaceB) - (ra - rb)) : 0) + 80 * (formA - formB) + 60 * h2hDiff
       };
-      for (const [name, delta] of Object.entries(features)) {
-        const probability = sigmoid(1500 + delta, 1500);
-        const metric = totals[name];
-        metric.n++;
-        metric.brier += (probability - 1) ** 2;
-        metric.logLoss -= Math.log(Math.max(1e-15, probability));
-        metric.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
+      const insideEvaluationWindow = (!evaluationStart || date >= evaluationStart) && (!evaluationEnd || date <= evaluationEnd);
+      if (insideEvaluationWindow) {
+        for (const [name, delta] of Object.entries(features)) {
+          const probability = sigmoid(1500 + delta, 1500);
+          const metric = totals[name];
+          metric.n++;
+          metric.brier += (probability - 1) ** 2;
+          metric.logLoss -= Math.log(Math.max(1e-15, probability));
+          metric.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
+        }
       }
       updates.push(match);
     }
@@ -126,9 +134,14 @@ export function runBacktest(matches, options = {}) {
     }
   }
 
+  const evaluatedMatches = totals.elo.n;
   return {
     matches: clean.length,
     excluded: matches.length - clean.length,
+    evaluationStart,
+    evaluationEnd,
+    evaluatedMatches,
+    warmupMatches: evaluationStart ? clean.filter(match => match.date < evaluationStart).length : 0,
     metrics: Object.fromEntries(Object.entries(totals).map(([name, value]) => [name, {
       matches: value.n,
       brier: value.n ? Number((value.brier / value.n).toFixed(5)) : null,
@@ -139,9 +152,21 @@ export function runBacktest(matches, options = {}) {
 }
 
 async function main() {
-  const files = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const options = {};
+  const files = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--from" || args[i] === "--to") {
+      const key = args[i] === "--from" ? "evaluationStart" : "evaluationEnd";
+      if (!args[i + 1]) throw new Error(`Missing date after ${args[i]}`);
+      options[key] = args[++i];
+    } else if (args[i].startsWith("--from=")) options.evaluationStart = args[i].slice(7);
+    else if (args[i].startsWith("--to=")) options.evaluationEnd = args[i].slice(5);
+    else if (args[i].startsWith("--")) throw new Error(`Unknown option: ${args[i]}`);
+    else files.push(args[i]);
+  }
   if (!files.length) {
-    console.error("Usage: node scripts/backtest.mjs path/to/atp_matches_2025.csv [more CSV files...]");
+    console.error("Usage: node scripts/backtest.mjs [--from YYYYMMDD] [--to YYYYMMDD] path/to/atp_matches_2025.csv [more CSV files...]");
     process.exitCode = 2;
     return;
   }
@@ -151,9 +176,10 @@ async function main() {
     all.push(...rows);
     console.error(`Loaded ${rows.length} rows from ${basename(file)}`);
   }
-  const report = runBacktest(all);
+  const report = runBacktest(all, options);
   console.log(JSON.stringify(report, null, 2));
   console.error("Lower Brier/log-loss is better. Accuracy is secondary; this is not ROI.");
+  console.error("Matches before --from are warm-up only and do not enter evaluation metrics.");
   console.error("The feature weights are exploratory candidates, not production model settings.");
 }
 
