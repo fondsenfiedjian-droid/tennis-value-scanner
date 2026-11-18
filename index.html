@@ -262,6 +262,8 @@
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
+      const scrapedAt=new Date(o.scrapedAt);
+      if(!o.scrapedAt||Number.isNaN(scrapedAt.getTime())||Date.now()-scrapedAt.getTime()>90*60*1000||scrapedAt.getTime()-Date.now()>5*60*1000)return false;
       const value=Number(o.oddsDecimal);
       return Number.isFinite(value)&&value>1;
     });
