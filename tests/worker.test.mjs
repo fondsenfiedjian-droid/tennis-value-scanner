@@ -2430,6 +2430,12 @@ test("PFE serve-return adapter respects ULTRA availability, sample sizes and mis
   assert.equal(ready.matchesWithStats, 10);
   assert.equal(ready.metrics.firstServePointsWon.pct, 430 / 620 * 100);
   assert.equal(ready.availableMetrics, 9);
+  const sparseMetric = pfe.normalizeServeReturnProfile({
+    ...profile,
+    serve: { ...profile.serve, first_serve_points_won: ratio(43, 62, 2) }
+  });
+  assert.equal(sparseMetric.status, "insufficient_sample");
+  assert.equal(sparseMetric.reason, "insufficient_metric_sample");
   const small = pfe.normalizeServeReturnProfile(profile, { minMatches: 11 });
   assert.equal(small.status, "insufficient_sample");
   const missing = pfe.normalizeServeReturnProfile({
