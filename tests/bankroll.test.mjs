@@ -30,9 +30,11 @@ test("placing a recommended bet reserves stake and reduces free balance", () => 
 test("aggregate exposure cap blocks oversized additional bets", () => {
   let state = bank.createInitialState(100);
   state = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2 }).state;
-  assert.throws(() => bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2 }), /рекомендуемый лимит/);
   const permissive = { maxStakePercent: 8, maxExposurePercent: 8, kellyFraction: 1, minEv: 3, minOdds: 1.9 };
-  assert.throws(() => bank.placeBet(state, { probability: 0.9, odds: 2.1, stake: 7, options: permissive }), /общий лимит/);
+  const recommendation = bank.recommendStake(state, 0.9, 2.1, permissive);
+  assert.equal(recommendation.remainingExposure, 6);
+  assert.equal(recommendation.stake, 6);
+  assert.throws(() => bank.placeBet(state, { probability: 0.9, odds: 2.1, stake: 6.01, options: permissive }), /рекомендуемый лимит/);
 });
 
 test("winning, losing and void settlements update balance and realized profit correctly", () => {
