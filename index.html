@@ -1700,7 +1700,7 @@
       return {accessStatus:'invalid_player_id',recent:null,serve:null};
     }
     const cached=pfePlayerStatsCache.get(id);
-    if(cached&&Date.now()-cached.savedAt<6*60*60*1000)return cached.value;
+    if(cached&&Date.now()-cached.savedAt<(cached.value?.accessStatus==='available'?6*60*60*1000:2*60*1000))return cached.value;
     const task=(async()=>{
       try{
         const response=await fetch(API+'/player-stats?id='+encodeURIComponent(id));
