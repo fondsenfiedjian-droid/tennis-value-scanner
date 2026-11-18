@@ -336,6 +336,58 @@ export function runOddsBacktest(rows, options = {}) {
 
   const totalStake = bets.length * stake;
   const profit = bets.reduce((sum, bet) => sum + bet.profit, 0);
+  let thresholdSensitivity = null;
+  if (options.thresholdSensitivity !== false && matches.size) {
+    // Split by UTC match day so same-day matches cannot straddle the holdout boundary.
+    const matchDays = [...new Set([...matches.values()].map(match =>
+      new Date(match.start).toISOString().slice(0, 10)))].sort();
+    const splitAt = Math.floor(matchDays.length * 0.7);
+    const trainingDays = new Set(matchDays.slice(0, splitAt));
+    const validationDays = new Set(matchDays.slice(splitAt));
+    const trainingIds = new Set([...matches.values()]
+      .filter(match => trainingDays.has(new Date(match.start).toISOString().slice(0, 10))).map(match => match.id));
+    const validationIds = new Set([...matches.values()]
+      .filter(match => validationDays.has(new Date(match.start).toISOString().slice(0, 10))).map(match => match.id));
+    const summarize = report => ({
+      matches: report.matches, bets: report.bets, wins: report.wins, losses: report.losses,
+      totalStake: report.totalStake, profit: report.profit, roiPercent: report.roiPercent,
+      yieldPercent: report.roiPercent,
+      averageExpectedValuePercent: report.averageExpectedValuePercent,
+      averageClosingLineValuePercent: report.averageClosingLineValuePercent,
+      clvMeasured: report.closingLineValueSample.measured,
+      maxDrawdownPercent: report.bankrollSimulation.strategies.flat1Euro.maxDrawdownPercent,
+      sampleAssessment: report.statisticalSummary.sampleAssessment
+    });
+    const runSubset = (ids, ev, odds) => {
+      const subset = rows.filter(row => ids.has(String(row.match_id ?? "").trim()));
+      return summarize(runOddsBacktest(subset, {
+        ...options, minEv: ev, minOdds: odds, thresholdSensitivity: false
+      }));
+    };
+    const evThresholds = [0.01, 0.02, 0.03, 0.05, 0.07];
+    const oddsFloors = [1.9, 2.1, 2.3, 2.5];
+    const scenarios = [];
+    for (const minEvThreshold of evThresholds) {
+      for (const minOddsFloor of oddsFloors) {
+        scenarios.push({
+          minEv: minEvThreshold, minEvPercent: Number((minEvThreshold * 100).toFixed(1)),
+          minOdds: minOddsFloor,
+          training: runSubset(trainingIds, minEvThreshold, minOddsFloor),
+          validation: runSubset(validationIds, minEvThreshold, minOddsFloor)
+        });
+      }
+    }
+    thresholdSensitivity = {
+      status: validationDays.size ? "evaluated" : "insufficient_data",
+      split: "chronological_70_30_by_match_day",
+      trainingDays: trainingDays.size, validationDays: validationDays.size,
+      trainingMatches: trainingIds.size, validationMatches: validationIds.size,
+      evThresholdsPercent: evThresholds.map(value => value * 100),
+      minimumOddsFloors: oddsFloors,
+      scenarios,
+      note: "Пороговые комбинации фиксированы заранее и показаны на одной хронологической отложенной части. Нельзя выбирать лучший порог по validation и считать его независимым доказательством преимущества. ROI/Yield рассчитаны по flat stake; просадка — по стратегии Flat €1 с ограничениями live-портфеля. Малые выборки не подтверждают устойчивость."
+    };
+  }
   return {
     matches: matches.size,
     rejectedSnapshots,
@@ -361,6 +413,7 @@ export function runOddsBacktest(rows, options = {}) {
     closingLineValueSample: { measured: clvCount, missingQualifyingClose: missingClosingSnapshots, maxClosingAgeMinutes },
     averageClosingOverroundPercent: closingOverroundCount ? Number((closingOverroundTotal / closingOverroundCount).toFixed(2)) : null,
     statisticalSummary: performanceSummary(bets),
+    thresholdSensitivity,
     byOddsRange: summarizeOddsBuckets(bets),
     methodology: {
       entryPrice: "earliest valid pre-match snapshot within the configured maximum snapshot age",
