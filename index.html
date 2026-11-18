@@ -583,6 +583,7 @@
   function persistPredictionArchive(rows){
     if(archiveReadError)return {saved:0,dropped:rows.length,error:archiveReadError};
     const normalized=limitPredictionArchive(rows);
+    archiveMemoryRows=normalized.map(row=>({...row}));
     for(const limit of [MAX_ARCHIVE_ENTRIES,2000,1000,600,300]){
       const kept=limitPredictionArchive(normalized,limit);
       try{
