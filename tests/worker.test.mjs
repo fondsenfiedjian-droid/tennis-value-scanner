@@ -147,6 +147,22 @@ test("player stats endpoint reports forbidden access without inventing ULTRA ent
   assert.equal(payload.upstreamStatus, 403);
 });
 
+test("player stats endpoint preserves rate-limit retry guidance and identifies merged player IDs", async () => {
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Rate limited" }), {
+    status: 429, headers: { "Retry-After": "30" }
+  });
+  const limited = await call("/player-stats?id=123");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("Retry-After"), "30");
+  assert.equal(limited.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
+  assert.equal((await limited.json()).accessStatus, "rate_limited");
+
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Player merged" }), { status: 410 });
+  const merged = await call("/player-stats?id=123");
+  assert.equal(merged.status, 410);
+  assert.equal((await merged.json()).accessStatus, "player_merged");
+});
+
 test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
 });
