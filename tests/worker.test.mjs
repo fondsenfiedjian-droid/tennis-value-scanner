@@ -2257,7 +2257,7 @@ test("PFE interface states that serve-return model requires verified ULTRA data 
 test("PFE calculates exact standard service-game hold probability from point probability", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const calculate = sandbox.pfe.calculateHoldProbability;
   assert.equal(calculate(0), 0);
   assert.equal(calculate(0.5), 0.5);
