@@ -23,7 +23,7 @@ function makeArchiveStore(seed = [], options = {}) {
   const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, archiveOddsQuality, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, archiveOddsQuality, archiveProbabilityCalibration, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -669,6 +669,72 @@ test("result endpoint proxies one match with the configured API key", async () =
   assert.equal(body.winner, 1);
 });
 
+test("probability calibration uses one latest pre-match A-side prediction per verified match", () => {
+  const { archiveProbabilityCalibration } = makeArchiveStore();
+  const start = Date.parse("2026-11-20T12:00:00Z");
+  const rows = [
+    { matchId: 1, matchKey: "1", side: "A", probability: 60, capturedAt: start-60000, matchDate: new Date(start).toISOString(), resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 1, matchKey: "1", side: "B", probability: 40, capturedAt: start-60000, matchDate: new Date(start).toISOString(), resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 1, matchKey: "1", side: "A", bookmaker: "Betclic", probability: 60, capturedAt: start-60000, matchDate: new Date(start).toISOString(), resultOutcome: "completed", resultWinner: 1, resultVersion: 1 },
+    { matchId: 1, matchKey: "1", side: "A", probability: 70, capturedAt: start-30000, matchDate: new Date(start).toISOString(), resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ];
+  const result = archiveProbabilityCalibration(rows);
+  assert.equal(result.sampleSize, 1);
+  assert.equal(result.buckets[0].lower, 70);
+  assert.equal(result.buckets[0].count, 1);
+  assert.ok(Math.abs(result.brierScore-0.09)<1e-12);
+  assert.ok(result.preliminary);
+});
+
+test("probability calibration places exact bucket boundaries and computes proper scores", () => {
+  const { archiveProbabilityCalibration } = makeArchiveStore();
+  const start = Date.parse("2026-11-20T12:00:00Z");
+  const make = (id, probability, winner) => ({ matchId:id, matchKey:String(id), side:"A", probability,
+    capturedAt:start-1000, matchDate:new Date(start).toISOString(), resultOutcome:"completed", resultWinner:winner });
+  const result = archiveProbabilityCalibration([make(1,55,1),make(2,100,2),make(3,0,2)]);
+  assert.equal(result.sampleSize,3);
+  assert.deepEqual(result.buckets.map(bucket=>[bucket.lower,bucket.upper,bucket.count]),[[0,5,1],[55,60,1],[95,100,1]]);
+  assert.ok(Math.abs(result.brierScore-(0.2025+1+0)/3)<1e-12);
+  assert.ok(Number.isFinite(result.logLoss));
+});
+
+test("probability calibration excludes unresolved, retired, malformed, missing-date and post-start records", () => {
+  const { archiveProbabilityCalibration } = makeArchiveStore();
+  const start = Date.parse("2026-11-20T12:00:00Z");
+  const make = (id, extra={}) => ({ matchId:id,matchKey:String(id),side:"A",probability:65,capturedAt:start-1000,
+    matchDate:new Date(start).toISOString(),resultOutcome:"completed",resultWinner:1,...extra });
+  const rows = [
+    make(1,{resultOutcome:"retired"}),
+    make(2,{probability:null}),
+    make(3,{capturedAt:start}),
+    make(4,{matchDate:null}),
+    make(5,{resultWinner:null}),
+    { ...make(6), side:"B" }
+  ];
+  const result=archiveProbabilityCalibration(rows);
+  assert.equal(result.sampleSize,0);
+  assert.equal(result.excluded,1);
+  assert.equal(result.postStart,1);
+  assert.equal(result.missingStart,1);
+  assert.equal(result.invalid,1);
+  assert.equal(result.ambiguous,1);
+});
+
+test("probability calibration rejects conflicting latest snapshots and counts duplicate exact snapshots once", () => {
+  const { archiveProbabilityCalibration } = makeArchiveStore();
+  const start=Date.parse("2026-11-20T12:00:00Z");
+  const base={side:"A",capturedAt:start-1000,matchDate:new Date(start).toISOString(),resultOutcome:"completed",resultWinner:1};
+  const rows=[
+    {...base,matchId:1,matchKey:"1",probability:60},
+    {...base,matchId:1,matchKey:"1",probability:60},
+    {...base,matchId:2,matchKey:"2",probability:60},
+    {...base,matchId:2,matchKey:"2",probability:65}
+  ];
+  const result=archiveProbabilityCalibration(rows);
+  assert.equal(result.sampleSize,1);
+  assert.equal(result.ambiguous,1);
+});
+
 test("archive applies only verified completed results and honours result revisions", () => {
   const { applyVerifiedMatchResult, archiveResultStats } = makeArchiveStore();
   const rows = [
@@ -1009,7 +1075,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v42/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1073,7 +1139,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v42/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1089,7 +1155,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v42/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1236,7 +1302,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v42/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v43/);
 });
 
 
