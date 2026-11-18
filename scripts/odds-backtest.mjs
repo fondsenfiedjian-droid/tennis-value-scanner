@@ -284,7 +284,15 @@ export function runOddsBacktest(rows, options = {}) {
     if (!matches.get(id).tour) matches.get(id).tour = tour;
     if (!matches.get(id).surface) matches.get(id).surface = surface;
     if (!matches.get(id).bookmaker) matches.get(id).bookmaker = bookmaker;
-    matches.get(id).snapshots.push({ captured, oddsA, oddsB, probabilityA, row: index });
+    const snapshotGroup = matches.get(id).snapshots;
+    const sameTime = snapshotGroup.find(snapshot => snapshot.captured === captured);
+    if (sameTime) {
+      if (sameTime.oddsA !== oddsA || sameTime.oddsB !== oddsB || sameTime.probabilityA !== probabilityA) {
+        throw new Error("Conflicting duplicate timestamp snapshot for match_id " + id);
+      }
+      continue;
+    }
+    snapshotGroup.push({ captured, oddsA, oddsB, probabilityA, row: index });
   }
 
   const bets = [];
