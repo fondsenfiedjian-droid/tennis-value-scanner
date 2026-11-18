@@ -84,7 +84,26 @@ export function runBacktest(matches, options = {}) {
     logLoss: value.n ? Number((value.logLoss / value.n).toFixed(5)) : null,
     accuracy: value.n ? Number((value.correct / value.n * 100).toFixed(2)) : null
   }]));
-  const makeMetricBucket = () => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0 }]));
+  const makeMetricBucket = () => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 })) }]));
+  const addCalibration = (bucket, probability, favouriteWon) => {
+    const index = Math.min(9, Math.max(0, Math.floor((probability - 0.5) * 20)));
+    const bin = bucket.calibration[index];
+    bin.n++;
+    bin.predicted += probability;
+    bin.wins += favouriteWon ? 1 : 0;
+  };
+  const formatCalibration = bucket => {
+    const bins = bucket.calibration.map((bin, index) => ({
+      range: `${(50 + index * 5)}-${(55 + index * 5)}%`,
+      matches: bin.n,
+      predicted: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
+      actual: bin.n ? Number((bin.wins / bin.n * 100).toFixed(2)) : null,
+      gap: bin.n ? Number(((bin.predicted / bin.n - bin.wins / bin.n) * 100).toFixed(2)) : null
+    }));
+    const used = bins.filter(bin => bin.matches);
+    const ece = used.reduce((sum, bin) => sum + bin.matches * Math.abs(bin.gap) / 100, 0) / (bucket.n || 1);
+    return { expectedCalibrationError: Number((ece * 100).toFixed(2)), bins };
+  };
   const clean = matches.map(row => {
     const date = dateKey(row.tourney_date);
     const winner = String(row.winner_id ?? ""), loser = String(row.loser_id ?? "");
@@ -142,6 +161,11 @@ export function runBacktest(matches, options = {}) {
           addMetric(totals[name], probability);
           addMetric(byYear.get(year)[name], probability);
           addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
+          const favouriteProbability = Math.max(probability, 1 - probability);
+          const favouriteWon = probability >= 0.5;
+          addCalibration(totals[name], favouriteProbability, favouriteWon);
+          addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
+          addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
         }
       }
       updates.push(match);
@@ -208,6 +232,7 @@ export function runBacktest(matches, options = {}) {
     evaluatedMatches,
     warmupMatches: evaluationStart ? uniqueClean.filter(match => match.date < evaluationStart).length : 0,
     metrics: formatMetrics(totals),
+    calibration: Object.fromEntries(Object.entries(totals).map(([name, bucket]) => [name, formatCalibration(bucket)])),
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
       bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
