@@ -764,6 +764,13 @@ test("concurrent predictions share in-flight player profile requests", async () 
   assert.equal(firstBody.ratingB, 1800);
 });
 
+test("bankroll backup restore can replace a corrupt stored record after explicit confirmation", () => {
+  assert.match(frontendSource, /function restoreBankrollBackup\(state\)/);
+  assert.match(frontendSource, /TVSBankroll\.parseBackup\(JSON\.parse\(localStorage\.getItem\(BANKROLL_KEY\)\)\)/);
+  assert.match(frontendSource, /if\(restoreBankrollBackup\(restored\)\)renderBankroll\(\)/);
+  assert.ok(frontendSource.includes("Текущие записи будут заменены."));
+});
+
 test("bankroll dashboard is connected to navigation and uses a separate versioned store", () => {
   assert.ok(frontendSource.includes('id="bankrollView"'));
   assert.ok(frontendSource.includes('id="navBankroll"'));
