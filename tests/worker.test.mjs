@@ -796,6 +796,8 @@ test("PWA app shell precaches the bankroll module and invalidates the previous c
 test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", () => {
   assert.match(frontendSource, /id="minOdds" type="number" min="1\.90" max="100" step="0\.05" value="1\.90"/);
   assert.match(frontendSource, /Math\.max\(1\.9,Number\(\$\('#minOdds'\)\.value\|\|1\.5\)\)/);
+  assert.match(frontendSource, /minOdds<1\.9/);
+  assert.match(frontendSource, /maxOdds>100/);
 });
 
 
