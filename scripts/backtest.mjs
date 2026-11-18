@@ -137,7 +137,7 @@ export function runBacktest(matches, options = {}) {
   if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0, winsSquared: 0, fractionalVariance: 0 })) }]));
-  const byYear = new Map(), bySurfaceMetrics = new Map();
+  const byYear = new Map(), bySurfaceMetrics = new Map(), byYearAndSurface = new Map();
   const yearlyObservations = new Map();
   const addMetric = (bucket, probability) => {
     bucket.n++;
@@ -241,11 +241,16 @@ export function runBacktest(matches, options = {}) {
         if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
         const surfaceKey = match.surface ?? "Unknown";
         if (!bySurfaceMetrics.has(surfaceKey)) bySurfaceMetrics.set(surfaceKey, makeMetricBucket());
+        const yearSurfaceKey = year + "|" + surfaceKey;
+        if (!byYearAndSurface.has(yearSurfaceKey)) byYearAndSurface.set(yearSurfaceKey, { matches: 0, metrics: makeMetricBucket() });
+        const yearSurfaceBucket = byYearAndSurface.get(yearSurfaceKey);
+        yearSurfaceBucket.matches++;
         for (const [name, delta] of Object.entries(features)) {
           const probability = sigmoid(1500 + delta, 1500);
           addMetric(totals[name], probability);
           addMetric(byYear.get(year)[name], probability);
           addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
+          addMetric(yearSurfaceBucket.metrics[name], probability);
           const favouriteProbability = Math.max(probability, 1 - probability);
           const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
           addCalibration(totals[name], favouriteProbability, favouriteWon);
@@ -366,6 +371,18 @@ export function runBacktest(matches, options = {}) {
       }
     }
   }
+  const byYearAndSurfaceReport = {};
+  for (const [key, bucket] of [...byYearAndSurface.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const parts = key.split("|");
+    const year = parts[0], surface = parts.slice(1).join("|");
+    if (!byYearAndSurfaceReport[year]) byYearAndSurfaceReport[year] = {};
+    byYearAndSurfaceReport[year][surface] = {
+      matches: bucket.matches,
+      sampleQuality: bucket.matches < 30 ? "low" : bucket.matches < 100 ? "limited" : "larger_sample",
+      metrics: formatMetrics(bucket.metrics)
+    };
+  }
+
   return {
     matches: uniqueClean.length,
     excluded: matches.length - clean.length,
@@ -380,7 +397,8 @@ export function runBacktest(matches, options = {}) {
     calibrationValidation,
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
-      bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)]))
+      bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
+      byYearAndSurface: byYearAndSurfaceReport
     }
   };
 }
