@@ -207,7 +207,7 @@ export default {
             headers: {
               ...cors,
               "Content-Type": "application/json; charset=utf-8",
-              "Cache-Control": "public, max-age=180",
+              "Cache-Control": "public, max-age=900",
               "X-Data-Cache": "MISS"
             }
           });
