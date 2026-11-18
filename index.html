@@ -151,15 +151,26 @@
   const open=()=>modal.classList.add('show'), close=()=>modal.classList.remove('show');
   $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=close;
   modal.addEventListener('click',e=>{if(e.target===modal)close()});
-  const saved=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
-  ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  function readSettings(){
+    try{
+      const value=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
+      return value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+    }catch(e){return {};}
+  }
+  function normalizeRefreshRate(value){
+    const minutes=Number(value);
+    return [0,30,60,180].includes(minutes)?minutes:60;
+  }
+  const saved=readSettings();
+  ['minEv','minOdds','maxOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
   let savedTours=Array.isArray(saved.tours)?saved.tours:null;
   if(!savedTours){try{savedTours=JSON.parse(localStorage.getItem('tvs-tours')||'null');}catch(e){}}
   if(Array.isArray(savedTours))tourChecks.forEach(input=>input.checked=savedTours.includes(input.dataset.tour));
   function selectedTours(){return tourChecks.filter(input=>input.checked).map(input=>input.dataset.tour);}
   function saveTours(){
-    const settings=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
+    const settings=readSettings();
     settings.tours=selectedTours();
     localStorage.setItem('tvs-settings',JSON.stringify(settings));
     localStorage.setItem('tvs-tours',JSON.stringify(settings.tours));
@@ -175,10 +186,19 @@
       alert('Проверь настройки: EV должен быть от 0 до 100%, минимальный коэффициент — не меньше 1, максимальный — не меньше минимального.');
       return;
     }
-    const data={}; ['minEv','minOdds','maxOdds','refreshRate'].forEach(id=>data[id]=$('#'+id).value);
+    const data=readSettings();
+    ['minEv','minOdds','maxOdds'].forEach(id=>data[id]=$('#'+id).value);
+    data.refreshRate=refreshRate;
     data.tours=selectedTours();
-    localStorage.setItem('tvs-settings',JSON.stringify(data));
-    localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
+    try{
+      localStorage.setItem('tvs-settings',JSON.stringify(data));
+      localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
+      const savedAgain=readSettings();
+      if(normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate)throw new Error('Настройка автообновления не сохранилась');
+    }catch(error){
+      alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
+      return;
+    }
     scheduleAutoRefresh();
     close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
@@ -605,7 +625,8 @@
   function scheduleAutoRefresh(){
     if(autoRefreshTimer)clearInterval(autoRefreshTimer);
     autoRefreshTimer=null;
-    const minutes=Number($('#refreshRate').value||0);
+    const minutes=normalizeRefreshRate(readSettings().refreshRate);
+    $('#refreshRate').value=String(minutes);
     nextAutoRefreshAt=minutes>0?Date.now()+minutes*60*1000:0;
     if(minutes>0){
       autoRefreshTimer=setInterval(()=>{
@@ -617,11 +638,18 @@
     }
   }
   document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden&&nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt){
-      const minutes=Number($('#refreshRate').value||0);
-      nextAutoRefreshAt=minutes>0?Date.now()+minutes*60*1000:0;
-      if(minutes>0)loadMatches();
+    if(!document.hidden){
+      const minutes=normalizeRefreshRate(readSettings().refreshRate);
+      if(minutes===0){nextAutoRefreshAt=0;return;}
+      if(!nextAutoRefreshAt)nextAutoRefreshAt=Date.now()+minutes*60*1000;
+      if(Date.now()>=nextAutoRefreshAt){
+        nextAutoRefreshAt=Date.now()+minutes*60*1000;
+        loadMatches();
+      }
     }
+  });
+  window.addEventListener('pageshow',()=>{
+    scheduleAutoRefresh();
   });
   async function loadMatches(){
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
