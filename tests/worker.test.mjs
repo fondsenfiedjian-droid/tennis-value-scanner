@@ -2173,7 +2173,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
     vm.runInNewContext(loader + "\nglobalThis.loadStats = loadPfePlayerStats;", sandbox);
     return { result: await sandbox.loadStats(123), calls };
   };
-  const partial = await runLoader({ accessStatus: "available", records: { recent: [] } });
+  const partial = await runLoader({ accessStatus: "available", stats: { records: { recent: [] } } });
   assert.equal(partial.result.accessStatus, "available");
   assert.equal(partial.result.recent.status, "ready_for_modeling");
   assert.equal(partial.result.recent.playerId, 123);
@@ -2182,7 +2182,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
   assert.equal(partial.calls.serve, 1);
   assert.equal(partial.calls.requested, "https://worker.test/player-stats?id=123");
 
-  const mismatch = await runLoader({ accessStatus: "available", player: { id: 456 }, records: { recent: [] } });
+  const mismatch = await runLoader({ accessStatus: "available", stats: { player: { id: 456 }, records: { recent: [] } } });
   assert.equal(mismatch.result.accessStatus, "player_identity_mismatch");
   assert.equal(mismatch.calls.recent, 0);
   assert.equal(mismatch.calls.serve, 0);
