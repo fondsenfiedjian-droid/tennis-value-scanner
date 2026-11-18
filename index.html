@@ -729,21 +729,43 @@
     return rows.map(row=>Number(row.matchId)===id?{...row,resultCheckedAt:now}:row);
   }
   function archiveResultStats(rows){
-    const latest=new Map();
+    const groups=new Map();
+    const outcomes=new Set(['completed','retired','walkover','default','abandoned','unresolved','cancelled']);
     for(const row of rows){
-      if(row.resultOutcome!=='completed'||![1,2].includes(Number(row.resultWinner)))continue;
-      const key=String(row.matchId||row.matchKey);
-      const old=latest.get(key);
-      if(!old||Number(row.capturedAt)>Number(old.capturedAt))latest.set(key,row);
+      if(!outcomes.has(row.resultOutcome))continue;
+      const key=String(row.matchId||row.matchKey||'');
+      if(!key)continue;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(row);
     }
-    let hits=0;
-    for(const row of latest.values()){
-      const probability=Number(row.probability);
-      if(Math.abs(probability-50)<1e-9){hits+=0.5;continue;}
-      const predicted=probability>50?row.side:(row.side==='A'?'B':'A');
-      if((predicted==='A'?1:2)===Number(row.resultWinner))hits++;
+    let hits=0,settled=0,ambiguous=0,excluded=0;
+    for(const group of groups.values()){
+      const versions=group.map(row=>Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):0);
+      const latestVersion=Math.max(...versions);
+      const authoritative=group.filter((row,index)=>versions[index]===latestVersion);
+      const resultOutcomes=new Set(authoritative.map(row=>row.resultOutcome));
+      if(resultOutcomes.size!==1){ambiguous++;continue;}
+      if(authoritative[0].resultOutcome!=='completed'){excluded++;continue;}
+      const winners=new Set(authoritative.map(row=>Number(row.resultWinner)));
+      if(winners.size!==1||![1,2].includes(Number(authoritative[0].resultWinner))){ambiguous++;continue;}
+      const predictionRows=group.filter(row=>Number.isFinite(Number(row.capturedAt))&&
+        Number.isFinite(Number(row.probability))&&Number(row.probability)>=0&&Number(row.probability)<=100&&
+        ['A','B'].includes(row.side));
+      if(!predictionRows.length){ambiguous++;continue;}
+      const latestCapture=Math.max(...predictionRows.map(row=>Number(row.capturedAt)));
+      const latestPredictions=predictionRows.filter(row=>Number(row.capturedAt)===latestCapture).map(row=>{
+        const probability=Number(row.probability);
+        if(Math.abs(probability-50)<1e-9)return null;
+        const predictedSide=probability>50?row.side:(row.side==='A'?'B':'A');
+        return predictedSide==='A'?1:2;
+      });
+      const predictedWinners=new Set(latestPredictions.filter(value=>value!==null));
+      if(predictedWinners.size>1||(predictedWinners.size===1&&latestPredictions.includes(null))){ambiguous++;continue;}
+      settled++;
+      if(predictedWinners.size===0)hits+=0.5;
+      else if([...predictedWinners][0]===Number(authoritative[0].resultWinner))hits++;
     }
-    return {settled:latest.size,accuracy:latest.size?hits/latest.size*100:null};
+    return {settled,accuracy:settled?hits/settled*100:null,ambiguous,excluded};
   }
   function archiveOddsMovement(rows){
     const groups=new Map();
