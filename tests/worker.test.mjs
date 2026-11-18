@@ -827,6 +827,8 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("TVSBankroll.reconcilePortfolioPlan"));
   assert.ok(frontendSource.includes("data-plan-stake"));
   assert.ok(frontendSource.includes("data-plan-odds"));
+  assert.ok(frontendSource.includes("bet.plannedStake"));
+  assert.ok(frontendSource.includes("actualOdds"));
   assert.ok(frontendSource.includes("stakeMultiplier"));
   assert.match(frontendSource, /freshnessStakeMultiplier\(freshness\.level\)/);
   assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
@@ -840,7 +842,7 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes("bankDeposits"));
   assert.ok(frontendSource.includes("bankWithdrawals"));
   assert.ok(frontendSource.includes("tennis-value-bankroll-ledger.csv"));
-  assert.ok(frontendSource.includes("'stake','profit','outcome','source','betId','matchId','side','resultVersion','note','betSnapshot'"));
+  assert.ok(frontendSource.includes("'stake','profit','outcome','source','betId','matchId','side','resultVersion','plannedStake','plannedOdds','actualStake','actualOdds','note','betSnapshot'"));
   assert.ok(frontendSource.includes("JSON.stringify(value)"));
   assert.ok(frontendSource.includes("if(typeof value==='string'&&/^\\\\s*[=+@-]/.test(cell))"));
   assert.match(frontendSource, /typeof value==='string'.*test\(cell\)/);
