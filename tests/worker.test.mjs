@@ -616,3 +616,14 @@ test("concurrent predictions share in-flight player profile requests", async () 
   assert.equal(firstBody.ratingA, 1900);
   assert.equal(firstBody.ratingB, 1800);
 });
+
+test("bankroll dashboard is connected to navigation and uses a separate versioned store", () => {
+  assert.ok(frontendSource.includes('id="bankrollView"'));
+  assert.ok(frontendSource.includes('id="navBankroll"'));
+  assert.ok(frontendSource.includes("const BANKROLL_KEY='tvs-bankroll-v1'"));
+  assert.ok(frontendSource.includes("TVSBankroll.recommendStake"));
+  assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
+  assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
+  assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
+  assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
+});
