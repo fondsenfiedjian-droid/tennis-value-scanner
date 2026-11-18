@@ -1731,7 +1731,7 @@
     return value;
   }
   function explicitMatchBestOf(match){
-    const raw=match?.best_of??match?.bestOf??match?.format?.best_of??match?.match_format;
+    const raw=match?.best_of??match?.bestOf??match?.format?.best_of??match?.format??match?.match_format;
     if(raw===3||raw===5)return raw;
     if(typeof raw==='string'){
       const normalized=raw.trim().toLowerCase();
