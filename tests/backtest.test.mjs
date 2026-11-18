@@ -73,12 +73,12 @@ test("backtest reports and ignores duplicate tournament match rows", () => {
 
 
 test("CSV parser rejects unterminated quoted fields and quotes inside unquoted fields", () => {
-  assert.throws(() => parseCsv('name,note\\nAlice,"unfinished'), /Unterminated quoted field/);
-  assert.throws(() => parseCsv('name,note\\nAl"ice,hello\\n'), /Unexpected quote/);
+  assert.throws(() => parseCsv('name,note\nAlice,"unfinished'), /Unterminated quoted field/);
+  assert.throws(() => parseCsv('name,note\nAl"ice,hello\n'), /Unexpected quote/);
 });
 
 test("CSV parser rejects duplicate or empty headers and rows wider than the header", () => {
-  assert.throws(() => parseCsv('name,name\\nAlice,Bob\\n'), /duplicate headers/);
-  assert.throws(() => parseCsv('name,,age\\nAlice,,30\\n'), /empty header/);
-  assert.throws(() => parseCsv('name,age\\nAlice,30,extra\\n'), /more fields than the header/);
+  assert.throws(() => parseCsv('name,name\nAlice,Bob\n'), /duplicate headers/);
+  assert.throws(() => parseCsv('name,,age\nAlice,,30\n'), /empty header/);
+  assert.throws(() => parseCsv('name,age\nAlice,30,extra\n'), /more fields than the header/);
 });
