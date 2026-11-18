@@ -183,9 +183,47 @@ export default {
       }
 
       const params = new URLSearchParams({ status });
-      for (const key of ["limit", "offset", "tour", "draw", "from", "to", "player", "country", "has_market", "has_analysis"]) {
+      const allowedParams = ["limit", "offset", "tour", "draw", "from", "to", "player", "country", "has_market", "has_analysis"];
+      for (const key of allowedParams) {
         const value = url.searchParams.get(key);
-        if (value !== null) params.set(key, value);
+        if (value === null) continue;
+        const clean = value.trim();
+        if (!clean) return response({ error: "Parameter " + key + " must not be empty" }, 400);
+        if (key === "limit") {
+          const number = Number(clean);
+          if (!Number.isInteger(number) || number < 1 || number > 200) {
+            return response({ error: "limit must be an integer from 1 to 200" }, 400);
+          }
+        } else if (key === "offset") {
+          const number = Number(clean);
+          if (!Number.isInteger(number) || number < 0 || number > 100000) {
+            return response({ error: "offset must be an integer from 0 to 100000" }, 400);
+          }
+        } else if (key === "tour") {
+          if (!["atp", "wta", "challenger", "itf", "juniors"].includes(clean.toLowerCase())) {
+            return response({ error: "Invalid tour filter" }, 400);
+          }
+        } else if (key === "draw") {
+          if (!["singles", "doubles"].includes(clean.toLowerCase())) {
+            return response({ error: "draw must be singles or doubles" }, 400);
+          }
+        } else if (key === "from" || key === "to") {
+          if (Number.isNaN(Date.parse(clean))) {
+            return response({ error: key + " must be a valid date" }, 400);
+          }
+        } else if (key === "has_market" || key === "has_analysis") {
+          if (!["true", "false"].includes(clean.toLowerCase())) {
+            return response({ error: key + " must be true or false" }, 400);
+          }
+        } else if (clean.length > 100) {
+          return response({ error: key + " must not exceed 100 characters" }, 400);
+        }
+        params.set(key, clean);
+      }
+      const from = params.get("from");
+      const to = params.get("to");
+      if (from && to && Date.parse(from) > Date.parse(to)) {
+        return response({ error: "from must not be later than to" }, 400);
       }
 
       try {
