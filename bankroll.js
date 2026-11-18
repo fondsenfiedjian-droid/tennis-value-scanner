@@ -133,6 +133,48 @@
       maxDrawdownPercent: roundMoney(maxDrawdownPercent)
     };
   }
+  function getOutcomeSequenceStats(state) {
+    validateState(state);
+    const ordered = state.transactions
+      .map((tx, index) => ({ tx, index }))
+      .filter(item => item.tx.type === "settlement")
+      .sort((a, b) => Date.parse(a.tx.at) - Date.parse(b.tx.at) || a.index - b.index);
+    let wins = 0, losses = 0, voids = 0, excluded = 0;
+    let grossProfit = 0, grossLoss = 0;
+    let currentType = null, currentLength = 0;
+    let longestWinStreak = 0, longestLossStreak = 0;
+    for (const { tx } of ordered) {
+      const outcome = String(tx.outcome || "").toLowerCase();
+      const stake = Number(tx.stake);
+      const profit = Number(tx.profit);
+      if (outcome === "void") { voids++; continue; }
+      if (!["won", "lost"].includes(outcome) || !Number.isFinite(stake) || stake <= 0 || !Number.isFinite(profit)) {
+        excluded++;
+        continue;
+      }
+      if (outcome === "won") {
+        wins++;
+        if (profit > 0) grossProfit += profit;
+      } else {
+        losses++;
+        if (profit < 0) grossLoss += Math.abs(profit);
+      }
+      if (currentType === outcome) currentLength++;
+      else { currentType = outcome; currentLength = 1; }
+      if (outcome === "won") longestWinStreak = Math.max(longestWinStreak, currentLength);
+      else longestLossStreak = Math.max(longestLossStreak, currentLength);
+    }
+    const settledBets = wins + losses;
+    return {
+      settledBets, wins, losses, voids, excluded,
+      winRatePercent: settledBets ? roundMoney(wins / settledBets * 100) : null,
+      profitFactor: grossLoss > 0 ? roundMoney(grossProfit / grossLoss) : null,
+      grossProfit: roundMoney(grossProfit), grossLoss: roundMoney(grossLoss),
+      currentStreak: { type: currentType, length: currentLength },
+      longestWinStreak, longestLossStreak
+    };
+  }
+
   function getSummary(state) {
     validateState(state);
     const deposits = state.transactions.filter(tx => tx.type === "deposit" && tx.id !== "initial").reduce((s, tx) => s + tx.amount, 0);
@@ -148,6 +190,7 @@
     const verifiedSettledBets = settlements.filter(tx => tx.source === "verified").length;
     const profit = realizedProfit(state);
     const drawdown = calculateDrawdown(state);
+    const outcomeSequence = getOutcomeSequenceStats(state);
     const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
     const totalOutflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, -tx.balanceDelta), 0);
     return {
@@ -157,6 +200,7 @@
       initialBankroll: roundMoney(state.initialBankroll),
       realizedProfit: profit,
       ...drawdown,
+      outcomeSequence,
       totalStaked: roundMoney(totalStaked),
       dailyStaked: roundMoney(dailyStaked),
       settledStake: roundMoney(settledStake),
@@ -791,5 +835,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getSegmentPerformance, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getOutcomeSequenceStats, getBookmakerSummary, getSegmentPerformance, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
