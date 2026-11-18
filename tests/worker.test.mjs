@@ -2084,7 +2084,7 @@ test("PFE groups dependent models before fusion and flags a single-model estimat
   assert.equal(fused.modelCount, 3);
   assert.equal(fused.status, "consensus");
   assert.ok(Math.abs(fused.probability - 0.60) < 1e-12);
-  assert.equal(fused.groups.find(group => group.dependencyGroup === "results").probability, 0.66);
+  assert.ok(Math.abs(fused.groups.find(group => group.dependencyGroup === "results").probability - 0.66) < 1e-12);
 });
 
 test("PFE rejects invalid inputs, detects model conflict and keeps calibrated weights bounded", () => {
