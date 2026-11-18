@@ -57,7 +57,7 @@ function findElo(profile) {
 }
 
 function normalizeSurface(value) {
-  const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ");
+  const surface = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (surface.includes("clay") || surface.includes("terre battue") || surface.includes("грунт")) return "clay";
   if (surface.includes("grass") || surface.includes("gazon") || surface.includes("трава")) return "grass";
   if (surface.includes("carpet") || surface.includes("moquette") || surface.includes("ковер")) return "carpet";
@@ -85,7 +85,7 @@ function findEloForSurface(profile, requestedSurface) {
     const containers = ["surface_elo", "surfaceElo", "elo_by_surface", "eloBySurface", "surface_ratings", "surfaceRatings"];
     function valid(value) {
       if (typeof value !== "number" && typeof value !== "string") return null;
-      if (typeof value === "string" && !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(value.trim())) return null;
+      if (typeof value === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value.trim())) return null;
       const rating = Number(value);
       return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
     }
