@@ -135,3 +135,13 @@ test("calibration separates confident favourites from underdogs", () => {
   assert.ok(report.calibration.elo.expectedCalibrationError >= 0);
   assert.ok(report.calibration.elo.expectedCalibrationError <= 100);
 });
+
+
+test("calibration details are separate from scalar metric summaries", () => {
+  const report = runBacktest([
+    { tourney_date: "20250101", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" }
+  ]);
+  assert.deepEqual(Object.keys(report.metrics), ["elo", "surface", "form", "h2h", "combined"]);
+  assert.equal(report.metrics.elo.matches, 1);
+  assert.equal(report.calibration.elo.bins.length, 10);
+});
