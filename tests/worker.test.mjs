@@ -23,7 +23,7 @@ function makeArchiveStore(seed = [], options = {}) {
   const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
+    ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, archiveOddsQuality, stampResultCheck, initializeArchiveStorage, flushArchiveWrites, getArchiveReadError: () => archiveReadError };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -790,6 +790,49 @@ test("archive tracks opening-to-latest odds movement per match side", () => {
   assert.equal(movement.byBookmaker["Не указан"].drifted, 1);
 });
 
+
+test("archive odds quality audits bookmaker coverage, freshness and malformed records", () => {
+  const { archiveOddsQuality } = makeArchiveStore();
+  const now = Date.parse("2026-11-18T12:00:00Z");
+  const rows = [
+    { matchId: 1, matchKey: "1", matchDate: "2026-11-18T14:00:00Z", side: "A", bookmaker: "Winamax", odds: 2.1, capturedAt: now - 10 * 60 * 1000 },
+    { matchId: 1, matchKey: "1", matchDate: "2026-11-18T14:00:00Z", side: "B", bookmaker: "Winamax", odds: 1.8, capturedAt: now - 40 * 60 * 1000 },
+    { matchId: 1, matchKey: "1", matchDate: "2026-11-18T14:00:00Z", side: "A", bookmaker: "Betclic", odds: 2.0, capturedAt: now - 3 * 60 * 60 * 1000 },
+    { matchId: 2, matchKey: "2", side: "A", bookmaker: "", odds: 2.2, capturedAt: now + 10 * 60 * 1000 },
+    { matchKey: "bad", side: "X", odds: 1, capturedAt: now }
+  ];
+  const result = archiveOddsQuality(rows, now);
+  assert.equal(result.totalRows, 5);
+  assert.equal(result.validRows, 4);
+  assert.equal(result.invalidRows, 1);
+  assert.equal(result.missingBookmakerRows, 1);
+  assert.equal(result.universeMatchSides, 3);
+  const winamax = result.byBookmaker.find(item => item.bookmaker === "Winamax");
+  assert.equal(winamax.matchSides, 2);
+  assert.equal(winamax.completeMatches, 1);
+  assert.equal(winamax.coveragePercent, 66.7);
+  assert.equal(winamax.fresh30m, 1);
+  assert.equal(winamax.fresh2h, 1);
+  const betclic = result.byBookmaker.find(item => item.bookmaker === "Betclic");
+  assert.equal(betclic.stale, 1);
+  const unknown = result.byBookmaker.find(item => item.bookmaker === "Не указан");
+  assert.equal(unknown.future, 1);
+});
+
+test("archive odds quality flags conflicting snapshots without mixing bookmakers", () => {
+  const { archiveOddsQuality } = makeArchiveStore();
+  const now = 1_800_000_000_000;
+  const rows = [
+    { matchId: 8, side: "A", bookmaker: "Winamax", odds: 2.0, capturedAt: now },
+    { matchId: 8, side: "A", bookmaker: "Winamax", odds: 2.1, capturedAt: now },
+    { matchId: 8, side: "A", bookmaker: "Betclic", odds: 1.9, capturedAt: now },
+    { matchId: 8, side: "A", bookmaker: "Winamax", odds: 2.0, capturedAt: now }
+  ];
+  const result = archiveOddsQuality(rows, now);
+  assert.equal(result.byBookmaker.find(item => item.bookmaker === "Winamax").conflicts, 1);
+  assert.equal(result.byBookmaker.find(item => item.bookmaker === "Winamax").duplicates, 1);
+  assert.equal(result.byBookmaker.find(item => item.bookmaker === "Betclic").conflicts, 0);
+});
 
 test("concurrent predictions share in-flight player profile requests", async () => {
   let upstreamCalls = 0;
