@@ -230,14 +230,26 @@
     return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
 
+  function checksum(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index++) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
   function serializeBackup(state) {
     validateState(state);
-    const payload = { format: "tvs-bankroll-backup", version: VERSION, exportedAt: new Date().toISOString(), state };
-    return payload;
+    const snapshot = JSON.stringify(state);
+    return { format: "tvs-bankroll-backup", version: VERSION, exportedAt: new Date().toISOString(), checksum: checksum(snapshot), state };
   }
 
   function parseBackup(payload) {
     if (!payload || payload.format !== "tvs-bankroll-backup" || payload.version !== VERSION) throw new Error("Формат резервной копии банкролла не поддерживается.");
+    if (typeof payload.checksum !== "string" || checksum(JSON.stringify(payload.state)) !== payload.checksum) {
+      throw new Error("Контрольная сумма резервной копии банкролла не совпадает.");
+    }
     return cloneState(payload.state);
   }
 
