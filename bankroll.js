@@ -130,9 +130,13 @@
       const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
       const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
       if (!recommendation.eligible) continue;
+      const multiplier = candidate.stakeMultiplier === undefined ? 1 : Math.max(0, Math.min(1, Number(candidate.stakeMultiplier)));
+      if (!Number.isFinite(multiplier) || multiplier <= 0) continue;
+      const allocatedStake = roundMoney(recommendation.stake * multiplier);
+      if (allocatedStake < 0.01) continue;
       const placed = placeBet(simulated, {
         ...candidate,
-        stake: recommendation.stake,
+        stake: allocatedStake,
         options: cfg
       });
       simulated = placed.state;
