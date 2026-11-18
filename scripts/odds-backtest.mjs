@@ -254,6 +254,7 @@ export function runOddsBacktest(rows, options = {}) {
     const winner = String(row.winner ?? "").trim().toUpperCase();
     const tour = String(row.tour ?? "").trim().toLowerCase();
     const surface = String(row.surface ?? "").trim();
+    const bookmaker = String(row.bookmaker ?? row.source ?? row.provider ?? "").trim().toLowerCase();
     if (!id || start === null || captured === null || !validOdds(oddsA) || !validOdds(oddsB) ||
         !Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1 ||
         !["A", "B"].includes(winner) || captured > start) {
@@ -275,12 +276,14 @@ export function runOddsBacktest(rows, options = {}) {
     }
     const existing = matches.get(id);
     if (existing && (existing.start !== start || existing.playerA !== playerA || existing.playerB !== playerB || existing.winner !== winner ||
-        (existing.tour && tour && existing.tour !== tour) || (existing.surface && surface && existing.surface !== surface))) {
+        (existing.tour && tour && existing.tour !== tour) || (existing.surface && surface && existing.surface !== surface) ||
+        (existing.bookmaker && bookmaker && existing.bookmaker !== bookmaker))) {
       throw new Error("Conflicting match metadata for match_id " + id);
     }
-    if (!matches.has(id)) matches.set(id, { id, start, playerA, playerB, winner, tour, surface, snapshots: [] });
+    if (!matches.has(id)) matches.set(id, { id, start, playerA, playerB, winner, tour, surface, bookmaker, snapshots: [] });
     if (!matches.get(id).tour) matches.get(id).tour = tour;
     if (!matches.get(id).surface) matches.get(id).surface = surface;
+    if (!matches.get(id).bookmaker) matches.get(id).bookmaker = bookmaker;
     matches.get(id).snapshots.push({ captured, oddsA, oddsB, probabilityA, row: index });
   }
 
@@ -312,7 +315,7 @@ export function runOddsBacktest(rows, options = {}) {
     const clv = closeProbability === null ? null : candidate.odds * closeProbability - 1;
     if (clv !== null) { clvTotal += clv; clvCount++; } else missingClosingSnapshots++;
     bets.push({
-      matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, side: candidate.side, player: candidate.player,
+      matchId: match.id, matchStart: new Date(match.start).toISOString(), tour: match.tour, surface: match.surface, bookmaker: match.bookmaker || "unknown", side: candidate.side, player: candidate.player,
       odds: candidate.odds, modelProbability: Number(candidate.probability.toFixed(6)),
       entrySnapshotAgeMinutes: Number(((match.start - opening.captured) / 60000).toFixed(1)),
       closingSnapshotAgeMinutes: closing ? Number(((match.start - closing.captured) / 60000).toFixed(1)) : null,
