@@ -250,6 +250,67 @@
       rejected };
   }
 
+  function normalizeServeReturnProfile(payload, options = {}) {
+    const minMatches = Number.isInteger(options.minMatches) ? clamp(options.minMatches, 1, 1000) : 8;
+    const root = payload && typeof payload === "object" ? payload : null;
+    const data = root && root.serve_return && typeof root.serve_return === "object"
+      ? root.serve_return : root;
+    if (!data || typeof data !== "object" ||
+        (!Object.prototype.hasOwnProperty.call(data, "serve") && !Object.prototype.hasOwnProperty.call(data, "return"))) {
+      return { status: "unavailable", reason: "serve_return_requires_ultra", matches: 0, matchesWithStats: 0, metrics: {}, availableMetrics: 0 };
+    }
+    const nonNegativeInteger = value =>
+      typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+    const ratio = value => {
+      if (!value || typeof value !== "object") return null;
+      const numerator = nonNegativeInteger(value.numerator);
+      const denominator = nonNegativeInteger(value.denominator);
+      const matches = nonNegativeInteger(value.matches);
+      const providerPct = typeof value.pct === "number" && Number.isFinite(value.pct) && value.pct >= 0 && value.pct <= 100
+        ? value.pct : null;
+      if (numerator === null || denominator === null || denominator <= 0 || numerator > denominator ||
+          matches === null || providerPct === null) return null;
+      const calculatedPct = numerator / denominator * 100;
+      if (Math.abs(calculatedPct - providerPct) > 0.2) return null;
+      return { numerator, denominator, matches, pct: calculatedPct, providerPct };
+    };
+    const matches = nonNegativeInteger(data.matches);
+    const matchesWithStats = nonNegativeInteger(data.matches_with_stats);
+    const matchesIncomplete = nonNegativeInteger(data.matches_incomplete);
+    if (matches === null || matchesWithStats === null || matchesIncomplete === null ||
+        matchesWithStats > matches || matchesIncomplete > matches) {
+      return { status: "invalid", reason: "invalid_sample_counts", matches: null, matchesWithStats: null, metrics: {}, availableMetrics: 0 };
+    }
+    const definitions = {
+      firstServeIn: ["serve", "first_serve_in"],
+      firstServePointsWon: ["serve", "first_serve_points_won"],
+      secondServePointsWon: ["serve", "second_serve_points_won"],
+      serviceGamesWon: ["serve", "service_games_won"],
+      breakPointsSaved: ["serve", "break_points_saved"],
+      firstServeReturnPointsWon: ["return", "first_serve_return_points_won"],
+      secondServeReturnPointsWon: ["return", "second_serve_return_points_won"],
+      returnGamesWon: ["return", "return_games_won"],
+      breakPointsConverted: ["return", "break_points_converted"]
+    };
+    const metrics = {};
+    for (const [name, [family, field]] of Object.entries(definitions)) {
+      const normalized = ratio(data?.[family]?.[field]);
+      if (normalized) metrics[name] = normalized;
+    }
+    const required = ["firstServePointsWon", "secondServePointsWon", "serviceGamesWon",
+      "firstServeReturnPointsWon", "secondServeReturnPointsWon", "returnGamesWon"];
+    const ready = required.every(name => metrics[name] && metrics[name].matches > 0);
+    const status = matchesWithStats < minMatches ? "insufficient_sample" : ready ? "ready_for_modeling" : "partial";
+    return {
+      status, reason: status === "insufficient_sample" ? "insufficient_match_sample" :
+        status === "partial" ? "required_serve_return_metrics_missing" : null,
+      matches, matchesWithStats, matchesIncomplete, availableMetrics: Object.keys(metrics).length,
+      requiredMetrics: required.length, minMatches, metrics,
+      source: "Live Tennis API PlayerServeReturn",
+      note: "Нормализованные агрегаты ULTRA; сами по себе не являются вероятностью победы."
+    };
+  }
+
   function evaluateModelHistory(records, options = {}) {
     const source = Array.isArray(records) ? records : [];
     const minTraining = Number.isInteger(options.minTraining) ? clamp(options.minTraining, 5, 1000) : 30;
@@ -303,5 +364,5 @@
     };
   }
 
-  return { fusePredictions, runMonteCarlo, getModelRegistry, buildModelHistoryRecords, evaluateModelHistory };
+  return { fusePredictions, runMonteCarlo, getModelRegistry, normalizeServeReturnProfile, buildModelHistoryRecords, evaluateModelHistory };
 });
