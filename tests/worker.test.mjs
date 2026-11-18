@@ -1190,6 +1190,35 @@ test("portfolio proposals do not debit bankroll until the user confirms manual b
   assert.equal(cancelled.transactions.length, initial.transactions.length);
 });
 
+test("portfolio manager blocks the same match across different keys, labels and IDs", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const initial = api.createInitialState(100);
+  const candidates = [
+    { matchKey: "provider:event:501", matchId: 501, match: "Player A — Player B", probability: 0.62, odds: 2.1 },
+    { matchKey: "different-key:501", matchId: 501, match: "A different display label", probability: 0.64, odds: 2.2 },
+    { matchKey: "provider:event:502", matchId: 502, match: "Player C — Player D", probability: 0.62, odds: 2.1 },
+    { matchKey: "alternate-key:502", matchId: 999, match: "Player C — Player D", probability: 0.63, odds: 2.15 }
+  ];
+  const portfolio = api.recommendPortfolio(initial, candidates);
+  assert.equal(portfolio.suggestions.length, 2);
+  assert.deepEqual(portfolio.suggestions.map(item => item.matchId), [501, 502]);
+  const first = api.placeBet(initial, {
+    matchKey: "open:601", matchId: 601, match: "Player E — Player F",
+    probability: 0.62, odds: 2.1, stake: 2
+  });
+  const againstOpen = api.recommendPortfolio(first.state, [{
+    matchKey: "another-key:601", matchId: 601, match: "Other label",
+    probability: 0.62, odds: 2.1
+  }]);
+  assert.equal(againstOpen.suggestions.length, 0);
+  assert.throws(() => api.savePortfolioPlan(initial, [
+    { matchKey: "plan:key:701", matchId: 701, match: "Player G — Player H", probability: 0.62, odds: 2.1, stake: 1 },
+    { matchKey: "plan:key:702", matchId: 702, match: "Player G — Player H", probability: 0.62, odds: 2.1, stake: 1 }
+  ]), /повторную ставку/);
+});
+
 test("expired portfolio plans are cleared automatically and cannot block the next plan", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
