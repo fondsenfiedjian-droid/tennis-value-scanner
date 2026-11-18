@@ -106,8 +106,8 @@ test("scanner semicolon CSV archive is paired into pre-match snapshots and settl
     "capturedAt;modelCalculatedAt;captureStatus;matchDate;matchId;tour;surface;player;opponent;side;odds;probability;ratingAsOf;resultOutcome;resultWinner",
     "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.20;50;2024-12-31;completed;1",
     "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.80;50;2025-01-01;completed;1",
-    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;completed;1",
-    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;completed;1",
+    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player A;Player B;A;2.00;50;;completed;1",
+    "1735729200000;1735729199000;upcoming;2025-01-01T12:00:00.000Z;77;atp;Hard;Player B;Player A;B;1.90;50;;completed;1",
     "1735725600000;1735725599000;upcoming;2025-01-01T12:00:00.000Z;88;wta;Clay;Other A;Other B;A;2.10;50;retired;1"
   ].join("\n");
   const parsed = parseCsv(csv, { delimiter: ";" });
@@ -198,7 +198,7 @@ test("flat one-euro benchmark obeys the live two-percent per-bet cap on small ba
 test("odds backtest excludes stale snapshots by default and reports snapshot age", () => {
   const rows = [
     { ...base, match_id: "fresh", odds_captured_at: "2025-01-01T11:30:00Z" },
-    { ...base, match_id: "stale", odds_captured_at: "2024-12-30T11:59:00Z" }
+    { ...base, match_id: "stale", model_calculated_at: "2024-12-01T00:00:00Z", odds_captured_at: "2024-12-30T11:59:00Z" }
   ];
   const report = runOddsBacktest(rows);
   assert.equal(report.matches, 1);
@@ -213,7 +213,7 @@ test("odds backtest excludes stale snapshots by default and reports snapshot age
 });
 
 test("odds backtest allows an explicit wider snapshot age and validates the option", () => {
-  const row = { ...base, odds_captured_at: "2024-12-30T11:59:00Z" };
+  const row = { ...base, model_calculated_at: "2024-12-01T00:00:00Z", odds_captured_at: "2024-12-30T11:59:00Z" };
   const report = runOddsBacktest([row], { maxSnapshotAgeMinutes: 3000 });
   assert.equal(report.matches, 1);
   assert.equal(report.staleSnapshots, 0);
