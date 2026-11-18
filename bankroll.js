@@ -142,8 +142,8 @@
       .filter(item => item && Number.isFinite(Number(item.probability)) && Number(item.probability) > 0 && Number(item.probability) < 1 &&
         Number.isFinite(Number(item.odds)) && Number(item.odds) > 1)
       .slice()
-      .sort((a, b) => Number(b.ev ?? ((Number(b.probability) * Number(b.odds) - 1) * 100)) -
-        Number(a.ev ?? ((Number(a.probability) * Number(a.odds) - 1) * 100)));
+      .sort((a, b) => ((Number(b.probability) * Number(b.odds) - 1) * 100) -
+        ((Number(a.probability) * Number(a.odds) - 1) * 100));
     const suggestions = [];
     for (const candidate of ordered) {
       const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
