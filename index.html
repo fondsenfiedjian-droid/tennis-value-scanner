@@ -224,10 +224,11 @@
     const a=normalizeTournament(matchName),b=normalizeTournament(oddsName);
     if(!a||!b||a===b)return true;
     const tourOf=name=>{
-      if(/\\b(wta|women)\\b/.test(name))return 'wta';
-      if(/\\b(itf)\\b/.test(name))return 'itf';
-      if(/\\b(challenger)\\b/.test(name))return 'challenger';
-      if(/\\b(atp|men)\\b/.test(name))return 'atp';
+      const words=new Set(name.split(' '));
+      if(words.has('wta')||words.has('women'))return 'wta';
+      if(words.has('itf'))return 'itf';
+      if(words.has('challenger'))return 'challenger';
+      if(words.has('atp')||words.has('men'))return 'atp';
       return null;
     };
     const tourA=tourOf(a),tourB=tourOf(b);
