@@ -75,6 +75,8 @@
     const totalStaked = state.transactions.filter(tx => tx.type === "stake").reduce((s, tx) => s + tx.amount, 0);
     const settledStake = state.transactions.filter(tx => tx.type === "settlement").reduce((s, tx) => s + Number(tx.stake || 0), 0);
     const profit = realizedProfit(state);
+    const totalInflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, tx.balanceDelta), 0);
+    const totalOutflow = state.transactions.reduce((sum, tx) => sum + Math.max(0, -tx.balanceDelta), 0);
     return {
       balance: roundMoney(state.balance),
       openStake: totalOpenStake(state),
@@ -85,6 +87,8 @@
       roiPercent: settledStake > 0 ? roundMoney(profit / settledStake * 100) : null,
       deposits: roundMoney(deposits),
       withdrawals: roundMoney(withdrawals),
+      totalInflow: roundMoney(totalInflow),
+      totalOutflow: roundMoney(totalOutflow),
       openBets: state.openBets.length,
       exposurePercent: bankrollEquity(state) > 0 ? totalOpenStake(state) / bankrollEquity(state) * 100 : 0
     };
