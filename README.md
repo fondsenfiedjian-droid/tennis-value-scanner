@@ -98,7 +98,7 @@ Publish the repository's static frontend files through the configured Netlify si
 Do not commit credentials, access tokens, or local environment files.
 
 
-Archive backups: export a versioned JSON backup from the archive view and import it later. Import merges records, validates fields, skips duplicates/invalid entries, and retains the newest 600 records (2 MB file limit).
+Archive backups: export a versioned JSON backup from the archive view and import it later. Import merges records, validates fields, skips duplicates/invalid entries, and retains up to 3,000 records according to verified-result priority and recency (2 MB file limit).
 
 
 ### Verified match results
