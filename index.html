@@ -177,8 +177,19 @@
     if(!raw)return null;
     const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
   }
+  const ODDS_CACHE_TTL=10*60*1000;
   let cachedOdds = [];
-  try{const raw=localStorage.getItem('tvs-odds-cache');if(raw){const item=JSON.parse(raw);if(Array.isArray(item.odds))cachedOdds=item.odds;}}catch(e){}
+  let cachedOddsSavedAt = 0;
+  try{
+    const raw=localStorage.getItem('tvs-odds-cache');
+    if(raw){
+      const item=JSON.parse(raw);
+      if(Array.isArray(item.odds)&&Number.isFinite(item.savedAt)&&Date.now()-item.savedAt<=ODDS_CACHE_TTL){
+        cachedOdds=item.odds;
+        cachedOddsSavedAt=item.savedAt;
+      }else localStorage.removeItem('tvs-odds-cache');
+    }
+  }catch(e){localStorage.removeItem('tvs-odds-cache');}
   async function loadOdds(){
     try{
       const res=await fetch(API+'/odds');
@@ -186,9 +197,17 @@
       if(!res.ok)throw new Error(payload.error||('Winamax API: '+res.status));
       if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
       cachedOdds=payload.items;
-      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:Date.now(),odds:cachedOdds}));
+      cachedOddsSavedAt=Date.now();
+      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,odds:cachedOdds}));
       return true;
-    }catch(err){return false;}
+    }catch(err){
+      if(!cachedOddsSavedAt||Date.now()-cachedOddsSavedAt>ODDS_CACHE_TTL){
+        cachedOdds=[];
+        cachedOddsSavedAt=0;
+        localStorage.removeItem('tvs-odds-cache');
+      }
+      return false;
+    }
   }
   function normalizePlayer(s){
     return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -378,7 +397,7 @@
     try{
       // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
-        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds))cachedOdds=saved.odds;
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
@@ -394,7 +413,7 @@
       $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
-        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds))cachedOdds=saved.odds;
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
