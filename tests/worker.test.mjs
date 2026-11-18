@@ -984,7 +984,7 @@ test("Winamax CSV parser normalizes French amounts and avoids duplicate imports"
 });
 
 test("Winamax importer is isolated from the financial ledger and validates preview before import", () => {
-  assert.ok(frontendSource.includes('const WINAMAX_HISTORY_KEY=\\'tvs-winamax-history-v1\\''));
+  assert.ok(frontendSource.includes("const WINAMAX_HISTORY_KEY='tvs-winamax-history-v1'"));
   assert.ok(frontendSource.includes('TVSWinamaxImport.parseWinamaxCsv'));
   assert.ok(frontendSource.includes('TVSWinamaxImport.mergeImportedHistory'));
   assert.ok(frontendSource.includes('Le solde du bankroll ne sera pas modifié.'));
