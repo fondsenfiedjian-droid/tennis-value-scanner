@@ -1696,7 +1696,7 @@
   const pfePlayerStatsCache=new Map();
   async function loadPfePlayerStats(playerId){
     const id=String(playerId??'').trim();
-    if(!/^\\d{1,15}$/.test(id)||!Number.isSafeInteger(Number(id))||Number(id)<=0){
+    if(!/^\d{1,15}$/.test(id)||!Number.isSafeInteger(Number(id))||Number(id)<=0){
       return {accessStatus:'invalid_player_id',recent:null,serve:null};
     }
     const cached=pfePlayerStatsCache.get(id);
