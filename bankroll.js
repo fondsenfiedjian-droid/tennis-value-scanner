@@ -104,6 +104,39 @@
     return { eligible: true, reason: "Допущена к ставке по заданным лимитам риска.", stake, ev, fullKelly, maxStake, remainingExposure };
   }
 
+  function recommendPortfolio(input, candidates, options = {}) {
+    let simulated = cloneState(input);
+    const seenMatches = new Set();
+    const ordered = (Array.isArray(candidates) ? candidates : [])
+      .filter(item => item && Number.isFinite(Number(item.probability)) && Number(item.probability) > 0 && Number(item.probability) < 1 &&
+        Number.isFinite(Number(item.odds)) && Number(item.odds) > 1)
+      .slice()
+      .sort((a, b) => Number(b.ev ?? ((Number(b.probability) * Number(b.odds) - 1) * 100)) -
+        Number(a.ev ?? ((Number(a.probability) * Number(a.odds) - 1) * 100)));
+    const suggestions = [];
+    for (const candidate of ordered) {
+      const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
+      if (seenMatches.has(matchKey)) continue;
+      seenMatches.add(matchKey);
+      const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
+      const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
+      if (!recommendation.eligible) continue;
+      const placed = placeBet(simulated, {
+        ...candidate,
+        stake: recommendation.stake,
+        options: cfg
+      });
+      simulated = placed.state;
+      suggestions.push({ ...candidate, stake: placed.bet.stake, ev: placed.bet.ev, recommendation });
+    }
+    return {
+      suggestions,
+      totalStake: roundMoney(suggestions.reduce((sum, item) => sum + item.stake, 0)),
+      remainingBalance: simulated.balance,
+      remainingExposure: totalOpenStake(simulated)
+    };
+  }
+
   function appendTransaction(state, transaction) {
     state.transactions.push({ ...transaction, at: transaction.at || new Date().toISOString() });
     return state;
@@ -177,5 +210,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, addDeposit, addWithdrawal, placeBet, settleBet, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, addDeposit, addWithdrawal, placeBet, settleBet, serializeBackup, parseBackup, roundMoney };
 });
