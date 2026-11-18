@@ -117,7 +117,8 @@ export function simulateBankrollStrategies(selections, options = {}) {
           const fullKelly = Math.max(0, (b * probability - q) / b);
           desired = equity * fullKelly * kellyFraction;
         }
-        const stake = Math.round(Math.min(desired, maxSingle, remainingExposure, Math.max(0, balance - reserved)) * 100) / 100;
+        const singleLimit = strategy.mode === "flat" ? Infinity : maxSingle;
+        const stake = Math.round(Math.min(desired, singleLimit, remainingExposure, Math.max(0, balance - reserved)) * 100) / 100;
         if (stake < 0.01) continue;
         reserved += stake;
         placed.push({ selection, stake });
