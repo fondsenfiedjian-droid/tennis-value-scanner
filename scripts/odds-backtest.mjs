@@ -14,6 +14,59 @@ const noVig = (oddsA, oddsB) => {
   return { a: rawA / total, b: rawB / total, overround: (total - 1) * 100 };
 };
 
+export function adaptScannerArchiveRows(rows) {
+  const groups = new Map();
+  let ignored = 0;
+  for (const row of rows) {
+    const outcome = String(row.resultOutcome ?? "").toLowerCase();
+    const winnerNumber = Number(row.resultWinner);
+    const captured = Number(row.capturedAt);
+    const start = timestamp(row.matchDate);
+    const side = String(row.side ?? "").toUpperCase();
+    const odds = number(row.odds);
+    const probability = number(row.probability);
+    const id = String(row.matchId || row.matchKey || "").trim();
+    if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
+        start === null || !Number.isFinite(captured) || captured <= 0 ||
+        !["A", "B"].includes(side) || !validOdds(odds) ||
+        !Number.isFinite(probability) || probability <= 0 || probability >= 100) {
+      ignored++;
+      continue;
+    }
+    const key = id + "|" + captured;
+    if (!groups.has(key)) groups.set(key, { id, start, captured, winner: winnerNumber === 1 ? "A" : "B", sides: {} });
+    const group = groups.get(key);
+    if (group.start !== start || group.winner !== (winnerNumber === 1 ? "A" : "B")) {
+      throw new Error("Conflicting result or match date in archive for " + id);
+    }
+    if (group.sides[side]) {
+      const previous = group.sides[side];
+      if (previous.odds !== odds || previous.probability !== probability) {
+        throw new Error("Conflicting duplicate side snapshot in archive for " + id);
+      }
+      continue;
+    }
+    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim() };
+  }
+  const adapted = [];
+  for (const group of groups.values()) {
+    const a = group.sides.A, b = group.sides.B;
+    if (!a || !b || !a.player || !b.player || a.player === b.player) { ignored++; continue; }
+    adapted.push({
+      match_id: group.id,
+      match_start: new Date(group.start).toISOString(),
+      odds_captured_at: new Date(group.captured).toISOString(),
+      player_a: a.player,
+      player_b: b.player,
+      odds_a: a.odds,
+      odds_b: b.odds,
+      probability_a: a.probability,
+      winner: group.winner
+    });
+  }
+  return { rows: adapted, ignored };
+}
+
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
@@ -133,8 +186,20 @@ async function main() {
     return;
   }
   const rows = [];
-  for (const file of files) rows.push(...parseCsv(await readFile(file, "utf8")));
-  console.log(JSON.stringify(runOddsBacktest(rows, options), null, 2));
+  let archiveIgnored = 0;
+  for (const file of files) {
+    const raw = await readFile(file, "utf8");
+    const delimiter = raw.replace(/^\\uFEFF/, "").split(/\\r?\\n/, 1)[0].includes(";") ? ";" : ",";
+    const parsed = parseCsv(raw, { delimiter });
+    if (parsed.length && ["capturedAt", "matchDate", "resultOutcome", "resultWinner", "side"].every(key => key in parsed[0])) {
+      const adapted = adaptScannerArchiveRows(parsed);
+      rows.push(...adapted.rows);
+      archiveIgnored += adapted.ignored;
+    } else rows.push(...parsed);
+  }
+  const report = runOddsBacktest(rows, options);
+  report.ignoredUnsettledOrIncompleteArchiveRows = archiveIgnored;
+  console.log(JSON.stringify(report, null, 2));
 }
 
 if (import.meta.url === "file://" + process.argv[1]) await main();
