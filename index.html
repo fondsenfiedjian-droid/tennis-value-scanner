@@ -143,6 +143,8 @@
     <div class="panel"><div class="muted">Средний коэффициент по сторонам</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
     <div class="panel"><div class="muted">Завершено матчей</div><div class="stat-num" id="archiveSettled">0</div></div>
     <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
+    <div class="panel"><div class="muted">Неоднозначные результаты</div><div class="stat-num" id="archiveAmbiguous">0</div></div>
+    <div class="panel"><div class="muted">Исключено: матч не завершён</div><div class="stat-num" id="archiveExcluded">0</div></div>
     <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
     <div class="panel"><div class="muted">Коэффициент вырос</div><div class="stat-num" id="archiveOddsDrifted">0</div></div>
     <div class="panel"><div class="muted">Коэффициент не изменился</div><div class="stat-num" id="archiveOddsUnchanged">0</div></div>
@@ -805,6 +807,8 @@
     const resultStats=archiveResultStats(rows);
     $('#archiveSettled').textContent=resultStats.settled;
     $('#archiveAccuracy').textContent=resultStats.accuracy===null?'—':resultStats.accuracy.toFixed(1)+'%';
+    $('#archiveAmbiguous').textContent=resultStats.ambiguous;
+    $('#archiveExcluded').textContent=resultStats.excluded;
     const movement=archiveOddsMovement(rows);
     $('#archiveOddsShortened').textContent=movement.shortened;
     $('#archiveOddsDrifted').textContent=movement.drifted;
