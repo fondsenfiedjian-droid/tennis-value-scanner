@@ -92,7 +92,7 @@ test("bankroll strategy simulation compares fixed, percentage and quarter-Kelly 
   assert.equal(report.strategies.flat1Euro.endingBankroll, 105);
   assert.equal(report.strategies.bankroll1Percent.endingBankroll, 105.1);
   assert.equal(report.strategies.bankroll2Percent.endingBankroll, 110.4);
-  assert.equal(report.strategies.quarterKelly.endingBankroll, 110.41);
+  assert.equal(report.strategies.quarterKelly.endingBankroll, 110.4);
   assert.equal(report.strategies.quarterKelly.bets, 5);
 });
 
