@@ -1735,7 +1735,7 @@
     if(raw===3||raw===5)return raw;
     if(typeof raw==='string'){
       const normalized=raw.trim().toLowerCase();
-      const matchText=normalized.match(/best\\s*of\\s*[- ]?([35])/);
+      const matchText=normalized.match(/best\s*of\s*[- ]?([35])/);
       if(matchText)return Number(matchText[1]);
       if(normalized==='bo3')return 3;
       if(normalized==='bo5')return 5;
@@ -1853,15 +1853,15 @@
         const profileStatusLabel=profile=>profile?.status==='ready_for_modeling'?'готов':profile?.status==='insufficient_sample'?'мало матчей':profile?.status==='partial'?'частичные данные':profile?.status==='invalid'?'ошибка данных':'нет данных';
         const recentA=pfePlayerA.recent,recentB=pfePlayerB.recent;
         const serveA=pfePlayerA.serve,serveB=pfePlayerB.serve;
-        const recentFormLabel='Форма PRO: '+profileStatusLabel(recentA)+' ('+(recentA?.sampleSize??0)+' / '+profileStatusLabel(recentB)+' ('+(recentB?.sampleSize??0)+')';
+        const recentFormLabel='Форма PRO: '+profileStatusLabel(recentA)+' ('+(recentA?.sampleSize??0)+' матчей) / '+profileStatusLabel(recentB)+' ('+(recentB?.sampleSize??0)+' матчей)';
         const serveProfileLabel='Подача/приём ULTRA: '+profileStatusLabel(serveA)+' ('+(serveA?.matchesWithStats??0)+' матчей) / '+profileStatusLabel(serveB)+' ('+(serveB?.matchesWithStats??0)+' матчей)';
         const serveInputLabel=pfeServeInputs.status==='ready_for_score_simulation'
           ?'Подача: '+(pfeServeInputs.playerA.servicePointWin*100).toFixed(1)+'% / '+(pfeServeInputs.playerB.servicePointWin*100).toFixed(1)+'% · проверка расхождения пройдена'
           :pfeServeInputs.status==='review'?'Подача/приём: конфликт показателей, симуляция заблокирована'
           :pfeServeInputs.status==='invalid'?'Подача/приём: несовпадение идентификаторов игроков'
           :'Подача/приём: недостаточно данных';
-        const simulationLabel=pfeScoreSimulation?.status==='ok'
-          ?'Сценарная симуляция BO'+matchBestOf+': '+(pfeScoreSimulation.probabilityA*100).toFixed(1)+'% игрок 1 · 95% интервал '+(pfeScoreSimulation.confidenceInterval95.lower*100).toFixed(1)+'–'+(pfeScoreSimulation.confidenceInterval95.upper*100).toFixed(1)+'% · среднее '+pfeScoreSimulation.averageGames.toFixed(1)+' геймов'
+        const simulationLabel=pfeScoreSimulation?.status==='scenario'
+          ?'Сценарная симуляция BO'+matchBestOf+': '+(pfeScoreSimulation.probabilityA*100).toFixed(1)+'% игрок 1 · 95% интервал '+(pfeScoreSimulation.confidenceInterval95A[0]*100).toFixed(1)+'–'+(pfeScoreSimulation.confidenceInterval95A[1]*100).toFixed(1)+'% · среднее '+pfeScoreSimulation.averageTotalGames.toFixed(1)+' геймов'
           :pfeServeInputs.status==='ready_for_score_simulation'&&!matchBestOf
             ?'Симуляция не запущена: формат матча не указан в источнике'
             :'Симуляция не запускалась: нет двух проверенных профилей';
