@@ -448,13 +448,13 @@ test("scanner archive rejects duplicate side snapshots with conflicting rating p
   const rows = [
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-30", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-30", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "rating-conflict",
       tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
-      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
   ];
   assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
 });
@@ -463,13 +463,13 @@ test("scanner archive rejects duplicate side snapshots with conflicting player i
   const rows = [
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Wrong Player", opponent: "Player B", side: "A",
-      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
+      odds: "2.20", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" },
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "player-conflict",
       tour: "atp", surface: "Hard", player: "Player B", opponent: "Player A", side: "B",
-      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
+      odds: "1.80", probability: "50", ratingAsOf: "2024-12-31", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1" }
   ];
   assert.throws(() => adaptScannerArchiveRows(rows), /Conflicting duplicate side snapshot or rating provenance/);
 });
@@ -499,7 +499,7 @@ test("scanner archive excludes legacy rows without model calculation time", () =
     { capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "legacy-no-model-time",
       captureStatus: "upcoming", tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B",
       side: "A", odds: "2.20", probability: "50", resultOutcome: "completed", resultWinner: "1" },
-    { capturedAt: "1735725600000", modelCalculatedAt: "1735725599000", captureStatus: "upcoming",
+    { capturedAt: "1735725600000", modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000", captureStatus: "upcoming",
       matchDate: "2025-01-01T12:00:00.000Z", matchId: "legacy-no-model-time", tour: "atp", surface: "Hard",
       player: "Player B", opponent: "Player A", side: "B", odds: "1.80", probability: "50",
       resultOutcome: "completed", resultWinner: "1" }
