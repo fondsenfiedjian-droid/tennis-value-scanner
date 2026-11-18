@@ -98,7 +98,56 @@
     @keyframes bestBetGlow{0%,100%{box-shadow:inset 0 1px #fff4,0 0 10px #d58a8e25,0 8px 24px #0009}50%{box-shadow:inset 0 1px #fff5,0 0 20px #a51f456b,0 8px 28px #000b}}
     @media(prefers-reduced-motion:reduce){.best-bet.has-pick{animation:none}}
 
-  </style>
+  
+    /* User-selectable experimental olive court skin */
+    body[data-skin="olive"]{
+      --bg:#626744;--panel:#707552;--panel2:#5d6342;--line:#b8b6a8;
+      --muted:#e1dfc9;--text:#fff9e9;--amber:#f0c75e;
+      background:radial-gradient(ellipse at 50% -18%,#858963 0,#70764f 38%,#555b3b 100%);
+      color:var(--text)
+    }
+    body[data-skin="olive"] .tabs{background:#565c3c;border-color:#b8b6a8}
+    body[data-skin="olive"] .tab{color:#f0edda}
+    body[data-skin="olive"] .tab.active{background:linear-gradient(135deg,#d9aa3e,#bd6848 58%,#762f3c);color:#fff9e9;box-shadow:inset 0 1px #fff7,0 3px 14px #34371f55}
+    body[data-skin="olive"] .panel,
+    body[data-skin="olive"] .match-card,
+    body[data-skin="olive"] .archive-item{background:linear-gradient(145deg,#777c55,#626744 78%);border-color:#b8b6a8;box-shadow:inset 0 1px #ffffff20,0 7px 20px #30351f44}
+    body[data-skin="olive"] .match-card.expanded{background:linear-gradient(145deg,#77744a,#5d6342);border-color:#d58b59}
+    body[data-skin="olive"] .bottom{background:#565c3def;border-top-color:#c1bfb0}
+    body[data-skin="olive"] .nav button.active{color:#ffe08a;background:#7b5734}
+    body[data-skin="olive"] .modal{background:linear-gradient(145deg,#73784f,#555b3b);border-color:#c1bfb0}
+    body[data-skin="olive"] input[type=number],
+    body[data-skin="olive"] select,
+    body[data-skin="olive"] .check{background:#555b3b;border-color:#b8b6a8;color:#fff9e9}
+    body[data-skin="olive"] .actions button,
+    body[data-skin="olive"] .stats-actions button{background:#626744;border-color:#b8b6a8;color:#fff9e9}
+    body[data-skin="olive"] .actions .primary{background:linear-gradient(110deg,#a94e36,#c66b49 52%,#7e3540);border-color:#e0a17d}
+    body[data-skin="olive"] .refresh{background:linear-gradient(110deg,#d3a63d,#c66b49 55%,#803543);border-color:#e4c879;color:#fff9e9}
+    body[data-skin="olive"] .linkbtn{color:#ffe08a}
+    body[data-skin="olive"] .chip{background:#5b6140;border-color:#b8b6a8;color:#fff5dc}
+    body[data-skin="olive"] .chip.on{background:#803f37;border-color:#e4c879;color:#fff3d5}
+    body[data-skin="olive"] .notice{background:#5b5638;border-color:#c88a55;color:#fff0cf}
+    body[data-skin="olive"] .status{background:#62502f;border-color:#e4c879;color:#ffe9a8}
+    body[data-skin="olive"] .best-bet{background:linear-gradient(145deg,#77734a,#555b3b 72%);border-color:transparent;box-shadow:inset 0 1px #fff5,0 8px 24px #30351f55}
+    body[data-skin="olive"] .best-bet:before{background:linear-gradient(120deg,#f0d36d,#b8b6a8 14%,#d17b4e 38%,#762f3c 62%,#d9a0a7 82%,#f0d36d)}
+    body[data-skin="olive"] .best-bet-title,
+    body[data-skin="olive"] .best-bet-value{color:#ffe08a}
+    body[data-skin="olive"] .best-bet-main{color:#fff9e9}
+    body[data-skin="olive"] .best-bet-empty,
+    body[data-skin="olive"] .best-bet-meta{color:#f0edda}
+    body[data-skin="olive"] .model-result{background:#555b3b;border-color:#b8b6a8}
+    body[data-skin="olive"] .model-result strong,
+    body[data-skin="olive"] .model-positive{color:#ffe08a}
+    body[data-skin="olive"] .model-negative{color:#f1b3b1}
+    body[data-skin="olive"] .data-freshness.good{background:#62502f;color:#ffe9a8;border-color:#d6ad58}
+    body[data-skin="olive"] .data-freshness.medium{background:#69533a;color:#ffe0bb;border-color:#d59a65}
+    body[data-skin="olive"] .data-freshness.limited{background:#653b40;color:#ffe0e2;border-color:#c77b82}
+    body[data-skin="olive"] .bookmaker-tag{background:#555b3b;border-color:#c1bfb0;color:#ffe08a}
+    body[data-skin="olive"] .match-card:focus,
+    body[data-skin="olive"] .stats-actions button:focus,
+    body[data-skin="olive"] .actions button:focus,
+    body[data-skin="olive"] .chip:focus{outline-color:#f0c75e}
+\n  </style>
 </head>
 <body>
 <div class="app">
@@ -262,7 +311,7 @@
 
 <div class="modal-back" id="settingsModal">
   <div class="modal">
-    <h2>Настройки сканера</h2>
+    <h2>Настройки сканера</h2>\n    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV, %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="1000" step="0.1" value="5.00"></div>
@@ -320,7 +369,7 @@
     const minutes=Number(value);
     return [0,30,60,180].includes(minutes)?minutes:60;
   }
-  const saved=readSettings();
+  const saved=readSettings();\n  let activeSkin=saved.skin==='olive'?'olive':'black';\n  function applySkin(skin){\n    const selected=skin==='olive'?'olive':'black';\n    document.body.dataset.skin=selected;\n    const themeColor=document.querySelector('meta[name=\"theme-color\"]');\n    if(themeColor)themeColor.content=selected==='olive'?'#626744':'#080808';\n  }\n  applySkin(activeSkin);\n  $('#skinSelect').value=activeSkin;
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
@@ -349,13 +398,13 @@
     }
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
-    data.refreshRate=refreshRate;
+    data.refreshRate=refreshRate;\n    data.skin=$('#skinSelect').value==='olive'?'olive':'black';
     data.tours=selectedTours();
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
       localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
       const savedAgain=readSettings();
-      if(normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate)throw new Error('Настройка автообновления не сохранилась');
+      if(normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin)throw new Error('Настройки не сохранились');
     }catch(error){
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
       return;
