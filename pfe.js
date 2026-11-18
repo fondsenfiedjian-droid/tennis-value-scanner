@@ -876,7 +876,6 @@
       const models = byMatch.get(matchId);
       if (models.has(modelId)) {
         rejected.push({ modelId, matchId, reason: "duplicate_match_model" });
-        models.delete(modelId);
         continue;
       }
       models.set(modelId, { modelId, matchId, probability, outcome, capturedAt, matchStart });
