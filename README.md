@@ -83,3 +83,10 @@ Do not commit credentials, access tokens, or local environment files.
 
 
 Archive backups: export a versioned JSON backup from the archive view and import it later. Import merges records, validates fields, skips duplicates/invalid entries, and retains the newest 600 records (2 MB file limit).
+
+
+### Verified match results
+
+The archive can check up to 10 older archived matches per run using the FREE single-match detail endpoint `GET /matches/{matchId}`. The app waits at least three hours after scheduled start and rate-limits repeat checks per match to 30 minutes. Only API results with `outcome: "completed"` and a valid `winner` are counted in model hit-rate statistics. Retirements, walkovers, defaults, abandoned and unresolved matches are recorded separately and excluded from accuracy. Result revisions are tracked with `result_version`, so a newer official correction replaces an older stored result. Matches without a stored Live Tennis API match ID cannot be reconciled automatically.
+
+The API's completed-match LIST endpoint is a paid History feature; this implementation deliberately uses individual match lookups for IDs already held in the local archive instead of polling the paid history listing.
