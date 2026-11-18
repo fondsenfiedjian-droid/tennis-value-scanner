@@ -207,8 +207,8 @@
           if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
           localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),data:result}));
         }
-        if(result.evA===null&&el.dataset.oddsA)result.evA=(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100;
-        if(result.evB===null&&el.dataset.oddsB)result.evB=(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100;
+        result.evA=el.dataset.oddsA?(result.probabilityA/100*Number(el.dataset.oddsA)-1)*100:null;
+        result.evB=el.dataset.oddsB?(result.probabilityB/100*Number(el.dataset.oddsB)-1)*100:null;
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
         const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
