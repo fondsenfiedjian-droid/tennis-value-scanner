@@ -627,6 +627,8 @@ test("bankroll dashboard is connected to navigation and uses a separate versione
   assert.ok(frontendSource.includes('id="navBankroll"'));
   assert.ok(frontendSource.includes("const BANKROLL_KEY='tvs-bankroll-v1'"));
   assert.ok(frontendSource.includes("TVSBankroll.recommendPortfolio"));
+  assert.ok(frontendSource.includes("stakeMultiplier"));
+  assert.match(frontendSource, /freshness\.level==='medium'\?0\.5:0/);
   assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
   assert.ok(frontendSource.includes("TVSBankroll.settleVerifiedResults"));
   assert.ok(frontendSource.includes("reconcileBankrollWithArchive"));
