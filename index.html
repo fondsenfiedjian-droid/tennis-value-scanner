@@ -557,6 +557,8 @@
         resultWinner:[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null,
         resultVersion:row.resultVersion!==null&&row.resultVersion!==undefined&&Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):null,
         resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
+        resultStatus:typeof row.resultStatus==='string'?row.resultStatus.slice(0,80):null,
+        resultRestatedAt:typeof row.resultRestatedAt==='string'?row.resultRestatedAt:null,
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
