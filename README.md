@@ -80,3 +80,6 @@ npx wrangler deploy
 Publish the repository's static frontend files through the configured Netlify site. The PWA uses `manifest.webmanifest`, `icon.svg`, and `sw.js`.
 
 Do not commit credentials, access tokens, or local environment files.
+
+
+Archive backups: export a versioned JSON backup from the archive view and import it later. Import merges records, validates fields, skips duplicates/invalid entries, and retains the newest 600 records (2 MB file limit).
