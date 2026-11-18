@@ -17,7 +17,7 @@ function makeArchiveStore() {
   const sandbox = { localStorage, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
-    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot };",
+    archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, savePredictionSnapshot, mergePredictionArchive };",
     sandbox
   );
   return sandbox.archiveFns;
@@ -186,4 +186,20 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 3);
   assert.equal(readPredictionArchive().find(row => row.odds === 1.9).ev, 14);
+});
+
+test("archive import validates records, merges duplicates, and keeps newest 600", () => {
+  const { mergePredictionArchive } = makeArchiveStore();
+  const row = { matchKey: "m1", side: "A", player: "Player A", opponent: "Player B",
+    odds: 1.8, probability: 60, ev: 8, capturedAt: 1000, rating: 1800 };
+  const result = mergePredictionArchive([row], [row,
+    { ...row, matchKey: "m2", capturedAt: 2000 },
+    { ...row, odds: 1, matchKey: "bad" }]);
+  assert.equal(result.added, 1);
+  assert.equal(result.ignored, 1);
+  assert.equal(result.rows.length, 2);
+  const many = Array.from({ length: 605 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
+  const capped = mergePredictionArchive([], many);
+  assert.equal(capped.rows.length, 600);
+  assert.equal(capped.rows[0].capturedAt, 6);
 });
