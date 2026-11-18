@@ -60,7 +60,7 @@ Each calculated match card labels the freshness of its inputs separately from th
 
 ## Model limitations
 
-The current model uses general player Elo ratings. Where the provider publishes `stats.ratings_as_of`, the app displays each player's rating date and stores it with the prediction snapshot and CSV export; a missing date is shown as unavailable rather than guessed. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. Positive EV is a model estimate, not a guarantee of profit.
+The current model uses general player Elo ratings. Where the provider publishes `stats.ratings_as_of`, the app displays each player's rating date and stores it with the prediction snapshot and CSV export; a missing date is shown as unavailable rather than guessed. It does **not** yet adjust for court surface, injuries, recent form, fatigue, head-to-head context, or tournament conditions. The first three eligible matches are checked for predictions in the current frontend. The daily highlight also obeys the configured minimum EV (default 3%) and the 1.90 minimum odds floor; it selects the highest EV only among bets meeting both thresholds. Positive EV is a model estimate, not a guarantee of profit.
 
 Unsupported markets (totals, handicaps, and set betting) are not connected; only match-winner odds are processed.
 
