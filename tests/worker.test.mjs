@@ -2477,6 +2477,21 @@ test("PFE tie-break, set and match models are symmetric and respond to stronger 
   assert.equal(pfe.calculateMatchWinProbability(0.6, 0.6, { bestOf: 7 }).status, "invalid");
 });
 
+test("PFE analytical match probability tracks point-by-point simulation with between-set service rotation", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const pfe = sandbox.pfe;
+  for (const [pointA, pointB, bestOf] of [[0.64, 0.58, 3], [0.66, 0.54, 5], [0.57, 0.63, 3]]) {
+    const exact = pfe.calculateMatchWinProbability(pointA, pointB, { bestOf });
+    const simulated = pfe.runMatchMonteCarlo(pointA, pointB, { bestOf, iterations: 100000, seed: 77123 });
+    assert.equal(exact.status, "provisional");
+    assert.ok(Math.abs(exact.probabilityA - simulated.probabilityA) < 0.012,
+      "analytic=" + exact.probabilityA + " simulated=" + simulated.probabilityA);
+    assert.ok(Math.abs(exact.firstServerProbabilities.startA + exact.firstServerProbabilities.startB - 1) < 1e-10);
+  }
+});
+
 test("PFE point-by-point match simulation is reproducible, bounded and reports scoreline scenarios", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
