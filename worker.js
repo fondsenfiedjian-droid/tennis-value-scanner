@@ -33,7 +33,7 @@ function findElo(profile) {
   collect(profile);
   function valid(value) {
     if (typeof value !== "number" && typeof value !== "string") return null;
-    if (typeof value === "string" && !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(value.trim())) return null;
+    if (typeof value === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value.trim())) return null;
     const rating = Number(value);
     return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
   }
