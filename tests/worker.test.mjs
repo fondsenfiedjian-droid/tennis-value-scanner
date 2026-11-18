@@ -498,6 +498,8 @@ test("prediction archive and CSV export remain connected to the UI", () => {
   assert.ok(frontendSource.includes("createArchiveBackup(rows)"));
   assert.ok(frontendSource.includes("readArchiveBackup(payload)"));
   assert.ok(frontendSource.includes("'ratingAsOf'"));
+  assert.ok(frontendSource.includes("Math.abs(homeScrapedAt-awayScrapedAt)>30*60*1000"));
+  assert.ok(frontendSource.includes("data-quote-captured-a"));
 });
 
 test("archive stores both priced player outcomes with calculated EV", () => {
