@@ -634,7 +634,7 @@
     const rejected = [];
     const parseTime = value => typeof value === "number" ? value : Date.parse(value);
     const normalizeName = value => typeof value === "string"
-      ? value.normalize("NFKD").replace(/\\p{M}/gu, "").toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim()
+      ? value.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
       : "";
     for (const row of rows) {
       const matchId = String(row?.matchId ?? "").trim();
@@ -661,7 +661,7 @@
     for (const [matchId, providers] of byMatch) {
       const providerProbabilities = [];
       const providerNames = [];
-      let latestCapture = 0, selectedIdentity = null, selectedResult = null, rejectionReason = null;
+      let latestCapture = 0, earliestMatchStart = Infinity, selectedIdentity = null, selectedResult = null, rejectionReason = null;
       for (const provider of providers.values()) {
         const timestamps = [...provider.quotes.values()].sort((a, b) => b.capturedAt - a.capturedAt);
         let selected = null;
@@ -723,6 +723,11 @@
         providerProbabilities.push(selected.probabilityA);
         providerNames.push(provider.bookmaker);
         latestCapture = Math.max(latestCapture, selected.capturedAt);
+        earliestMatchStart = Math.min(earliestMatchStart, selected.matchStart);
+      }
+      if (latestCapture >= earliestMatchStart) {
+        rejected.push({ matchId, reason: "post_start_capture" });
+        continue;
       }
       if (!providerProbabilities.length || !selectedResult) {
         rejected.push({ matchId, reason: rejectionReason || "no_complete_same_bookmaker_pair" });
@@ -736,7 +741,7 @@
         modelId: "market-consensus", matchId, probability,
         outcome: selectedResult.winner === 1 ? 1 : 0,
         capturedAt: new Date(latestCapture).toISOString(),
-        matchStart: new Date(selectedResult.matchStart).toISOString(),
+        matchStart: new Date(earliestMatchStart).toISOString(),
         resultVerified: true, bookmakerCount: providerProbabilities.length,
         bookmakers: providerNames
       });
