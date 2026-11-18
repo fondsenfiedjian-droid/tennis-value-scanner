@@ -2421,6 +2421,8 @@ test("PFE builds one immutable pre-match history observation per model and match
   assert.equal(result.records[0].playerId, 11);
   assert.equal(result.records[0].modelVersion, "2");
   assert.equal(result.records[1].outcome, 0);
+  assert.equal(result.records[0].surface, "clay");
+  assert.equal(result.records[0].tour, "atp");
   assert.equal(result.rejected.length, 3);
 });
 
@@ -2861,8 +2863,8 @@ test("PFE paired comparison scores the neutral Elo-market fusion against Elo and
     const base = { matchId: String(3000 + i), outcome, resultVerified: true,
       capturedAt: new Date(start - 3600000).toISOString(), matchStart: new Date(start).toISOString(),
       surface: i % 2 ? "hard" : "clay", tour: i % 3 ? "atp" : "wta" };
-    rows.push({ ...base, modelId: "general-elo-v2", probability: outcome ? 0.7 : 0.3 });
-    rows.push({ ...base, modelId: "market-consensus", probability: outcome ? 0.6 : 0.4 });
+    rows.push({ ...base, modelId: "general-elo-v2", probability: outcome ? 0.6 : 0.4 });
+    rows.push({ ...base, modelId: "market-consensus", probability: outcome ? 0.8 : 0.2 });
   }
   const result = sandbox.pfe.compareModelHistory(rows, { minTraining: 5, minValidation: 5 });
   assert.equal(result.status, "evaluated");
