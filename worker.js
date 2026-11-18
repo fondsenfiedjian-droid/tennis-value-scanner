@@ -571,13 +571,17 @@ export default {
 
       const pA = eloProbability(a, b);
       const pB = 1 - pA;
+      const probabilityPercentA = Number((pA * 100).toFixed(2));
+      const probabilityPercentB = Number((pB * 100).toFixed(2));
       return response({
         playerA: cleanName(body.playerA, cleanName(profileA?.name, "Player A")),
         playerB: cleanName(body.playerB, cleanName(profileB?.name, "Player B")),
         ratingA: a,
         ratingB: b,
-        probabilityA: Number((pA * 100).toFixed(2)),
-        probabilityB: Number((pB * 100).toFixed(2)),
+        probabilityA: probabilityPercentA,
+        probabilityB: probabilityPercentB,
+        probabilityExactA: pA,
+        probabilityExactB: pB,
         fairOddsA: Number((1 / pA).toFixed(3)),
         fairOddsB: Number((1 / pB).toFixed(3)),
         oddsA,
