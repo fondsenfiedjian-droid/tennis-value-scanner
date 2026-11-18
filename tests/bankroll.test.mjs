@@ -92,3 +92,31 @@ test("portfolio allocator distributes stakes across distinct matches within aggr
   assert.equal(portfolio.suggestions[0].matchKey, "m1");
   assert.equal(portfolio.suggestions[1].matchKey, "m2");
 });
+
+test("automatic settlement uses only consistent verified completed match results", () => {
+  const state = bank.createInitialState(100);
+  const first = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2, matchId: 123, side: "A" });
+  const second = bank.placeBet(first.state, { probability: 0.6, odds: 2.1, stake: 2, matchId: 456, side: "B" });
+  const result = bank.settleVerifiedResults(second.state, [
+    { matchId: 123, resultOutcome: "completed", resultWinner: 1 },
+    { matchId: 456, resultOutcome: "retired", resultWinner: 1 },
+    { matchId: 789, resultOutcome: "completed", resultWinner: 2 }
+  ]);
+  assert.equal(result.settled.length, 1);
+  assert.equal(result.settled[0].outcome, "won");
+  assert.equal(result.state.openBets.length, 1);
+  assert.equal(result.state.openBets[0].matchId, 456);
+  assert.equal(result.state.balance, 102.2);
+});
+
+test("automatic settlement ignores conflicting result revisions", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 123, side: "A"
+  });
+  const result = bank.settleVerifiedResults(placed.state, [
+    { matchId: 123, resultOutcome: "completed", resultWinner: 1 },
+    { matchId: 123, resultOutcome: "completed", resultWinner: 2 }
+  ]);
+  assert.equal(result.settled.length, 0);
+  assert.equal(result.state.openBets.length, 1);
+});
