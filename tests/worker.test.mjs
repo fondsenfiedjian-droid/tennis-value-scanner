@@ -124,9 +124,11 @@ test("matches rejects unsupported HTTP methods", async () => {
 });
 
 test("frontend inline JavaScript parses without syntax errors", () => {
-  const match = frontendSource.match(/<script>([\\s\\S]*?)<\\/script>/);
-  assert.ok(match, "inline application script should exist");
-  assert.doesNotThrow(() => new Function(match[1]));
+  const start = frontendSource.indexOf("<script>");
+  const end = frontendSource.indexOf("</script>", start);
+  assert.ok(start >= 0 && end > start, "inline application script should exist");
+  const script = frontendSource.slice(start + 8, end);
+  assert.doesNotThrow(() => new Function(script));
 });
 
 test("prediction archive and CSV export remain connected to the UI", () => {
