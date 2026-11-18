@@ -91,7 +91,7 @@
     <div class="panel"><div class="muted">Средний EV</div><div class="stat-num" id="archiveAvgEv">—</div></div>
     <div class="panel"><div class="muted">Средний коэффициент</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
   </div>
-  <div class="stats-actions"><button id="archiveExport">Экспорт CSV</button></div>
+  <div class="stats-actions"><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
@@ -389,6 +389,32 @@
       try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(archive.slice(-600)));}catch(e){}
     }
   }
+  function mergePredictionArchive(current, imported){
+    if(!Array.isArray(imported))throw new Error('Файл не содержит список записей');
+    const clean=imported.filter(row=>row&&typeof row==='object'&&!Array.isArray(row)).map(row=>{
+      const odds=Number(row.odds),probability=Number(row.probability),ev=Number(row.ev),capturedAt=Number(row.capturedAt);
+      if(typeof row.matchKey!=='string'||!row.matchKey||!['A','B'].includes(row.side)||
+        typeof row.player!=='string'||typeof row.opponent!=='string'||
+        !Number.isFinite(odds)||odds<=1||odds>1000||
+        !Number.isFinite(probability)||probability<0||probability>100||
+        !Number.isFinite(ev)||!Number.isFinite(capturedAt)||capturedAt<=0)return null;
+      return {matchKey:row.matchKey.slice(0,256),matchDate:typeof row.matchDate==='string'?row.matchDate:null,
+        tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
+        player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
+        odds,probability,ev,rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,
+        model:typeof row.model==='string'?row.model.slice(0,80):'imported',capturedAt};
+    }).filter(Boolean);
+    const merged=current.slice();
+    const seen=new Set(merged.map(row=>[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|')));
+    let added=0;
+    for(const row of clean){
+      const key=[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|');
+      if(seen.has(key))continue;
+      seen.add(key);merged.push(row);added++;
+    }
+    merged.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
+    return {rows:merged.slice(-600),added,ignored:imported.length-clean.length};
+  }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
     const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
@@ -421,6 +447,27 @@
     const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
     const link=document.createElement('a');link.href=url;link.download='tennis-value-archive.csv';link.click();URL.revokeObjectURL(url);
+  };
+  $('#archiveBackup').onclick=()=>{
+    const rows=readPredictionArchive();
+    if(!rows.length){alert('Архив пока пуст.');return;}
+    const payload={format:'tennis-value-scanner-archive',version:1,exportedAt:new Date().toISOString(),records:rows};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='tennis-value-archive-backup.json';link.click();URL.revokeObjectURL(url);
+  };
+  $('#archiveImport').onclick=()=>$('#archiveImportFile').click();
+  $('#archiveImportFile').onchange=async event=>{
+    const file=event.target.files&&event.target.files[0];event.target.value='';
+    if(!file)return;
+    if(file.size>2*1024*1024){alert('Файл слишком большой. Максимум 2 МБ.');return;}
+    try{
+      const payload=JSON.parse(await file.text());
+      if(!payload||payload.format!=='tennis-value-scanner-archive'||payload.version!==1||!Array.isArray(payload.records))throw new Error('Неподдерживаемый формат резервной копии');
+      const result=mergePredictionArchive(readPredictionArchive(),payload.records);
+      localStorage.setItem(ARCHIVE_KEY,JSON.stringify(result.rows));
+      renderArchive();
+      alert('Импорт завершён. Добавлено: '+result.added+'. Пропущено некорректных записей: '+result.ignored+'. В архиве хранится до 600 последних записей.');
+    }catch(error){alert('Не удалось импортировать архив: '+error.message);}
   };
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
