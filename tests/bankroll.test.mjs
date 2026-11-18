@@ -128,3 +128,13 @@ test("automatic settlement ignores conflicting result revisions", () => {
   assert.equal(result.settled.length, 0);
   assert.equal(result.state.openBets.length, 1);
 });
+
+test("portfolio allocation halves medium-freshness stakes and rejects limited freshness", () => {
+  const portfolio = bank.recommendPortfolio(bank.createInitialState(100), [
+    { matchKey: "medium", player: "A", opponent: "B", probability: 0.6, odds: 2.1, stakeMultiplier: 0.5 },
+    { matchKey: "limited", player: "C", opponent: "D", probability: 0.6, odds: 2.1, stakeMultiplier: 0 }
+  ]);
+  assert.equal(portfolio.suggestions.length, 1);
+  assert.equal(portfolio.suggestions[0].matchKey, "medium");
+  assert.equal(portfolio.suggestions[0].stake, 1);
+});
