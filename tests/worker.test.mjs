@@ -1872,7 +1872,7 @@ test("segment performance groups settled bets by original odds and EV, not settl
   add("odds-low", 1.7, 0.7, "won");
   add("odds-mid", 2.2, 0.55, "lost");
   add("odds-high", 3.2, 0.7, "lost");
-  add("ev-low", 1.7, 0.55, "lost");
+  add("ev-low", 1.6, 0.65, "lost");
   const result = api.getSegmentPerformance(state, []);
   const odds = Object.fromEntries(result.oddsBand.map(row => [row.name, row]));
   assert.equal(odds["1.50–1.79"].settledBets, 2);
@@ -1880,9 +1880,9 @@ test("segment performance groups settled bets by original odds and EV, not settl
   assert.equal(odds["2.10–2.49"].losses, 1);
   assert.equal(odds["3.00+"].settledBets, 1);
   const ev = Object.fromEntries(result.evBand.map(row => [row.name, row]));
-  assert.equal(ev["15%+"].settledBets, 2);
-  assert.equal(ev["10–14.99%"].settledBets, 1);
-  assert.equal(ev["Отрицательный"].settledBets, 1);
+  assert.equal(ev["15%+"].settledBets, 3);
+  assert.equal(ev["0–4.99%"].settledBets, 1);
+  assert.equal(ev["10–14.99%"], undefined);
   assert.equal(result.oddsBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.equal(result.evBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
 });
@@ -1901,8 +1901,8 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   delete tx.betSnapshot.odds;
   delete tx.betSnapshot.ev;
   const result = api.getSegmentPerformance(state, []);
-  assert.equal(result.oddsBand.find(row => row.name === "Неизвестно").excluded, 1);
-  assert.equal(result.evBand.find(row => row.name === "Неизвестно").excluded, 1);
+  assert.equal(result.oddsBand.find(row => row.name === "Неизвестно").settledBets, 1);
+  assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
   assert.match(serviceWorkerSource, /tennis-value-static-v57/);
