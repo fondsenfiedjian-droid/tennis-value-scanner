@@ -313,3 +313,63 @@ test("scanner archive excludes retirements and walkovers from ordinary win-loss 
   assert.equal(adapted.rows.length, 0);
   assert.equal(adapted.ignored, 2);
 });
+
+
+test("threshold sensitivity compares fixed EV and odds grids on a chronological holdout", () => {
+  const rows = Array.from({ length: 10 }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return {
+      ...base,
+      match_id: "grid-" + index,
+      match_start: "2025-01-" + day + "T12:00:00Z",
+      odds_captured_at: "2025-01-" + day + "T10:00:00Z",
+      probability_a: index % 2 ? "0.40" : "0.60",
+      winner: index % 2 ? "B" : "A"
+    };
+  });
+  const report = runOddsBacktest(rows);
+  const sensitivity = report.thresholdSensitivity;
+  assert.equal(sensitivity.status, "evaluated");
+  assert.equal(sensitivity.split, "chronological_70_30_by_match_day");
+  assert.equal(sensitivity.trainingDays, 7);
+  assert.equal(sensitivity.validationDays, 3);
+  assert.equal(sensitivity.trainingMatches, 7);
+  assert.equal(sensitivity.validationMatches, 3);
+  assert.equal(sensitivity.scenarios.length, 20);
+  const baseline = sensitivity.scenarios.find(row => row.minEvPercent === 1 && row.minOdds === 1.9);
+  assert.equal(baseline.training.matches, 7);
+  assert.equal(baseline.validation.matches, 3);
+  assert.equal(baseline.training.bets, 7);
+  assert.equal(baseline.validation.bets, 3);
+  const highOdds = sensitivity.scenarios.find(row => row.minEvPercent === 1 && row.minOdds === 2.5);
+  assert.equal(highOdds.training.bets, 0);
+  assert.equal(highOdds.validation.bets, 0);
+  assert.ok(baseline.validation.roiPercent !== null);
+  assert.equal(baseline.validation.yieldPercent, baseline.validation.roiPercent);
+});
+
+test("threshold sensitivity does not split matches from the same UTC day across partitions", () => {
+  const rows = [];
+  for (let day = 1; day <= 8; day++) {
+    for (let match = 0; match < (day === 7 ? 3 : 1); match++) {
+      const date = "2025-02-" + String(day).padStart(2, "0");
+      rows.push({
+        ...base, match_id: "same-day-" + day + "-" + match,
+        match_start: date + "T12:00:00Z", odds_captured_at: date + "T10:00:00Z"
+      });
+    }
+  }
+  const sensitivity = runOddsBacktest(rows).thresholdSensitivity;
+  assert.equal(sensitivity.trainingDays, 5);
+  assert.equal(sensitivity.validationDays, 3);
+  assert.equal(sensitivity.trainingMatches, 5);
+  assert.equal(sensitivity.validationMatches, 5);
+});
+
+test("threshold sensitivity marks one-day archives as insufficient rather than a valid holdout", () => {
+  const row = { ...base, odds_captured_at: "2025-01-01T10:00:00Z" };
+  const sensitivity = runOddsBacktest([row]).thresholdSensitivity;
+  assert.equal(sensitivity.status, "insufficient_data");
+  assert.equal(sensitivity.trainingDays, 0);
+  assert.equal(sensitivity.validationDays, 1);
+});
