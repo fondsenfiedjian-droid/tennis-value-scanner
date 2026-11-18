@@ -821,7 +821,7 @@
       const lines=suggestions.map(item=>item.player+' — '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)).join('\n');
       if(!confirm('Добавить виртуальные записи в журнал?\n'+lines+'\nИтого: '+formatEuro(total)+'\nДеньги букмекеру не отправляются.'))return;
       for(const item of suggestions){
-        state=TVSBankroll.placeBet(state,{probability:item.probability,odds:item.odds,stake:item.stake,match:item.match,player:item.player,opponent:item.opponent,bookmaker:item.bookmaker,matchId:item.matchId,side:item.side}).state;
+        state=TVSBankroll.placeBet(state,{probability:item.probability,odds:item.odds,stake:item.stake,match:item.match,matchKey:item.matchKey,player:item.player,opponent:item.opponent,bookmaker:item.bookmaker,matchId:item.matchId,side:item.side}).state;
       }
       if(persistBankrollState(state)){renderBankroll();alert('Распределение сохранено в финансовом журнале.');}
     }catch(error){alert(error.message);}
