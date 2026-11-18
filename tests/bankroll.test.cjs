@@ -200,3 +200,39 @@ test("portfolio respects total exposure and does not duplicate the same match", 
   assert.equal(portfolio.remainingBalance, 92);
   assert.equal(new Set(portfolio.suggestions.map(item => item.matchKey)).size, 4);
 });
+
+test("portfolio excludes a match that already has an open bet", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2,
+    matchId: 87654321, matchKey: "id:87654321", match: "ATP · Player A — Player B",
+    player: "Player A", opponent: "Player B", side: "A"
+  });
+  const portfolio = bank.recommendPortfolio(placed.state, [
+    { matchKey: "id:87654321", matchId: 87654321, match: "ATP · Player A — Player B", player: "Player A", opponent: "Player B", probability: 0.8, odds: 2.2 },
+    { matchKey: "id:87654322", matchId: 87654322, match: "ATP · Player C — Player D", player: "Player C", opponent: "Player D", probability: 0.8, odds: 2.2 }
+  ]);
+  assert.equal(portfolio.suggestions.length, 1);
+  assert.equal(portfolio.suggestions[0].matchId, 87654322);
+});
+
+test("backup integrity check rejects changed ledger data", () => {
+  const state = bank.createInitialState(100);
+  const backup = bank.serializeBackup(state);
+  backup.state.balance = 999;
+  assert.throws(() => bank.parseBackup(backup), /Контрольная сумма/);
+});
+
+test("backup parser rejects a valid checksum over an invalid ledger", () => {
+  const state = bank.createInitialState(100);
+  state.balance = 90;
+  const snapshot = JSON.stringify(state);
+  let hash = 2166136261;
+  for (let index = 0; index < snapshot.length; index++) {
+    hash ^= snapshot.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const checksum = (hash >>> 0).toString(16).padStart(8, "0");
+  assert.throws(() => bank.parseBackup({
+    format: "tvs-bankroll-backup", version: 1, checksum, state
+  }), /Баланс не совпадает/);
+});
