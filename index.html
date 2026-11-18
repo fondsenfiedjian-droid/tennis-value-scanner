@@ -464,8 +464,9 @@
         if(side&&Number.isFinite(value)&&value>1){if(side==='1')oddsA=value;else oddsB=value;}
       });
       const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const side=oddsSideForPlayer(o,a);return side?escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>':'';}).filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
-      const oddsAgeMinutes=matched.length?Math.max(...matched.map(o=>(Date.now()-Date.parse(o.scrapedAt))/60000)):null;
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'"':'';
+      const oddsObservedAt=Date.now();
+      const oddsAgeMinutes=matched.length?Math.max(...matched.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -1206,7 +1207,11 @@
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
-        const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,el.dataset.oddsAgeMinutes);
+        const initialOddsAge=Number(el.dataset.oddsAgeMinutes);
+        const oddsObservedAt=Number(el.dataset.oddsObservedAt);
+        const currentOddsAge=Number.isFinite(initialOddsAge)&&initialOddsAge>=0&&Number.isFinite(oddsObservedAt)&&oddsObservedAt>0
+          ?initialOddsAge+Math.max(0,(Date.now()-oddsObservedAt)/60000):null;
+        const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,currentOddsAge);
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
