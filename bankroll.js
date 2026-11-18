@@ -543,21 +543,33 @@
         missing.push({ betId: bet.id, reason: "Недостаточно идентификаторов или времени" });
         continue;
       }
-      const candidates = rows.filter(row => Number(row.matchId) === Number(bet.matchId) &&
-        row.side === bet.side && String(row.bookmaker || "").trim() === bookmaker &&
-        Number.isFinite(Number(row.odds)) && Number(row.odds) > 1 &&
-        Number.isFinite(Number(row.capturedAt)) && Number(row.capturedAt) >= placedAt &&
-        Number(row.capturedAt) <= matchStart && matchStart - Number(row.capturedAt) <= closeWindowMs);
+      const candidates = rows.filter(row => {
+        const capturedAt = Number(row.capturedAt);
+        const status = typeof row.captureStatus === "string" ? row.captureStatus.trim().toLowerCase() : "";
+        return Number(row.matchId) === Number(bet.matchId) &&
+          row.side === bet.side && String(row.bookmaker || "").trim().toLowerCase() === bookmaker.toLowerCase() &&
+          Number.isFinite(Number(row.odds)) && Number(row.odds) > 1 &&
+          Number.isFinite(capturedAt) && capturedAt >= placedAt &&
+          capturedAt < matchStart && matchStart - capturedAt <= closeWindowMs &&
+          (!status || status === "upcoming");
+      });
       if (!candidates.length) {
-        missing.push({ betId: bet.id, reason: "Нет котировки этого букмекера в последние 6 часов до матча" });
+        missing.push({ betId: bet.id, reason: "Нет подходящей предматчевой котировки этого букмекера в последние 6 часов до матча" });
         continue;
       }
-      const closing = candidates.reduce((latest, row) => Number(row.capturedAt) > Number(latest.capturedAt) ? row : latest);
-      const clvPercent = (Number(bet.odds) / Number(closing.odds) - 1) * 100;
+      const latestAt = Math.max(...candidates.map(row => Number(row.capturedAt)));
+      const latestRows = candidates.filter(row => Number(row.capturedAt) === latestAt);
+      const latestOdds = new Set(latestRows.map(row => Number(row.odds)));
+      if (latestOdds.size !== 1) {
+        missing.push({ betId: bet.id, reason: "Конфликтующие котировки с одинаковой последней временной отметкой" });
+        continue;
+      }
+      const closingOdds = [...latestOdds][0];
+      const clvPercent = (Number(bet.odds) / closingOdds - 1) * 100;
       matched.push({
         betId: bet.id, matchId: Number(bet.matchId), bookmaker,
-        takenOdds: Number(bet.odds), closingOdds: Number(closing.odds),
-        capturedAt: Number(closing.capturedAt), clvPercent: roundMoney(clvPercent)
+        takenOdds: Number(bet.odds), closingOdds,
+        capturedAt: latestAt, clvPercent: roundMoney(clvPercent)
       });
     }
     const average = matched.length ? roundMoney(matched.reduce((sum, item) => sum + item.clvPercent, 0) / matched.length) : null;
