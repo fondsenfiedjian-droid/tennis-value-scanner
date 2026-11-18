@@ -2288,7 +2288,7 @@ test("PFE tie-break, set and match models are symmetric and respond to stronger 
 test("PFE point-by-point match simulation is reproducible, bounded and reports scoreline scenarios", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.pfe = TVSPFE;", sandbox);
   const pfe = sandbox.pfe;
   const first = pfe.runMatchMonteCarlo(0.64, 0.58, { iterations: 1200, seed: 17, bestOf: 3 });
   const second = pfe.runMatchMonteCarlo(0.64, 0.58, { iterations: 1200, seed: 17, bestOf: 3 });
