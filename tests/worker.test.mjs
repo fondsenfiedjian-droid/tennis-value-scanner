@@ -2041,7 +2041,8 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
   const placed = api.placeBet(api.createInitialState(100), {
     matchKey: "dispersion-revision", matchId: 9911, side: "A",
     match: "Player A — Player B", player: "Player A", opponent: "Player B",
-    probability: 0.7, odds: 2, stake: 5
+    probability: 0.7, odds: 2, stake: 5,
+    options: { minOdds: 1.01, minEv: -10, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
   });
   const first = api.settleVerifiedResults(placed.state, [
     { matchId: 9911, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
