@@ -40,7 +40,7 @@
           !Number.isFinite(bet.probability) || bet.probability <= 0 || bet.probability >= 1 ||
           typeof bet.placedAt !== "string" || !Number.isFinite(Date.parse(bet.placedAt)) ||
           (bet.matchId !== null && bet.matchId !== undefined && (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0)) ||
-          (bet.matchId && !["A", "B"].includes(bet.side))) {
+          (bet.matchId && !["A", "B"].includes(bet.side)) ||\n          (bet.plannedStake !== undefined && bet.plannedStake !== null && (!Number.isFinite(bet.plannedStake) || bet.plannedStake < 0)) ||\n          (bet.plannedOdds !== undefined && bet.plannedOdds !== null && (!Number.isFinite(bet.plannedOdds) || bet.plannedOdds <= 1))) {
         throw new Error("В журнале найдена некорректная открытая ставка.");
       }
       ids.add(bet.id);
@@ -54,7 +54,7 @@
           !Number.isFinite(tx.balanceDelta) || typeof tx.at !== "string" || !Number.isFinite(Date.parse(tx.at)) ||
           Math.abs(tx.balanceDelta - expectedDeltaSign[tx.type] * tx.amount) > 0.01 ||
           (tx.profit !== undefined && !Number.isFinite(tx.profit)) ||
-          (tx.stake !== undefined && (!Number.isFinite(tx.stake) || tx.stake < 0)) ||
+          (tx.stake !== undefined && (!Number.isFinite(tx.stake) || tx.stake < 0)) ||\n          ...["plannedStake", "actualStake"].some(key => tx[key] !== undefined && tx[key] !== null && (!Number.isFinite(tx[key]) || tx[key] < 0)) ||\n          ...["plannedOdds", "actualOdds"].some(key => tx[key] !== undefined && tx[key] !== null && (!Number.isFinite(tx[key]) || tx[key] <= 1)) ||
           (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1))) {
         throw new Error("В журнале найдена некорректная операция.");
       }
