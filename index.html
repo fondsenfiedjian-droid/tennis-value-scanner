@@ -1073,9 +1073,9 @@
   }
   function selectBestBet(bets,minEv=3){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
-    const freshnessRank={high:2,medium:1};
+    const freshnessRank={good:2,medium:1};
     return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=1.9&&
-      ['high','medium'].includes(x.freshnessLevel))
+      ['good','medium'].includes(x.freshnessLevel))
       .sort((a,b)=>b.ev-a.ev||freshnessRank[b.freshnessLevel]-freshnessRank[a.freshnessLevel]||b.odds-a.odds)[0]||null;
   }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
@@ -1101,7 +1101,7 @@
       const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
       return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel};
     })):{suggestions:[],totalStake:0};
-    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+(item.freshnessLevel==='high'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
+    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
     const stakeWord=portfolio.suggestions.length===1?'ставка':portfolio.suggestions.length<5?'ставки':'ставок';
     const stakeAction=portfolio.suggestions.length?'<br><b>Распределение банка: '+portfolio.suggestions.length+' '+stakeWord+' · всего '+formatEuro(portfolio.totalStake)+'</b><br>'+portfolioLines+'<br><button id="addPortfolioToBank" class="chip on" style="margin-top:9px">Распределить по этим ставкам</button>':'<br><span class="model-muted">Сейчас нет ставок, прошедших лимиты банка, минимальный EV и проверку свежести данных.</span>';
     box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · Winamax <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.'+stakeAction+'</div>';
@@ -1164,7 +1164,7 @@
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,el.dataset.oddsAgeMinutes);
-        for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshness.level==='high'?1:freshness.level==='medium'?0.5:0;}
+        for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshness.level==='good'?1:freshness.level==='medium'?0.5:0;}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' / '+escapeHtml(dateB)+'</small><br><span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'. Это оценка актуальности исходных данных, а не вероятность выигрыша.</div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
