@@ -18,13 +18,59 @@ function makeArchiveStore(seed = [], options = {}) {
     getItem: key => data[key] ?? null,
     setItem: (key, value) => { if(options.failWrites)throw new Error('QuotaExceededError'); data[key] = value; }
   };
-  const sandbox = { localStorage, Date, Math, Number, String, JSON,
+  const sandbox = { localStorage, indexedDB: options.indexedDB, Date, Math, Number, String, JSON,
     matchDate: () => new Date("2026-11-20T12:00:00Z") };
   vm.runInNewContext(
     ratingDateSource + archiveSource + String.fromCharCode(10) + "globalThis.archiveFns = { readPredictionArchive, persistPredictionArchive, savePredictionSnapshot, mergePredictionArchive, createArchiveBackup, readArchiveBackup, applyVerifiedMatchResult, archiveResultStats, archiveOddsMovement, stampResultCheck, initializeArchiveStorage };",
     sandbox
   );
   return sandbox.archiveFns;
+}
+
+function makeFakeIndexedDB() {
+  const state = { records: [], meta: new Map(), nextId: 1 };
+  const stores = new Set();
+  const db = {
+    objectStoreNames: { contains: name => stores.has(name) },
+    createObjectStore(name) { stores.add(name); return {}; },
+    transaction(names, mode) {
+      const tx = {
+        error: null,
+        objectStore(name) {
+          if (name === "records") return {
+            getAll() {
+              const request = { result: [] };
+              Promise.resolve().then(() => { request.result = state.records.map(row => ({ ...row })); });
+              return request;
+            },
+            clear() { state.records = []; },
+            add(row) { state.records.push({ ...row, id: state.nextId++ }); }
+          };
+          return {
+            get(key) {
+              const request = { result: undefined };
+              Promise.resolve().then(() => { request.result = state.meta.get(key); });
+              return request;
+            },
+            put(value, key) { state.meta.set(key, value); }
+          };
+        }
+      };
+      Promise.resolve().then(() => tx.oncomplete?.());
+      return tx;
+    }
+  };
+  return {
+    open() {
+      const request = { result: db };
+      Promise.resolve().then(() => {
+        if (!stores.has("records")) request.onupgradeneeded?.();
+        request.onsuccess?.();
+      });
+      return request;
+    },
+    state
+  };
 }
 
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
@@ -315,6 +361,22 @@ test("archive suppresses identical snapshots but records changed odds", () => {
   result.ratingA = 1901;
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+test("IndexedDB migration is repeatable and preserves legacy snapshots", async () => {
+  const indexedDB = makeFakeIndexedDB();
+  const legacy = [{ matchKey: "migrated", side: "A", player: "A", opponent: "B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1800000000000 }];
+  const store = makeArchiveStore(legacy, { indexedDB });
+  const first = await store.initializeArchiveStorage();
+  assert.equal(first.mode, "indexeddb");
+  assert.equal(first.migrated, true);
+  assert.equal(store.readPredictionArchive().length, 1);
+  const second = await store.initializeArchiveStorage();
+  assert.equal(second.mode, "indexeddb");
+  assert.equal(store.readPredictionArchive().length, 1);
+  assert.equal(indexedDB.state.records.length, 1);
+  assert.equal(indexedDB.state.meta.get("initialized"), true);
 });
 
 test("archive memory cache remains readable when localStorage quota is exhausted", () => {
