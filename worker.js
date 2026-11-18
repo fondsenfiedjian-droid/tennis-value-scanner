@@ -20,6 +20,37 @@ function eloProbability(a, b) {
   return 1 / (1 + Math.pow(10, (b - a) / 400));
 }
 
+function findElo(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  const preferred = ["overall_elo", "elo", "elo_rating", "overallElo"];
+  const seen = new Set();
+  function scan(obj, depth = 0) {
+    if (!obj || typeof obj !== "object" || depth > 8 || seen.has(obj)) return null;
+    seen.add(obj);
+    for (const key of preferred) {
+      const value = obj[key];
+      if (value !== undefined && value !== null && Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+    }
+    for (const [key, value] of Object.entries(obj)) {
+      if (/elo/i.test(key) && value !== null && typeof value !== "object" && Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+    }
+    for (const value of Object.values(obj)) {
+      const found = scan(value, depth + 1);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  return scan(profile);
+}
+
+async function getPlayerProfile(playerId, apiKey) {
+  const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId), {
+    headers: { "X-API-Key": apiKey, "Accept": "application/json" }
+  });
+  if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
+  return res.json();
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -119,7 +150,6 @@ export default {
     if (path === "/predict") {
       try {
         let body = {};
-
         if (request.method === "POST") {
           body = await request.json();
         } else if (request.method === "GET") {
@@ -133,30 +163,69 @@ export default {
           return response({ error: "Method not allowed" }, 405);
         }
 
-        const a = Number(body.ratingA);
-        const b = Number(body.ratingB);
+        let profileA = null;
+        let profileB = null;
+        let a;
+        let b;
+        let source = "manual-test";
 
-        if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b < 0) {
-          return response({ error: "Invalid ratings" }, 400);
+        if (body.playerIdA && body.playerIdB) {
+          if (!env.LIVE_TENNIS_API_KEY) {
+            return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+          }
+          [profileA, profileB] = await Promise.all([
+            getPlayerProfile(body.playerIdA, env.LIVE_TENNIS_API_KEY),
+            getPlayerProfile(body.playerIdB, env.LIVE_TENNIS_API_KEY)
+          ]);
+          a = findElo(profileA);
+          b = findElo(profileB);
+          source = "Live Tennis API player profiles";
+          if (a === null || b === null) {
+            return response({
+              error: "Elo rating is unavailable for one or both players",
+              playerA: body.playerA || profileA.name || "Player A",
+              playerB: body.playerB || profileB.name || "Player B",
+              ratingA: a,
+              ratingB: b,
+              source
+            }, 422);
+          }
+        } else {
+          a = Number(body.ratingA);
+          b = Number(body.ratingB);
+          if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+            return response({ error: "Provide both player IDs or two positive ratings" }, 400);
+          }
         }
 
         const pA = eloProbability(a, b);
         const pB = 1 - pA;
+        const oddsA = Number(body.oddsA);
+        const oddsB = Number(body.oddsB);
+        const validOddsA = Number.isFinite(oddsA) && oddsA > 1;
+        const validOddsB = Number.isFinite(oddsB) && oddsB > 1;
 
         return response({
-          playerA: body.playerA || "Player A",
-          playerB: body.playerB || "Player B",
+          playerA: body.playerA || profileA?.name || "Player A",
+          playerB: body.playerB || profileB?.name || "Player B",
           ratingA: a,
           ratingB: b,
           probabilityA: Number((pA * 100).toFixed(2)),
           probabilityB: Number((pB * 100).toFixed(2)),
           fairOddsA: Number((1 / pA).toFixed(3)),
           fairOddsB: Number((1 / pB).toFixed(3)),
+          oddsA: validOddsA ? oddsA : null,
+          oddsB: validOddsB ? oddsB : null,
+          evA: validOddsA ? Number(((pA * oddsA - 1) * 100).toFixed(2)) : null,
+          evB: validOddsB ? Number(((pB * oddsB - 1) * 100).toFixed(2)) : null,
           method: "Elo",
-          note: "Test calculation only. Historical ratings are not connected yet."
+          source,
+          ratingsAsOfA: profileA?.stats?.ratings_as_of || profileA?.ratings_as_of || null,
+          ratingsAsOfB: profileB?.stats?.ratings_as_of || profileB?.ratings_as_of || null,
+          note: source === "manual-test" ? "Manual test ratings; not player data." : "Probabilities derived from player Elo ratings. Model does not account for surface, injuries, or recent form."
         });
       } catch (error) {
-        return response({ error: "Invalid request" }, 400);
+        return response({ error: error.message || "Prediction request failed" }, 502);
       }
     }
 
