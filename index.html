@@ -770,7 +770,7 @@
     return {rows,added,updated,ignored:imported.length-clean.length,dropped:merged.length-rows.length};
   }
   function normalizeResultPlayerName(value){
-    return String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+    return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
   }
   function validateArchivedMatchIdentity(rows,result,id){
     const p1=normalizeResultPlayerName(result?.players?.p1?.name);
