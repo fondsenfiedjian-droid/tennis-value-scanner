@@ -938,7 +938,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v34/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
@@ -1002,7 +1002,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v34/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1018,7 +1018,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v34/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v35/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1040,4 +1040,41 @@ test("bankroll preserves bookmaker attribution from placement through settlement
   state = api.settleBet(state, placed.bet.id, "won");
   assert.equal(state.transactions.at(-1).bookmaker, "Betclic");
   assert.equal(state.transactions.at(-1).betSnapshot.bookmaker, "Betclic");
+});
+
+
+test("bankroll reports independent settled ROI and open exposure per bookmaker", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  let state = api.createInitialState(100);
+  const betclic = api.placeBet(state, { matchKey: "provider-stats-a", match: "A — B", bookmaker: "Betclic", probability: 0.62, odds: 2.1, stake: 2 });
+  state = api.settleBet(betclic.state, betclic.bet.id, "won");
+  const winamax = api.placeBet(state, { matchKey: "provider-stats-b", match: "C — D", bookmaker: "Winamax", probability: 0.62, odds: 2.1, stake: 2 });
+  state = api.settleBet(winamax.state, winamax.bet.id, "lost");
+  const unknown = api.placeBet(state, { matchKey: "provider-stats-c", match: "E — F", probability: 0.62, odds: 2.1, stake: 1 });
+  state = api.settleBet(unknown.state, unknown.bet.id, "void");
+  const open = api.placeBet(state, { matchKey: "provider-stats-d", match: "G — H", bookmaker: "Betclic", probability: 0.62, odds: 2.1, stake: 1 });
+  state = open.state;
+  const stats = api.getBookmakerSummary(state);
+  const byName = Object.fromEntries(stats.map(row => [row.bookmaker, row]));
+  assert.equal(byName.Betclic.wins, 1);
+  assert.equal(byName.Betclic.openBets, 1);
+  assert.equal(byName.Betclic.openStake, 1);
+  assert.equal(byName.Betclic.profit, 2.2);
+  assert.equal(byName.Betclic.roiPercent, 110);
+  assert.equal(byName.Winamax.losses, 1);
+  assert.equal(byName.Winamax.profit, -2);
+  assert.equal(byName.Winamax.roiPercent, -100);
+  assert.equal(byName["Не указан"].voids, 1);
+  assert.equal(byName["Не указан"].totalStaked, 0);
+  assert.equal(byName["Не указан"].voidedStake, 1);
+  assert.equal(byName["Не указан"].roiPercent, null);
+});
+
+test("bankroll UI displays per-bookmaker ledger results without merging imported history", () => {
+  assert.match(frontendSource, /id="bankBookmakerStats"/);
+  assert.match(frontendSource, /TVSBankroll\.getBookmakerSummary\(state\)/);
+  assert.match(frontendSource, /Результаты по букмекерам/);
+  assert.match(frontendSource, /фактический журнал/);
 });
