@@ -758,7 +758,7 @@
     $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
     $('#bankTxCount').textContent=state.transactions.length+' операций';
     $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
-    const labels={deposit:'Пополнение',withdrawal:'Снятие',stake:'Ставка',settlement:'Расчёт ставки'};
+    const labels={deposit:'Пополнение',withdrawal:'Снятие',stake:'Ставка',settlement:'Расчёт ставки',settlement_reversed:'Расчёт отменён после исправления результата',settlement_reversal:'Возврат при пересмотре результата'};
     $('#bankTransactions').innerHTML=state.transactions.slice().reverse().slice(0,50).map(tx=>'<div class="archive-item"><b>'+escapeHtml(labels[tx.type]||tx.type)+'</b><div class="'+(tx.balanceDelta>=0?'model-positive':'model-negative')+'">'+(tx.balanceDelta>0?'+':'')+formatEuro(tx.balanceDelta)+'</div><div class="archive-meta">'+escapeHtml(tx.note||tx.outcome||'')+' · '+escapeHtml(new Date(tx.at).toLocaleString('ru-RU'))+'</div></div>').join('')||'<div class="panel empty">Операций пока нет.</div>';
     $('#bankOpenList').querySelectorAll('[data-bank-settle]').forEach(button=>button.onclick=()=>{
       const outcome=button.dataset.bankSettle, id=button.dataset.bankId;
@@ -769,12 +769,13 @@
     });
   }
   function reconcileBankrollWithArchive(){
+    const empty={settled:0,corrected:0,reopened:0};
     const state=readBankrollState();
-    if(!state||!state.openBets.length)return 0;
+    if(!state)return empty;
     const result=TVSBankroll.settleVerifiedResults(state,readPredictionArchive());
-    if(!result.settled.length)return 0;
-    if(persistBankrollState(result.state)){renderBankroll();return result.settled.length;}
-    return 0;
+    if(!result.updated)return empty;
+    if(persistBankrollState(result.state)){renderBankroll();return {settled:result.settled.length,corrected:result.corrected.length,reopened:result.reopened.length};}
+    return empty;
   }
   function addPortfolioToBankroll(suggestions){
     try{
@@ -875,8 +876,8 @@
       const archiveFlush=await flushArchiveWrites();
       if(!archiveFlush.ok)errors++;
       renderArchive();
-      const bankrollSettled=reconcileBankrollWithArchive();
-      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Автоматически рассчитано ставок: '+bankrollSettled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+      const bankrollUpdates=reconcileBankrollWithArchive();
+      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ставок рассчитано: '+bankrollUpdates.settled+', исправлено после пересмотра: '+bankrollUpdates.corrected+', открыто повторно: '+bankrollUpdates.reopened+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
   };
   $('#archiveExport').onclick=async()=>{
