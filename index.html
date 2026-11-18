@@ -528,14 +528,7 @@
       let migrated=false;
       const legacy=readPredictionArchive();
       if(legacy.length){
-        const combined=mergePredictionArchive(rows,legacy).rows;
-        const bySnapshot=new Map(combined.map(row=>[[row.matchKey,row.side,row.capturedAt,row.odds,row.probability].join('|'),row]));
-        for(const backupRow of legacy){
-          const key=[backupRow.matchKey,backupRow.side,backupRow.capturedAt,backupRow.odds,backupRow.probability].join('|');
-          const stored=bySnapshot.get(key);
-          if(stored&&(Number(backupRow.resultVersion||0)>Number(stored.resultVersion||0)||Number(backupRow.resultCheckedAt||0)>Number(stored.resultCheckedAt||0)))bySnapshot.set(key,{...stored,...backupRow});
-        }
-        rows=limitPredictionArchive([...bySnapshot.values()]);
+        rows=mergePredictionArchive(rows,legacy).rows;
       }
       if(!state.initialized){migrated=legacy.length>0;await writeArchiveDatabase(db,rows,true);}
       else if(rows.length!==state.rows.length||legacy.length)await writeArchiveDatabase(db,rows,true);
@@ -971,7 +964,7 @@
     await archiveStorageReady;
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','matchDate','matchId','tournament','tour','surface','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion'];
+    const columns=['capturedAt','matchDate','matchId','tournament','tour','surface','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
     const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
     const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
