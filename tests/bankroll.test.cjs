@@ -68,3 +68,65 @@ test("rejects corrupt bankroll states and invalid bet parameters", () => {
   assert.throws(() => bank.validateState({ version: 1, initialBankroll: 100, balance: 100, openBets: [], transactions: [{ id: "x", amount: -1, balanceDelta: 0 }] }), /некорректная операция/);
   assert.equal(bank.recommendStake(bank.createInitialState(100), 0, 2).eligible, false);
 });
+
+function verifiedRow(matchId, outcome, winner, resultVersion) {
+  return {
+    matchId,
+    resultOutcome: outcome,
+    resultWinner: winner,
+    resultVersion,
+    resultCheckedAt: Date.now()
+  };
+}
+
+test("verified result revision recalculates a settled bet and remains idempotent", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654321, side: "A", match: "A - B"
+  });
+  const first = bank.settleVerifiedResults(placed.state, [verifiedRow(7654321, "completed", 1, 1)]);
+  assert.equal(first.settled.length, 1);
+  assert.equal(first.state.balance, 102.2);
+  assert.equal(bank.realizedProfit(first.state), 2.2);
+
+  const corrected = bank.settleVerifiedResults(first.state, [verifiedRow(7654321, "completed", 2, 2)]);
+  assert.equal(corrected.corrected.length, 1);
+  assert.equal(corrected.state.balance, 98);
+  assert.equal(bank.realizedProfit(corrected.state), -2);
+  assert.equal(corrected.state.openBets.length, 0);
+
+  const repeated = bank.settleVerifiedResults(corrected.state, [verifiedRow(7654321, "completed", 2, 2)]);
+  assert.equal(repeated.updated, 0);
+  assert.equal(repeated.state.balance, 98);
+  assert.equal(bank.validateState(repeated.state), repeated.state);
+});
+
+test("a revised non-standard result reverses payout and reopens the bet for manual review", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654322, side: "A", match: "A - B"
+  });
+  const settled = bank.settleVerifiedResults(placed.state, [verifiedRow(7654322, "completed", 1, 1)]);
+  const reopened = bank.settleVerifiedResults(settled.state, [verifiedRow(7654322, "retired", null, 2)]);
+  assert.equal(reopened.reopened.length, 1);
+  assert.equal(reopened.state.balance, 98);
+  assert.equal(reopened.state.openBets.length, 1);
+  assert.equal(reopened.state.openBets[0].lastResultVersion, 2);
+  assert.equal(bank.validateState(reopened.state), reopened.state);
+  const repeated = bank.settleVerifiedResults(reopened.state, [verifiedRow(7654322, "retired", null, 2)]);
+  assert.equal(repeated.updated, 0);
+  assert.equal(repeated.state.balance, 98);
+  assert.equal(repeated.state.openBets.length, 1);
+});
+
+test("conflicting official winners at the same result version are not auto-settled", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654323, side: "A"
+  });
+  const rows = [
+    verifiedRow(7654323, "completed", 1, 4),
+    verifiedRow(7654323, "completed", 2, 4)
+  ];
+  const result = bank.settleVerifiedResults(placed.state, rows);
+  assert.equal(result.updated, 0);
+  assert.equal(result.state.openBets.length, 1);
+  assert.equal(result.state.balance, 98);
+});
