@@ -140,9 +140,7 @@
     const seenMatches = new Set();
     const existingMatchIds = new Set(simulated.openBets.map(bet => Number(bet.matchId)).filter(id => Number.isSafeInteger(id) && id > 0));
     const existingMatchKeys = new Set(simulated.openBets.map(bet => String(bet.matchKey || "").trim()).filter(Boolean));
-    const existingPlayerPairs = new Set(simulated.openBets.map(bet => [bet.player, bet.opponent]
-      .map(value => String(value || "").trim().toLocaleLowerCase())
-      .sort().join("|")).filter(value => value !== "|"));
+    const existingMatchLabels = new Set(simulated.openBets.map(bet => String(bet.match || "").trim().toLocaleLowerCase()).filter(Boolean));
     const ordered = (Array.isArray(candidates) ? candidates : [])
       .filter(item => item && Number.isFinite(Number(item.probability)) && Number(item.probability) > 0 && Number(item.probability) < 1 &&
         Number.isFinite(Number(item.odds)) && Number(item.odds) > 1)
@@ -153,13 +151,11 @@
     for (const candidate of ordered) {
       const matchKey = String(candidate.matchKey || candidate.match || [candidate.player, candidate.opponent].join("|"));
       const matchId = Number(candidate.matchId);
-      const playerPair = [candidate.player, candidate.opponent]
-        .map(value => String(value || "").trim().toLocaleLowerCase())
-        .sort().join("|");
+      const matchLabel = String(candidate.match || "").trim().toLocaleLowerCase();
       if (seenMatches.has(matchKey) ||
           (Number.isSafeInteger(matchId) && matchId > 0 && existingMatchIds.has(matchId)) ||
           existingMatchKeys.has(matchKey) ||
-          (playerPair !== "|" && existingPlayerPairs.has(playerPair))) continue;
+          (matchLabel && existingMatchLabels.has(matchLabel))) continue;
       const cfg = { ...DEFAULTS, ...options, ...(candidate.options || {}) };
       const recommendation = recommendStake(simulated, candidate.probability, candidate.odds, cfg);
       if (!recommendation.eligible) continue;
