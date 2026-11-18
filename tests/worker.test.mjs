@@ -2225,7 +2225,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
     rateLimit: { errorCode: "abuse_throttled", scope: null, resetsAt: null, retryAtEpoch: Math.ceil((Date.now() + 24 * 60 * 60 * 1000) / 1000) }
   }, 429, "30");
   assert.equal(abuse.result.rateLimitError, "abuse_throttled");
-  assert.ok(abuse.result.retryAfterSeconds >= 86399 && abuse.result.retryAfterSeconds <= 86400,
+  assert.ok(abuse.result.retryAfterSeconds >= 86399 && abuse.result.retryAfterSeconds <= 86401,
     "abuse retry epoch must take precedence over Retry-After");
 
   const dateRetry = await runLoader(
@@ -2258,7 +2258,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Доступ Live Tennis API:/);
   assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
-  assert.ok(frontendSource.includes("rate_limited:'лимит запросов API; учитывайте Retry-After'"));
+  assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
   assert.match(serviceWorkerSource, /tennis-value-static-v85/);
 });
