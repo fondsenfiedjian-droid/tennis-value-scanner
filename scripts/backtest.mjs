@@ -90,7 +90,7 @@ export function runBacktest(matches, options = {}) {
     const bin = bucket.calibration[index];
     bin.n++;
     bin.predicted += probability;
-    bin.wins += favouriteWon ? 1 : 0;
+    bin.wins += favouriteWon;
   };
   const formatCalibration = bucket => {
     const bins = bucket.calibration.map((bin, index) => ({
@@ -162,7 +162,7 @@ export function runBacktest(matches, options = {}) {
           addMetric(byYear.get(year)[name], probability);
           addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
           const favouriteProbability = Math.max(probability, 1 - probability);
-          const favouriteWon = probability >= 0.5;
+          const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
