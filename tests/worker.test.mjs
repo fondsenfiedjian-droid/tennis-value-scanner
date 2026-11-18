@@ -1724,12 +1724,9 @@ test("archive segment calibration groups only known surfaces and tournament cate
   }));
   const surfaces = result.find(group => group.key === "surface").items;
   const tours = result.find(group => group.key === "tour").items;
-  assert.deepEqual(surfaces.map(item => [item.name, item.sampleSize]), [["Грунт", 2], ["Трава", 1], ["Хард", 1]]);
-  assert.deepEqual(tours.map(item => [item.name, item.sampleSize]), [["ATP", 2], ["Challenger", 1], ["WTA", 1]]);
+  assert.deepEqual(Array.from(surfaces, item => [item.name, item.sampleSize]), [["Грунт", 2], ["Трава", 1], ["Хард", 1]]);
+  assert.deepEqual(Array.from(tours, item => [item.name, item.sampleSize]), [["ATP", 2], ["Challenger", 1], ["WTA", 1]]);
   assert.ok(result.every(group => group.items.every(item => item.preliminary)));
   assert.match(frontendSource, /archiveSegmentCalibration\(rows\)/);
-  assert.match(frontendSource, /archiveSegmentCalibration/);
-  assert.match(frontendSource, /archiveSegmentCalibration/);
-  assert.match(frontendSource, /archiveSegmentCalibration/);
   assert.match(frontendSource, /id="archiveSegmentCalibration"/);
 });
