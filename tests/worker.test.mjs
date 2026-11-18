@@ -908,6 +908,15 @@ test("expired portfolio plans are cleared automatically and cannot block the nex
   assert.ok(nextPlan.pendingPlan);
   assert.notEqual(nextPlan.pendingPlan.id, planned.pendingPlan.id);
 });
+test("bankroll UI keeps virtual and actual financial storage isolated", () => {
+  const modeBlock = frontendSource.slice(frontendSource.indexOf("const BANKROLL_VIRTUAL_KEY"), frontendSource.indexOf("function renderBankroll()"));
+  assert.match(modeBlock, /tvs-bankroll-v1/);
+  assert.match(modeBlock, /tvs-bankroll-actual-v1/);
+  assert.match(modeBlock, /BANKROLL_MODE_KEY/);
+  assert.match(modeBlock, /bankrollStorageKey/);
+  assert.match(modeBlock, /if\(!raw&&bankrollMode==='actual'\)/);
+});
+
 test("bankroll drawdown tracks betting losses and ignores external deposits", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -928,7 +937,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v28/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v29/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
 });
