@@ -208,6 +208,92 @@
     })).sort((a, b) => b.totalStaked - a.totalStaked || a.bookmaker.localeCompare(b.bookmaker, "ru"));
   }
 
+  function normalizePerformanceSurface(value) {
+    const v = String(value || "").trim().toLowerCase();
+    if (/clay|грунт|terre/.test(v)) return "Грунт";
+    if (/grass|трава|gazon/.test(v)) return "Трава";
+    if (/hard|хард|бетон|акрил/.test(v)) return "Хард";
+    if (/carpet|ковёр|ковер/.test(v)) return "Ковёр";
+    return null;
+  }
+
+  function normalizePerformanceTour(value) {
+    const v = String(value || "").trim().toLowerCase();
+    return ({ atp: "ATP", wta: "WTA", challenger: "Challenger", itf: "ITF", juniors: "Juniors" })[v] || null;
+  }
+
+  function normalizePerformanceName(value) {
+    return typeof value === "string" ? value.normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim() : "";
+  }
+
+  function getSegmentPerformance(state, archiveRows = []) {
+    validateState(state);
+    const archive = Array.isArray(archiveRows) ? archiveRows : [];
+    const groups = {
+      surface: { label: "Покрытие", normalize: normalizePerformanceSurface },
+      tour: { label: "Категория турнира", normalize: normalizePerformanceTour },
+      bookmaker: { label: "Букмекер", normalize: value => typeof value === "string" && value.trim() ? value.trim().slice(0, 60) : null }
+    };
+    const output = {};
+    for (const [key, dimension] of Object.entries(groups)) {
+      const buckets = new Map();
+      const getBucket = name => {
+        const label = name || "Неизвестно";
+        if (!buckets.has(label)) buckets.set(label, {
+          name: label, settledBets: 0, wins: 0, losses: 0, voids: 0, excluded: 0,
+          settledStake: 0, voidedStake: 0, profit: 0
+        });
+        return buckets.get(label);
+      };
+      for (const tx of state.transactions) {
+        if (tx.type !== "settlement") continue;
+        const snapshot = tx.betSnapshot && typeof tx.betSnapshot === "object" ? tx.betSnapshot : {};
+        let rawValue = tx[key] ?? snapshot[key];
+        if ((key === "surface" || key === "tour") && !dimension.normalize(rawValue)) {
+          const matchId = Number(tx.matchId ?? snapshot.matchId);
+          const side = tx.side ?? snapshot.side;
+          const player = normalizePerformanceName(snapshot.player);
+          const opponent = normalizePerformanceName(snapshot.opponent);
+          if (Number.isSafeInteger(matchId) && matchId > 0 && ["A", "B"].includes(side)) {
+            const matches = archive.filter(row => Number(row.matchId) === matchId && row.side === side &&
+              (!player || normalizePerformanceName(row.player) === player) &&
+              (!opponent || normalizePerformanceName(row.opponent) === opponent));
+            const values = [...new Set(matches.map(row => dimension.normalize(row[key])).filter(Boolean))];
+            if (values.length === 1) rawValue = values[0];
+          }
+        }
+        const value = dimension.normalize(rawValue);
+        const bucket = getBucket(value);
+        const outcome = String(tx.outcome || "").toLowerCase();
+        const stake = Number(tx.stake);
+        const profit = Number(tx.profit);
+        if (outcome === "void") {
+          bucket.voids++;
+          if (Number.isFinite(stake) && stake > 0) bucket.voidedStake += stake;
+          continue;
+        }
+        if (!["won", "lost"].includes(outcome) || !Number.isFinite(stake) || stake <= 0 || !Number.isFinite(profit)) {
+          bucket.excluded++;
+          continue;
+        }
+        bucket.settledBets++;
+        if (outcome === "won") bucket.wins++;
+        else bucket.losses++;
+        bucket.settledStake += stake;
+        bucket.profit += profit;
+      }
+      output[key] = [...buckets.values()].map(bucket => ({
+        ...bucket,
+        settledStake: roundMoney(bucket.settledStake),
+        voidedStake: roundMoney(bucket.voidedStake),
+        profit: roundMoney(bucket.profit),
+        roiPercent: bucket.settledStake > 0 ? roundMoney(bucket.profit / bucket.settledStake * 100) : null,
+        preliminary: bucket.settledBets < 30
+      })).sort((a, b) => b.settledStake - a.settledStake || a.name.localeCompare(b.name, "ru"));
+    }
+    return output;
+  }
+
   function getExposureConcentration(state) {
     validateState(state);
     const totalOpenStake = roundMoney(state.openBets.reduce((sum, bet) => sum + bet.stake, 0));
@@ -665,5 +751,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, getSegmentPerformance, getClvSummary, getExposureConcentration, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
