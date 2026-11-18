@@ -33,18 +33,31 @@
     }
     const ids = new Set();
     for (const bet of state.openBets) {
-      if (!bet || typeof bet.id !== "string" || ids.has(bet.id) ||
+      if (!bet || typeof bet.id !== "string" || !bet.id || ids.has(bet.id) ||
           !Number.isFinite(bet.stake) || bet.stake <= 0 ||
           !Number.isFinite(bet.odds) || bet.odds <= 1 ||
-          !Number.isFinite(bet.probability) || bet.probability <= 0 || bet.probability >= 1) {
+          !Number.isFinite(bet.probability) || bet.probability <= 0 || bet.probability >= 1 ||
+          typeof bet.placedAt !== "string" || !Number.isFinite(Date.parse(bet.placedAt)) ||
+          (bet.matchId !== null && bet.matchId !== undefined && (!Number.isSafeInteger(bet.matchId) || bet.matchId <= 0)) ||
+          (bet.matchId && !["A", "B"].includes(bet.side))) {
         throw new Error("В журнале найдена некорректная открытая ставка.");
       }
       ids.add(bet.id);
     }
+    const transactionTypes = new Set(["deposit", "withdrawal", "stake", "settlement", "settlement_reversed", "settlement_reversal"]);
+    const expectedDeltaSign = { deposit: 1, withdrawal: -1, stake: -1, settlement: 1, settlement_reversed: 1, settlement_reversal: -1 };
     let ledgerBalance = 0;
     for (const tx of state.transactions) {
-      if (!tx || typeof tx.id !== "string" || !Number.isFinite(tx.amount) || tx.amount < 0 ||
-          !Number.isFinite(tx.balanceDelta)) throw new Error("В журнале найдена некорректная операция.");
+      if (!tx || typeof tx.id !== "string" || !tx.id || ids.has(tx.id) ||
+          !transactionTypes.has(tx.type) || !Number.isFinite(tx.amount) || tx.amount < 0 ||
+          !Number.isFinite(tx.balanceDelta) || typeof tx.at !== "string" || !Number.isFinite(Date.parse(tx.at)) ||
+          Math.abs(tx.balanceDelta - expectedDeltaSign[tx.type] * tx.amount) > 0.01 ||
+          (tx.profit !== undefined && !Number.isFinite(tx.profit)) ||
+          (tx.stake !== undefined && (!Number.isFinite(tx.stake) || tx.stake < 0)) ||
+          (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1))) {
+        throw new Error("В журнале найдена некорректная операция.");
+      }
+      ids.add(tx.id);
       ledgerBalance += tx.balanceDelta;
     }
     if (Math.abs(roundMoney(ledgerBalance) - state.balance) > 0.01) throw new Error("Баланс не совпадает с суммой операций журнала.");
