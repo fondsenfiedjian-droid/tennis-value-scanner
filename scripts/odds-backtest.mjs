@@ -388,8 +388,31 @@ export function runOddsBacktest(rows, options = {}) {
       note: "Пороговые комбинации фиксированы заранее и показаны на одной хронологической отложенной части. Нельзя выбирать лучший порог по validation и считать его независимым доказательством преимущества. ROI/Yield рассчитаны по flat stake; просадка — по стратегии Flat €1 с ограничениями live-портфеля. Малые выборки не подтверждают устойчивость."
     };
   }
+  const archiveMatches = [...matches.values()];
+  const matchStarts = archiveMatches.map(match => match.start).sort((a, b) => a - b);
+  const snapshotCounts = archiveMatches.map(match => match.snapshots.length).sort((a, b) => a - b);
+  const medianSnapshotCount = snapshotCounts.length
+    ? snapshotCounts[Math.floor((snapshotCounts.length - 1) / 2)] : null;
+  const archiveCoverage = {
+    uniqueMatches: archiveMatches.length,
+    validSnapshots: snapshotCounts.reduce((sum, count) => sum + count, 0),
+    matchDateRange: matchStarts.length ? {
+      from: new Date(matchStarts[0]).toISOString(),
+      to: new Date(matchStarts[matchStarts.length - 1]).toISOString()
+    } : null,
+    bookmakers: [...new Set(archiveMatches.map(match => match.bookmaker).filter(Boolean))].sort(),
+    tours: [...new Set(archiveMatches.map(match => match.tour).filter(Boolean))].sort(),
+    surfaces: [...new Set(archiveMatches.map(match => match.surface).filter(Boolean))].sort(),
+    snapshotsPerMatch: snapshotCounts.length ? {
+      min: snapshotCounts[0], median: medianSnapshotCount,
+      max: snapshotCounts[snapshotCounts.length - 1]
+    } : null,
+    matchesWithQualifyingClosingSnapshot: clvCount,
+    matchesWithoutQualifyingClosingSnapshot: Math.max(0, archiveMatches.length - clvCount)
+  };
   return {
     matches: matches.size,
+    archiveCoverage,
     rejectedSnapshots,
     staleSnapshots,
     maxSnapshotAgeMinutes,
