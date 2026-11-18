@@ -1706,7 +1706,7 @@ test("prediction reliability is transparent, excludes unavailable calibration an
 
 test("archive segment calibration groups only known surfaces and tournament categories", () => {
   const start = frontendSource.indexOf("function archiveSegmentCalibration(");
-  const end = frontendSource.indexOf("\\n  function ", start + 10);
+  const end = frontendSource.indexOf("\n  function ", start + 10);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
   vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
