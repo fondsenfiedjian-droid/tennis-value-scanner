@@ -84,14 +84,16 @@
 
 <div class="stats-view" id="statsView">
   <h1>Архив прогнозов</h1>
-  <div class="muted">Снимки вероятностей и коэффициентов в момент проверки. Это история оценок модели, не подтверждённая статистика выигрышей.</div>
+  <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
     <div class="panel"><div class="muted">С положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
     <div class="panel"><div class="muted">Средний EV</div><div class="stat-num" id="archiveAvgEv">—</div></div>
     <div class="panel"><div class="muted">Средний коэффициент</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
+    <div class="panel"><div class="muted">Завершено матчей</div><div class="stat-num" id="archiveSettled">0</div></div>
+    <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
   </div>
-  <div class="stats-actions"><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
+  <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
@@ -368,6 +370,9 @@
     const playerA=el.dataset.nameA||result.playerA||'Игрок 1';
     const playerB=el.dataset.nameB||result.playerB||'Игрок 2';
     const date=matchDate(match);
+    const rawMatchId=match.id??match.match_id;
+    const numericMatchId=Number(rawMatchId);
+    const matchId=Number.isSafeInteger(numericMatchId)&&numericMatchId>0?numericMatchId:null;
     const matchKey=String(match.id||match.match_id||match.event_id||[el.dataset.playerA,el.dataset.playerB,date?date.toISOString():''].join('-'));
     const tournament=match.tournament_name||match.tournament||match.event_name||match.competition||'';
     const archive=readPredictionArchive(),now=Date.now();
@@ -381,7 +386,7 @@
       const ev=(entry.probability/100*entry.odds-1)*100;
       const duplicate=archive.some(row=>row.matchKey===matchKey&&row.side===entry.side&&Math.abs(Number(row.odds)-entry.odds)<0.0001&&Math.abs(Number(row.probability)-entry.probability)<0.001&&now-Number(row.capturedAt)<10*60*1000);
       if(duplicate)continue;
-      archive.push({matchKey,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,model:'general-elo-v2',capturedAt:now});
+      archive.push({matchKey,matchId,matchDate:date?date.toISOString():null,tournament,player:entry.player,opponent:entry.opponent,side:entry.side,odds:entry.odds,probability:entry.probability,ev:Number(ev.toFixed(2)),rating:entry.rating,model:'general-elo-v2',capturedAt:now});
       changed=true;
     }
     if(changed){
@@ -402,6 +407,11 @@
         tournament:typeof row.tournament==='string'?row.tournament.slice(0,160):'',
         player:row.player.slice(0,100),opponent:row.opponent.slice(0,100),side:row.side,
         odds,probability,ev,rating:Number.isFinite(Number(row.rating))?Number(row.rating):null,
+        matchId:Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0?Number(row.matchId):null,
+        resultOutcome:typeof row.resultOutcome==='string'?row.resultOutcome:null,
+        resultWinner:[1,2].includes(Number(row.resultWinner))?Number(row.resultWinner):null,
+        resultVersion:Number.isSafeInteger(Number(row.resultVersion))?Number(row.resultVersion):null,
+        resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
@@ -415,6 +425,45 @@
     merged.sort((a,b)=>Number(a.capturedAt)-Number(b.capturedAt));
     return {rows:merged.slice(-600),added,ignored:imported.length-clean.length};
   }
+  function applyVerifiedMatchResult(rows, result, now=Date.now()){
+    const id=Number(result?.id),winner=Number(result?.winner);
+    if(!Number.isSafeInteger(id)||id<=0)return {rows,updated:0};
+    const outcome=typeof result.outcome==='string'?result.outcome:null;
+    const settled=['completed','retired','walkover','default','abandoned','unresolved'].includes(outcome)||result.status==='cancelled';
+    const version=Number.isSafeInteger(Number(result.result_version))?Number(result.result_version):null;
+    let updated=0;
+    const next=rows.map(row=>{
+      if(Number(row.matchId)!==id)return row;
+      const oldVersion=Number.isSafeInteger(Number(row.resultVersion))?Number(row.resultVersion):null;
+      if(oldVersion!==null&&version!==null&&version<oldVersion)return row;
+      const nextRow={...row,resultCheckedAt:now};
+      if(settled){
+        nextRow.resultOutcome=outcome||'cancelled';
+        nextRow.resultWinner=[1,2].includes(winner)?winner:null;
+        nextRow.resultVersion=version;
+        nextRow.resultStatus=result.status||null;
+        nextRow.resultRestatedAt=result.result_restated_at||null;
+      }
+      updated++;
+      return nextRow;
+    });
+    return {rows:next,updated};
+  }
+  function archiveResultStats(rows){
+    const latest=new Map();
+    for(const row of rows){
+      if(row.resultOutcome!=='completed'||![1,2].includes(Number(row.resultWinner)))continue;
+      const key=String(row.matchId||row.matchKey);
+      const old=latest.get(key);
+      if(!old||Number(row.capturedAt)>Number(old.capturedAt))latest.set(key,row);
+    }
+    let hits=0;
+    for(const row of latest.values()){
+      const predicted=Number(row.probability)>=50?row.side:(row.side==='A'?'B':'A');
+      if((predicted==='A'?1:2)===Number(row.resultWinner))hits++;
+    }
+    return {settled:latest.size,accuracy:latest.size?hits/latest.size*100:null};
+  }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
     const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
@@ -422,12 +471,16 @@
     $('#archivePositive').textContent=rows.filter(row=>Number(row.ev)>0).length;
     $('#archiveAvgEv').textContent=avg('ev')===null?'—':avg('ev').toFixed(2)+'%';
     $('#archiveAvgOdds').textContent=avg('odds')===null?'—':avg('odds').toFixed(2);
+    const resultStats=archiveResultStats(rows);
+    $('#archiveSettled').textContent=resultStats.settled;
+    $('#archiveAccuracy').textContent=resultStats.accuracy===null?'—':resultStats.accuracy.toFixed(1)+'%';
     $('#archiveUpdated').textContent=rows.length?'хранится до 600 записей':'';
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
     list.innerHTML=rows.slice(0,50).map(row=>{
       const when=new Date(Number(row.capturedAt)),ev=Number(row.ev);
-      return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div><div class="archive-meta">'+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
+      const resultLabel=row.resultOutcome==='completed'&&[1,2].includes(Number(row.resultWinner))?(Number(row.resultWinner)===(row.side==='A'?1:2)?'Победа':'Поражение'):row.resultOutcome&&row.resultOutcome!=='completed'?'Исключено: '+row.resultOutcome:'';
+      return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">'+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
   function showMain(){
@@ -439,10 +492,42 @@
     $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     renderArchive();
   }
+  $('#archiveCheckResults').onclick=async()=>{
+    const button=$('#archiveCheckResults');
+    const rows=readPredictionArchive(),now=Date.now(),byId=new Map();
+    for(const row of rows){
+      const id=Number(row.matchId),played=Date.parse(row.matchDate||'');
+      if(!Number.isSafeInteger(id)||id<=0||!Number.isFinite(played)||played>now-3*60*60*1000)continue;
+      if(now-Number(row.resultCheckedAt||0)<30*60*1000)continue;
+      const old=byId.get(id);if(!old||played<old.played)byId.set(id,{played});
+    }
+    const ids=[...byId.entries()].sort((a,b)=>a[1].played-b[1].played).slice(0,10).map(([id])=>id);
+    if(!ids.length){alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
+    button.disabled=true;button.textContent='ПРОВЕРКА…';
+    let checked=0,settled=0,errors=0;
+    try{
+      for(const id of ids){
+        try{
+          const res=await fetch(API+'/result?id='+encodeURIComponent(id));
+          const result=await res.json();
+          const current=readPredictionArchive();
+          const updated=applyVerifiedMatchResult(current,result,Date.now());
+          if(res.ok&&updated.updated){
+            localStorage.setItem(ARCHIVE_KEY,JSON.stringify(updated.rows));
+            checked++;if(['completed','retired','walkover','default','abandoned','unresolved'].includes(result.outcome)||result.status==='cancelled')settled++;
+          }else if(res.status===429){errors++;break;}
+          else if(res.status===404){const stamped=current.map(row=>Number(row.matchId)===id?{...row,resultCheckedAt:Date.now()}:row);localStorage.setItem(ARCHIVE_KEY,JSON.stringify(stamped));checked++;}
+          else errors++;
+        }catch(error){errors++;}
+      }
+      renderArchive();
+      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+    }finally{button.disabled=false;button.textContent='Проверить результаты';}
+  };
   $('#archiveExport').onclick=()=>{
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','matchDate','tournament','player','opponent','side','odds','probability','ev','rating','model'];
+    const columns=['capturedAt','matchDate','matchId','tournament','player','opponent','side','odds','probability','ev','rating','model','resultOutcome','resultWinner','resultVersion'];
     const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
     const csv='\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
