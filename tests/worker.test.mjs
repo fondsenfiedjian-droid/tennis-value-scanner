@@ -1402,7 +1402,7 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
   assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
   assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
   assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
@@ -1467,7 +1467,7 @@ test("Winamax importer is isolated from the financial ledger and validates previ
 });
 
 test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1483,7 +1483,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1672,7 +1672,7 @@ test("CLV reports missing data instead of inventing zero and requires match timi
 test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
   assert.ok(frontendSource.includes('id="bankClvStats"'));
   assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -1891,7 +1891,7 @@ test("segment performance UI uses the selected ledger and cache version advances
   assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
   assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
   assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -1970,7 +1970,7 @@ test("odds and EV segmentation keeps missing source values unknown and labels ar
   assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
   assert.ok(frontendSource.includes("Коэффициенты при размещении"));
   assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -1998,7 +1998,7 @@ test("segment performance groups settled bets by original model probability", ()
   assert.equal(groups["80%+"].roiPercent, -100);
   assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -2065,7 +2065,7 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
 test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
   assert.ok(frontendSource.includes("summary.outcomeSequence"));
   assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -2128,7 +2128,7 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
 test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
   assert.ok(frontendSource.includes("summary.outcomeDispersion"));
   assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 
@@ -2236,7 +2236,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.ok(frontendSource.includes("rate_limited:'лимит запросов API; учитывайте Retry-After'"));
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v81/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v82/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
