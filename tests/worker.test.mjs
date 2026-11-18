@@ -1450,6 +1450,48 @@ test("CLV uses the latest same-bookmaker pre-match quote and never substitutes a
   assert.equal(summary.positive, 1);
 });
 
+test("CLV excludes live/post-start snapshots and treats same-time conflicting prices as ambiguous", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey: "clv-live-guard", matchId: 503, side: "A", matchDate: "2026-11-20T18:00:00.000Z",
+    match: "Player E — Player F", bookmaker: "Winamax", probability: 0.6, odds: 2.2, stake: 2
+  });
+  const placedAt = Date.parse(placed.bet.placedAt);
+  const start = Date.parse("2026-11-20T18:00:00.000Z");
+  const liveOnly = api.getClvSummary(placed.state, [
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.8,capturedAt:start-60000,captureStatus:"live"},
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.7,capturedAt:start,captureStatus:"upcoming"}
+  ]);
+  assert.equal(liveOnly.sampleSize,0);
+  assert.equal(liveOnly.missingCount,1);
+  const conflicting = api.getClvSummary(placed.state, [
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.9,capturedAt:placedAt+60000,captureStatus:"upcoming"},
+    {matchId:503,side:"A",bookmaker:"Winamax",odds:1.8,capturedAt:placedAt+60000,captureStatus:"upcoming"}
+  ]);
+  assert.equal(conflicting.sampleSize,0);
+  assert.equal(conflicting.missingCount,1);
+  assert.match(conflicting.missing[0].reason,/Конфликтующие котировки/);
+});
+
+test("CLV bookmaker matching is case-insensitive but remains provider-specific", () => {
+  const sandbox = {};
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  const api = sandbox.bankrollApi;
+  const placed = api.placeBet(api.createInitialState(100), {
+    matchKey:"clv-case",matchId:504,side:"B",matchDate:"2026-11-20T18:00:00.000Z",
+    match:"Player G — Player H",bookmaker:"Winamax",probability:0.55,odds:2.1,stake:2
+  });
+  const placedAt=Date.parse(placed.bet.placedAt);
+  const summary=api.getClvSummary(placed.state,[
+    {matchId:504,side:"B",bookmaker:"winamax",odds:1.9,capturedAt:placedAt+60000},
+    {matchId:504,side:"B",bookmaker:"Betclic",odds:1.5,capturedAt:placedAt+120000}
+  ]);
+  assert.equal(summary.sampleSize,1);
+  assert.equal(summary.matched[0].closingOdds,1.9);
+});
+
 test("CLV reports missing data instead of inventing zero and requires match timing", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
