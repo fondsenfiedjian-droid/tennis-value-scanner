@@ -151,6 +151,18 @@ test("predict rejects decimal odds at or below one", async () => {
   assert.equal(result.status, 400);
 });
 
+test("predict rejects coerced non-decimal manual ratings and odds", async () => {
+  for (const body of [
+    { ratingA: true, ratingB: 1700 },
+    { ratingA: "0x708", ratingB: 1700 },
+    { ratingA: 1800, ratingB: 1700, oddsA: true },
+    { ratingA: 1800, ratingB: 1700, oddsB: "Infinity" }
+  ]) {
+    const result = await call("/predict", "POST", JSON.stringify(body));
+    assert.equal(result.status, 400);
+  }
+});
+
 test("matches rejects an excessive result limit before upstream access", async () => {
   const result = await call("/matches?limit=201");
   assert.equal(result.status, 400);
