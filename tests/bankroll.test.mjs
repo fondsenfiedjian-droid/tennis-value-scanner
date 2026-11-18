@@ -185,6 +185,11 @@ test("reopens a bet after a revised retirement status and settles a later comple
   assert.equal(reopened.state.openBets.length, 1);
   assert.equal(reopened.state.balance, 98);
   assert.equal(bank.bankrollEquity(reopened.state), 100);
+  const stale = bank.settleVerifiedResults(reopened.state, [
+    { matchId: 654, resultOutcome: "completed", resultWinner: 1 }
+  ]);
+  assert.equal(stale.settled.length, 0);
+  assert.equal(stale.state.openBets.length, 1);
   const completed = bank.settleVerifiedResults(reopened.state, [
     { matchId: 654, resultOutcome: "completed", resultWinner: 1, resultVersion: 3 }
   ]);
