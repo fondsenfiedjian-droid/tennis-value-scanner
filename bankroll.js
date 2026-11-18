@@ -546,6 +546,9 @@
       matchId: Number.isSafeInteger(Number(bet.matchId)) && Number(bet.matchId) > 0 ? Number(bet.matchId) : null,
       side: bet.side === "A" || bet.side === "B" ? bet.side : null,
       matchDate: typeof bet.matchDate === "string" && Number.isFinite(Date.parse(bet.matchDate)) ? new Date(bet.matchDate).toISOString() : null,
+      surface: typeof bet.surface === "string" ? bet.surface.slice(0, 40) : "",
+      tour: ["atp", "wta", "challenger", "itf", "juniors"].includes(String(bet.tour || "").toLowerCase()) ? String(bet.tour).toLowerCase() : "",
+      tournament: typeof bet.tournament === "string" ? bet.tournament.slice(0, 160) : "",
       placedAt: new Date().toISOString(), status: "open"
     };
     state.balance = roundMoney(state.balance - requested);
