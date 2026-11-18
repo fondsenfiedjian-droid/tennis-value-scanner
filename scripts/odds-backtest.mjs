@@ -298,11 +298,12 @@ export function runOddsBacktest(rows, options = {}) {
   }
 
   const bets = [];
-  let totalOverround = 0, overroundCount = 0, closingOverroundTotal = 0, closingOverroundCount = 0, clvTotal = 0, clvCount = 0, missingClosingSnapshots = 0;
+  let totalOverround = 0, overroundCount = 0, closingOverroundTotal = 0, closingOverroundCount = 0, clvTotal = 0, clvCount = 0, missingClosingSnapshots = 0, qualifyingClosingMatchCount = 0;
   for (const match of matches.values()) {
     match.snapshots.sort((a, b) => a.captured - b.captured || a.row - b.row);
     const opening = match.snapshots[0];
     const closing = match.snapshots.filter(snapshot => (match.start - snapshot.captured) / 60000 <= maxClosingAgeMinutes && snapshot.captured > opening.captured).at(-1) || null;
+    if (closing) qualifyingClosingMatchCount++;
     const openingMarket = noVig(opening.oddsA, opening.oddsB);
     totalOverround += openingMarket.overround;
     overroundCount++;
@@ -433,8 +434,8 @@ export function runOddsBacktest(rows, options = {}) {
       min: snapshotCounts[0], median: medianSnapshotCount,
       max: snapshotCounts[snapshotCounts.length - 1]
     } : null,
-    matchesWithQualifyingClosingSnapshot: clvCount,
-    matchesWithoutQualifyingClosingSnapshot: Math.max(0, archiveMatches.length - clvCount)
+    matchesWithQualifyingClosingSnapshot: qualifyingClosingMatchCount,
+    matchesWithoutQualifyingClosingSnapshot: Math.max(0, archiveMatches.length - qualifyingClosingMatchCount)
   };
   return {
     matches: matches.size,
