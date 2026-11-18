@@ -191,7 +191,7 @@ test("frontend rejects malformed prediction payloads before display or caching",
   const end = frontendSource.indexOf("async function loadPredictions(", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = { Number, Math };
-  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.validate = isValidPredictionResult;", sandbox);
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.validate = isValidPredictionResult;", sandbox);
   const valid = { ratingA: 1900, ratingB: 1800, probabilityA: 64, probabilityB: 36,
     fairOddsA: 1.563, fairOddsB: 2.778 };
   assert.equal(sandbox.validate(valid), true);
