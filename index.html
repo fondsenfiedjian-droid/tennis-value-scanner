@@ -41,7 +41,8 @@
     .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:8px;align-items:center;background:#17253a;padding:10px;border-radius:10px;font-size:13px}
     .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#1b2a40;color:white;font-weight:700}.actions .primary{background:#16834e;border-color:#16834e}
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
-    .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}.loading{text-align:center;padding:24px;color:var(--muted)}
+    .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
+    .match-card{cursor:pointer;transition:border-color .15s,background .15s}.match-card:focus{outline:2px solid #75aef5;outline-offset:2px}.match-card.expanded{border-color:#5b91ca;background:#17263b}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.loading{text-align:center;padding:24px;color:var(--muted)}
     .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#0d1928;border:1px solid #2b405b;font-size:12px;line-height:1.55}.model-result strong{color:#a9d1ff}.model-positive{color:#75e6a3;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
   </style>
@@ -183,8 +184,13 @@
       });
       const oddsHtml=matched.length?'<div class="match-bottom"><b>Winamax:</b> '+matched.map(o=>{const names=String(o.eventName||'').split(/\\s+-\\s+/);const homeIsP1=normalizePlayer(names[0])===normalizePlayer(a);const side=(o.outcome==='home')===homeIsP1?'1':'2';return escapeHtml(side)+' <b>'+escapeHtml(o.oddsDecimal)+'</b>';}).join(' · ')+'</div>':'<div class="match-bottom">Коэффициенты Winamax для этого матча не найдены</div>';
       const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'"':'';
-      return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div>'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></article>';
+      return '<article class="match-card" role="button" tabindex="0" aria-expanded="false"><div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
+    list.querySelectorAll('.match-card').forEach(card=>{
+      const toggle=()=>{const open=card.classList.toggle('expanded');card.setAttribute('aria-expanded',String(open));const hint=card.querySelector('.card-hint');if(hint)hint.textContent=open?'Нажми, чтобы свернуть':'Нажми, чтобы открыть подробности';};
+      card.addEventListener('click',toggle);
+      card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
+    });
     loadPredictions(filtered);
   }
   async function loadPredictions(matches){
