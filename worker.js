@@ -80,6 +80,16 @@ export default {
       }
 
       try {
+        // Cache Winamax odds for five minutes to avoid repeated Apify dataset reads.
+        const cache = caches.default;
+        const cacheKey = new Request(request.url, { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
         const upstream = await fetch(
           `https://api.apify.com/v2/datasets/${APIFY_DATASET_ID}/items?clean=true&format=json&limit=1000`,
           {
@@ -98,12 +108,23 @@ export default {
         }
 
         const items = await upstream.json();
-        return response({
+        const payload = {
           source: "Apify Winamax dataset",
           datasetId: APIFY_DATASET_ID,
           count: Array.isArray(items) ? items.length : 0,
           items
+        };
+        const cacheResponse = new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: {
+            ...cors,
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=300",
+            "X-Data-Cache": "MISS"
+          }
         });
+        await cache.put(cacheKey, cacheResponse);
+        return response(payload);
       } catch (error) {
         return response({ error: "Could not retrieve odds from Apify" }, 502);
       }
