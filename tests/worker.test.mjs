@@ -1703,3 +1703,33 @@ test("prediction reliability is transparent, excludes unavailable calibration an
   assert.ok(weak.reasons.length >= 4);
   assert.match(frontendSource, /не вероятность победы и не рекомендация по размеру ставки/);
 });
+
+test("archive segment calibration groups only known surfaces and tournament categories", () => {
+  const start = frontendSource.indexOf("function archiveSegmentCalibration(");
+  const end = frontendSource.indexOf("\\n  function ", start + 10);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
+  const rows = [
+    { matchKey: "m1", surface: "Clay", tour: "atp" },
+    { matchKey: "m2", surface: "Грунт", tour: "atp" },
+    { matchKey: "m3", surface: "Hard court", tour: "wta" },
+    { matchKey: "m4", surface: "Grass", tour: "challenger" },
+    { matchKey: "m5", surface: "", tour: "unknown" },
+    { matchKey: "m6", surface: "Unknown", tour: "" }
+  ];
+  const result = sandbox.segment(rows, segmentRows => ({
+    sampleSize: new Set(segmentRows.map(row => row.matchKey)).size,
+    brierScore: 0.2, logLoss: 0.6, preliminary: true, excluded: 0, ambiguous: 0
+  }));
+  const surfaces = result.find(group => group.key === "surface").items;
+  const tours = result.find(group => group.key === "tour").items;
+  assert.deepEqual(surfaces.map(item => [item.name, item.sampleSize]), [["Грунт", 2], ["Трава", 1], ["Хард", 1]]);
+  assert.deepEqual(tours.map(item => [item.name, item.sampleSize]), [["ATP", 2], ["Challenger", 1], ["WTA", 1]]);
+  assert.ok(result.every(group => group.items.every(item => item.preliminary)));
+  assert.match(frontendSource, /archiveSegmentCalibration\(rows\)/);
+  assert.match(frontendSource, /archiveSegmentCalibration/);
+  assert.match(frontendSource, /archiveSegmentCalibration/);
+  assert.match(frontendSource, /archiveSegmentCalibration/);
+  assert.match(frontendSource, /id="archiveSegmentCalibration"/);
+});
