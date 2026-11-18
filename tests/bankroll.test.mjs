@@ -138,3 +138,18 @@ test("portfolio allocation halves medium-freshness stakes and rejects limited fr
   assert.equal(portfolio.suggestions[0].matchKey, "medium");
   assert.equal(portfolio.suggestions[0].stake, 1);
 });
+
+test("cumulative daily stake turnover remains capped after earlier bets settle", () => {
+  let state = bank.createInitialState(100);
+  let count = 0;
+  while (count < 10) {
+    const recommendation = bank.recommendStake(state, 0.6, 2.1);
+    if (!recommendation.eligible) break;
+    const placed = bank.placeBet(state, { probability: 0.6, odds: 2.1 });
+    state = bank.settleBet(placed.state, placed.bet.id, "lost");
+    count++;
+  }
+  assert.equal(count, 4);
+  assert.ok(bank.getSummary(state).dailyStaked <= 8);
+  assert.equal(bank.recommendStake(state, 0.6, 2.1).eligible, false);
+});
