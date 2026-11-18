@@ -709,7 +709,7 @@ test("probability calibration excludes unresolved, retired, malformed, missing-d
     make(3,{capturedAt:start}),
     make(4,{matchDate:null}),
     make(5,{resultWinner:null}),
-    { ...make(6), side:"B" }
+    { ...make(6), side:"X" }
   ];
   const result=archiveProbabilityCalibration(rows);
   assert.equal(result.sampleSize,0);
@@ -729,7 +729,7 @@ test("probability calibration can derive the match-side probability from a B-onl
   }]);
   assert.equal(result.sampleSize,1);
   assert.equal(result.buckets[0].lower,35);
-  assert.equal(result.brierScore,0.1225);
+  assert.ok(Math.abs(result.brierScore-0.1225)<1e-12);
 });
 
 test("probability calibration rejects conflicting latest snapshots and counts duplicate exact snapshots once", () => {
