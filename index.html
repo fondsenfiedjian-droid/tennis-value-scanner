@@ -152,6 +152,7 @@
     <div class="panel"><div class="muted">Конфликтные снимки</div><div class="stat-num" id="archiveOddsConflicts">0</div></div>
   </div>
   <div id="archiveOddsByBookmaker" class="archive-meta"></div>
+  <div class="panel"><b>Качество архива по букмекерам</b><div class="muted">Покрытие считается относительно всех уникальных пар «матч + исход», уже встречавшихся в архиве. Это не покрытие всего календаря матчей.</div><div id="archiveOddsQuality" class="archive-list"><div class="panel empty">Нет данных для аудита.</div></div></div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
@@ -873,6 +874,49 @@
     }
     return {shortened,drifted,unchanged,comparable,conflicting,byBookmaker};
   }
+  function archiveOddsQuality(rows,now=Date.now()){
+    const source=Array.isArray(rows)?rows:[];
+    const universe=new Set(),providers=new Map(),seen=new Map(),duplicateKeys=new Set();
+    let invalidRows=0,missingMatchIdRows=0,missingMatchDateRows=0,missingBookmakerRows=0,validRows=0;
+    const getProvider=name=>{
+      if(!providers.has(name))providers.set(name,{bookmaker:name,rows:0,matchSides:new Set(),matches:new Set(),sides:new Set(),fresh30m:0,fresh2h:0,stale:0,future:0,lastCapturedAt:null,conflicts:0,duplicates:0});
+      return providers.get(name);
+    };
+    for(const row of source){
+      const odds=Number(row?.odds),capturedAt=Number(row?.capturedAt),matchKey=String(row?.matchId||row?.matchKey||'');
+      if(!matchKey||!['A','B'].includes(row?.side)||!Number.isFinite(odds)||odds<=1||!Number.isFinite(capturedAt)||capturedAt<=0){invalidRows++;continue;}
+      validRows++;
+      if(!(Number.isSafeInteger(Number(row.matchId))&&Number(row.matchId)>0))missingMatchIdRows++;
+      if(typeof row.matchDate!=='string'||!Number.isFinite(Date.parse(row.matchDate)))missingMatchDateRows++;
+      const providerName=typeof row.bookmaker==='string'&&row.bookmaker.trim()?row.bookmaker.trim():'Не указан';
+      if(providerName==='Не указан')missingBookmakerRows++;
+      const sideKey=matchKey+'|'+row.side;
+      universe.add(sideKey);
+      const provider=getProvider(providerName);
+      provider.rows++;provider.matchSides.add(sideKey);provider.matches.add(matchKey);provider.sides.add(row.side);
+      const age=now-capturedAt;
+      if(age< -5*60*1000)provider.future++;
+      else if(age<=30*60*1000)provider.fresh30m++;
+      else if(age<=2*60*60*1000)provider.fresh2h++;
+      else provider.stale++;
+      provider.lastCapturedAt=provider.lastCapturedAt===null?capturedAt:Math.max(provider.lastCapturedAt,capturedAt);
+      const quoteKey=providerName+'|'+sideKey+'|'+capturedAt;
+      if(seen.has(quoteKey)){
+        if(Math.abs(seen.get(quoteKey)-odds)>0.000001){provider.conflicts++;duplicateKeys.add(quoteKey);}
+        else provider.duplicates++;
+      }else seen.set(quoteKey,odds);
+    }
+    for(const name of duplicateKeys){const providerName=name.split('|')[0];const provider=providers.get(providerName);if(provider)provider.conflicts=Math.max(1,provider.conflicts);}
+    const byBookmaker=[...providers.values()].map(provider=>{
+      const sideCount=provider.matchSides.size,coverage=universe.size?sideCount/universe.size*100:null;
+      const completeMatches=[...provider.matches].filter(match=>provider.matchSides.has(match+'|A')&&provider.matchSides.has(match+'|B')).length;
+      return {bookmaker:provider.bookmaker,rows:provider.rows,matchSides:sideCount,matches:provider.matches.size,completeMatches,
+        coveragePercent:coverage===null?null:Number(coverage.toFixed(1)),fresh30m:provider.fresh30m,fresh2h:provider.fresh2h,stale:provider.stale,future:provider.future,
+        conflicts:provider.conflicts,duplicates:provider.duplicates,lastCapturedAt:provider.lastCapturedAt};
+    }).sort((a,b)=>b.matchSides-a.matchSides||a.bookmaker.localeCompare(b.bookmaker,'ru'));
+    return {totalRows:source.length,validRows,invalidRows,missingMatchIdRows,missingMatchDateRows,missingBookmakerRows,
+      universeMatchSides:universe.size,byBookmaker};
+  }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
     const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
@@ -892,6 +936,8 @@
     $('#archiveOddsConflicts').textContent=movement.conflicting;
     const providerMovement=Object.entries(movement.byBookmaker||{}).map(([name,item])=>name+': снижение '+item.shortened+', рост '+item.drifted+', без изменений '+item.unchanged+', сопоставимо '+item.comparable).join(' · ');
     $('#archiveOddsByBookmaker').textContent=providerMovement?'Движение коэффициентов по букмекерам: '+providerMovement:'';
+    const quality=archiveOddsQuality(rows);
+    $('#archiveOddsQuality').innerHTML=quality.byBookmaker.length?'<div class="archive-meta">Строк '+quality.validRows+'/'+quality.totalRows+' · некорректных '+quality.invalidRows+' · без ID матча '+quality.missingMatchIdRows+' · без даты матча '+quality.missingMatchDateRows+' · без букмекера '+quality.missingBookmakerRows+'</div>'+quality.byBookmaker.map(item=>'<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Покрытие архива: '+(item.coveragePercent===null?'—':item.coveragePercent.toFixed(1)+'%')+' · пар матч/исход '+item.matchSides+' из '+quality.universeMatchSides+'</div><div class="archive-meta">Матчей '+item.matches+' · обе стороны представлены '+item.completeMatches+' · строк '+item.rows+'</div><div class="archive-meta">Свежие до 30 мин: '+item.fresh30m+' · 30–120 мин: '+item.fresh2h+' · старше 2 ч: '+item.stale+' · подозрительно будущих: '+item.future+'</div><div class="archive-meta">Конфликтов '+item.conflicts+' · точных дублей '+item.duplicates+' · последняя запись: '+(item.lastCapturedAt?new Date(item.lastCapturedAt).toLocaleString('ru-RU'):'—')+'</div></div>').join(''):'<div class="panel empty">Нет корректных котировок для аудита.</div>';
     $('#archiveUpdated').textContent=archiveReadError?'Локальный архив повреждён · импортируй JSON-копию':(rows.length?'до 3 000 записей · '+(archiveStorageMode==='indexeddb'?'IndexedDB':'локальный резерв'):'');
     const list=$('#archiveList');
     if(!rows.length){list.innerHTML='<div class="panel empty">Архив пока пуст. Записи появятся после расчёта прогнозов при наличии коэффициентов.</div>';return;}
