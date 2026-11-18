@@ -2169,11 +2169,32 @@ test("PFE Monte Carlo is reproducible and labels the limits of its stress simula
 
 
 test("live prediction cards connect the Elo estimate to PFE without changing the source probability", () => {
-  assert.ok(frontendSource.includes("TVSPFE.fusePredictions(["));
+  assert.ok(frontendSource.includes("TVSPFE.fusePredictions(pfeModels)"));
+  assert.ok(frontendSource.includes("marketContext.marketProbabilityA/100"));
+  assert.ok(frontendSource.includes("currentOddsAge<=90"));
   assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
   assert.ok(frontendSource.includes("PFE не меняет исходную вероятность, EV или размер ставки"));
 });
 
+
+test("PFE treats a fresh two-sided bookmaker market as a separate source and flags disagreement", () => {
+  const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
+  const sandbox = {};
+  vm.runInNewContext(source + "\\nglobalThis.pfe = TVSPFE;", sandbox);
+  const pfe = sandbox.pfe;
+  const agreement = pfe.fusePredictions([
+    { id: "general-elo-v2", dependencyGroup: "elo-ratings", probability: 0.61 },
+    { id: "market-consensus", dependencyGroup: "bookmaker-market", probability: 0.59 }
+  ]);
+  assert.equal(agreement.status, "consensus");
+  assert.equal(agreement.independentGroups, 2);
+  assert.ok(Math.abs(agreement.probability - 0.6) < 1e-12);
+  const conflict = pfe.fusePredictions([
+    { id: "general-elo-v2", dependencyGroup: "elo-ratings", probability: 0.72 },
+    { id: "market-consensus", dependencyGroup: "bookmaker-market", probability: 0.54 }
+  ]);
+  assert.equal(conflict.status, "conflict");
+});
 
 test("PFE registry exposes active and planned models with explicit dependency groups", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
@@ -2182,6 +2203,7 @@ test("PFE registry exposes active and planned models with explicit dependency gr
   const registry = sandbox.pfe.getModelRegistry();
   assert.ok(registry.some(model => model.id === "general-elo-v2" && model.status === "active"));
   assert.ok(registry.some(model => model.id === "surface-elo" && model.status === "planned"));
+  assert.ok(registry.some(model => model.id === "market-consensus" && model.status === "active" && model.currentlyIntegrated));
   assert.equal(registry.find(model => model.id === "general-elo-v2").dependencyGroup, "elo-ratings");
   registry[0].requires.push("mutated");
   assert.equal(sandbox.pfe.getModelRegistry()[0].requires.includes("mutated"), false);
