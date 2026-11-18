@@ -24,6 +24,8 @@ export function adaptScannerArchiveRows(rows) {
     const outcome = String(row.resultOutcome ?? "").toLowerCase();
     const winnerNumber = Number(row.resultWinner);
     const captured = Number(row.capturedAt);
+    const modelCalculated = Number(row.modelCalculatedAt);
+    const captureStatus = String(row.captureStatus ?? '').trim().toLowerCase();
     const start = timestamp(row.matchDate);
     const side = String(row.side ?? "").toUpperCase();
     const odds = number(row.odds);
@@ -33,15 +35,17 @@ export function adaptScannerArchiveRows(rows) {
     const surface = String(row.surface || "").trim();
     if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
         start === null || !Number.isFinite(captured) || captured <= 0 ||
+        !Number.isFinite(modelCalculated) || modelCalculated <= 0 || modelCalculated >= captured || modelCalculated >= start ||
+        captureStatus !== 'upcoming' ||
         !["A", "B"].includes(side) || !validOdds(odds) ||
         !Number.isFinite(probability) || probability <= 0 || probability >= 100) {
       ignored++;
       continue;
     }
     const key = id + "|" + captured;
-    if (!groups.has(key)) groups.set(key, { id, start, captured, winner: winnerNumber === 1 ? "A" : "B", tour, surface, sides: {} });
+    if (!groups.has(key)) groups.set(key, { id, start, captured, modelCalculated, captureStatus, winner: winnerNumber === 1 ? "A" : "B", tour, surface, sides: {} });
     const group = groups.get(key);
-    if (group.start !== start || group.winner !== (winnerNumber === 1 ? "A" : "B") ||
+    if (group.start !== start || group.modelCalculated !== modelCalculated || group.captureStatus !== captureStatus || group.winner !== (winnerNumber === 1 ? "A" : "B") ||
         (group.tour && tour && group.tour !== tour) || (group.surface && surface && group.surface !== surface)) {
       throw new Error("Conflicting result, date, tour or surface in archive for " + id);
     }
@@ -69,6 +73,8 @@ export function adaptScannerArchiveRows(rows) {
       tour: group.tour,
       surface: group.surface,
       odds_captured_at: new Date(group.captured).toISOString(),
+      model_calculated_at: new Date(group.modelCalculated).toISOString(),
+      capture_status: group.captureStatus,
       player_a: a.player,
       player_b: b.player,
       odds_a: a.odds,
@@ -248,21 +254,36 @@ export function runOddsBacktest(rows, options = {}) {
 
   const matches = new Map();
   let rejectedSnapshots = 0, staleSnapshots = 0;
+  const modelTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterOddsCapture: 0, atOrAfterMatchStart: 0, nonUpcomingStatus: 0 };
   const acceptedSnapshotAges = [];
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     const id = String(row.match_id ?? "").trim();
     const start = timestamp(row.match_start);
     const captured = timestamp(row.odds_captured_at);
+    const rawModelCalculated = String(row.model_calculated_at ?? '').trim();
+    const modelCalculated = timestamp(row.model_calculated_at);
+    const captureStatus = String(row.capture_status ?? '').trim().toLowerCase();
     const oddsA = number(row.odds_a), oddsB = number(row.odds_b);
     const probabilityA = number(row.probability_a);
     const winner = String(row.winner ?? "").trim().toUpperCase();
     const tour = String(row.tour ?? "").trim().toLowerCase();
     const surface = String(row.surface ?? "").trim();
     const bookmaker = String(row.bookmaker ?? row.source ?? row.provider ?? "").trim().toLowerCase();
-    if (!id || start === null || captured === null || !validOdds(oddsA) || !validOdds(oddsB) ||
+    if (!rawModelCalculated) modelTimestampCoverage.missing++;
+    else {
+      modelTimestampCoverage.provided++;
+      if (modelCalculated === null) modelTimestampCoverage.invalid++;
+      else {
+        if (captured !== null && modelCalculated >= captured) modelTimestampCoverage.afterOddsCapture++;
+        if (start !== null && modelCalculated >= start) modelTimestampCoverage.atOrAfterMatchStart++;
+      }
+    }
+    if (captureStatus && captureStatus !== 'upcoming') modelTimestampCoverage.nonUpcomingStatus++;
+    if (!id || start === null || captured === null || modelCalculated === null || modelCalculated >= captured || modelCalculated >= start ||
+        (captureStatus && captureStatus !== 'upcoming') || !validOdds(oddsA) || !validOdds(oddsB) ||
         !Number.isFinite(probabilityA) || probabilityA <= 0 || probabilityA >= 1 ||
-        !["A", "B"].includes(winner) || captured > start) {
+        !["A", "B"].includes(winner) || captured >= start) {
       rejectedSnapshots++;
       continue;
     }
@@ -421,9 +442,11 @@ export function runOddsBacktest(rows, options = {}) {
   }
   const archiveCoverage = {
     uniqueMatches: archiveMatches.length,
+    modelProbabilityProvenance: { ...modelTimestampCoverage, acceptedSnapshots: acceptedSnapshotAges.length,
+      note: "Strict cohort only: model_calculated_at must include a timezone and be strictly earlier than odds_captured_at and match_start. If capture_status is present it must be upcoming. Missing or ambiguous legacy timestamps are excluded, not inferred." },
     ratingDateCoverage: {
       ...ratingDateCounts,
-      note: "ratingAsOf is a calendar-date provenance hint, not proof that the probability was calculated before the odds snapshot or match start. Same-day dates have unknown intraday ordering."
+      note: "ratingAsOf is a calendar-date hint only; model_calculated_at is separately required and must be strictly earlier than odds_captured_at and match_start."
     },
     validSnapshots: snapshotCounts.reduce((sum, count) => sum + count, 0),
     matchDateRange: matchStarts.length ? {
