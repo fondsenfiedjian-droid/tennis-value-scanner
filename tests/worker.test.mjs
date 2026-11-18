@@ -12,6 +12,26 @@ vm.runInNewContext(
 );
 const { findElo, eloProbability, response } = sandbox.testHelpers;
 
+const workerSandbox = {
+  Response, Request, URL, Set, Object, Number, Math, JSON, Date, Promise, encodeURIComponent,
+  caches: { default: { match: async () => null, put: async () => {} } },
+  fetch: async () => { throw new Error("Unexpected upstream network call in validation test"); }
+};
+vm.runInNewContext(
+  workerSource.replace("export default {", "globalThis.worker = {"),
+  workerSandbox
+);
+const worker = workerSandbox.worker;
+const env = { LIVE_TENNIS_API_KEY: "test-key", APIFY_TOKEN: "test-token" };
+async function call(path, method = "GET", body = undefined) {
+  const request = new Request("https://worker.test" + path, {
+    method,
+    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    body
+  });
+  return worker.fetch(request, env);
+}
+
 test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
 });
@@ -58,4 +78,45 @@ test("JSON responses include CORS and content type headers", () => {
   assert.equal(result.status, 200);
   assert.equal(result.headers.get("Access-Control-Allow-Origin"), "*");
   assert.match(result.headers.get("Content-Type"), /application\\/json/);
+});
+
+test("predict rejects malformed JSON with HTTP 400", async () => {
+  const result = await call("/predict", "POST", "{");
+  assert.equal(result.status, 400);
+  assert.match((await result.json()).error, /Invalid JSON/);
+});
+
+test("predict rejects a missing player ID pair", async () => {
+  const result = await call("/predict", "POST", JSON.stringify({ playerIdA: "123", ratingB: 1700 }));
+  assert.equal(result.status, 400);
+});
+
+test("predict rejects out-of-range manual Elo ratings", async () => {
+  const result = await call("/predict", "POST", JSON.stringify({ ratingA: 5001, ratingB: 1700 }));
+  assert.equal(result.status, 400);
+});
+
+test("predict rejects decimal odds at or below one", async () => {
+  const result = await call("/predict", "POST", JSON.stringify({ ratingA: 1800, ratingB: 1700, oddsA: 1 }));
+  assert.equal(result.status, 400);
+});
+
+test("matches rejects an excessive result limit before upstream access", async () => {
+  const result = await call("/matches?limit=201");
+  assert.equal(result.status, 400);
+});
+
+test("matches rejects an unsupported tour filter", async () => {
+  const result = await call("/matches?tour=invalid");
+  assert.equal(result.status, 400);
+});
+
+test("matches rejects reversed date ranges", async () => {
+  const result = await call("/matches?from=2026-11-20&to=2026-11-19");
+  assert.equal(result.status, 400);
+});
+
+test("matches rejects unsupported HTTP methods", async () => {
+  const result = await call("/matches", "POST", "{}");
+  assert.equal(result.status, 405);
 });
