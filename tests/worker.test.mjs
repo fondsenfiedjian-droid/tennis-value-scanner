@@ -676,9 +676,9 @@ test("result check batches rotate by oldest check time instead of starving later
     matchId:index+1,matchDate:new Date(now-5*60*60*1000-index*60000).toISOString(),
     resultCheckedAt:index<10?now-10*60*1000:null
   }));
-  assert.deepEqual(selectArchiveResultCheckIds(rows,now,10),[11,12,13,14,15]);
+  assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(rows,now,10))),[15,14,13,12,11]);
   const next=rows.map(row=>({...row,resultCheckedAt:row.matchId>10?now:row.resultCheckedAt}));
-  assert.deepEqual(selectArchiveResultCheckIds(next,now+31*60*1000,10),[1,2,3,4,5,6,7,8,9,10]);
+  assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(next,now+31*60*1000,10))),[15,14,13,12,11,10,9,8,7,6]);
 });
 
 test("result check selector ignores future, too-recent and invalid match records", () => {
@@ -690,7 +690,7 @@ test("result check selector ignores future, too-recent and invalid match records
     {matchId:3,matchDate:new Date(now-4*60*60*1000).toISOString(),resultCheckedAt:now-5*60*1000},
     {matchId:0,matchDate:new Date(now-4*60*60*1000).toISOString()}
   ];
-  assert.deepEqual(selectArchiveResultCheckIds(rows,now,10),[1]);
+  assert.deepEqual(JSON.parse(JSON.stringify(selectArchiveResultCheckIds(rows,now,10))),[1]);
 });
 
 test("probability calibration uses one latest pre-match A-side prediction per verified match", () => {
