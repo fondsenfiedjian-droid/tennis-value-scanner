@@ -155,6 +155,39 @@
     };
   }
 
+  function getBookmakerSummary(state) {
+    validateState(state);
+    const groups = new Map();
+    const groupFor = value => {
+      const name = typeof value === "string" && value.trim() ? value.trim().slice(0, 60) : "Не указан";
+      if (!groups.has(name)) groups.set(name, { bookmaker: name, settledBets: 0, wins: 0, losses: 0, voids: 0, totalStaked: 0, voidedStake: 0, profit: 0, openBets: 0, openStake: 0 });
+      return groups.get(name);
+    };
+    for (const tx of state.transactions) {
+      if (tx.type !== "settlement") continue;
+      const group = groupFor(tx.bookmaker || tx.betSnapshot?.bookmaker || "");
+      group.settledBets++;
+      const outcome = String(tx.outcome || "");
+      if (outcome === "won") group.wins++;
+      else if (outcome === "lost") group.losses++;
+      else if (outcome === "void") group.voids++;
+      const stake = Number(tx.stake || 0);
+      if (outcome === "void") group.voidedStake += stake;
+      else group.totalStaked += stake;
+      group.profit += Number(tx.profit || 0);
+    }
+    for (const bet of state.openBets) {
+      const group = groupFor(bet.bookmaker || "");
+      group.openBets++;
+      group.openStake += bet.stake;
+    }
+    return [...groups.values()].map(group => ({
+      ...group, totalStaked: roundMoney(group.totalStaked), voidedStake: roundMoney(group.voidedStake),
+      profit: roundMoney(group.profit), openStake: roundMoney(group.openStake),
+      roiPercent: group.totalStaked > 0 ? roundMoney(group.profit / group.totalStaked * 100) : null
+    })).sort((a, b) => b.totalStaked - a.totalStaked || a.bookmaker.localeCompare(b.bookmaker, "ru"));
+  }
+
   function recommendStake(state, probability, odds, options = {}) {
     validateState(state);
     const p = Number(probability), price = Number(odds);
@@ -513,5 +546,5 @@
     return cloneState(payload.state);
   }
 
-  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
+  return { VERSION, DEFAULTS, createInitialState, validateState, totalOpenStake, bankrollEquity, realizedProfit, getSummary, getBookmakerSummary, recommendStake, recommendPortfolio, savePortfolioPlan, reconcilePortfolioPlan, confirmPortfolioPlan, cancelPortfolioPlan, expirePortfolioPlan, addDeposit, addWithdrawal, placeBet, settleBet, settleVerifiedResults, serializeBackup, parseBackup, roundMoney };
 });
