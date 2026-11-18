@@ -1126,7 +1126,7 @@ test("archive odds movement exposes provider-level comparison counts", () => {
 
 test("CLV uses the latest same-bookmaker pre-match quote and never substitutes another provider", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const placed = api.placeBet(api.createInitialState(100), {
     matchKey: "clv-match-1", matchId: 501, side: "A", matchDate: "2026-11-20T18:00:00.000Z",
@@ -1150,7 +1150,7 @@ test("CLV uses the latest same-bookmaker pre-match quote and never substitutes a
 
 test("CLV reports missing data instead of inventing zero and requires match timing", () => {
   const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
+  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const placed = api.placeBet(api.createInitialState(100), {
     matchKey: "clv-match-no-close", matchId: 502, side: "B",
