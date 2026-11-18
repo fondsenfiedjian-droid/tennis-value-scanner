@@ -57,7 +57,7 @@ function makeFakeIndexedDB(options = {}) {
           };
         }
       };
-      Promise.resolve().then(() => tx.oncomplete?.());
+      Promise.resolve().then(() => Promise.resolve().then(() => tx.oncomplete?.()));
       return tx;
     }
   };
