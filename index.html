@@ -1584,8 +1584,8 @@
         if(renderId!==predictionRenderId)return;
         result.evA=el.dataset.oddsA?((result.probabilityExactA??result.probabilityA/100)*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?((result.probabilityExactB??result.probabilityB/100)*Number(el.dataset.oddsB)-1)*100:null;
-        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA??result.probabilityA/100),ev:result.evA,match:m};
-        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityExactB??result.probabilityB/100),ev:result.evB,match:m};
+        const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),ev:result.evA,match:m};
+        const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),ev:result.evB,match:m};
         for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result);
         await flushArchiveWrites();
