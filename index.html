@@ -78,6 +78,25 @@
     .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
     .stats-actions button:focus,.actions button:focus,.chip:focus{outline:2px solid #d47b58;outline-offset:2px}
 
+    /* Current palette: black, yellow, terracotta and copper-pink; no green */
+    :root{--green:#e6bd58;--blue:#d58a8e;--amber:#e6bd58;--yellow:#e6bd58;--copper-pink:#d58a8e;--ruby:#a51f45}
+    .status{border-color:#8a6c32;color:#f0d58b;background:#211a0d}
+    .refresh{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border:1px solid #d18a6d;color:#fff8f4;box-shadow:0 7px 22px #a94e302d,inset 0 1px #ffd1b155}
+    .chip.on{background:#332016;border-color:#c66b49;color:#e7b49e}
+    .nav button.active{color:#e6bd58;background:#302414}
+    .actions .primary{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border-color:#d18a6d}
+    .model-result strong,.model-positive{color:#e6bd58;font-weight:800}
+    .model-negative{color:#d58a8e}
+    .data-freshness.good{background:#211a0d;color:#f0d58b;border:1px solid #8a6c32}
+    .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
+    .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
+    .best-bet{background:linear-gradient(145deg,#211018,#090909 68%);border-color:transparent;animation:bestBetGlow 2.8s ease-in-out infinite}
+    .best-bet:before{background:linear-gradient(120deg,#d9a0a7,#77716d 12%,#d58a8e 35%,#a51f45 58%,#d58a8e 78%,#e2dcd7)}
+    .best-bet-title,.best-bet-value{color:#d58a8e}
+    .best-bet-main{color:#fff1f2}
+    @keyframes bestBetGlow{0%,100%{box-shadow:inset 0 1px #fff4,0 0 10px #d58a8e25,0 8px 24px #0009}50%{box-shadow:inset 0 1px #fff5,0 0 20px #a51f456b,0 8px 28px #000b}}
+    @media(prefers-reduced-motion:reduce){.best-bet{animation:none}}
+
   </style>
 </head>
 <body>
