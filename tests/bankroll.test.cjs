@@ -236,3 +236,33 @@ test("backup parser rejects a valid checksum over an invalid ledger", () => {
     format: "tvs-bankroll-backup", version: 1, checksum, state
   }), /Баланс не совпадает/);
 });
+
+test("voided stakes are tracked separately and excluded from ROI denominator", () => {
+  let state = bank.createInitialState(100);
+  const voidBet = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2, match: "Void match" });
+  state = bank.settleBet(voidBet.state, voidBet.bet.id, "void");
+  const losingBet = bank.placeBet(state, { probability: 0.6, odds: 2.1, stake: 2, match: "Loss match" });
+  state = bank.settleBet(losingBet.state, losingBet.bet.id, "lost");
+  const summary = bank.getSummary(state);
+  assert.equal(summary.totalStaked, 4);
+  assert.equal(summary.settledStake, 2);
+  assert.equal(summary.voidedStake, 2);
+  assert.equal(summary.voidedBets, 1);
+  assert.equal(summary.settledBets, 2);
+  assert.equal(summary.roiPercent, -100);
+  assert.equal(summary.realizedProfit, -2);
+});
+
+test("result correction removes superseded settlement from ROI and counts only current result", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 87654329, side: "A"
+  });
+  const won = bank.settleVerifiedResults(placed.state, [verifiedRow(87654329, "completed", 1, 1)]);
+  assert.equal(bank.getSummary(won.state).roiPercent, 110);
+  const reopened = bank.settleVerifiedResults(won.state, [verifiedRow(87654329, "retired", null, 2)]);
+  const summary = bank.getSummary(reopened.state);
+  assert.equal(summary.realizedProfit, 0);
+  assert.equal(summary.settledStake, 0);
+  assert.equal(summary.roiPercent, null);
+  assert.equal(summary.openBets, 1);
+});
