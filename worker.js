@@ -1,90 +1,126 @@
-     
-     const cors = {
-       "Access-Control-Allow-Origin": "*",
-         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-           "Access-Control-Allow-Headers": "Content-Type"
-           };
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
 
-           function response(data, status = 200) {
-             return new Response(JSON.stringify(data, null, 2), {
-                 status,
-                     headers: {
-                           ...cors,
-                                 "Content-Type": "application/json; charset=utf-8"
-                                     }
-                                       });
-                                       }
+function response(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      ...cors,
+      "Content-Type": "application/json; charset=utf-8"
+    }
+  });
+}
 
-                                       function eloProbability(a, b) {
-                                         return 1 / (1 + Math.pow(10, (b - a) / 400));
-                                         }
+function eloProbability(a, b) {
+  return 1 / (1 + Math.pow(10, (b - a) / 400));
+}
 
-                                         export default {
-                                           async fetch(request) {
-                                               const url = new URL(request.url);
-                                                   const path = url.pathname.replace(/\/+$/, "");
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, "");
 
-                                                       if (request.method === "OPTIONS") {
-                                                             return new Response(null, { headers: cors });
-                                                                 }
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: cors });
+    }
 
-                                                                     if (path === "/health") {
-                                                                           return response({
-                                                                                   status: "ok",
-                                                                                           service: "tennis-model-api",
-                                                                                                   version: "2.0"
-                                                                                                         });
-                                                                                                             }
+    if (path === "/health") {
+      return response({
+        status: "ok",
+        service: "tennis-value-api",
+        liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
+        endpoints: ["/health", "/matches?status=upcoming", "/matches?status=live", "/predict"]
+      });
+    }
 
-                                                                                                                 if (path === "/predict") {
-                                                                                                                       try {
-                                                                                                                               let body = {};
+    if (path === "/matches") {
+      if (request.method !== "GET") {
+        return response({ error: "Method not allowed" }, 405);
+      }
 
-                                                                                                                                       if (request.method === "POST") {
-                                                                                                                                                 body = await request.json();
-                                                                                                                                                         } else if (request.method === "GET") {
-                                                                                                                                                                   body = {
-                                                                                                                                                                               playerA: url.searchParams.get("playerA") || "Player A",
-                                                                                                                                                                                           playerB: url.searchParams.get("playerB") || "Player B",
-                                                                                                                                                                                                       ratingA: url.searchParams.get("ratingA") || "1800",
-                                                                                                                                                                                                                   ratingB: url.searchParams.get("ratingB") || "1600"
-                                                                                                                                                                                                                             };
-                                                                                                                                                                                                                                     } else {
-                                                                                                                                                                                                                                               return response({ error: "Method not allowed" }, 405);
-                                                                                                                                                                                                                                                       }
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+      }
 
-                                                                                                                                                                                                                                                               const a = Number(body.ratingA);
-                                                                                                                                                                                                                                                                       const b = Number(body.ratingB);
+      const status = url.searchParams.get("status") || "upcoming";
+      if (!["live", "upcoming", "completed"].includes(status)) {
+        return response({ error: "Invalid status. Use live, upcoming, or completed." }, 400);
+      }
 
-                                                                                                                                                                                                                                                                               if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b < 0) {
-                                                                                                                                                                                                                                                                                         return response({ error: "Invalid ratings" }, 400);
-                                                                                                                                                                                                                                                                                                 }
+      const params = new URLSearchParams({ status });
+      for (const key of ["limit", "offset", "tour"]) {
+        const value = url.searchParams.get(key);
+        if (value !== null) params.set(key, value);
+      }
 
-                                                                                                                                                                                                                                                                                                         const pA = eloProbability(a, b);
-                                                                                                                                                                                                                                                                                                                 const pB = 1 - pA;
+      try {
+        const upstream = await fetch(
+          `https://api.livetennisapi.com/api/public/v1/matches?${params.toString()}`,
+          {
+            headers: {
+              "X-API-Key": env.LIVE_TENNIS_API_KEY,
+              "Accept": "application/json"
+            }
+          }
+        );
 
-                                                                                                                                                                                                                                                                                                                         return response({
-                                                                                                                                                                                                                                                                                                                                   playerA: body.playerA || "Player A",
-                                                                                                                                                                                                                                                                                                                                             playerB: body.playerB || "Player B",
-                                                                                                                                                                                                                                                                                                                                                       ratingA: a,
-                                                                                                                                                                                                                                                                                                                                                                 ratingB: b,
-                                                                                                                                                                                                                                                                                                                                                                           probabilityA: Number((pA * 100).toFixed(2)),
-                                                                                                                                                                                                                                                                                                                                                                                     probabilityB: Number((pB * 100).toFixed(2)),
-                                                                                                                                                                                                                                                                                                                                                                                               fairOddsA: Number((1 / pA).toFixed(3)),
-                                                                                                                                                                                                                                                                                                                                                                                                         fairOddsB: Number((1 / pB).toFixed(3)),
-                                                                                                                                                                                                                                                                                                                                                                                                                   method: "Elo",
-                                                                                                                                                                                                                                                                                                                                                                                                                             note: "Test calculation only. Historical ratings are not connected yet."
-                                                                                                                                                                                                                                                                                                                                                                                                                                     });
-                                                                                                                                                                                                                                                                                                                                                                                                                                           } catch (error) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                   return response({ error: "Invalid request" }, 400);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                         }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                             }
+        const body = await upstream.json();
+        return response(body, upstream.status);
+      } catch (error) {
+        return response({ error: "Could not reach Live Tennis API" }, 502);
+      }
+    }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                 return response({
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                       service: "tennis-model-api",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                             version: "2.0",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   endpoints: ["/health", "/predict"]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       });
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         };
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+    if (path === "/predict") {
+      try {
+        let body = {};
+
+        if (request.method === "POST") {
+          body = await request.json();
+        } else if (request.method === "GET") {
+          body = {
+            playerA: url.searchParams.get("playerA") || "Player A",
+            playerB: url.searchParams.get("playerB") || "Player B",
+            ratingA: url.searchParams.get("ratingA") || "1800",
+            ratingB: url.searchParams.get("ratingB") || "1600"
+          };
+        } else {
+          return response({ error: "Method not allowed" }, 405);
+        }
+
+        const a = Number(body.ratingA);
+        const b = Number(body.ratingB);
+
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b < 0) {
+          return response({ error: "Invalid ratings" }, 400);
+        }
+
+        const pA = eloProbability(a, b);
+        const pB = 1 - pA;
+
+        return response({
+          playerA: body.playerA || "Player A",
+          playerB: body.playerB || "Player B",
+          ratingA: a,
+          ratingB: b,
+          probabilityA: Number((pA * 100).toFixed(2)),
+          probabilityB: Number((pB * 100).toFixed(2)),
+          fairOddsA: Number((1 / pA).toFixed(3)),
+          fairOddsB: Number((1 / pB).toFixed(3)),
+          method: "Elo",
+          note: "Test calculation only. Historical ratings are not connected yet."
+        });
+      } catch (error) {
+        return response({ error: "Invalid request" }, 400);
+      }
+    }
+
+    return response({
+      service: "tennis-value-api",
+      endpoints: ["/health", "/matches", "/predict"]
+    });
+  }
+};
