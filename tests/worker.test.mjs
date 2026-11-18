@@ -327,10 +327,10 @@ test("archive import validates records, merges duplicates, and retains up to 300
   assert.equal(result.rows.length, 2);
   assert.equal(result.rows.find(item => item.matchKey === "m2").ev, 8);
   assert.equal(result.rows.find(item => item.matchKey === "m2").ratingAsOf, null);
-  const many = Array.from({ length: 605 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
+  const many = Array.from({ length: 3005 }, (_, i) => ({ ...row, matchKey: "m" + i, capturedAt: i + 1 }));
   const capped = mergePredictionArchive([], many);
-  assert.equal(capped.rows.length, 605);
-  assert.equal(capped.rows[0].capturedAt, 1);
+  assert.equal(capped.rows.length, 3000);
+  assert.equal(capped.rows[0].capturedAt, 6);
   const mixed = many.map((item, i) => i === 0 ? { ...item, resultOutcome: "completed", resultWinner: 1 } : item);
   const retained = mergePredictionArchive([], mixed.slice(0, 3005));
   assert.equal(retained.rows.length, 3000);
