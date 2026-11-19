@@ -16,7 +16,7 @@ function parseOdds(value) {
   return Number.isFinite(n) && n > 1 && n <= 100 ? n : null;
 }
 function marketBenchmark(rows, fields) {
-  let valid = 0, invalid = 0, overround = 0, favouriteWins = 0, decisiveFavourite = 0;
+  let valid = 0, invalid = 0, overround = 0, favouriteWins = 0, decisiveFavourite = 0, excludedNonstandard = 0;
   let brier = 0, logLoss = 0;
   for (const row of rows) {
     const [field1, field2] = fields;
@@ -80,7 +80,7 @@ export function parseValuebetennisCsv(text){
 }
 export function runValuebetennisBacktest(csvTexts,options={}){
   const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rows=parsed.flatMap(x=>x.rows),rejectedByReason={};
-  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2}));
+  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2,score:row.score}));
   for(const item of parsed)for(const[key,count]of Object.entries(item.rejectedByReason))rejectedByReason[key]=(rejectedByReason[key]||0)+count;
   const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
   return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parsed.reduce((n,x)=>n+x.rejectedRows,0),rejectedByReason,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
