@@ -141,12 +141,12 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   const result = await call("/odds");
   assert.equal(result.status, 200);
   const payload = await result.json();
-  assert.equal(payload.source, "Apify Winamax dataset");
-  assert.equal(payload.datasetId, "ZBWihC1oYU8Pq9uBo");
+  assert.equal(payload.source, "Apify Winamax task");
+  assert.equal(payload.taskId, "s9Des4R3jhMfA8e3s");
   assert.equal(payload.count, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
   assert.ok(Number.isFinite(Date.parse(payload.retrievedAt)));
-  assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/ZBWihC1oYU8Pq9uBo/items?clean=true&format=json&limit=1000");
+  assert.equal(requestedUrl, "https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000");
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(storedKey, "https://worker.test/odds");
