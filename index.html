@@ -360,8 +360,9 @@
   });
   const modal=$('#settingsModal');
   const open=()=>modal.classList.add('show'), close=()=>modal.classList.remove('show');
-  $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=close;
-  modal.addEventListener('click',e=>{if(e.target===modal)close()});
+  const cancelSettings=()=>{applySkin(activeSkin);$('#skinSelect').value=activeSkin;close();};
+  $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=cancelSettings;
+  modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
   function readSettings(){
     try{
       const value=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
@@ -382,6 +383,8 @@
   }
   applySkin(activeSkin);
   $('#skinSelect').value=activeSkin;
+  // Preview theme immediately; Cancel restores the last saved skin.
+  $('#skinSelect').addEventListener('change',()=>applySkin($('#skinSelect').value));
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
@@ -392,8 +395,12 @@
   function saveTours(){
     const settings=readSettings();
     settings.tours=selectedTours();
-    localStorage.setItem('tvs-settings',JSON.stringify(settings));
-    localStorage.setItem('tvs-tours',JSON.stringify(settings.tours));
+    try{
+      localStorage.setItem('tvs-settings',JSON.stringify(settings));
+      localStorage.setItem('tvs-tours',JSON.stringify(settings.tours));
+    }catch(error){
+      alert('Не удалось сохранить фильтры турниров на устройстве. Проверь доступ к хранилищу браузера.');
+    }
   }
   tourChecks.forEach(input=>input.addEventListener('change',()=>{saveTours();if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#saveSettings').onclick=()=>{
@@ -422,6 +429,8 @@
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
       return;
     }
+    activeSkin=data.skin;
+    applySkin(activeSkin);
     scheduleAutoRefresh();
     close();
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
