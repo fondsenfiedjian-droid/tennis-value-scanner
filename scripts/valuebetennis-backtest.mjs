@@ -85,8 +85,10 @@ function pairedModelMarketComparison(predictions, period) {
       bucket.market.brier += marketBrier;
       bucket.market.logLoss += marketLogLoss;
       for (const name of names) {
-        const winnerProbability = prediction.probabilities[name];
-        const modelP1 = prediction.winnerId === prediction.sourceOdds.player1Id ? winnerProbability : 1 - winnerProbability;
+        // Model probabilities are always oriented to the lower-ID player.
+        // Re-orient to Valuebetennis player1 without consulting the match result.
+        const modelP1 = prediction.player1Id === prediction.sourceOdds.player1Id
+          ? prediction.probabilities[name] : 1 - prediction.probabilities[name];
         const p = clamp(modelP1);
         bucket.models[name].brier += (p - player1Won) ** 2;
         bucket.models[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
