@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
+import { parseCsv, runBacktest } from "./backtest.mjs";
+
+const REQUIRED = ["match_id","date","tournoi_id","genre","surface","joueur1_id","joueur2_id","vainqueur_id","score"];
+const SURFACES = new Map([["hard","Hard"],["clay","Clay"],["grass","Grass"],["carpet","Carpet"]]);
+
+function detectDelimiter(text) {
+  const line=String(text).replace(/^\uFEFF/,"").split(/\r?\n/,1)[0]??"";
+  let quoted=false;const counts=[[",",0],[";",0],["\t",0]];
+  for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'&&line[i+1]==='"'){i++;continue;}if(ch==='"')quoted=!quoted;else if(!quoted){const x=counts.find(v=>v[0]===ch);if(x)x[1]++;}}
+  counts.sort((a,b)=>b[1]-a[1]);if(!counts[0][1])throw new SyntaxError("Could not detect CSV delimiter");return counts[0][0];
+}
+function validDate(value){
+  const raw=String(value??"").trim(),m=/^(\d{4})-(\d{2})-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?(?:[Zz]|[+-]\d{2}:?\d{2})?)?)?$/.exec(raw);
+  if(!m)return null;const y=+m[1],mo=+m[2],d=+m[3],date=new Date(Date.UTC(y,mo-1,d));
+  if(date.getUTCFullYear()!==y||date.getUTCMonth()!==mo-1||date.getUTCDate()!==d)return null;
+  if(m[4]!==undefined&&(Number(m[4])>23||Number(m[5])>59||Number(m[6]??0)>59))return null;
+  return m[1]+m[2]+m[3];
+}
+export function parseValuebetennisCsv(text){
+  const delimiter=detectDelimiter(text),rows=parseCsv(text,{delimiter});
+  if(!rows.length)return{rows:[],inputRows:0,rejectedRows:0,rejectedByReason:{},delimiter};
+  const headers=Object.keys(rows[0]),missing=REQUIRED.filter(x=>!headers.includes(x));
+  if(missing.length)throw new Error("Valuebetennis CSV missing required columns: "+missing.join(", "));
+  const normalized=[],rejectedByReason={},reject=reason=>{rejectedByReason[reason]=(rejectedByReason[reason]||0)+1;};
+  for(const row of rows){
+    const date=validDate(row.date),p1=String(row.joueur1_id??"").trim(),p2=String(row.joueur2_id??"").trim();
+    const winner=String(row.vainqueur_id??"").trim(),id=String(row.match_id??"").trim(),tour=String(row.genre??"").trim().toLowerCase();
+    if(!date){reject("invalid_date");continue;}
+    if(!/^\d+$/.test(p1)||Number(p1)<=0||!/^\d+$/.test(p2)||Number(p2)<=0||p1===p2){reject("invalid_player_ids");continue;}
+    if(winner!==p1&&winner!==p2){reject("winner_not_in_match");continue;}
+    if(!id){reject("missing_match_id");continue;}
+    if(tour&&!["atp","wta"].includes(tour)){reject("unsupported_tour");continue;}
+    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour});
+  }
+  return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
+}
+export function runValuebetennisBacktest(csvTexts,options={}){
+  const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rows=parsed.flatMap(x=>x.rows),rejectedByReason={};
+  for(const item of parsed)for(const[key,count]of Object.entries(item.rejectedByReason))rejectedByReason[key]=(rejectedByReason[key]||0)+count;
+  const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
+  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parsed.reduce((n,x)=>n+x.rejectedRows,0),rejectedByReason,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,report:runBacktest(rows,options),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
+}
+async function main(){
+  const args=process.argv.slice(2),options={},files=[];
+  for(let i=0;i<args.length;i++){if(args[i]==="--from"||args[i]==="--to"){if(!args[i+1])throw new Error("Missing date after "+args[i]);options[args[i]==="--from"?"evaluationStart":"evaluationEnd"]=args[++i];}else if(args[i].startsWith("--from="))options.evaluationStart=args[i].slice(7);else if(args[i].startsWith("--to="))options.evaluationEnd=args[i].slice(5);else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);else files.push(args[i]);}
+  if(!files.length){console.error("Usage: node scripts/valuebetennis-backtest.mjs [--from YYYYMMDD] [--to YYYYMMDD] valuebetennis-matchs-2026.csv [more CSV files...]");process.exitCode=2;return;}
+  const texts=[];for(const file of files){texts.push(await readFile(file,"utf8"));console.error("Loaded "+basename(file));}
+  console.log(JSON.stringify(runValuebetennisBacktest(texts,options),null,2));console.error("Lower Brier/log-loss is better. This is prediction quality, not ROI.");
+}
+if(process.argv[1]&&import.meta.url.endsWith(process.argv[1]))await main();
