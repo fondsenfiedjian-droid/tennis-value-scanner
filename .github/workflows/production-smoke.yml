@@ -1,0 +1,52 @@
+name: Production smoke check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check production PWA and API
+        env:
+          APP_URL: https://fascinating-paprenjak-1aa9b3.netlify.app
+          API_URL: https://tennis-value-api.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const timeout = AbortSignal.timeout(15000);
+          async function get(url) {
+            const response = await fetch(url, { signal: timeout, headers: { accept: "application/json,text/html" } });
+            if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+            return response;
+          }
+          const app = await get(process.env.APP_URL);
+          const html = await app.text();
+          if (!html.includes("Tennis Value Scanner")) throw new Error("PWA HTML does not contain the expected app title");
+          console.log("PWA: HTTP", app.status, "HTML title present");
+
+          const healthResponse = await get(process.env.API_URL + "/health");
+          const health = await healthResponse.json();
+          if (health.status !== "ok" || health.service !== "tennis-value-api") throw new Error("Worker health response is invalid");
+          if (!health.liveTennisApiConfigured || !health.apifyTokenConfigured) {
+            throw new Error("Worker secrets are not both configured; check LIVE_TENNIS_API_KEY and APIFY_TOKEN in Cloudflare");
+          }
+          console.log("Worker health: OK; both required secrets are configured");
+
+          const matchesResponse = await get(process.env.API_URL + "/matches?status=upcoming&draw=singles&limit=5");
+          const matchesPayload = await matchesResponse.json();
+          const matchArray = Array.isArray(matchesPayload) ? matchesPayload
+            : [matchesPayload?.data, matchesPayload?.matches, matchesPayload?.results, matchesPayload?.events].find(Array.isArray);
+          if (!matchArray) throw new Error("Matches endpoint returned an unrecognized payload shape");
+          console.log("Matches: HTTP", matchesResponse.status, "records:", matchArray.length,
+            "cache:", matchesResponse.headers.get("X-Data-Cache") || "unknown");
+
+          const oddsResponse = await get(process.env.API_URL + "/odds");
+          const odds = await oddsResponse.json();
+          if (!Array.isArray(odds.items) || !odds.diagnostics) throw new Error("Odds endpoint is missing items or diagnostics");
+          console.log("Odds: HTTP", oddsResponse.status, "items:", odds.items.length,
+            "valid decimal odds:", odds.diagnostics.validDecimalOdds ?? "unknown",
+            "fresh scrape timestamps:", odds.diagnostics.freshScrapedAt ?? "unknown",
+            "cache:", oddsResponse.headers.get("X-Data-Cache") || "unknown");
+          console.log("Smoke check passed. Zero odds is reported as a feed issue, not hidden as a successful value feed.");
+          NODE
