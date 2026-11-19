@@ -53,6 +53,23 @@
     let ledgerBalance = 0;
     const stakeTransactions = new Map(state.transactions.filter(tx => tx && tx.type === "stake" && typeof tx.betId === "string").map(tx => [tx.betId, tx]));
     for (const tx of state.transactions) {
+      const snapshot = tx && tx.betSnapshot;
+      const stakeTx = tx && stakeTransactions.get(tx.betId);
+      const invalidSnapshot = snapshot !== undefined && (
+        !snapshot || typeof snapshot !== "object" ||
+        typeof snapshot.id !== "string" || snapshot.id !== tx.betId ||
+        !Number.isFinite(snapshot.stake) || snapshot.stake <= 0 ||
+        !Number.isFinite(snapshot.odds) || snapshot.odds <= 1 ||
+        !Number.isFinite(snapshot.probability) || snapshot.probability <= 0 || snapshot.probability >= 1 ||
+        snapshot.stake !== tx.stake ||
+        (stakeTx && stakeTx.actualStake !== undefined && stakeTx.actualStake !== snapshot.stake) ||
+        (stakeTx && stakeTx.actualOdds !== undefined && stakeTx.actualOdds !== snapshot.odds) ||
+        typeof snapshot.placedAt !== "string" || !Number.isFinite(Date.parse(snapshot.placedAt)) ||
+        (tx.matchId !== undefined && tx.matchId !== snapshot.matchId) ||
+        (tx.side !== undefined && tx.side !== snapshot.side) ||
+        (snapshot.matchId !== null && snapshot.matchId !== undefined &&
+          (!Number.isSafeInteger(snapshot.matchId) || snapshot.matchId <= 0 || !["A", "B"].includes(snapshot.side)))
+      );
       if (!tx || typeof tx.id !== "string" || !tx.id || ids.has(tx.id) ||
           !transactionTypes.has(tx.type) || !Number.isFinite(tx.amount) || tx.amount < 0 ||
           !Number.isFinite(tx.balanceDelta) || typeof tx.at !== "string" || !Number.isFinite(Date.parse(tx.at)) ||
@@ -64,18 +81,7 @@
           (tx.plannedOdds !== undefined && tx.plannedOdds !== null && (!Number.isFinite(tx.plannedOdds) || tx.plannedOdds <= 1)) ||
           (tx.actualOdds !== undefined && tx.actualOdds !== null && (!Number.isFinite(tx.actualOdds) || tx.actualOdds <= 1)) ||
           (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1)) ||
-          (tx.betSnapshot !== undefined && (!tx.betSnapshot || typeof tx.betSnapshot !== "object" ||
-            typeof tx.betSnapshot.id !== "string" || tx.betSnapshot.id !== tx.betId ||
-            !Number.isFinite(tx.betSnapshot.stake) || tx.betSnapshot.stake <= 0 ||
-            !Number.isFinite(tx.betSnapshot.odds) || tx.betSnapshot.odds <= 1 ||
-            !Number.isFinite(tx.betSnapshot.probability) || tx.betSnapshot.probability <= 0 || tx.betSnapshot.probability >= 1 ||
-            tx.betSnapshot.stake !== tx.stake ||
-            (stakeTransactions.has(tx.betId) && ((stakeTransactions.get(tx.betId).actualStake !== undefined && stakeTransactions.get(tx.betId).actualStake !== tx.betSnapshot.stake) || (stakeTransactions.get(tx.betId).actualOdds !== undefined && stakeTransactions.get(tx.betId).actualOdds !== tx.betSnapshot.odds))) ||
-            typeof tx.betSnapshot.placedAt !== "string" || !Number.isFinite(Date.parse(tx.betSnapshot.placedAt)) ||
-            (tx.matchId !== undefined && tx.matchId !== tx.betSnapshot.matchId) ||
-            (tx.side !== undefined && tx.side !== tx.betSnapshot.side) ||
-            (tx.betSnapshot.matchId !== null && tx.betSnapshot.matchId !== undefined &&
-              (!Number.isSafeInteger(tx.betSnapshot.matchId) || tx.betSnapshot.matchId <= 0 || !["A", "B"].includes(tx.betSnapshot.side))))) {
+          invalidSnapshot) {
         throw new Error("В журнале найдена некорректная операция.");
       }
       ids.add(tx.id);
