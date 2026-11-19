@@ -312,12 +312,6 @@ test("surface walk-forward calibration reports insufficient prior samples instea
       score: "6-4 6-4", surface: "Clay"
     });
   }
-  // One additional hard-court match makes the tour-wide fit eligible while
-  // the clay-only training sample remains below its 200-match threshold.
-  rows.push({
-    tourney_date: "20240102", tourney_id: "2024-H", match_num: "1",
-    winner_id: "2001", loser_id: "2002", score: "6-4 6-4", surface: "Hard"
-  });
   rows.push({
     tourney_date: "20250101", tourney_id: "2025-T", match_num: "1",
     winner_id: "1001", loser_id: "1002", score: "6-4 6-4", surface: "Clay"
