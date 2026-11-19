@@ -51,47 +51,76 @@ function marketBenchmark(rows, fields) {
 
 function pairedModelMarketComparison(predictions, period) {
   const fields = ODDS_FIELDS[period];
-  const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { brier: 0, logLoss: 0 }]));
-  const market = { brier: 0, logLoss: 0 };
-  let matched = 0, missingOrInvalidOdds = 0;
+  const names = ["elo", "surface", "form", "h2h", "combined"];
+  const makeBucket = () => ({
+    count: 0, missing: 0,
+    market: { brier: 0, logLoss: 0 },
+    models: Object.fromEntries(names.map(name => [name, { brier: 0, logLoss: 0 }]))
+  });
+  const overall = makeBucket();
+  const byYear = new Map(), bySurface = new Map(), byYearAndSurface = new Map();
   const clamp = value => Math.min(1 - 1e-12, Math.max(1e-12, value));
   for (const prediction of predictions) {
+    const year = String(prediction.date).slice(0, 4);
+    const surface = prediction.surface ?? "Unknown";
+    const buckets = [overall];
+    for (const [map, key] of [[byYear, year], [bySurface, surface], [byYearAndSurface, year + "|" + surface]]) {
+      if (!map.has(key)) map.set(key, makeBucket());
+      buckets.push(map.get(key));
+    }
     const odds1 = parseOdds(prediction.sourceOdds?.[period + "1"]);
     const odds2 = parseOdds(prediction.sourceOdds?.[period + "2"]);
-    if (!odds1 || !odds2) { missingOrInvalidOdds++; continue; }
+    if (!odds1 || !odds2) {
+      for (const bucket of buckets) bucket.missing++;
+      continue;
+    }
     const implied1 = 1 / odds1, implied2 = 1 / odds2;
     const marketP1 = implied1 / (implied1 + implied2);
     const player1Won = prediction.winnerId === prediction.sourceOdds.player1Id ? 1 : 0;
     const marketP = clamp(marketP1);
-    market.brier += (marketP - player1Won) ** 2;
-    market.logLoss -= player1Won * Math.log(marketP) + (1 - player1Won) * Math.log(1 - marketP);
-    for (const [name, winnerProbability] of Object.entries(prediction.probabilities)) {
-      const modelP1 = prediction.winnerId === prediction.sourceOdds.player1Id ? winnerProbability : 1 - winnerProbability;
-      const p = clamp(modelP1);
-      totals[name].brier += (p - player1Won) ** 2;
-      totals[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
+    const marketBrier = (marketP - player1Won) ** 2;
+    const marketLogLoss = -player1Won * Math.log(marketP) - (1 - player1Won) * Math.log(1 - marketP);
+    for (const bucket of buckets) {
+      bucket.count++;
+      bucket.market.brier += marketBrier;
+      bucket.market.logLoss += marketLogLoss;
+      for (const name of names) {
+        const winnerProbability = prediction.probabilities[name];
+        const modelP1 = prediction.winnerId === prediction.sourceOdds.player1Id ? winnerProbability : 1 - winnerProbability;
+        const p = clamp(modelP1);
+        bucket.models[name].brier += (p - player1Won) ** 2;
+        bucket.models[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
+      }
     }
-    matched++;
   }
-  const metrics = value => matched ? {
-    brier: Number((value.brier / matched).toFixed(5)),
-    logLoss: Number((value.logLoss / matched).toFixed(5))
-  } : { brier: null, logLoss: null };
-  const marketMetrics = metrics(market);
+  const format = bucket => {
+    const metrics = value => bucket.count ? {
+      brier: Number((value.brier / bucket.count).toFixed(5)),
+      logLoss: Number((value.logLoss / bucket.count).toFixed(5))
+    } : { brier: null, logLoss: null };
+    const market = metrics(bucket.market);
+    return {
+      matches: bucket.count,
+      matchesMissingOrInvalidOdds: bucket.missing,
+      market,
+      models: Object.fromEntries(names.map(name => {
+        const model = metrics(bucket.models[name]);
+        return [name, {
+          ...model,
+          brierDifferenceVsMarket: bucket.count ? Number((model.brier - market.brier).toFixed(5)) : null,
+          logLossDifferenceVsMarket: bucket.count ? Number((model.logLoss - market.logLoss).toFixed(5)) : null
+        }];
+      }))
+    };
+  };
+  const byKey = map => Object.fromEntries([...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, format(bucket)]));
   return {
     period,
-    matches: matched,
-    matchesMissingOrInvalidOdds: missingOrInvalidOdds,
-    market: marketMetrics,
-    models: Object.fromEntries(Object.entries(totals).map(([name, value]) => {
-      const modelMetrics = metrics(value);
-      return [name, {
-        ...modelMetrics,
-        brierDifferenceVsMarket: matched ? Number((modelMetrics.brier - marketMetrics.brier).toFixed(5)) : null,
-        logLossDifferenceVsMarket: matched ? Number((modelMetrics.logLoss - marketMetrics.logLoss).toFixed(5)) : null
-      }];
-    })),
-    note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Positive differences mean the model scores worse than the market. This is not betting ROI."
+    ...format(overall),
+    byYear: byKey(byYear),
+    bySurface: byKey(bySurface),
+    byYearAndSurface: byKey(byYearAndSurface),
+    note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Positive differences mean the model scores worse than the market. Year/surface groups with small samples are descriptive only. This is not betting ROI."
   };
 }
 
