@@ -20,8 +20,10 @@ const noVig = (oddsA, oddsB) => {
 export function adaptScannerArchiveRows(rows) {
   const groups = new Map();
   let ignored = 0;
+  const ignoredByReason = {};
+  const ignore = reason => { ignored++; ignoredByReason[reason] = (ignoredByReason[reason] || 0) + 1; };
   for (const row of rows) {
-    const outcome = String(row.resultOutcome ?? "").toLowerCase();
+    const outcome = String(row.resultOutcome ?? "").trim().toLowerCase();
     const winnerNumber = Number(row.resultWinner);
     const captured = Number(row.capturedAt);
     const modelCalculated = Number(row.modelCalculatedAt);
@@ -32,18 +34,29 @@ export function adaptScannerArchiveRows(rows) {
     const side = String(row.side ?? "").toUpperCase();
     const odds = number(row.odds);
     const probability = number(row.probability);
-    const id = String(row.matchId || row.matchKey || "").trim();
+    const rawId = String(row.matchId ?? "").trim();
+    const fallbackId = String(row.matchKey ?? "").trim();
+    const id = rawId || fallbackId;
+    const player = String(row.player ?? "").trim();
+    const opponent = String(row.opponent ?? "").trim();
     const tour = String(row.tour || "").trim().toLowerCase();
     const surface = String(row.surface || "").trim();
     const bookmaker = String(row.bookmaker || row.source || row.provider || "").trim().toLowerCase();
-    if (outcome !== "completed" || ![1, 2].includes(winnerNumber) || !id ||
-        start === null || !Number.isFinite(captured) || captured <= 0 ||
-        !Number.isFinite(modelCalculated) || modelCalculated <= 0 || modelCalculated >= captured || modelCalculated >= start ||
-        !Number.isFinite(quoteCaptured) || quoteCaptured <= 0 || !Number.isFinite(quoteObserved) || quoteObserved < quoteCaptured || quoteObserved > modelCalculated || modelCalculated - quoteObserved > 90 * 60 * 1000 ||
-        captureStatus !== 'upcoming' ||
-        !["A", "B"].includes(side) || !validOdds(odds) ||
-        !Number.isFinite(probability) || probability <= 0 || probability >= 100) {
-      ignored++;
+    let invalidReason = null;
+    if (rawId && fallbackId && rawId !== fallbackId) invalidReason = "conflicting_match_ids";
+    else if (!id || id.length > 256 || /[\\u0000-\\u001f\\u007f]/.test(id)) invalidReason = "invalid_match_id";
+    else if (outcome !== "completed" || ![1, 2].includes(winnerNumber)) invalidReason = "unsupported_or_invalid_result";
+    else if (start === null) invalidReason = "invalid_match_date";
+    else if (!Number.isSafeInteger(captured) || captured <= 0) invalidReason = "invalid_capture_timestamp";
+    else if (!Number.isSafeInteger(modelCalculated) || modelCalculated <= 0 || modelCalculated >= captured || modelCalculated >= start) invalidReason = "invalid_model_timestamp";
+    else if (!Number.isSafeInteger(quoteCaptured) || quoteCaptured <= 0 || !Number.isSafeInteger(quoteObserved) || quoteObserved < quoteCaptured || quoteObserved > modelCalculated || modelCalculated - quoteObserved > 90 * 60 * 1000) invalidReason = "invalid_quote_timestamp";
+    else if (captureStatus !== "upcoming") invalidReason = "non_upcoming_capture";
+    else if (!["A", "B"].includes(side)) invalidReason = "invalid_side";
+    else if (!validOdds(odds)) invalidReason = "invalid_odds";
+    else if (!Number.isFinite(probability) || probability <= 0 || probability >= 100) invalidReason = "invalid_probability";
+    else if (!player || !opponent || player.toLocaleLowerCase() === opponent.toLocaleLowerCase()) invalidReason = "invalid_player_identity";
+    if (invalidReason) {
+      ignore(invalidReason);
       continue;
     }
     const key = id + "|" + captured + "|" + bookmaker;
@@ -57,20 +70,21 @@ export function adaptScannerArchiveRows(rows) {
     if (!group.surface) group.surface = surface;
     if (group.sides[side]) {
       const previous = group.sides[side];
-      const player = String(row.player ?? "").trim();
       const ratingAsOf = String(row.ratingAsOf ?? "").trim();
       if (previous.odds !== odds || previous.probability !== probability ||
-          previous.player !== player || previous.ratingAsOf !== ratingAsOf || previous.quoteCapturedAt !== quoteCaptured || previous.quoteObservedAt !== quoteObserved) {
+          previous.player !== player || previous.opponent !== opponent || previous.ratingAsOf !== ratingAsOf || previous.quoteCapturedAt !== quoteCaptured || previous.quoteObservedAt !== quoteObserved) {
         throw new Error("Conflicting duplicate side snapshot or rating provenance in archive for " + id);
       }
       continue;
     }
-    group.sides[side] = { odds, probability: probability / 100, player: String(row.player ?? "").trim(), ratingAsOf: String(row.ratingAsOf ?? "").trim(), quoteCapturedAt: quoteCaptured, quoteObservedAt: quoteObserved };
+    group.sides[side] = { odds, probability: probability / 100, player, opponent, ratingAsOf: String(row.ratingAsOf ?? "").trim(), quoteCapturedAt: quoteCaptured, quoteObservedAt: quoteObserved };
   }
   const adapted = [];
   for (const group of groups.values()) {
     const a = group.sides.A, b = group.sides.B;
-    if (!a || !b || !a.player || !b.player || a.player === b.player || Math.abs(a.quoteCapturedAt - b.quoteCapturedAt) > 30 * 60 * 1000) { ignored++; continue; }
+    if (!a || !b) { ignore("incomplete_side_pair"); continue; }
+    if (a.player.toLocaleLowerCase() !== b.opponent.toLocaleLowerCase() || b.player.toLocaleLowerCase() !== a.opponent.toLocaleLowerCase()) { ignore("opponent_identity_mismatch"); continue; }
+    if (Math.abs(a.quoteCapturedAt - b.quoteCapturedAt) > 30 * 60 * 1000) { ignore("quote_side_skew"); continue; }
     adapted.push({
       match_id: group.id,
       bookmaker: group.bookmaker,
@@ -94,7 +108,7 @@ export function adaptScannerArchiveRows(rows) {
       winner: group.winner
     });
   }
-  return { rows: adapted, ignored };
+  return { rows: adapted, ignored, ignoredByReason };
 }
 
 export function simulateBankrollStrategies(selections, options = {}) {
