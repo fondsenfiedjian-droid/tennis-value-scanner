@@ -467,6 +467,25 @@ export function runOddsBacktest(rows, options = {}) {
       note: "Пороговые комбинации фиксированы заранее и показаны на одной хронологической отложенной части. Нельзя выбирать лучший порог по validation и считать его независимым доказательством преимущества. ROI/Yield рассчитаны по flat stake; просадка — по стратегии Flat €1 с ограничениями live-портфеля. Малые выборки не подтверждают устойчивость."
     };
   }
+  const baselineSensitivity = thresholdSensitivity?.scenarios?.find(item => item.minEvPercent === 3 && item.minOdds === 1.9) || null;
+  const researchAssessment = {
+    status: !matches.size ? "no_valid_matches" :
+      !bets.length ? "no_qualifying_bets" :
+      thresholdSensitivity?.status !== "evaluated" ? "holdout_unavailable" : "exploratory_only",
+    independentChronologicalHoldout: thresholdSensitivity?.status === "evaluated",
+    trainingMatches: thresholdSensitivity?.trainingMatches ?? 0,
+    validationMatches: thresholdSensitivity?.validationMatches ?? 0,
+    baselineThreshold: {
+      minEvPercent: 3,
+      minOdds: 1.9,
+      trainingBets: baselineSensitivity?.training?.bets ?? null,
+      validationBets: baselineSensitivity?.validation?.bets ?? null,
+      validationRoiPercent: baselineSensitivity?.validation?.roiPercent ?? null,
+      validationClvMeasured: baselineSensitivity?.validation?.clvMeasured ?? null
+    },
+    sampleAssessment: performanceSummary(bets).sampleAssessment,
+    note: "This is a research-readiness label, not a profitability approval. A chronological holdout and a large sample do not prove a persistent edge; confirm quote provenance, closing-line coverage, execution costs and performance on a later untouched period."
+  };
   const archiveMatches = [...matches.values()];
   const matchStarts = archiveMatches.map(match => match.start).sort((a, b) => a - b);
   const snapshotCounts = archiveMatches.map(match => match.snapshots.length).sort((a, b) => a - b);
@@ -578,6 +597,7 @@ export function runOddsBacktest(rows, options = {}) {
     closingLineValueSample: { measured: clvCount, missingQualifyingClose: missingClosingSnapshots, maxClosingAgeMinutes },
     averageClosingOverroundPercent: closingOverroundCount ? Number((closingOverroundTotal / closingOverroundCount).toFixed(2)) : null,
     statisticalSummary: performanceSummary(bets),
+    researchAssessment,
     thresholdSensitivity,
     byOddsRange: summarizeOddsBuckets(bets),
     methodology: {
