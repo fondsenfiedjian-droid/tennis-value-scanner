@@ -101,3 +101,16 @@ test("Valuebetennis backtests ATP and WTA independently even when player IDs ove
   assert.equal(report.reportsByTour.atp.matches, 1);
   assert.equal(report.reportsByTour.wta.matches, 1);
 });
+
+test("Valuebetennis importer maps French surface labels", () => {
+  const csv = [
+    header,
+    "9201,2025-04-01,720,atp,dur,1,2,1,6-4 6-4,1.7,2.2,1.65,2.3",
+    "9202,2025-04-02,721,wta,terre battue,3,4,4,6-4 6-4,2.1,1.8,2.2,1.7",
+    "9203,2025-04-03,722,atp,dur intérieur,5,6,5,6-4 6-4,1.7,2.2,1.65,2.3",
+    "9204,2025-04-04,723,wta,gazon,7,8,8,6-4 6-4,2.1,1.8,2.2,1.7",
+    "9205,2025-04-05,724,atp,moquette intérieur,9,10,9,6-4 6-4,1.7,2.2,1.65,2.3"
+  ].join("\n");
+  const parsed = parseValuebetennisCsv(csv);
+  assert.deepEqual(parsed.rows.map(row => row.surface), ["Hard", "Clay", "Hard", "Grass", "Carpet"]);
+});
