@@ -110,7 +110,9 @@ Important deployment distinction:
 - Skin selection now previews immediately; Cancel or tapping the modal backdrop restores the last saved skin.
 - Tournament-filter storage writes now catch localStorage failures and show a user-facing message instead of an uncaught exception.
 - Service-worker shell cache advanced to v108 so clients install the corrected HTML/JS after the next deployment.
-- Regression tests added for live theme preview, Save application, Cancel rollback, and persisted settings.
+- Regression tests added for live theme preview, Save application, Cancel rollback, persisted settings and service-worker cache invalidation.
+- Final code/test head: `8621d326e7a9c4e4963f4ca5156f80474ada25e6`; GitHub Actions run `44512296529` executed 312 tests: 312 passed, 0 failed (job test step successful).
+- The intermediate full-suite failures were stale test expectations for cache v107 after the deliberate v108 bump; all ten assertions were updated and the final test step passed.
 - This is a GitHub code change only; production deployment has not yet been confirmed.
 
 ## 4. Odds and feed rules
