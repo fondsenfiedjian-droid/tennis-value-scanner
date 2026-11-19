@@ -62,7 +62,8 @@ test("Valuebetennis backtest combines seasonal files without losing rows", () =>
   const second = sample.replace("1001,2025-01-02T14:30:00Z", "2001,2026-01-02T14:30:00Z");
   const report = runValuebetennisBacktest([sample, second]);
   assert.equal(report.inputRows, 10);
-  assert.equal(report.normalizedRows, 6);
+  assert.equal(report.normalizedRows, 4);
+  assert.equal(report.duplicateRows, 2);
   assert.equal(report.years.from, "2025");
   assert.equal(report.years.to, "2026");
 });
