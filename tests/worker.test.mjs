@@ -417,6 +417,23 @@ test("matches fresh=true bypasses Worker cache and refreshes the canonical cache
   assert.equal(cacheReads, 1);
   assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
   assert.deepEqual(JSON.parse(JSON.stringify(await cached.json())), { data: [], meta: { count: 0 } });
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
+});
+
+test("matches forwards upstream rate-limit guidance and exposes cache status", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "day" }), {
+    status: 429,
+    headers: { "Retry-After": "30" }
+  });
+  const result = await call("/matches?status=upcoming");
+  assert.equal(result.status, 429);
+  assert.equal(result.headers.get("Retry-After"), "30");
+  assert.equal(result.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
+  assert.equal(result.headers.get("X-Data-Cache"), null);
+  workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
 });
 
 test("matches rejects invalid fresh cache-bypass flags", async () => {
