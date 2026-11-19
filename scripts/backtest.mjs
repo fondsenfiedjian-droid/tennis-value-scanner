@@ -312,6 +312,7 @@ export function runBacktest(matches, options = {}) {
       if (insideEvaluationWindow && options.includePredictions === true) predictions.push({
         date, winnerId: match.winner, loserId: match.loser,
         player1Id: match.player1, player2Id: match.player2, surface: match.surface,
+        h2hMeetings: h.a + h.b,
         sourceOdds: match.sourceOdds, probabilities: modelProbabilities
       });
       updates.push(match);
