@@ -301,3 +301,33 @@ test("backtest reports year-by-surface counts, metrics and sample quality", () =
   assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.calibration.elo.bins.reduce((sum, bin) => sum + bin.matches, 0), 1);
   assert.equal(report.breakdowns.byYearAndSurface["2024"].Hard.calibration.elo.expectedCalibrationError, 0);
 });
+
+
+test("walk-forward calibration accumulates all prior years and uses pre-window warm-up matches", () => {
+  const rows = [];
+  for (const [year, count] of [["2022", 205], ["2024", 205], ["2025", 29]]) {
+    for (let i = 0; i < count; i++) {
+      rows.push({
+        tourney_date: year + "0101",
+        tourney_id: year + "-T",
+        match_num: String(i + 1),
+        winner_id: String(i * 2 + 1),
+        loser_id: String(i * 2 + 2),
+        score: "6-4 6-4",
+        surface: "Hard"
+      });
+    }
+  }
+  const report = runBacktest(rows, { evaluationStart: "20250101" });
+  assert.equal(report.warmupMatches, 410);
+  assert.equal(report.evaluatedMatches, 29);
+  const validation = report.calibrationValidation.find(item =>
+    item.evaluationYear === "2025" && item.candidate === "elo" && item.scope === "tour"
+  );
+  assert.ok(validation);
+  assert.deepEqual(validation.trainingYears, ["2022", "2024"]);
+  assert.equal(validation.trainingYear, "2024");
+  assert.equal(validation.trainingMatches, 410);
+  assert.equal(validation.evaluationSampleQuality, "low");
+  assert.equal(validation.raw.matches, 29);
+});
