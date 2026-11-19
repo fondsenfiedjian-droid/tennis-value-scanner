@@ -169,6 +169,7 @@
   </div>
 
   <button class="refresh" id="refreshBtn">↻ &nbsp; ОБНОВИТЬ ДАННЫЕ</button>
+  <div id="oddsStatus" class="muted" role="status" aria-live="polite" style="margin:-7px 2px 12px">Коэффициенты Winamax ещё не загружены.</div>
 
   <div class="section-head"><h2>Рынки</h2><button class="linkbtn" id="settingsOpen">Настроить →</button></div>
   <div class="chips" id="marketChips">
@@ -461,6 +462,22 @@
   const ODDS_CACHE_TTL=10*60*1000;
   let cachedOdds = [];
   let cachedOddsSavedAt = 0;
+  let oddsLoadError = null;
+  function renderOddsStatus(){
+    const node=$('#oddsStatus');
+    if(!node)return;
+    if(oddsLoadError){
+      node.textContent=(cachedOdds.length
+        ?'Ошибка обновления · используются сохранённые котировки ('+cachedOdds.length+')'
+        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError;
+      return;
+    }
+    if(cachedOdds.length){
+      node.textContent='Winamax: '+cachedOdds.length+' котировок · получены '+(cachedOddsSavedAt?new Date(cachedOddsSavedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно');
+      return;
+    }
+    node.textContent='Источник Winamax ответил без котировок. Проверь доступность источника и расписание.';
+  }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
     if(raw){
@@ -471,6 +488,7 @@
       }else localStorage.removeItem('tvs-odds-cache');
     }
   }catch(e){localStorage.removeItem('tvs-odds-cache');}
+  renderOddsStatus();
   async function loadOdds(){
     try{
       const res=await fetch(API+'/odds');
@@ -479,14 +497,18 @@
       if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
       cachedOdds=payload.items;
       cachedOddsSavedAt=Date.now();
+      oddsLoadError=null;
       localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,odds:cachedOdds}));
+      renderOddsStatus();
       return true;
     }catch(err){
+      oddsLoadError=String(err?.message||err||'Ошибка неизвестного типа');
       if(!isFreshCacheTimestamp(cachedOddsSavedAt,ODDS_CACHE_TTL)){
         cachedOdds=[];
         cachedOddsSavedAt=0;
         localStorage.removeItem('tvs-odds-cache');
       }
+      renderOddsStatus();
       return false;
     }
   }
