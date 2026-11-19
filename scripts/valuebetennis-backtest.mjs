@@ -80,12 +80,41 @@ export function parseValuebetennisCsv(text){
   }
   return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
 }
+function deduplicateSourceMatches(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = [row.tour, row.tourney_id, row.match_num].join(":");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const unique = [];
+  let duplicateRows = 0, conflictingDuplicateMatches = 0, conflictingDuplicateRows = 0;
+  for (const group of groups.values()) {
+    const signature = row => JSON.stringify([
+      row.tourney_date, row.winner_id, row.loser_id, row.score, row.surface,
+      row.sourceOdds?.opening1, row.sourceOdds?.opening2,
+      row.sourceOdds?.closing1, row.sourceOdds?.closing2,
+      row.sourceOdds?.player1Id, row.sourceOdds?.winnerId
+    ]);
+    const signatures = new Set(group.map(signature));
+    if (signatures.size > 1) {
+      conflictingDuplicateMatches++;
+      conflictingDuplicateRows += group.length;
+      continue;
+    }
+    unique.push(group[0]);
+    duplicateRows += group.length - 1;
+  }
+  return { rows: unique, duplicateRows, conflictingDuplicateMatches, conflictingDuplicateRows };
+}
 export function runValuebetennisBacktest(csvTexts,options={}){
-  const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rows=parsed.flatMap(x=>x.rows),rejectedByReason={};
-  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2,score:row.score}));
+  const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rawRows=parsed.flatMap(x=>x.rows),deduped=deduplicateSourceMatches(rawRows),rows=deduped.rows,rejectedByReason={};
+  const parseRejected=parsed.reduce((n,x)=>n+x.rejectedRows,0);
   for(const item of parsed)for(const[key,count]of Object.entries(item.rejectedByReason))rejectedByReason[key]=(rejectedByReason[key]||0)+count;
+  if(deduped.conflictingDuplicateRows)rejectedByReason.conflicting_duplicate_match=deduped.conflictingDuplicateRows;
+  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2,score:row.score}));
   const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
-  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parsed.reduce((n,x)=>n+x.rejectedRows,0),rejectedByReason,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
+  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parseRejected+deduped.conflictingDuplicateRows,rejectedByReason,duplicateRows:deduped.duplicateRows,conflictingDuplicateMatches:deduped.conflictingDuplicateMatches,conflictingDuplicateRows:deduped.conflictingDuplicateRows,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
     report:runBacktest(rows,options),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
 }
 async function main(){
