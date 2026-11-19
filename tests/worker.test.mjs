@@ -2483,7 +2483,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.equal(sandbox.bestOf({ format: "BO5" }), 5);
   assert.equal(sandbox.bestOf({ match_format: "BO3" }), 3);
   assert.equal(sandbox.bestOf({}), null);
-  assert.ok(frontendSource.includes("fetch(API+'/player-stats?id='+encodeURIComponent(id))"));
+  assert.ok(frontendSource.includes("fetchWithTimeout(API+'/player-stats?id='+encodeURIComponent(id))"));
   assert.match(frontendSource, /const cachedTtl=cached\?\.value\?\.accessStatus==='available'\?60\*1000/);
   assert.match(frontendSource, /normalizeRecentFormProfile/);
   assert.match(frontendSource, /normalizeServeReturnProfile/);
