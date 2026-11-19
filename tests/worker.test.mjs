@@ -160,6 +160,37 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.equal((await cached.json()).count, 1);
 });
 
+test("odds diagnostics report schema coverage, bookmaker names, outcomes and quote freshness", async () => {
+  const now = Date.now();
+  const rows = [
+    { bookmaker: "Winamax", bookmakerCountry: "FR", sport: "tennis", marketType: "match_winner",
+      eventId: "evt-1", outcome: "home", homeTeam: "Player A", awayTeam: "Player B",
+      eventName: "Player A - Player B", competition: "ATP", startTime: new Date(now + 3600000).toISOString(),
+      scrapedAt: new Date(now - 60000).toISOString(), oddsDecimal: 1.91 },
+    { bookmaker: "Winamax", bookmakerCountry: "FR", sport: "tennis", marketType: "match_winner",
+      eventId: "evt-1", outcome: "away", homeTeam: "Player A", awayTeam: "Player B",
+      eventName: "Player A - Player B", competition: "ATP", startTime: new Date(now + 3600000).toISOString(),
+      scrapedAt: new Date(now - 30000).toISOString(), oddsDecimal: 2.02 },
+    { bookmaker: "OtherBook", outcome: "draw", scrapedAt: "not-a-date", oddsDecimal: "0" }
+  ];
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async () => new Response(JSON.stringify(rows), { status: 200 });
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.diagnostics.schemaVersion, 1);
+  assert.equal(payload.diagnostics.itemCount, 3);
+  assert.equal(payload.diagnostics.objectItems, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.diagnostics.bookmakers)), ["Winamax", "OtherBook"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.diagnostics.outcomeCounts)), { home: 1, away: 1, other: 1 });
+  assert.equal(payload.diagnostics.validDecimalOdds, 2);
+  assert.equal(payload.diagnostics.parseableScrapedAt, 2);
+  assert.equal(payload.diagnostics.freshScrapedAt, 2);
+  assert.equal(payload.diagnostics.fieldCoverage.eventId, 2);
+  assert.equal(payload.diagnostics.fieldCoverage.scrapedAt, 2);
+});
+
 test("odds endpoint rejects malformed non-array Apify responses instead of caching them", async () => {
   let cacheWrites = 0;
   workerSandbox.caches.default.match = async () => null;
