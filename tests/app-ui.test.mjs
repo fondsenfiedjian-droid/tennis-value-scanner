@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const serviceWorker = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
 
 const extractMatchesStart = html.indexOf("function extractMatches(payload)");
 const extractMatchesEnd = html.indexOf("function archiveMatchDate(m)", extractMatchesStart);
@@ -220,5 +221,5 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(html, /id="skinSelect"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v108"/);
 });
