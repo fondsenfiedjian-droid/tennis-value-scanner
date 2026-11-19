@@ -1186,20 +1186,29 @@
         return ({atp:'ATP',wta:'WTA',challenger:'Challenger',itf:'ITF',juniors:'Juniors'})[v]||'';
       }}
     ];
+    const matchKey=row=>String(Number(row?.matchId)>0?Number(row.matchId):row?.matchKey||'').trim();
     return dimensions.map(dimension=>{
-      const segments=new Map();
+      const matches=new Map();
       for(const row of Array.isArray(rows)?rows:[]){
-        const value=dimension.normalize(row?.[dimension.key]);
-        if(!value)continue;
-        if(!segments.has(value))segments.set(value,[]);
-        segments.get(value).push(row);
+        const key=matchKey(row);if(!key)continue;
+        if(!matches.has(key))matches.set(key,[]);
+        matches.get(key).push(row);
+      }
+      const segments=new Map();let metadataConflicts=0;
+      for(const matchRows of matches.values()){
+        const values=[...new Set(matchRows.map(row=>dimension.normalize(row?.[dimension.key])).filter(Boolean))];
+        if(values.length!==1){if(values.length>1)metadataConflicts++;continue;}
+        const name=values[0];
+        if(!segments.has(name))segments.set(name,[]);
+        segments.get(name).push(...matchRows);
       }
       const items=[...segments.entries()].map(([name,segmentRows])=>{
         const stats=calibrator(segmentRows);
         return {name,sampleSize:stats.sampleSize,brierScore:stats.brierScore,logLoss:stats.logLoss,
-          preliminary:stats.preliminary,excluded:stats.excluded,ambiguous:stats.ambiguous};
+          preliminary:stats.preliminary,excluded:stats.excluded,ambiguous:stats.ambiguous,
+          buckets:Array.isArray(stats.buckets)?stats.buckets:[]};
       }).filter(item=>item.sampleSize>0).sort((a,b)=>b.sampleSize-a.sampleSize||a.name.localeCompare(b.name,'ru'));
-      return {key:dimension.key,label:dimension.label,items};
+      return {key:dimension.key,label:dimension.label,items,metadataConflicts};
     });
   }
 
@@ -1219,8 +1228,10 @@
     const segmentCalibration=archiveSegmentCalibration(rows);
     const segmentNode=$('#archiveSegmentCalibration');
     segmentNode.innerHTML=segmentCalibration.map(group=>'<div class="archive-item"><b>'+group.label+'</b>'+(
-      group.items.length?group.items.map(item=>'<div class="archive-meta">'+escapeHtml(item.name)+' · матчей '+item.sampleSize+' · Brier '+item.brierScore.toFixed(4)+' · Log loss '+item.logLoss.toFixed(4)+' · '+(item.preliminary?'предварительно (<30)':'порог ≥30')+'</div>').join(''):
-      '<div class="archive-meta">Нет подтверждённых предматчевых прогнозов с известной категорией.</div>')+'</div>').join('');
+      group.items.length?group.items.map(item=>'<div class="archive-meta">'+escapeHtml(item.name)+' · матчей '+item.sampleSize+' · Brier '+item.brierScore.toFixed(4)+' · Log loss '+item.logLoss.toFixed(4)+' · '+(item.preliminary?'предварительно (<30)':'порог ≥30')+'</div>'+
+        (item.buckets.length?'<div class="archive-meta">Диапазоны: '+item.buckets.map(bucket=>bucket.lower+'–'+bucket.upper+'% (n='+bucket.count+'): прогноз '+bucket.averagePredicted.toFixed(1)+'%, факт '+bucket.observedRate.toFixed(1)+'%, ошибка '+(bucket.calibrationGap>0?'+':'')+bucket.calibrationGap.toFixed(1)+' п.п.').join(' · ')+'</div>':'')).join(''):
+      '<div class="archive-meta">Нет подтверждённых предматчевых прогнозов с известной категорией.</div>')+
+      (group.metadataConflicts?'<div class="archive-meta">Исключено матчей с противоречивой категорией: '+group.metadataConflicts+'</div>':'')+'</div>').join('');
     const resultStats=archiveResultStats(rows);
     $('#archiveSettled').textContent=resultStats.settled;
     $('#archiveAccuracy').textContent=resultStats.accuracy===null?'—':resultStats.accuracy.toFixed(1)+'%';
