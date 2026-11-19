@@ -419,3 +419,32 @@ test("identical duplicate odds metadata is recognized regardless of object key o
   assert.equal(report.duplicateRows, 1);
   assert.equal(report.conflictingDuplicateMatches, 0);
 });
+
+
+test("walk-forward evaluation for a past season is invariant to later-season results", () => {
+  const makeSeason = (year, count, idOffset) => Array.from({ length: count }, (_, i) => ({
+    tourney_date: year + "0101",
+    tourney_id: year + "-T",
+    match_num: String(i + 1),
+    winner_id: String(idOffset + i * 2 + 1),
+    loser_id: String(idOffset + i * 2 + 2),
+    score: "6-4 6-4",
+    surface: i % 2 ? "Clay" : "Hard"
+  }));
+  const historical = [
+    ...makeSeason("2023", 205, 10000),
+    ...makeSeason("2024", 205, 20000),
+    ...makeSeason("2025", 40, 30000)
+  ];
+  const future = makeSeason("2026", 300, 40000);
+  const options = { evaluationStart: "20250101", evaluationEnd: "20251231" };
+  const baseline = runBacktest(historical, options);
+  const withFutureRows = runBacktest([...historical, ...future], options);
+  const pick = report => report.calibrationValidation.find(item =>
+    item.evaluationYear === "2025" && item.candidate === "elo" && item.scope === "tour"
+  );
+  assert.deepEqual(pick(withFutureRows), pick(baseline));
+  assert.deepEqual(withFutureRows.metrics, baseline.metrics);
+  assert.deepEqual(withFutureRows.breakdowns.byYear["2025"], baseline.breakdowns.byYear["2025"]);
+  assert.equal(withFutureRows.evaluatedMatches, baseline.evaluatedMatches);
+});
