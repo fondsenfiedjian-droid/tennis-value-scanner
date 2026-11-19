@@ -99,6 +99,14 @@ test("forced schedule refresh bypasses both browser and Worker caches", () => {
   assert.match(html, /fetch\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
 });
 
+test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
+  assert.match(html, /res\.headers\.get\('X-Data-Cache'\)/);
+  assert.match(html, /'источник обновлён'/);
+  assert.match(html, /'кэш Worker'/);
+  assert.match(html, /'режим кэша неизвестен'/);
+  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel/);
+});
+
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
   assert.equal((html.match(/isFreshCacheTimestamp\(saved\.savedAt,ODDS_CACHE_TTL\)/g)||[]).length, 2);
   assert.doesNotMatch(html, /Date\.now\(\)-saved\.savedAt<=ODDS_CACHE_TTL/);
