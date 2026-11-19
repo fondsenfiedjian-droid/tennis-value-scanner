@@ -295,3 +295,57 @@ test("bankroll validation rejects malformed planned and actual execution audit v
   invalidTransaction.balance = 99;
   assert.throws(() => bank.validateState(invalidTransaction), /некорректная операция/);
 });
+
+test("verified settlement revisions remain idempotent across repeated corrections and reopening", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 987, side: "A"
+  });
+  const v1 = bank.settleVerifiedResults(placed.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]);
+  assert.equal(v1.state.balance, 102.2);
+
+  const duplicateV1 = bank.settleVerifiedResults(v1.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]);
+  assert.equal(duplicateV1.updated, 0);
+  assert.equal(duplicateV1.state.balance, 102.2);
+
+  const v2 = bank.settleVerifiedResults(v1.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 2, resultVersion: 2 }
+  ]);
+  assert.equal(v2.corrected.length, 1);
+  assert.equal(v2.state.balance, 98);
+  assert.equal(bank.realizedProfit(v2.state), -2);
+
+  const v3 = bank.settleVerifiedResults(v2.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 1, resultVersion: 3 }
+  ]);
+  assert.equal(v3.corrected.length, 1);
+  assert.equal(v3.state.balance, 102.2);
+  assert.equal(bank.realizedProfit(v3.state), 2.2);
+
+  const v4 = bank.settleVerifiedResults(v3.state, [
+    { matchId: 987, resultOutcome: "cancelled", resultWinner: null, resultVersion: 4 }
+  ]);
+  assert.equal(v4.reopened.length, 1);
+  assert.equal(v4.state.openBets.length, 1);
+  assert.equal(v4.state.balance, 100);
+  assert.equal(bank.bankrollEquity(v4.state), 100);
+
+  const v5 = bank.settleVerifiedResults(v4.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 2, resultVersion: 5 }
+  ]);
+  assert.equal(v5.settled.length, 1);
+  assert.equal(v5.state.openBets.length, 0);
+  assert.equal(v5.state.balance, 98);
+  assert.equal(bank.realizedProfit(v5.state), -2);
+  assert.equal(bank.validateState(v5.state), v5.state);
+
+  const duplicateV5 = bank.settleVerifiedResults(v5.state, [
+    { matchId: 987, resultOutcome: "completed", resultWinner: 2, resultVersion: 5 }
+  ]);
+  assert.equal(duplicateV5.updated, 0);
+  assert.equal(duplicateV5.state.balance, 98);
+  assert.equal(bank.validateState(duplicateV5.state), duplicateV5.state);
+});
