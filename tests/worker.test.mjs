@@ -171,7 +171,7 @@ test("odds diagnostics report schema coverage, bookmaker names, outcomes and quo
       eventId: "evt-1", outcome: "away", homeTeam: "Player A", awayTeam: "Player B",
       eventName: "Player A - Player B", competition: "ATP", startTime: new Date(now + 3600000).toISOString(),
       scrapedAt: new Date(now - 30000).toISOString(), oddsDecimal: 2.02 },
-    { bookmaker: "OtherBook", outcome: "draw", scrapedAt: "not-a-date", oddsDecimal: "0" }
+    { bookmaker: "OtherBook", outcome: "draw", scrapedAt: "invalid-timestamp-xyz-987", oddsDecimal: "0" }
   ];
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.caches.default.put = async () => {};
