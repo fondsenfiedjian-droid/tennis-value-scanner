@@ -54,8 +54,8 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
-- `bc4eecb1a13c4cc0a760e519423a92ee278850f1`
-- Commit message: `Align PWA cache tests with v107`
+- `fbb134e4bf8002a9ff5fc03a5d21c4543be15344`
+- Commit message: `Verify official Live Tennis match response shape`
 
 Latest GitHub Actions runs:
 - Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
@@ -68,7 +68,8 @@ Latest GitHub Actions runs:
 - Odds timestamp display commit `4aa34b6186416cc18c91877d8c8097f96ecd51fc`: run `44508513931` completed successfully; 299 tests passed, 0 failed.
 - Empty-schedule handling commit `b098eb73e861a74ab60fe50ed4c31944993f355d`: run `44508716312` completed successfully; 301 tests passed, 0 failed.
 - Schedule cache-bypass and rate-limit commit `0f806d1233e04e0d01df9a785442165df9a592ef`: run `44509212122` completed successfully; 305 tests passed, 0 failed. README documentation update `c03cbe55430833d9104e9f219486cda03e8f463d` followed.
-- Current head `bc4eecb1a13c4cc0a760e519423a92ee278850f1`: run `44509477732` completed successfully; 306 tests passed, 0 failed.
+- Cache transparency commit `bc4eecb1a13c4cc0a760e519423a92ee278850f1`: run `44509477732` completed successfully; 306 tests passed, 0 failed.
+- Current head `fbb134e4bf8002a9ff5fc03a5d21c4543be15344`: run `44509641469` completed successfully; 307 tests passed, 0 failed.
 - An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
@@ -87,6 +88,7 @@ Recent app changes in GitHub:
 - Odds feed status reports quote count and quote freshness from `scrapedAt`, separately from the Worker/Apify dataset retrieval timestamp `retrievedAt`; this distinction persists in local cache and remains visible during offline fallback. Missing retrieval timestamps are shown as unknown, not inferred from local browser time.
 - Service-worker static shell cache is v107, so the updated PWA shell replaces older cached copies.
 - Match schedule parsing now distinguishes a valid empty schedule (`[]` or a recognized empty `matches`/`data`/`results`/`events` array) from an unrecognized API payload. Empty schedules render as no matches and are cached/reused; they no longer trigger a false format error or silently fall back to stale matches.
+- Regression tests now include the official Live Tennis response shape (`data` list, `players.p1/p2.name`, `tour`, and UTC `scheduled_time`) as well as a valid empty `data` list.
 - API connection state is dynamic rather than a permanently optimistic “connected” label.
 - Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
 - Service-worker cache version is v103.
