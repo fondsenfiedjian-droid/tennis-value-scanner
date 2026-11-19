@@ -49,6 +49,52 @@ function marketBenchmark(rows, fields) {
   };
 }
 
+function pairedModelMarketComparison(predictions, period) {
+  const fields = ODDS_FIELDS[period];
+  const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { brier: 0, logLoss: 0 }]));
+  const market = { brier: 0, logLoss: 0 };
+  let matched = 0, missingOrInvalidOdds = 0;
+  const clamp = value => Math.min(1 - 1e-12, Math.max(1e-12, value));
+  for (const prediction of predictions) {
+    const odds1 = parseOdds(prediction.sourceOdds?.[period + "1"]);
+    const odds2 = parseOdds(prediction.sourceOdds?.[period + "2"]);
+    if (!odds1 || !odds2) { missingOrInvalidOdds++; continue; }
+    const implied1 = 1 / odds1, implied2 = 1 / odds2;
+    const marketP1 = implied1 / (implied1 + implied2);
+    const player1Won = prediction.winnerId === prediction.sourceOdds.player1Id ? 1 : 0;
+    const marketP = clamp(marketP1);
+    market.brier += (marketP - player1Won) ** 2;
+    market.logLoss -= player1Won * Math.log(marketP) + (1 - player1Won) * Math.log(1 - marketP);
+    for (const [name, winnerProbability] of Object.entries(prediction.probabilities)) {
+      const modelP1 = prediction.winnerId === prediction.sourceOdds.player1Id ? winnerProbability : 1 - winnerProbability;
+      const p = clamp(modelP1);
+      totals[name].brier += (p - player1Won) ** 2;
+      totals[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
+    }
+    matched++;
+  }
+  const metrics = value => matched ? {
+    brier: Number((value.brier / matched).toFixed(5)),
+    logLoss: Number((value.logLoss / matched).toFixed(5))
+  } : { brier: null, logLoss: null };
+  const marketMetrics = metrics(market);
+  return {
+    period,
+    matches: matched,
+    matchesMissingOrInvalidOdds: missingOrInvalidOdds,
+    market: marketMetrics,
+    models: Object.fromEntries(Object.entries(totals).map(([name, value]) => {
+      const modelMetrics = metrics(value);
+      return [name, {
+        ...modelMetrics,
+        brierDifferenceVsMarket: matched ? Number((modelMetrics.brier - marketMetrics.brier).toFixed(5)) : null,
+        logLossDifferenceVsMarket: matched ? Number((modelMetrics.logLoss - marketMetrics.logLoss).toFixed(5)) : null
+      }];
+    })),
+    note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Positive differences mean the model scores worse than the market. This is not betting ROI."
+  };
+}
+
 function detectDelimiter(text) {
   const line=String(text).replace(/^\uFEFF/,"").split(/\r?\n/,1)[0]??"";
   let quoted=false;const counts=[[",",0],[";",0],["\t",0]];
@@ -107,15 +153,64 @@ function deduplicateSourceMatches(rows) {
   }
   return { rows: unique, duplicateRows, conflictingDuplicateMatches, conflictingDuplicateRows };
 }
-export function runValuebetennisBacktest(csvTexts,options={}){
-  const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rawRows=parsed.flatMap(x=>x.rows),deduped=deduplicateSourceMatches(rawRows),rows=deduped.rows,rejectedByReason={};
-  const parseRejected=parsed.reduce((n,x)=>n+x.rejectedRows,0);
-  for(const item of parsed)for(const[key,count]of Object.entries(item.rejectedByReason))rejectedByReason[key]=(rejectedByReason[key]||0)+count;
-  if(deduped.conflictingDuplicateRows)rejectedByReason.conflicting_duplicate_match=deduped.conflictingDuplicateRows;
-  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2,score:row.score}));
-  const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
-  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parseRejected+deduped.conflictingDuplicateRows,rejectedByReason,duplicateRows:deduped.duplicateRows,conflictingDuplicateMatches:deduped.conflictingDuplicateMatches,conflictingDuplicateRows:deduped.conflictingDuplicateRows,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
-    report:tours.length===1?runBacktest(rows,options):null,reportsByTour:Object.fromEntries(tours.map(tour=>[tour,runBacktest(rows.filter(row=>row.tour===tour),options)])),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
+export function runValuebetennisBacktest(csvTexts, options = {}) {
+  const inputs = Array.isArray(csvTexts) ? csvTexts : [csvTexts];
+  const parsed = inputs.map(parseValuebetennisCsv);
+  const rawRows = parsed.flatMap(item => item.rows);
+  const deduped = deduplicateSourceMatches(rawRows);
+  const rows = deduped.rows;
+  const rejectedByReason = {};
+  const parseRejected = parsed.reduce((count, item) => count + item.rejectedRows, 0);
+  for (const item of parsed) {
+    for (const [reason, count] of Object.entries(item.rejectedByReason)) {
+      rejectedByReason[reason] = (rejectedByReason[reason] || 0) + count;
+    }
+  }
+  if (deduped.conflictingDuplicateRows) rejectedByReason.conflicting_duplicate_match = deduped.conflictingDuplicateRows;
+
+  const marketRows = rows.map(row => ({
+    joueur1_id: row.sourceOdds.player1Id, vainqueur_id: row.sourceOdds.winnerId,
+    cote1_ouverture: row.sourceOdds.opening1, cote2_ouverture: row.sourceOdds.opening2,
+    cote1_cloture: row.sourceOdds.closing1, cote2_cloture: row.sourceOdds.closing2,
+    score: row.score
+  }));
+  const tours = [...new Set(rows.map(row => row.tour).filter(Boolean))].sort();
+  const years = [...new Set(rows.map(row => row.tourney_date.slice(0, 4)))].sort();
+  const reports = Object.fromEntries(tours.map(tour => {
+    const report = runBacktest(rows.filter(row => row.tour === tour), { ...options, includePredictions: true });
+    const { predictions, ...publicReport } = report;
+    return [tour, { report: publicReport, predictions }];
+  }));
+  const reportsByTour = Object.fromEntries(tours.map(tour => [tour, reports[tour].report]));
+  const pairedMarketComparison = Object.fromEntries(tours.map(tour => {
+    const predictions = reports[tour].predictions;
+    return [tour, {
+      opening: pairedModelMarketComparison(predictions, "opening"),
+      closing: pairedModelMarketComparison(predictions, "closing")
+    }];
+  }));
+
+  return {
+    source: "Valuebetennis open data (CC BY 4.0)",
+    inputRows: parsed.reduce((count, item) => count + item.inputRows, 0),
+    normalizedRows: rows.length,
+    rejectedRows: parseRejected + deduped.conflictingDuplicateRows,
+    rejectedByReason,
+    duplicateRows: deduped.duplicateRows,
+    conflictingDuplicateMatches: deduped.conflictingDuplicateMatches,
+    conflictingDuplicateRows: deduped.conflictingDuplicateRows,
+    delimiters: [...new Set(parsed.map(item => item.delimiter))],
+    tours,
+    years: years.length ? { from: years[0], to: years.at(-1), count: years.length } : null,
+    marketBenchmarks: {
+      opening: marketBenchmark(marketRows, ODDS_FIELDS.opening),
+      closing: marketBenchmark(marketRows, ODDS_FIELDS.closing)
+    },
+    pairedMarketComparison,
+    report: tours.length === 1 ? reportsByTour[tours[0]] : null,
+    reportsByTour,
+    importantLimit: "The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. The paired comparison evaluates historical Elo candidates against Pinnacle on the same matches; it does not establish betting ROI or qualify for the strict odds-backtest."
+  };
 }
 async function main(){
   const args=process.argv.slice(2),options={},files=[];
