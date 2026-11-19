@@ -201,3 +201,17 @@ The surface blend reduced both Brier score and ECE versus overall Elo in ATP and
 The same-day update correction changes historical Elo trajectories, so the earlier year-by-year numeric table is withdrawn pending a fresh run with the corrected implementation. Use the current script output for any new seasonal comparison. These aggregate calibration results are diagnostics, not a calibrated probability transformation and not evidence of betting profit. No live-model weights have been changed.
 
 Data licensing matters: the commonly used Sackmann archive is distributed under CC BY-NC-SA 4.0. Check the source repository's current license and attribution requirements before use or redistribution; the non-commercial restriction may not permit commercial use. Treat older CSVs as historical backtest data, not a live feed.
+
+
+## Valuebetennis historical results adapter
+
+The repository includes `scripts/valuebetennis-backtest.mjs` for the public Valuebetennis seasonal CSV files (ATP/WTA singles, 2021 onward). The adapter maps the documented source columns `match_id`, `date`, `tournoi_id`, `genre`, `surface`, `joueur1_id`, `joueur2_id`, `vainqueur_id`, and `score` into the chronological Elo backtest schema. It detects comma, semicolon, or tab delimiters; validates dates, player IDs, winner identity and tour; and reports rejected rows instead of guessing. The backtest continues to exclude retirements, walkovers and other non-standard results.
+
+Download the season files from https://www.valuebetennis.com/en/donnees.htm, then run:
+
+```sh
+node scripts/valuebetennis-backtest.mjs data/valuebetennis-matchs-2021.csv data/valuebetennis-matchs-2022.csv data/valuebetennis-matchs-2023.csv data/valuebetennis-matchs-2024.csv data/valuebetennis-matchs-2025.csv data/valuebetennis-matchs-2026.csv --from 20250101 --to 20261231
+```
+
+The source publishes the files under CC BY 4.0; attribution is required: Valuebetennis, “Tennis results and odds since 2021”, https://www.valuebetennis.com/en/donnees.htm. The source includes Pinnacle opening and last recorded pre-match odds, but this adapter deliberately uses match results only for Elo prediction evaluation. The CSV does not provide archived pre-match probabilities or complete quote-capture provenance, so it cannot by itself support a strict EV/ROI backtest. Do not treat its odds columns as proof of a model's historical value edge.
+
