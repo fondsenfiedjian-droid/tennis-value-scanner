@@ -63,3 +63,24 @@ test("Valuebetennis backtest combines seasonal files without losing rows", () =>
   assert.equal(report.years.from, "2025");
   assert.equal(report.years.to, "2026");
 });
+
+test("Valuebetennis importer collapses identical cross-file matches", () => {
+  const one = [header, "9001,2025-03-01,700,atp,Hard,101,202,101,6-4 6-4,1.7,2.2,1.65,2.3"].join("\n");
+  const report = runValuebetennisBacktest([one, one]);
+  assert.equal(report.inputRows, 2);
+  assert.equal(report.normalizedRows, 1);
+  assert.equal(report.duplicateRows, 1);
+  assert.equal(report.conflictingDuplicateMatches, 0);
+  assert.equal(report.rejectedRows, 0);
+});
+
+test("Valuebetennis importer excludes every row in a conflicting duplicate match", () => {
+  const first = [header, "9002,2025-03-02,701,atp,Hard,301,302,301,6-4 6-4,1.7,2.2,1.65,2.3"].join("\n");
+  const conflicting = [header, "9002,2025-03-02,701,atp,Hard,301,302,302,4-6 4-6,1.7,2.2,1.65,2.3"].join("\n");
+  const report = runValuebetennisBacktest([first, conflicting]);
+  assert.equal(report.normalizedRows, 0);
+  assert.equal(report.conflictingDuplicateMatches, 1);
+  assert.equal(report.conflictingDuplicateRows, 2);
+  assert.equal(report.rejectedRows, 2);
+  assert.equal(report.rejectedByReason.conflicting_duplicate_match, 2);
+});
