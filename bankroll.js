@@ -57,16 +57,15 @@
       const stakeTx = tx && stakeTransactions.get(tx.betId);
       const invalidSnapshot = snapshot !== undefined && (
         !snapshot || typeof snapshot !== "object" ||
-        typeof snapshot.id !== "string" || snapshot.id !== tx.betId ||
-        !Number.isFinite(snapshot.stake) || snapshot.stake <= 0 ||
-        !Number.isFinite(snapshot.odds) || snapshot.odds <= 1 ||
-        !Number.isFinite(snapshot.probability) || snapshot.probability <= 0 || snapshot.probability >= 1 ||
-        snapshot.stake !== tx.stake ||
-        (stakeTx && stakeTx.actualStake !== undefined && stakeTx.actualStake !== snapshot.stake) ||
-        (stakeTx && stakeTx.actualOdds !== undefined && stakeTx.actualOdds !== snapshot.odds) ||
-        typeof snapshot.placedAt !== "string" || !Number.isFinite(Date.parse(snapshot.placedAt)) ||
-        (tx.matchId !== undefined && tx.matchId !== snapshot.matchId) ||
-        (tx.side !== undefined && tx.side !== snapshot.side) ||
+        (snapshot.id !== undefined && (typeof snapshot.id !== "string" || snapshot.id !== tx.betId)) ||
+        (snapshot.stake !== undefined && (!Number.isFinite(snapshot.stake) || snapshot.stake <= 0)) ||
+        (snapshot.odds !== undefined && (!Number.isFinite(snapshot.odds) || snapshot.odds <= 1)) ||
+        (snapshot.probability !== undefined && (!Number.isFinite(snapshot.probability) || snapshot.probability <= 0 || snapshot.probability >= 1)) ||
+        (snapshot.placedAt !== undefined && (typeof snapshot.placedAt !== "string" || !Number.isFinite(Date.parse(snapshot.placedAt)))) ||
+        (stakeTx && snapshot.stake !== undefined && stakeTx.actualStake !== undefined && stakeTx.actualStake !== snapshot.stake) ||
+        (stakeTx && snapshot.odds !== undefined && stakeTx.actualOdds !== undefined && stakeTx.actualOdds !== snapshot.odds) ||
+        (tx.matchId !== undefined && snapshot.matchId !== undefined && tx.matchId !== snapshot.matchId) ||
+        (tx.side !== undefined && snapshot.side !== undefined && tx.side !== snapshot.side) ||
         (snapshot.matchId !== null && snapshot.matchId !== undefined &&
           (!Number.isSafeInteger(snapshot.matchId) || snapshot.matchId <= 0 || !["A", "B"].includes(snapshot.side)))
       );
