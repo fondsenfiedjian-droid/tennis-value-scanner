@@ -23,7 +23,7 @@ A passing GitHub test run does not deploy either service. Never mark launch comp
 3. If it is not, use **Trigger deploy → Deploy site**.
 4. Wait for the deploy to finish successfully.
 5. Open https://fascinating-paprenjak-1aa9b3.netlify.app in a private browser tab and confirm the app title and current UI.
-6. On an installed Android PWA, fully close and reopen the app after deployment so Service Worker v110 can install.
+6. On an installed Android PWA, fully close and reopen the app after deployment so Service Worker v111 can install.
 
 ## 3. Publish the Worker
 
@@ -65,7 +65,7 @@ Do not place real bets as an acceptance test. Do not infer profitability from a 
 - Matches failure: inspect Live Tennis key, plan/quota, upstream status, and Worker logs.
 - Odds endpoint error: inspect Apify token, dataset ID `ZBWihC1oYU8Pq9uBo`, upstream status, and Worker logs.
 - Odds endpoint returns items but no eligible pairs: compare `diagnostics.fieldCoverage`, bookmaker names/country, outcome counts, freshness, event IDs, player names, competition, and start times. Do not weaken matching rules to force quotes onto unrelated matches.
-- Browser still shows old UI: close all PWA windows, reopen, and verify Service Worker cache version `tennis-value-static-v110`.
+- Browser still shows old UI: close all PWA windows, reopen, and verify Service Worker cache version `tennis-value-static-v111`.
 
 ## Current deployment status
 
