@@ -112,6 +112,64 @@ async function call(path, method = "GET", body = undefined) {
   return worker.fetch(request, env);
 }
 
+test("odds endpoint validates method and requires the Apify secret", async () => {
+  const methodResponse = await call("/odds", "POST");
+  assert.equal(methodResponse.status, 405);
+  const missingSecret = await worker.fetch(new Request("https://worker.test/odds"), { LIVE_TENNIS_API_KEY: "test-key" });
+  assert.equal(missingSecret.status, 500);
+  assert.equal((await missingSecret.json()).error, "APIFY_TOKEN secret is not configured");
+});
+
+test("odds endpoint returns and caches only an array from the Apify dataset", async () => {
+  let requestedUrl = "";
+  let requestedHeaders = null;
+  let storedKey = null;
+  let storedResponse = null;
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async (key, value) => {
+    storedKey = key.url;
+    storedResponse = value;
+  };
+  const dataset = [{ bookmaker: "Winamax", oddsDecimal: 1.91, scrapedAt: "2026-11-19T10:00:00Z" }];
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = url;
+    requestedHeaders = options.headers;
+    return new Response(JSON.stringify(dataset), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.source, "Apify Winamax dataset");
+  assert.equal(payload.datasetId, "ZBWihC1oYU8Pq9uBo");
+  assert.equal(payload.count, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
+  assert.ok(Number.isFinite(Date.parse(payload.retrievedAt)));
+  assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/ZBWihC1oYU8Pq9uBo/items?clean=true&format=json&limit=1000");
+  assert.equal(requestedHeaders.Authorization, "Bearer test-token");
+  assert.equal(requestedHeaders.Accept, "application/json");
+  assert.equal(storedKey, "https://worker.test/odds");
+  assert.equal(storedResponse.headers.get("Cache-Control"), "public, max-age=300");
+  assert.equal(result.headers.get("X-Data-Cache"), "MISS");
+
+  workerSandbox.fetch = async () => { throw new Error("cache hit must not call Apify"); };
+  workerSandbox.caches.default.match = async () => storedResponse.clone();
+  const cached = await call("/odds");
+  assert.equal(cached.status, 200);
+  assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
+  assert.equal((await cached.json()).count, 1);
+});
+
+test("odds endpoint rejects malformed non-array Apify responses instead of caching them", async () => {
+  let cacheWrites = 0;
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => { cacheWrites++; };
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ items: [] }), { status: 200 });
+  const result = await call("/odds");
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).error, "Apify dataset response was not an array");
+  assert.equal(cacheWrites, 0);
+});
+
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
