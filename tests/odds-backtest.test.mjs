@@ -642,3 +642,46 @@ test("scanner archive requires reciprocal player and opponent identity across bo
   assert.equal(adapted.ignored, 1);
   assert.deepEqual(adapted.ignoredByReason, { opponent_identity_mismatch: 1 });
 });
+
+test("scanner archive rejects a revised winner across snapshots for the same match", () => {
+  const row = (side, capturedAt, resultWinner) => ({
+    capturedAt: String(capturedAt), matchDate: "2025-01-01T12:00:00.000Z",
+    matchId: "result-revision-audit", tour: "atp", surface: "Hard",
+    player: side === "A" ? "Player A" : "Player B",
+    opponent: side === "A" ? "Player B" : "Player A", side,
+    odds: side === "A" ? "2.20" : "1.80", probability: "50",
+    modelCalculatedAt: String(capturedAt - 1000),
+    quoteCapturedAt: String(capturedAt - 60000),
+    quoteObservedAt: String(capturedAt - 30000),
+    captureStatus: "upcoming", resultOutcome: "completed",
+    resultWinner: String(resultWinner), bookmaker: "winamax"
+  });
+  const first = 1735725600000;
+  const second = first + 60 * 60 * 1000;
+  const adapted = adaptScannerArchiveRows([
+    row("A", first, 1), row("B", first, 1),
+    row("A", second, 2), row("B", second, 2)
+  ]);
+  assert.equal(adapted.rows.length, 2);
+  assert.throws(() => runOddsBacktest(adapted.rows, { thresholdSensitivity: false }), /Conflicting match metadata/);
+});
+
+test("scanner archive collapses exact duplicate result-side rows without duplicating a match", () => {
+  const row = (side) => ({
+    capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z",
+    matchId: "duplicate-result-audit", tour: "atp", surface: "Hard",
+    player: side === "A" ? "Player A" : "Player B",
+    opponent: side === "A" ? "Player B" : "Player A", side,
+    odds: side === "A" ? "2.20" : "1.80", probability: "50",
+    modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000",
+    quoteObservedAt: "1735725595000", captureStatus: "upcoming",
+    resultOutcome: "completed", resultWinner: "1", bookmaker: "winamax"
+  });
+  const sideA = row("A");
+  const adapted = adaptScannerArchiveRows([sideA, { ...sideA }, row("B")]);
+  assert.equal(adapted.rows.length, 1);
+  assert.equal(adapted.ignored, 0);
+  const report = runOddsBacktest(adapted.rows, { thresholdSensitivity: false });
+  assert.equal(report.archiveCoverage.uniqueMatches, 1);
+});
+
