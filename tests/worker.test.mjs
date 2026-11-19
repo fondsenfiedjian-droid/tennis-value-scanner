@@ -391,6 +391,8 @@ test("market margin and no-vig edge are calculated only from one bookmaker", () 
   assert.equal(sandbox.calculate(1, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", "event-1"), null);
   assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", "event-2"), null);
   assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", ""), null);
+  assert.match(frontendSource, /data-event-id-a=/);
+  assert.match(frontendSource, /el\.dataset\.eventIdA,el\.dataset\.eventIdB/);
 });
 
 test("frontend validates precise Elo probabilities against fair odds without rounding drift", () => {
