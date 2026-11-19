@@ -198,7 +198,7 @@ test("odds endpoint rejects malformed non-array Apify responses instead of cachi
   workerSandbox.fetch = async () => new Response(JSON.stringify({ items: [] }), { status: 200 });
   const result = await call("/odds");
   assert.equal(result.status, 502);
-  assert.equal((await result.json()).error, "Apify dataset response was not an array");
+  assert.equal((await result.json()).error, "Apify task dataset response was not an array");
   assert.equal(cacheWrites, 0);
 });
 
@@ -213,7 +213,7 @@ test("odds endpoint forwards Apify rate-limit retry timing without exposing upst
   assert.equal(result.headers.get("Retry-After"), "120");
   const payload = await result.json();
   assert.equal(payload.upstreamStatus, 429);
-  assert.equal(payload.error, "Apify request failed");
+  assert.equal(payload.error, "Apify task dataset request failed");
   assert.equal(JSON.stringify(payload).includes("private upstream detail"), false);
 });
 
