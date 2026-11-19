@@ -200,17 +200,47 @@ export function runBacktest(matches, options = {}) {
     const player1 = Number(winner) < Number(loser) ? winner : loser;
     const player2 = player1 === winner ? loser : winner;
     return { date, winner, loser, player1, player2, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
-  }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+  }).filter(Boolean).sort((a, b) =>
+    a.date.localeCompare(b.date) ||
+    a.tourneyId.localeCompare(b.tourneyId) ||
+    a.matchNum.localeCompare(b.matchNum) ||
+    a.player1.localeCompare(b.player1) ||
+    a.player2.localeCompare(b.player2) ||
+    a.winner.localeCompare(b.winner) ||
+    a.loser.localeCompare(b.loser) ||
+    String(a.surface ?? "").localeCompare(String(b.surface ?? "")) ||
+    JSON.stringify(a.sourceOdds ?? null).localeCompare(JSON.stringify(b.sourceOdds ?? null))
+  );
 
-  const seenMatches = new Set();
-  const uniqueClean = clean.filter(match => {
+  const matchGroups = new Map();
+  for (const match of clean) {
     const key = match.tourneyId && match.matchNum
       ? match.tourneyId + ":" + match.matchNum
       : match.date + ":" + pairKey(match.winner, match.loser) + ":" + (match.surface ?? "unknown");
-    if (seenMatches.has(key)) return false;
-    seenMatches.add(key);
-    return true;
-  });
+    if (!matchGroups.has(key)) matchGroups.set(key, []);
+    matchGroups.get(key).push(match);
+  }
+  const uniqueClean = [];
+  let duplicateRows = 0, conflictingDuplicateMatches = 0, conflictingDuplicateRows = 0;
+  for (const group of matchGroups.values()) {
+    const signature = match => JSON.stringify([
+      match.date, match.winner, match.loser, match.surface, match.sourceOdds
+    ]);
+    if (new Set(group.map(signature)).size > 1) {
+      conflictingDuplicateMatches++;
+      conflictingDuplicateRows += group.length;
+      continue;
+    }
+    uniqueClean.push(group[0]);
+    duplicateRows += group.length - 1;
+  }
+  uniqueClean.sort((a, b) =>
+    a.date.localeCompare(b.date) ||
+    a.tourneyId.localeCompare(b.tourneyId) ||
+    a.matchNum.localeCompare(b.matchNum) ||
+    a.player1.localeCompare(b.player1) ||
+    a.player2.localeCompare(b.player2)
+  );
 
   let index = 0;
   while (index < uniqueClean.length) {
@@ -418,8 +448,10 @@ export function runBacktest(matches, options = {}) {
 
   return {
     matches: uniqueClean.length,
-    excluded: matches.length - clean.length,
-    duplicateRows: clean.length - uniqueClean.length,
+    excluded: matches.length - clean.length + conflictingDuplicateRows,
+    duplicateRows,
+    conflictingDuplicateMatches,
+    conflictingDuplicateRows,
     unknownSurfaceMatches: uniqueClean.filter(match => match.surface == null).length,
     evaluationStart,
     evaluationEnd,
