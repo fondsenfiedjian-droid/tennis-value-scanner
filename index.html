@@ -625,7 +625,7 @@
       const oddsObservedAt=Date.now();
       const selectedQuotes=[quoteA,quoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
+      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-event-id-a="'+escapeHtml(quoteA?.eventId||'')+'" data-event-id-b="'+escapeHtml(quoteB?.eventId||'')+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -1625,10 +1625,11 @@
     const parsed=Date.parse(value+'T00:00:00Z');
     return Number.isFinite(parsed)&&new Date(parsed).toISOString().slice(0,10)===value?value:null;
   }
-  function calculateMarketContext(oddsA,oddsB,bookmakerA,bookmakerB,probabilityA,probabilityB){
+  function calculateMarketContext(oddsA,oddsB,bookmakerA,bookmakerB,probabilityA,probabilityB,eventIdA,eventIdB){
     const a=Number(oddsA),b=Number(oddsB),pA=Number(probabilityA),pB=Number(probabilityB);
     const providerA=String(bookmakerA||'').trim(),providerB=String(bookmakerB||'').trim();
-    if(!providerA||!providerB||providerA.toLocaleLowerCase()!==providerB.toLocaleLowerCase()||
+    const eventA=String(eventIdA||'').trim(),eventB=String(eventIdB||'').trim();
+    if(!eventA||!eventB||eventA!==eventB||!providerA||!providerB||providerA.toLocaleLowerCase()!==providerB.toLocaleLowerCase()||
       !Number.isFinite(a)||a<=1||!Number.isFinite(b)||b<=1||
       !Number.isFinite(pA)||pA<=0||pA>=1||!Number.isFinite(pB)||pB<=0||pB>=1)return null;
     const impliedA=1/a,impliedB=1/b,total=impliedA+impliedB;
@@ -1881,7 +1882,7 @@
         const fmt=(v)=>Number(v).toFixed(2);
         const evA=result.evA===null?'нет кэфа':fmt(result.evA)+'% EV';
         const evB=result.evB===null?'нет кэфа':fmt(result.evB)+'% EV';
-        const marketContext=calculateMarketContext(el.dataset.oddsA,el.dataset.oddsB,el.dataset.bookmakerA,el.dataset.bookmakerB,result.probabilityExactA??result.probabilityA/100,result.probabilityExactB??result.probabilityB/100);
+        const marketContext=calculateMarketContext(el.dataset.oddsA,el.dataset.oddsB,el.dataset.bookmakerA,el.dataset.bookmakerB,result.probabilityExactA??result.probabilityA/100,result.probabilityExactB??result.probabilityB/100,el.dataset.eventIdA,el.dataset.eventIdB);
         const marketLabel=marketContext
           ?'<div class="archive-meta">Рынок '+escapeHtml(marketContext.bookmaker)+': маржа '+fmt(marketContext.marginPercent)+'% · без маржи '+fmt(marketContext.marketProbabilityA)+'% / '+fmt(marketContext.marketProbabilityB)+'% · перевес модели '+(marketContext.edgeA>=0?'+':'')+fmt(marketContext.edgeA)+' / '+(marketContext.edgeB>=0?'+':'')+fmt(marketContext.edgeB)+' п.п.</div>'
           :'';
