@@ -224,7 +224,7 @@ test("odds endpoint reports malformed JSON and never caches it", async () => {
   workerSandbox.fetch = async () => new Response("{not-json", { status: 200 });
   const result = await call("/odds");
   assert.equal(result.status, 502);
-  assert.equal((await result.json()).error, "Apify dataset response was not valid JSON");
+  assert.equal((await result.json()).error, "Apify task dataset response was not valid JSON");
   assert.equal(cacheWrites, 0);
 });
 
