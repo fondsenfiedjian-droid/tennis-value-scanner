@@ -5,6 +5,47 @@ import { parseCsv, runBacktest } from "./backtest.mjs";
 
 const REQUIRED = ["match_id","date","tournoi_id","genre","surface","joueur1_id","joueur2_id","vainqueur_id","score"];
 const SURFACES = new Map([["hard","Hard"],["clay","Clay"],["grass","Grass"],["carpet","Carpet"]]);
+const ODDS_FIELDS = {
+  opening: ["cote1_ouverture", "cote2_ouverture"],
+  closing: ["cote1_cloture", "cote2_cloture"]
+};
+function parseOdds(value) {
+  const raw = String(value ?? "").trim().replace(",", ".");
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 1 && n <= 100 ? n : null;
+}
+function marketBenchmark(rows, fields) {
+  let valid = 0, invalid = 0, overround = 0, favouriteWins = 0, decisiveFavourite = 0;
+  let brier = 0, logLoss = 0;
+  for (const row of rows) {
+    const [field1, field2] = fields;
+    const odds1 = parseOdds(row[field1]), odds2 = parseOdds(row[field2]);
+    if (!odds1 || !odds2) { invalid++; continue; }
+    const implied1 = 1 / odds1, implied2 = 1 / odds2, total = implied1 + implied2;
+    const p1 = implied1 / total, outcome1 = String(row.vainqueur_id) === String(row.joueur1_id) ? 1 : 0;
+    const favourite = odds1 === odds2 ? null : odds1 < odds2 ? 1 : 2;
+    valid++;
+    overround += total - 1;
+    brier += (p1 - outcome1) ** 2;
+    const p = Math.min(1 - 1e-12, Math.max(1e-12, p1));
+    logLoss -= outcome1 * Math.log(p) + (1 - outcome1) * Math.log(1 - p);
+    if (favourite !== null) {
+      decisiveFavourite++;
+      if ((favourite === 1 && outcome1 === 1) || (favourite === 2 && outcome1 === 0)) favouriteWins++;
+    }
+  }
+  return {
+    matchesWithTwoValidOdds: valid,
+    matchesMissingOrInvalidOdds: invalid,
+    averageOverroundPct: valid ? Number((100 * overround / valid).toFixed(3)) : null,
+    marketFavouriteWinRatePct: decisiveFavourite ? Number((100 * favouriteWins / decisiveFavourite).toFixed(2)) : null,
+    marketFavouriteSample: decisiveFavourite,
+    noVigPlayer1ProbabilityBrier: valid ? Number((brier / valid).toFixed(5)) : null,
+    noVigPlayer1ProbabilityLogLoss: valid ? Number((logLoss / valid).toFixed(5)) : null,
+    note: "Descriptive market benchmark only; no simulated betting ROI and no claim of executable prices."
+  };
+}
 
 function detectDelimiter(text) {
   const line=String(text).replace(/^\uFEFF/,"").split(/\r?\n/,1)[0]??"";
@@ -33,15 +74,17 @@ export function parseValuebetennisCsv(text){
     if(winner!==p1&&winner!==p2){reject("winner_not_in_match");continue;}
     if(!id){reject("missing_match_id");continue;}
     if(tour&&!["atp","wta"].includes(tour)){reject("unsupported_tour");continue;}
-    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour});
+    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
   }
   return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
 }
 export function runValuebetennisBacktest(csvTexts,options={}){
   const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts],parsed=inputs.map(parseValuebetennisCsv),rows=parsed.flatMap(x=>x.rows),rejectedByReason={};
+  const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2}));
   for(const item of parsed)for(const[key,count]of Object.entries(item.rejectedByReason))rejectedByReason[key]=(rejectedByReason[key]||0)+count;
   const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
-  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parsed.reduce((n,x)=>n+x.rejectedRows,0),rejectedByReason,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,report:runBacktest(rows,options),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
+  return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parsed.reduce((n,x)=>n+x.rejectedRows,0),rejectedByReason,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
+    report:runBacktest(rows,options),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
 }
 async function main(){
   const args=process.argv.slice(2),options={},files=[];
