@@ -2147,13 +2147,15 @@
       const res=await fetch(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
+      const cacheHeader=String(res.headers.get('X-Data-Cache')||'').toUpperCase();
+      const scheduleCacheLabel=cacheHeader==='MISS'?'источник обновлён':cacheHeader==='HIT'?'кэш Worker':'режим кэша неизвестен';
       const matches=extractMatches(payload);
       if(matches===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
-      $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
+      $('#filterSummary').textContent='Live Tennis API · '+scheduleCacheLabel+' · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
