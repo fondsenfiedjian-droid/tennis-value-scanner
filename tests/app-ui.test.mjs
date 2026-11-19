@@ -57,7 +57,9 @@ test("match cards expose current bookmaker odds without opening the details", ()
 test("EV calculation keeps the configured odds range separate from visible quotes", () => {
   assert.match(html, /const matched=allMatched\.filter\(o=>/);
   assert.match(html, /value>=minOdds&&value<=maxOdds/);
-  assert.match(html, /const quoteA=bestQuoteForSide\(matched,'1'\),quoteB=bestQuoteForSide\(matched,'2'\)/);
+  assert.match(html, /const displayQuoteA=bestQuoteForSide\(allMatched,'1'\),displayQuoteB=bestQuoteForSide\(allMatched,'2'\)/);
+  assert.match(html, /const oddsA=displayQuoteA\?Number\(displayQuoteA\.oddsDecimal\):null,oddsB=displayQuoteB\?Number\(displayQuoteB\.oddsDecimal\):null/);
+  assert.match(html, /const selectedQuotes=\[displayQuoteA,displayQuoteB\]\.filter\(Boolean\)/);
 });
 
 test("prediction pre-check uses the same versioned surface cache key as prediction loading", () => {
