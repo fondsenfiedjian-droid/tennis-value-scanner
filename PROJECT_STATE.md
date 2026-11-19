@@ -104,6 +104,15 @@ Important deployment distinction:
 - A successful GitHub Actions run validates repository tests, not the live Netlify site or live bookmaker feed.
 - Live Worker/API and quote feed have not been conclusively verified in the latest session. Do not claim live odds are currently arriving until checked.
 
+
+### Settings reliability fix (2026-11-19)
+- Fixed a real UI defect: selecting a skin previously persisted the value but did not apply it until a page reload. The Save handler now applies the committed skin immediately.
+- Skin selection now previews immediately; Cancel or tapping the modal backdrop restores the last saved skin.
+- Tournament-filter storage writes now catch localStorage failures and show a user-facing message instead of an uncaught exception.
+- Service-worker shell cache advanced to v108 so clients install the corrected HTML/JS after the next deployment.
+- Regression tests added for live theme preview, Save application, Cancel rollback, and persisted settings.
+- This is a GitHub code change only; production deployment has not yet been confirmed.
+
 ## 4. Odds and feed rules
 
 - Worker odds route requires `APIFY_TOKEN`.
