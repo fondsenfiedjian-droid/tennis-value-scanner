@@ -45,5 +45,6 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
 });
 
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
-  assert.match(html, /isFreshCacheTimestamp\(saved\.savedAt,ODDS_CACHE_TTL\)/);
+  assert.equal((html.match(/isFreshCacheTimestamp\(saved\.savedAt,ODDS_CACHE_TTL\)/g)||[]).length, 2);
+  assert.doesNotMatch(html, /Date\.now\(\)-saved\.savedAt<=ODDS_CACHE_TTL/);
 });
