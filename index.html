@@ -211,103 +211,10 @@
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
 
-<div class="stats-view" id="bankrollView">
-  <h1>Банкролл</h1>
-  <div class="muted">Финансовый журнал ставок. Суммы в евро. Деньги букмекеру не отправляются. Реальные ставки размещаются вручную.</div>
-  <div class="panel">
-    <div class="field"><label for="bankrollMode">Финансовый контур</label><select id="bankrollMode"><option value="virtual">Виртуальный банкролл · симуляция</option><option value="actual">Фактический банкролл · реальные ставки</option></select></div>
-    <div class="muted" id="bankrollModeDescription">Виртуальный журнал для проверки стратегии. Не отражает деньги на счёте Winamax.</div>
-  </div>
-  <div class="panel" id="actualBankrollSetup" hidden>
-    <b>Создание фактического банкролла</b>
-    <div class="muted">Укажите текущую сумму, выделенную для ставок. Она не будет считаться пополнением Winamax автоматически.</div>
-    <div class="field"><label for="actualBankrollInitial">Начальная сумма, €</label><input id="actualBankrollInitial" type="number" min="0.01" max="100000000" step="0.01" placeholder="Например, 50"></div>
-    <button id="actualBankrollCreate" class="primary">Создать фактический журнал</button>
-  </div>
-  <div class="stats" style="margin-top:16px">
-    <div class="panel"><div class="muted">Свободный баланс</div><div class="stat-num" id="bankBalance">—</div></div>
-    <div class="panel"><div class="muted">В открытых ставках</div><div class="stat-num" id="bankOpenStake">—</div></div>
-    <div class="panel"><div class="muted">Общий капитал</div><div class="stat-num" id="bankEquity">—</div></div>
-    <div class="panel"><div class="muted">Начальный банк</div><div class="stat-num" id="bankInitialBankroll">—</div></div>
-    <div class="panel"><div class="muted">Реализованная прибыль</div><div class="stat-num" id="bankProfit">—</div></div>
-    <div class="panel"><div class="muted">Всего поставлено</div><div class="stat-num" id="bankTotalStaked">—</div></div>
-    <div class="panel"><div class="muted">ROI без возвратов</div><div class="stat-num" id="bankRoi">—</div></div>
-    <div class="panel"><div class="muted">Возвращено ставок</div><div class="stat-num" id="bankVoids">—</div></div>
-    <div class="panel"><div class="muted">Приход всех операций</div><div class="stat-num" id="bankInflow">—</div></div>
-    <div class="panel"><div class="muted">Расход всех операций</div><div class="stat-num" id="bankOutflow">—</div></div>
-    <div class="panel"><div class="muted">Внешние пополнения</div><div class="stat-num" id="bankDeposits">—</div></div>
-    <div class="panel"><div class="muted">Внешние снятия</div><div class="stat-num" id="bankWithdrawals">—</div></div>
-    <div class="panel"><div class="muted">Поставлено сегодня</div><div class="stat-num" id="bankDailyStaked">—</div></div>
-    <div class="panel"><div class="muted">Текущая просадка</div><div class="stat-num" id="bankCurrentDrawdown">—</div></div>
-    <div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="bankMaxDrawdown">—</div></div>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Серии результатов и устойчивость</h2><span class="muted">диагностика журнала</span></div>
-    <div class="stats">
-      <div class="panel"><div class="muted">Выигрыши / проигрыши</div><div class="stat-num" id="bankOutcomeCounts">—</div></div>
-      <div class="panel"><div class="muted">Доля побед</div><div class="stat-num" id="bankWinRate">—</div></div>
-      <div class="panel"><div class="muted">Текущая серия</div><div class="stat-num" id="bankCurrentStreak">—</div></div>
-      <div class="panel"><div class="muted">Самая длинная серия побед</div><div class="stat-num" id="bankLongestWinStreak">—</div></div>
-      <div class="panel"><div class="muted">Самая длинная серия поражений</div><div class="stat-num" id="bankLongestLossStreak">—</div></div>
-      <div class="panel"><div class="muted">Profit Factor</div><div class="stat-num" id="bankProfitFactor">—</div></div>
-    </div>
-    <div class="section-head"><h3>Разброс и зависимость от крупных выигрышей</h3></div>
-    <div class="stats">
-      <div class="panel"><div class="muted">Средний результат на ставку</div><div class="stat-num" id="bankMeanReturn">—</div></div>
-      <div class="panel"><div class="muted">Медианный результат</div><div class="stat-num" id="bankMedianReturn">—</div></div>
-      <div class="panel"><div class="muted">Стандартное отклонение</div><div class="stat-num" id="bankReturnDeviation">—</div></div>
-      <div class="panel"><div class="muted">Доля трёх крупнейших выигрышей</div><div class="stat-num" id="bankTopWinsShare">—</div></div>
-    </div>
-    <div class="archive-meta" id="bankOutcomeDispersionNote">Показатели нормированы на размер каждой ставки. Доля крупнейших выигрышей показывает концентрацию валовой прибыли, а прибыль без них — насколько результат зависит от этих выигрышей.</div>
-    <div class="archive-meta" id="bankOutcomeSequenceNote">Возвраты не прерывают серии. Неизвестные и некорректные результаты исключаются. Profit Factor = валовая прибыль / валовые потери. Это статистика результатов, а не ограничение ставок.</div>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>CLV — качество цены</h2><span class="muted">сравнение с закрытием</span></div>
-    <div class="archive-list" id="bankClvStats"><div class="panel empty">Пока недостаточно данных.</div></div>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Результаты по букмекерам</h2><span class="muted">фактический журнал</span></div>
-  <div class="archive-list" id="bankBookmakerStats"><div class="panel empty">Пока нет записанных ставок.</div></div>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Доходность по сегментам</h2><span class="muted">только рассчитанные реальные ставки</span></div>
-    <div class="archive-list" id="bankSegmentPerformance"><div class="panel empty">Пока нет рассчитанных ставок для сегментного анализа.</div></div>
-    <div class="archive-meta">ROI = прибыль / сумма выигравших и проигравших ставок. Возвраты исключены из оборота и показаны отдельно. При выборке меньше 30 ставок результат предварительный. Неизвестные покрытие и турнир не определяются предположительно.</div>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Концентрация открытого риска</h2><span class="muted">диагностика портфеля</span></div>
-    <div class="archive-list" id="bankExposureConcentration"><div class="panel empty">Нет открытых ставок для анализа.</div></div>
-  </div>
-  <div class="panel">
-    <b>Операции с деньгами</b>
-    <div class="field"><label for="bankAmount">Сумма, €</label><input id="bankAmount" type="number" min="0.01" max="1000000" step="0.01" placeholder="Например, 20"></div>
-    <div class="actions"><button id="bankDeposit" class="primary">Пополнить</button><button id="bankWithdraw">Снять</button></div>
-    <div class="stats-actions"><button id="bankExportCsv">Экспорт журнала CSV</button><button id="bankBackup">Резервная копия JSON</button><button id="bankImport">Восстановить копию</button><input id="bankImportFile" type="file" accept="application/json,.json" hidden></div>
-  </div>
-  <div class="panel">
-    <b>Импорт истории Winamax</b>
-    <div class="muted">Загрузи CSV-историю из личного кабинета Winamax. Импорт сохраняется отдельно и не меняет баланс автоматически: сначала проверяем, как устроен экспорт и правильно ли распознаны суммы.</div>
-    <div class="field"><label for="bankWinamaxFile">Файл истории Winamax (CSV)</label><input id="bankWinamaxFile" type="file" accept=".csv,text/csv,text/plain"></div>
-    <div id="bankWinamaxPreview" class="muted">Файл ещё не выбран.</div>
-    <div class="stats-actions"><button id="bankWinamaxImport" class="primary" disabled>Импортировать проверенные строки</button></div>
-    <div id="bankWinamaxSummary" class="archive-meta"></div>
-  </div>
-  <div class="section-head"><h2>План портфеля</h2><span class="muted">до 15 минут</span></div>
-  <div class="archive-list" id="bankPendingPlan"><div class="panel empty">Нет ожидающего плана.</div></div>
-  <div class="section-head"><h2>Открытые ставки</h2><span class="muted" id="bankOpenCount">0</span></div>
-  <div class="archive-list" id="bankOpenList"><div class="panel empty">Открытых ставок пока нет.</div></div>
-  <div class="section-head"><h2>История приходов и расходов</h2><span class="muted" id="bankTxCount"></span></div>
-  <div class="archive-list" id="bankTransactions"><div class="panel empty">Операций пока нет.</div></div>
-  <div class="foot">Экспорт и резервная копия относятся только к выбранному финансовому контуру. Переключение режимов не смешивает журналы.</div>
-  <div class="foot">Просадка считается по реализованному результату ставок относительно исторического пика. Пополнения и снятия не маскируют доходность. Показатель информационный и не блокирует ставки.</div>
-  <div class="notice">Начальный банк — 100 €. Базовые ограничения: не более 2% капитала на одну ставку и не более 8% суммарно в открытых ставках и не более 8% оборота за день. Размер рекомендации рассчитывается по четверти критерия Келли. Это ограничение риска, а не гарантия сохранности капитала.</div>
-</div>
-
 <div class="bottom"><div class="nav">
   <button id="navHome" class="active"><b>⌂</b>Главная</button>
   <button id="navMatches"><b>🎾</b>Матчи</button>
   <button id="navStats"><b>▥</b>Статистика</button>
-  <button id="navBankroll"><b>€</b>Банк</button>
   <button id="navSettings"><b>⚙</b>Настройки</button>
 </div></div>
 
@@ -329,8 +236,6 @@
   </div>
 </div>
 <script src="./pfe.js"></script>
-<script src="./bankroll.js"></script>
-<script src="./winamax-import.js"></script>
 <script>
   const $ = s => document.querySelector(s);
   const now = new Date();
@@ -1348,307 +1253,15 @@
       return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.bookmaker||'Букмекер не указан')+' · '+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
-  const BANKROLL_VIRTUAL_KEY='tvs-bankroll-v1';
-  const BANKROLL_ACTUAL_KEY='tvs-bankroll-actual-v1';
-  const BANKROLL_MODE_KEY='tvs-bankroll-mode-v1';
-  let bankrollMode=localStorage.getItem(BANKROLL_MODE_KEY)==='actual'?'actual':'virtual';
-  let bankrollState=null,bankrollLoadError=null;
-  function bankrollStorageKey(){return bankrollMode==='actual'?BANKROLL_ACTUAL_KEY:BANKROLL_VIRTUAL_KEY;}
-  function updateBankrollModeUi(){
-    const actual=bankrollMode==='actual';
-    $('#bankrollMode').value=bankrollMode;
-    $('#bankrollModeDescription').textContent=actual?'Отдельный журнал фактических ставок. Суммы и результаты вносятся после ручных действий в Winamax.':'Виртуальный журнал для проверки стратегии. Не отражает деньги на счёте Winamax.';
-    $('#actualBankrollSetup').hidden=!(actual&&!localStorage.getItem(BANKROLL_ACTUAL_KEY));
-  }
-  $('#bankrollMode').value=bankrollMode;
-  $('#bankrollMode').onchange=()=>{
-    bankrollMode=$('#bankrollMode').value==='actual'?'actual':'virtual';
-    try{localStorage.setItem(BANKROLL_MODE_KEY,bankrollMode);}catch(error){alert('Не удалось сохранить выбранный режим: '+error.message);}
-    bankrollState=null;bankrollLoadError=null;updateBankrollModeUi();renderBankroll();
-  };
-  $('#actualBankrollCreate').onclick=()=>{
-    try{
-      if(localStorage.getItem(BANKROLL_ACTUAL_KEY)){alert('Фактический журнал уже существует.');updateBankrollModeUi();return;}
-      const amount=Number($('#actualBankrollInitial').value);
-      const state=TVSBankroll.createInitialState(amount);
-      const serialized=JSON.stringify(TVSBankroll.serializeBackup(state));
-      localStorage.setItem(BANKROLL_ACTUAL_KEY,serialized);
-      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(BANKROLL_ACTUAL_KEY)));
-      if(JSON.stringify(verified)!==JSON.stringify(state))throw new Error('Контрольная проверка фактического журнала не пройдена.');
-      bankrollState=verified;bankrollLoadError=null;$('#actualBankrollInitial').value='';updateBankrollModeUi();renderBankroll();
-    }catch(error){alert('Не удалось создать фактический журнал: '+error.message);}
-  };
-  const WINAMAX_HISTORY_KEY='tvs-winamax-history-v1';
-  let pendingWinamaxImport=null;
-  function readWinamaxHistory(){
-    try{const raw=localStorage.getItem(WINAMAX_HISTORY_KEY);if(!raw)return[];const rows=JSON.parse(raw);if(!Array.isArray(rows))throw new Error('Format de stockage invalide');return rows;}
-    catch(error){alert('Historique Winamax local illisible : '+error.message);return null;}
-  }
-  function renderWinamaxHistory(){
-    const rows=readWinamaxHistory();if(!rows)return;
-    const summary=TVSWinamaxImport.summarize(rows);
-    const profitLabel=(summary.profit>=0?'+':'')+formatEuro(summary.profit);
-    const roiLabel=summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%';
-    $('#bankWinamaxSummary').textContent=rows.length?['Historique importé : '+summary.importedBets+' paris','réglés '+summary.settledBets,'ouverts '+summary.openBets,'mises réglées '+formatEuro(summary.totalStaked),'résultat '+profitLabel,'ROI '+roiLabel].join(' · '):'Aucun historique Winamax importé.';
-  }
-  $('#bankWinamaxFile').onchange=async event=>{
-    const file=event.target.files&&event.target.files[0];pendingWinamaxImport=null;$('#bankWinamaxImport').disabled=true;
-    if(!file){$('#bankWinamaxPreview').textContent='Fichier non sélectionné.';return;}
-    if(file.size>5*1024*1024){$('#bankWinamaxPreview').textContent='Fichier trop volumineux (maximum 5 Mo).';return;}
-    try{
-      const parsed=TVSWinamaxImport.parseWinamaxCsv(await file.text());pendingWinamaxImport=parsed;
-      const sample=parsed.records.slice(0,4).map(row=>escapeHtml((row.date||'Date inconnue')+' · '+row.match+' · '+formatEuro(row.stake)+' · '+(row.odds?'cote '+row.odds:'cote inconnue')+' · '+row.outcome)).join('<br>');
-      $('#bankWinamaxPreview').innerHTML='<b>'+parsed.records.length+' lignes reconnues</b> sur '+parsed.totalRows+' · '+parsed.errors.length+' lignes ignorées.<br>'+sample+(parsed.records.length>4?'<br>…':'')+'<br><span class="muted">Vérifie les montants et résultats avant confirmation.</span>';
-      $('#bankWinamaxImport').disabled=parsed.records.length===0;
-    }catch(error){$('#bankWinamaxPreview').textContent='Import impossible : '+error.message;}
-  };
-  $('#bankWinamaxImport').onclick=()=>{
-    if(!pendingWinamaxImport||!pendingWinamaxImport.records.length)return;
-    try{
-      const existing=readWinamaxHistory();if(!existing)return;
-      const merged=TVSWinamaxImport.mergeImportedHistory(existing,pendingWinamaxImport.records);
-      if(!confirm('Ajouter '+merged.added+' nouveaux paris à l’historique Winamax ? Doublons ignorés : '+merged.duplicates+'. Le solde du bankroll ne sera pas modifié.'))return;
-      localStorage.setItem(WINAMAX_HISTORY_KEY,JSON.stringify(merged.rows));
-      pendingWinamaxImport=null;$('#bankWinamaxFile').value='';$('#bankWinamaxImport').disabled=true;
-      $('#bankWinamaxPreview').textContent='Import terminé : '+merged.added+' nouveaux paris, '+merged.duplicates+' doublons ignorés.';
-      renderWinamaxHistory();
-    }catch(error){alert('Import non enregistré : '+error.message);}
-  };
-  function formatEuro(value){return Number(value).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});}
-  function readBankrollState(){
-    if(bankrollState)return bankrollState;
-    if(bankrollLoadError)return null;
-    try{
-      const raw=localStorage.getItem(bankrollStorageKey());
-      if(!raw&&bankrollMode==='actual'){bankrollLoadError=null;return null;}
-      bankrollState=raw?TVSBankroll.parseBackup(JSON.parse(raw)):TVSBankroll.createInitialState(100);
-      if(!raw)localStorage.setItem(bankrollStorageKey(),JSON.stringify(TVSBankroll.serializeBackup(bankrollState)));
-      return bankrollState;
-    }catch(error){bankrollLoadError=error;return null;}
-  }
-  function persistBankrollState(state){
-    try{
-      TVSBankroll.validateState(state);
-      const currentRaw=localStorage.getItem(bankrollStorageKey());
-      if(bankrollState){
-        if(!currentRaw)throw new Error('Запись банкролла изменилась или была удалена в другой вкладке. Обнови страницу перед новой операцией.');
-        const current=TVSBankroll.parseBackup(JSON.parse(currentRaw));
-        if(JSON.stringify(current)!==JSON.stringify(bankrollState))throw new Error('Банкролл уже изменён в другой вкладке. Обнови страницу: текущая операция не сохранена, чтобы не потерять записи.');
-      }else if(currentRaw){
-        throw new Error('Банкролл уже существует в хранилище. Обнови страницу перед сохранением.');
-      }
-      localStorage.setItem(bankrollStorageKey(),JSON.stringify(TVSBankroll.serializeBackup(state)));
-      bankrollState=state;bankrollLoadError=null;return true;
-    }catch(error){alert('Не удалось сохранить банкролл: '+error.message);return false;}
-  }
-  function restoreBankrollBackup(state){
-    try{
-      TVSBankroll.validateState(state);
-      const serialized=JSON.stringify(TVSBankroll.serializeBackup(state));
-      localStorage.setItem(bankrollStorageKey(),serialized);
-      const verified=TVSBankroll.parseBackup(JSON.parse(localStorage.getItem(bankrollStorageKey())));
-      if(JSON.stringify(verified)!==JSON.stringify(state))throw new Error('Контрольная проверка восстановленных данных не пройдена.');
-      bankrollState=verified;bankrollLoadError=null;return true;
-    }catch(error){alert('Не удалось восстановить банкролл: '+error.message);return false;}
-  }
-  function renderBankroll(){
-    renderWinamaxHistory();
-    let state=readBankrollState();
-    if(state&&state.pendingPlan){
-      const expiry=TVSBankroll.expirePortfolioPlan(state);
-      if(expiry.expired&&persistBankrollState(expiry.state))state=expiry.state;
-    }
-    if(!state){
-      if(bankrollMode==='actual'&&!bankrollLoadError){
-        updateBankrollModeUi();
-        $('#bankBalance').textContent='Не создан';
-        $('#bankOpenStake').textContent='—';$('#bankEquity').textContent='—';
-        $('#bankOpenList').innerHTML='<div class="panel empty">Фактический журнал ещё не создан. Укажи начальную сумму выше.</div>';
-        $('#bankPendingPlan').innerHTML='<div class="panel empty">Сначала создай фактический журнал.</div>';
-        return;
-      }
-      $('#bankBalance').textContent='Ошибка';
-      $('#bankOpenList').innerHTML='<div class="panel empty">Данные банкролла не загружены: '+escapeHtml(bankrollLoadError?.message||'неизвестная ошибка')+'. Они не были перезаписаны. Восстанови резервную копию.</div>';
-      return;
-    }
-    updateBankrollModeUi();
-    const summary=TVSBankroll.getSummary(state);
-    $('#bankBalance').textContent=formatEuro(summary.balance);
-    $('#bankOpenStake').textContent=formatEuro(summary.openStake);
-    $('#bankEquity').textContent=formatEuro(summary.equity);
-    $('#bankInitialBankroll').textContent=formatEuro(summary.initialBankroll);
-    $('#bankProfit').textContent=(summary.realizedProfit>0?'+':'')+formatEuro(summary.realizedProfit);
-    $('#bankTotalStaked').textContent=formatEuro(summary.totalStaked);
-    $('#bankRoi').textContent=summary.roiPercent===null?'—':(summary.roiPercent>0?'+':'')+summary.roiPercent.toFixed(2)+'%';
-    $('#bankVoids').textContent=summary.voidedBets+' · '+formatEuro(summary.voidedStake);
-    $('#bankInflow').textContent=formatEuro(summary.totalInflow);
-    $('#bankOutflow').textContent=formatEuro(summary.totalOutflow);
-    $('#bankDeposits').textContent=formatEuro(summary.deposits);
-    $('#bankWithdrawals').textContent=formatEuro(summary.withdrawals);
-    $('#bankDailyStaked').textContent=formatEuro(summary.dailyStaked);
-    $('#bankCurrentDrawdown').textContent=formatEuro(summary.currentDrawdown)+' · '+summary.currentDrawdownPercent.toFixed(2)+'%';
-    $('#bankMaxDrawdown').textContent=formatEuro(summary.maxDrawdown)+' · '+summary.maxDrawdownPercent.toFixed(2)+'%';
-    const sequence=summary.outcomeSequence;
-    $('#bankOutcomeCounts').textContent=sequence.wins+' / '+sequence.losses+' · возвраты '+sequence.voids;
-    $('#bankWinRate').textContent=sequence.winRatePercent===null?'—':sequence.winRatePercent.toFixed(1)+'%';
-    $('#bankCurrentStreak').textContent=sequence.currentStreak.length
-      ?(sequence.currentStreak.type==='won'?'Победы · ':'Поражения · ')+sequence.currentStreak.length:'Нет серии';
-    $('#bankLongestWinStreak').textContent=String(sequence.longestWinStreak);
-    $('#bankLongestLossStreak').textContent=String(sequence.longestLossStreak);
-    $('#bankProfitFactor').textContent=sequence.profitFactor===null?'—':sequence.profitFactor.toFixed(2);
-    $('#bankOutcomeSequenceNote').textContent='Рассчитано ставок: '+sequence.settledBets+' · исключено некорректных исходов: '+sequence.excluded+
-      ' · валовая прибыль '+formatEuro(sequence.grossProfit)+' · валовые потери '+formatEuro(sequence.grossLoss)+
-      '. Возвраты не прерывают серии. Profit Factor = валовая прибыль / валовые потери. Показатели диагностические и не меняют размеры ставок.';
-    const dispersion=summary.outcomeDispersion;
-    const formatPercent=value=>value===null?'—':(value>0?'+':'')+value.toFixed(2)+'%';
-    $('#bankMeanReturn').textContent=formatPercent(dispersion.meanReturnPercent);
-    $('#bankMedianReturn').textContent=formatPercent(dispersion.medianReturnPercent);
-    $('#bankReturnDeviation').textContent=dispersion.returnStdDevPercent===null?'—':dispersion.returnStdDevPercent.toFixed(2)+' п.п.';
-    $('#bankTopWinsShare').textContent=dispersion.topThreeWinSharePercent===null?'—':dispersion.topThreeWinSharePercent.toFixed(1)+'%';
-    $('#bankOutcomeDispersionNote').textContent='Выборка '+dispersion.sampleSize+' ставок · крупнейший выигрыш '+
-      (dispersion.largestWin===null?'—':formatEuro(dispersion.largestWin))+' · крупнейший проигрыш '+
-      (dispersion.largestLoss===null?'—':formatEuro(dispersion.largestLoss))+' · прибыль без трёх крупнейших выигрышей '+
-      formatEuro(dispersion.netProfitWithoutTopThreeWins)+' · возвраты '+dispersion.voids+' · исключено '+dispersion.excluded+
-      '. Среднее, медиана и отклонение рассчитаны по прибыли относительно суммы каждой отдельной ставки.';
-
-
-    $('#bankOpenCount').textContent=summary.openBets+' · риск '+summary.exposurePercent.toFixed(1)+'%';
-    const clv=TVSBankroll.getClvSummary(state,readPredictionArchive());
-    const clvAverage=clv.averageClvPercent===null?'—':(clv.averageClvPercent>0?'+':'')+clv.averageClvPercent.toFixed(2)+'%';
-    $('#bankClvStats').innerHTML=clv.sampleSize
-      ?'<div class="archive-item"><b>Средний CLV: '+clvAverage+'</b><div class="archive-meta">Сопоставлено ставок: '+clv.sampleSize+' · положительный '+clv.positive+' · отрицательный '+clv.negative+' · без изменения '+clv.neutral+'</div><div class="archive-meta">Покрытие архива: '+clv.coveragePercent.toFixed(1)+'% · без подходящей котировки: '+clv.missingCount+'</div><div class="archive-meta">Сравнение только с тем же букмекером и исходом, по последней записи за 6 часов до начала матча. Это предварительный CLV-прокси, а не официальный closing line.</div></div>'
-      :'<div class="panel empty">CLV пока не рассчитан: нужны ставки с ID матча и временем начала, а также архивные котировки того же букмекера в последние 6 часов до матча. Отсутствующие данные не считаются нулевым CLV.</div>';
-    const bookmakerStats=TVSBankroll.getBookmakerSummary(state);
-    $('#bankBookmakerStats').innerHTML=bookmakerStats.length?bookmakerStats.map(item=>{
-      const profitClass=item.profit>0?'model-positive':item.profit<0?'model-negative':'';
-      const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
-      return '<div class="archive-item"><b>'+escapeHtml(item.bookmaker)+'</b><div>Прибыль: <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span> · ROI '+roi+'</div><div class="archive-meta">Выигрыши '+item.wins+' · проигрыши '+item.losses+' · возвраты '+item.voids+' · рассчитано ставок '+item.settledBets+'</div><div class="archive-meta">Оборот без возвратов '+formatEuro(item.totalStaked)+' · возвращено '+formatEuro(item.voidedStake)+' · открыто '+item.openBets+' на '+formatEuro(item.openStake)+'</div></div>';
-    }).join(''):'<div class="panel empty">Пока нет записанных ставок по букмекерам.</div>';
-    const segmentPerformance=TVSBankroll.getSegmentPerformance(state,readPredictionArchive());
-    const segmentLabels={surface:'Покрытие',tour:'Категория турнира',bookmaker:'Букмекер',oddsBand:'Коэффициенты при размещении',evBand:'Ожидаемый EV при размещении',probabilityBand:'Вероятность модели при размещении'};
-    $('#bankSegmentPerformance').innerHTML=Object.entries(segmentPerformance).map(([key,items])=>{
-      const rows=items.map(item=>{
-        const roi=item.roiPercent===null?'—':(item.roiPercent>0?'+':'')+item.roiPercent.toFixed(2)+'%';
-        const profitClass=item.profit>0?'model-positive':item.profit<0?'model-negative':'';
-        return '<div class="archive-item"><b>'+escapeHtml(item.name)+'</b><div>ROI '+roi+' · прибыль <span class="'+profitClass+'">'+(item.profit>0?'+':'')+formatEuro(item.profit)+'</span></div><div class="archive-meta">Рассчитано ставок '+item.settledBets+' · выиграно '+item.wins+' · проиграно '+item.losses+' · возвраты '+item.voids+' · исключено '+item.excluded+'</div><div class="archive-meta">Оборот '+formatEuro(item.settledStake)+' · возвращено '+formatEuro(item.voidedStake)+(item.preliminary?' · предварительная выборка (меньше 30)':'')+'</div></div>';
-      }).join('');
-      return '<div class="archive-item"><b>'+segmentLabels[key]+'</b>'+rows+'</div>';
-    }).join('')||'<div class="panel empty">Пока нет рассчитанных ставок для сегментного анализа.</div>';
-    const exposure=TVSBankroll.getExposureConcentration(state);
-    const exposureRows=(title,items)=>'<div class="archive-item"><b>'+title+'</b>'+items.map(item=>{
-      const warning=item.highConcentration?' · высокая концентрация':'';
-      return '<div class="archive-meta">'+escapeHtml(item.name)+': '+formatEuro(item.stake)+' · '+item.sharePercent.toFixed(1)+'% · ставок '+item.bets+warning+'</div>';
-    }).join('')+'</div>';
-    $('#bankExposureConcentration').innerHTML=exposure.totalOpenStake
-      ?exposureRows('По букмекерам',exposure.byBookmaker)+exposureRows('По участникам матчей',exposure.byPlayer)+'<div class="archive-meta">'+escapeHtml(exposure.note)+'</div>'
-      :'<div class="panel empty">Нет открытых ставок для анализа.</div>';
-    $('#bankTxCount').textContent=state.transactions.length+' операций · результаты: '+summary.verifiedSettledBets+' по API, '+summary.manualSettledBets+' вручную';
-    const pendingPlan=state.pendingPlan;
-    $('#bankPendingPlan').innerHTML=pendingPlan
-      ?'<div class="archive-item"><b>Сверка фактических ставок</b><div class="archive-meta">Создан: '+escapeHtml(new Date(pendingPlan.createdAt).toLocaleString('ru-RU'))+' · план действует до '+escapeHtml(new Date(pendingPlan.expiresAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))+'</div><div class="archive-meta">После ручного размещения внесите реальные сумму и коэффициент. Если ставку не делали — укажите сумму 0. Плановые значения уже подставлены.</div>'+pendingPlan.suggestions.map((item,index)=>'<div style="border-top:1px solid var(--line);padding:10px 0"><b>'+escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+'</b><div class="archive-meta">План: '+formatEuro(item.stake)+' · кэф. '+Number(item.odds).toFixed(2)+' · '+escapeHtml(item.bookmaker||'Winamax')+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px"><label class="field">Фактическая сумма, €<input data-plan-stake="'+index+'" type="number" min="0" max="1000000" step="0.01" value="'+Number(item.stake).toFixed(2)+'" style="width:100%"></label><label class="field">Фактический кэф.<input data-plan-odds="'+index+'" type="number" min="1.01" max="1000" step="0.01" value="'+Number(item.odds).toFixed(2)+'" style="width:100%"></label></div></div>').join('')+'<div><b>Плановая сумма: '+formatEuro(pendingPlan.totalStake)+'</b></div><div class="stats-actions"><button id="confirmPortfolioPlan">Сверить и внести фактические ставки</button><button id="cancelPortfolioPlan">Отменить план</button></div><div class="archive-meta">Сумма 0 означает, что ставка не была размещена. Фактическая сумма и коэффициент проверяются по лимитам риска и минимальному EV. До сверки финансовый журнал не меняется.</div></div>'
-      :'<div class="panel empty">Нет ожидающего плана.</div>';
-    if(pendingPlan){
-      $('#confirmPortfolioPlan').onclick=()=>{
-        const actuals=pendingPlan.suggestions.map((item,index)=>({
-          matchKey:item.matchKey,
-          stake:Number($('#bankPendingPlan [data-plan-stake="'+index+'"]').value),
-          odds:Number($('#bankPendingPlan [data-plan-odds="'+index+'"]').value)
-        }));
-        if(!confirm('Сверить фактические суммы и коэффициенты? В журнал попадут только позиции с суммой больше нуля.'))return;
-        try{
-          const result=TVSBankroll.reconcilePortfolioPlan(readBankrollState(),pendingPlan.id,actuals);
-          if(persistBankrollState(result.state)){
-            renderBankroll();
-            alert('Сверка завершена. В журнал внесено ставок: '+result.placedCount+'. Не размещено: '+result.skipped+'.');
-          }
-        }catch(error){alert('Журнал не изменён: '+error.message);}
-      };
-      $('#cancelPortfolioPlan').onclick=()=>{
-        if(!confirm('Отменить ожидающий план? Финансовый журнал не изменится.'))return;
-        try{persistBankrollState(TVSBankroll.cancelPortfolioPlan(readBankrollState(),pendingPlan.id));renderBankroll();}
-        catch(error){alert(error.message);}
-      };
-    }
-    $('#bankOpenList').innerHTML=state.openBets.length?state.openBets.slice().reverse().map(bet=>'<div class="archive-item"><b>'+escapeHtml(bet.player||'Игрок')+' — '+escapeHtml(bet.opponent||'')+'</b><div>'+escapeHtml(bet.match||'Матч')+' · '+formatEuro(bet.stake)+' · кэф. '+bet.odds.toFixed(2)+' · '+escapeHtml(bet.bookmaker||'Winamax')+(bet.plannedStake!==null&&bet.plannedStake!==undefined?' · план '+formatEuro(bet.plannedStake)+' @ '+Number(bet.plannedOdds).toFixed(2):'')+'</div><div class="archive-meta">EV '+bet.ev.toFixed(2)+'% · вероятность '+(bet.probability*100).toFixed(2)+'% · '+escapeHtml(new Date(bet.placedAt).toLocaleString('ru-RU'))+'</div><div class="stats-actions"><button data-bank-settle="won" data-bank-id="'+escapeHtml(bet.id)+'">Выигрыш</button><button data-bank-settle="lost" data-bank-id="'+escapeHtml(bet.id)+'">Проигрыш</button><button data-bank-settle="void" data-bank-id="'+escapeHtml(bet.id)+'">Возврат</button></div></div>').join(''):'<div class="panel empty">Открытых ставок пока нет.</div>';
-    const labels={deposit:'Пополнение',withdrawal:'Снятие',stake:'Ставка',settlement:'Расчёт ставки',settlement_reversed:'Расчёт отменён после исправления результата',settlement_reversal:'Возврат при пересмотре результата'};
-    $('#bankTransactions').innerHTML=state.transactions.slice().reverse().slice(0,50).map(tx=>'<div class="archive-item"><b>'+escapeHtml(labels[tx.type]||tx.type)+'</b><div class="'+(tx.balanceDelta>=0?'model-positive':'model-negative')+'">'+(tx.balanceDelta>0?'+':'')+formatEuro(tx.balanceDelta)+'</div><div class="archive-meta">'+escapeHtml(tx.note||tx.outcome||'')+(tx.bookmaker?' · '+escapeHtml(tx.bookmaker):'')+' · '+escapeHtml(new Date(tx.at).toLocaleString('ru-RU'))+'</div></div>').join('')||'<div class="panel empty">Операций пока нет.</div>';
-    $('#bankOpenList').querySelectorAll('[data-bank-settle]').forEach(button=>button.onclick=()=>{
-      const outcome=button.dataset.bankSettle, id=button.dataset.bankId;
-      const label={won:'выигрыш',lost:'проигрыш',void:'возврат'}[outcome];
-      if(!confirm('Подтвердить результат «'+label+'»?'))return;
-      try{persistBankrollState(TVSBankroll.settleBet(readBankrollState(),id,outcome));renderBankroll();}
-      catch(error){alert(error.message);}
-    });
-  }
-  function reconcileBankrollWithArchive(){
-    const empty={settled:0,corrected:0,reopened:0};
-    const state=readBankrollState();
-    if(!state)return empty;
-    const result=TVSBankroll.settleVerifiedResults(state,readPredictionArchive());
-    if(!result.updated)return empty;
-    if(persistBankrollState(result.state)){renderBankroll();return {settled:result.settled.length,corrected:result.corrected.length,reopened:result.reopened.length};}
-    return empty;
-  }
-  function addPortfolioToBankroll(suggestions){
-    try{
-      const state=readBankrollState();
-      if(!state)throw new Error('Банкролл недоступен.');
-      if(state.pendingPlan)throw new Error('Сначала подтвердите или отмените текущий план портфеля.');
-      const planned=TVSBankroll.savePortfolioPlan(state,suggestions);
-      if(!persistBankrollState(planned))return;
-      renderBankroll();
-      alert('План сохранён на 15 минут. Разместите ставки вручную в указанных букмекерах, затем откройте раздел «Банкролл» и подтвердите фактическое размещение. До подтверждения деньги не списываются.');
-    }catch(error){alert(error.message);}
-  }
   function showMain(){
-    $('.app').style.display='block';$('#statsView').style.display='none';$('#bankrollView').style.display='none';
-    $('#navHome').classList.add('active');$('#navStats').classList.remove('active');$('#navBankroll').classList.remove('active');
+    $('.app').style.display='block';$('#statsView').style.display='none';
+    $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
   }
   function showStats(){
-    $('.app').style.display='none';$('#bankrollView').style.display='none';$('#statsView').style.display='block';
-    $('#navHome').classList.remove('active');$('#navBankroll').classList.remove('active');$('#navStats').classList.add('active');
+    $('.app').style.display='none';$('#statsView').style.display='block';
+    $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     archiveStorageReady.then(renderArchive);
   }
-  function showBankroll(){
-    $('.app').style.display='none';$('#statsView').style.display='none';$('#bankrollView').style.display='block';
-    $('#navHome').classList.remove('active');$('#navStats').classList.remove('active');$('#navBankroll').classList.add('active');
-    renderBankroll();
-  }
-  $('#bankDeposit').onclick=()=>{
-    try{const amount=Number($('#bankAmount').value);persistBankrollState(TVSBankroll.addDeposit(readBankrollState(),amount,'Ручное пополнение'));$('#bankAmount').value='';renderBankroll();}
-    catch(error){alert(error.message);}
-  };
-  $('#bankWithdraw').onclick=()=>{
-    try{const amount=Number($('#bankAmount').value);persistBankrollState(TVSBankroll.addWithdrawal(readBankrollState(),amount,'Ручное снятие'));$('#bankAmount').value='';renderBankroll();}
-    catch(error){alert(error.message);}
-  };
-  $('#bankExportCsv').onclick=()=>{
-    const state=readBankrollState();if(!state){alert('Банкролл недоступен.');return;}
-    const columns=['at','type','amount','balanceDelta','stake','profit','outcome','source','betId','matchId','side','resultVersion','plannedStake','plannedOdds','actualStake','actualOdds','note','betSnapshot'];
-    const quote=value=>{
-      let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
-      if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
-      return '"'+cell.replace(/"/g,'""')+'"';
-    };
-    const csv='\\uFEFF'+[columns.join(';'),...state.transactions.map(tx=>columns.map(key=>quote(tx[key])).join(';'))].join('\\n');
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const link=document.createElement('a');link.href=url;link.download='tennis-value-bankroll-ledger.csv';link.click();URL.revokeObjectURL(url);
-  };
-  $('#bankBackup').onclick=()=>{
-    const state=readBankrollState();if(!state){alert('Банкролл недоступен.');return;}
-    const url=URL.createObjectURL(new Blob([JSON.stringify(TVSBankroll.serializeBackup(state),null,2)],{type:'application/json'}));
-    const link=document.createElement('a');link.href=url;link.download='tennis-value-bankroll.json';link.click();URL.revokeObjectURL(url);
-  };
-  $('#bankImport').onclick=()=>$('#bankImportFile').click();
-  $('#bankImportFile').onchange=async event=>{
-    const file=event.target.files&&event.target.files[0];event.target.value='';if(!file)return;
-    if(file.size>1024*1024){alert('Файл слишком большой. Максимум 1 МБ.');return;}
-    try{
-      const payload=JSON.parse(await file.text()),restored=TVSBankroll.parseBackup(payload);
-      if(!confirm('Заменить текущий банкролл данными резервной копии? Текущие записи будут заменены.'))return;
-      if(restoreBankrollBackup(restored))renderBankroll();
-    }catch(error){alert('Не удалось восстановить банкролл: '+error.message);}
-  };
   $('#archiveCheckResults').onclick=async()=>{
     await archiveStorageReady;
     const button=$('#archiveCheckResults');
@@ -1656,7 +1269,7 @@
     const ids=selectArchiveResultCheckIds(rows,now,10);
     if(!ids.length){alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
     button.disabled=true;button.textContent='ПРОВЕРКА…';
-    let checked=0,settled=0,errors=0;
+    let checked=0,errors=0;
     try{
       for(const id of ids){
         try{
@@ -1683,8 +1296,7 @@
       const archiveFlush=await flushArchiveWrites();
       if(!archiveFlush.ok)errors++;
       renderArchive();
-      const bankrollUpdates=reconcileBankrollWithArchive();
-      alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ставок рассчитано: '+bankrollUpdates.settled+', исправлено после пересмотра: '+bankrollUpdates.corrected+', открыто повторно: '+bankrollUpdates.reopened+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+        alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ставок рассчитано: '+bankrollUpdates.settled+', исправлено после пересмотра: '+bankrollUpdates.corrected+', открыто повторно: '+bankrollUpdates.reopened+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
   };
   $('#archiveExport').onclick=async()=>{
@@ -1861,17 +1473,7 @@
     const d=matchDate(best.match);
     const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
     const tournament=best.match.tournament_name||best.match.tournament||best.match.event_name||best.match.competition||'Турнир не указан';
-    const bankrollState=readBankrollState();
-    const portfolio=bankrollState?TVSBankroll.recommendPortfolio(bankrollState,bets.map(bet=>{
-      const matchDateValue=matchDate(bet.match);
-      const rawId=bet.match.id??bet.match.match_id??bet.match.event_id;
-      const matchKey=rawId!==undefined&&rawId!==null?'id:'+String(rawId):[bet.player,bet.opponent].sort().join('|')+'|'+(matchDateValue?matchDateValue.toISOString():'');
-      const matchTitle=(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'Теннис')+' · '+bet.player+' — '+bet.opponent;
-      return {matchKey,match:matchTitle,matchId:Number.isSafeInteger(Number(rawId))&&Number(rawId)>0?Number(rawId):null,matchDate:matchDateValue?matchDateValue.toISOString():null,side:bet.side,player:bet.player,opponent:bet.opponent,probability:bet.probability/100,odds:bet.odds,ev:bet.ev,bookmaker:bet.bookmaker||'Winamax',stakeMultiplier:bet.stakeMultiplier,freshnessLevel:bet.freshnessLevel,surface:String(bet.match.surface||bet.match.court||bet.match.court_name||''),tour:normalizeTour(bet.match.tour||bet.match.tour_type)||'',tournament:String(bet.match.tournament_name||bet.match.tournament||bet.match.event_name||bet.match.competition||'')};
-    })):{suggestions:[],totalStake:0};
-    const portfolioLines=portfolio.suggestions.map(item=>escapeHtml(item.player)+' — '+escapeHtml(item.opponent)+': '+formatEuro(item.stake)+' при кэф. '+Number(item.odds).toFixed(2)+' · '+escapeHtml(item.bookmaker||'Winamax')+' · '+(item.freshnessLevel==='good'?'данные свежие, полная ставка':'данные средней свежести, половинная ставка')).join('<br>');
-    const stakeWord=portfolio.suggestions.length===1?'ставка':portfolio.suggestions.length<5?'ставки':'ставок';
-    const stakeAction=portfolio.suggestions.length?'<br><b>План портфеля: '+portfolio.suggestions.length+' '+stakeWord+' · всего '+formatEuro(portfolio.totalStake)+'</b><br>'+portfolioLines+'<br><button id="addPortfolioToBank" class="chip on" style="margin-top:9px">Сохранить план портфеля</button>':'<br><span class="model-muted">Сейчас нет ставок, прошедших лимиты банка, минимальный EV и проверку свежести данных.</span>';
+    const stakeAction='';
     box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · '+escapeHtml(best.bookmaker||'Winamax')+' <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.'+stakeAction+'</div>';
     const addButton=$('#addPortfolioToBank');
     if(addButton)addButton.onclick=()=>addPortfolioToBankroll(portfolio.suggestions);
@@ -2216,11 +1818,9 @@
   $('#navHome').onclick=showMain;
   $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
-  $('#navBankroll').onclick=showBankroll;
-  readBankrollState();
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
-  archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();reconcileBankrollWithArchive();});
+  archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();});
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
