@@ -5,7 +5,7 @@ const cors = {
   "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache"
 };
 
-const APIFY_DATASET_ID = "ZBWihC1oYU8Pq9uBo";
+const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -262,6 +262,7 @@ export default {
         service: "tennis-value-api",
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
+        apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/predict"]
       });
     }
@@ -286,8 +287,10 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
+        // Resolve the most recent successful task run dataset dynamically.
+        // This avoids pinning the feed to a dataset created by an earlier run.
         const upstream = await fetch(
-          `https://api.apify.com/v2/datasets/${APIFY_DATASET_ID}/items?clean=true&format=json&limit=1000`,
+          `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000`,
           {
             headers: {
               "Authorization": `Bearer ${env.APIFY_TOKEN}`,
@@ -299,7 +302,8 @@ export default {
         if (!upstream.ok) {
           const retryAfter = upstream.headers.get("Retry-After");
           return response({
-            error: "Apify request failed",
+            error: "Apify task dataset request failed",
+            taskId: APIFY_TASK_ID,
             upstreamStatus: upstream.status
           }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
         }
@@ -308,14 +312,14 @@ export default {
         try {
           items = await upstream.json();
         } catch {
-          return response({ error: "Apify dataset response was not valid JSON" }, 502);
+          return response({ error: "Apify task dataset response was not valid JSON", taskId: APIFY_TASK_ID }, 502);
         }
         if (!Array.isArray(items)) {
-          return response({ error: "Apify dataset response was not an array" }, 502);
+          return response({ error: "Apify task dataset response was not an array", taskId: APIFY_TASK_ID }, 502);
         }
         const payload = {
-          source: "Apify Winamax dataset",
-          datasetId: APIFY_DATASET_ID,
+          source: "Apify Winamax task",
+          taskId: APIFY_TASK_ID,
           retrievedAt: new Date().toISOString(),
           count: items.length,
           diagnostics: diagnoseOddsItems(items),
