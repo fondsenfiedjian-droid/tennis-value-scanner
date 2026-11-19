@@ -92,7 +92,7 @@ vm.runInNewContext(
 const { findElo, findEloForSurface, normalizeSurface, eloProbability, response } = helperSandbox.testHelpers;
 
 const workerSandbox = {
-  Response, Request, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
+  Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
   caches: { default: { match: async () => null, put: async () => {} } },
   fetch: async () => { throw new Error("Unexpected upstream network call in validation test"); }
 };
