@@ -6,7 +6,7 @@ const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
-  assert.match(html, /class="match-bottom odds-visible"\)\+'\+oddsHtml/);
+  assert.match(html, /class="match-bottom odds-visible">'\\+oddsHtml/);
   assert.match(html, /displayQuoteA\?'<b>1<\/b>/);
   assert.match(html, /displayQuoteB\?'<b>2<\/b>/);
 });
