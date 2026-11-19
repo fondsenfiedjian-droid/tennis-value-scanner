@@ -51,6 +51,7 @@
     const transactionTypes = new Set(["deposit", "withdrawal", "stake", "settlement", "settlement_reversed", "settlement_reversal"]);
     const expectedDeltaSign = { deposit: 1, withdrawal: -1, stake: -1, settlement: 1, settlement_reversed: 1, settlement_reversal: -1 };
     let ledgerBalance = 0;
+    const stakeTransactions = new Map(state.transactions.filter(tx => tx && tx.type === "stake" && typeof tx.betId === "string").map(tx => [tx.betId, tx]));
     for (const tx of state.transactions) {
       if (!tx || typeof tx.id !== "string" || !tx.id || ids.has(tx.id) ||
           !transactionTypes.has(tx.type) || !Number.isFinite(tx.amount) || tx.amount < 0 ||
@@ -69,6 +70,7 @@
             !Number.isFinite(tx.betSnapshot.odds) || tx.betSnapshot.odds <= 1 ||
             !Number.isFinite(tx.betSnapshot.probability) || tx.betSnapshot.probability <= 0 || tx.betSnapshot.probability >= 1 ||
             tx.betSnapshot.stake !== tx.stake ||
+            (stakeTransactions.has(tx.betId) && ((stakeTransactions.get(tx.betId).actualStake !== undefined && stakeTransactions.get(tx.betId).actualStake !== tx.betSnapshot.stake) || (stakeTransactions.get(tx.betId).actualOdds !== undefined && stakeTransactions.get(tx.betId).actualOdds !== tx.betSnapshot.odds))) ||
             typeof tx.betSnapshot.placedAt !== "string" || !Number.isFinite(Date.parse(tx.betSnapshot.placedAt)) ||
             (tx.matchId !== undefined && tx.matchId !== tx.betSnapshot.matchId) ||
             (tx.side !== undefined && tx.side !== tx.betSnapshot.side) ||
