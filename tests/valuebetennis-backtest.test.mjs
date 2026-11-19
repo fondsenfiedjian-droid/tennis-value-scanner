@@ -21,7 +21,7 @@ test("Valuebetennis CSV maps source columns into chronological Elo rows", () => 
   assert.equal(parsed.rejectedByReason.winner_not_in_match, 1);
   assert.deepEqual(parsed.rows[0], {
     tourney_date: "20250102", tourney_id: "500", match_num: "1001",
-    winner_id: "11", loser_id: "22", score: "6-4 6-3", surface: "Hard", tour: "atp"
+    winner_id: "11", loser_id: "22", score: "6-4 6-3", surface: "Hard", tour: "atp", sourceOdds: { opening1: "1.80", opening2: "2.10", closing1: "1.75", closing2: "2.20", player1Id: "11", winnerId: "11" }
   });
   assert.equal(parsed.rows[1].surface, "Clay");
   assert.equal(parsed.rows[1].tour, "wta");
