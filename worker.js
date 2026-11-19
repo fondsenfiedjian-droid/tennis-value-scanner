@@ -54,16 +54,6 @@ function internalCacheRequest(request, pathname) {
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
-async function fetchUpstream(input, init = {}, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 function response(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -236,7 +226,7 @@ async function getPlayerProfile(playerId, apiKey) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached.json();
 
-    const res = await fetchUpstream("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
+    const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
       headers: { "X-API-Key": apiKey, "Accept": "application/json" }
     });
     if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
