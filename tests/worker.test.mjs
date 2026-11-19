@@ -84,7 +84,7 @@ function makeFakeIndexedDB(options = {}) {
 }
 
 const helperSource = workerSource.slice(0, workerSource.indexOf("async function getPlayerProfile"));
-const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON };
+const helperSandbox = { Response, URL, Request, Set, Object, Number, Math, JSON, AbortController, setTimeout, clearTimeout };
 vm.runInNewContext(
   helperSource + "\nglobalThis.testHelpers = { findElo, findEloForSurface, normalizeSurface, eloProbability, response };",
   helperSandbox
@@ -92,7 +92,7 @@ vm.runInNewContext(
 const { findElo, findEloForSurface, normalizeSurface, eloProbability, response } = helperSandbox.testHelpers;
 
 const workerSandbox = {
-  Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
+  Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent, AbortController, setTimeout, clearTimeout,
   caches: { default: { match: async () => null, put: async () => {} } },
   fetch: async () => { throw new Error("Unexpected upstream network call in validation test"); }
 };
@@ -123,6 +123,7 @@ test("odds endpoint validates method and requires the Apify secret", async () =>
 test("odds endpoint returns and caches only an array from the Apify dataset", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
+  let requestedSignal = null;
   let storedKey = null;
   let storedBody = null;
   let storedHeaders = null;
@@ -136,6 +137,7 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   workerSandbox.fetch = async (url, options) => {
     requestedUrl = url;
     requestedHeaders = options.headers;
+    requestedSignal = options.signal;
     return new Response(JSON.stringify(dataset), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   const result = await call("/odds");
@@ -149,6 +151,7 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/ZBWihC1oYU8Pq9uBo/items?clean=true&format=json&limit=1000");
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
+  assert.ok(requestedSignal instanceof AbortSignal, "upstream request must carry an abort signal");
   assert.equal(storedKey, "https://worker.test/odds");
   assert.equal(storedHeaders["cache-control"], "public, max-age=300");
   assert.equal(result.headers.get("X-Data-Cache"), "MISS");
