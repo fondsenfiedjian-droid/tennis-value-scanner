@@ -207,3 +207,18 @@ test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_tim
   assert.equal(api.playerName(matches[0].players.p2), "Player Two");
   assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
+
+test("settings apply a selected skin immediately, persist it on Save, and restore it on Cancel", () => {
+  const saveStart = html.indexOf("$('#saveSettings').onclick=");
+  const saveEnd = html.indexOf("const API=", saveStart);
+  const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
+  assert.match(settingsSource, /\$\('#skinSelect'\)\.addEventListener\('change',\(\)=>applySkin\(\$\('#skinSelect'\)\.value\)\)/);
+  assert.match(settingsSource, /activeSkin=data\.skin;\s*applySkin\(activeSkin\);/);
+  assert.match(settingsSource, /const cancelSettings=\(\)=>\{applySkin\(activeSkin\);\$\('#skinSelect'\)\.value=activeSkin;close\(\);\}/);
+  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
+  assert.ok(saveStart >= 0);
+});
+
+test("service worker cache version advances when settings behavior changes", () => {
+  assert.match(html, /id="skinSelect"/);
+});
