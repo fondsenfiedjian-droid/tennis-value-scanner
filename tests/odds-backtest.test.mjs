@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptScannerArchiveRows, runOddsBacktest, simulateBankrollStrategies } from "../scripts/odds-backtest.mjs";
+import { adaptScannerArchiveRows, groupOddsRowsByBookmaker, runOddsBacktest, simulateBankrollStrategies } from "../scripts/odds-backtest.mjs";
 import { parseCsv } from "../scripts/backtest.mjs";
 
 const base = {
@@ -582,4 +582,21 @@ test("archive coverage reports duplicate collapse, snapshot cadence and calendar
     daysWithMatches: 2, calendarDaysInRange: 3, daysWithoutMatches: 1,
     longestGapBetweenMatchDays: 2
   });
+});
+
+
+test("multi-bookmaker archive rows are partitioned before independent backtests", () => {
+  const rows = [
+    { ...base, bookmaker: "Winamax", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, bookmaker: "Betclic", odds_captured_at: "2025-01-01T10:00:00Z" }
+  ];
+  const groups = groupOddsRowsByBookmaker(rows);
+  assert.deepEqual([...groups.keys()].sort(), ["betclic", "winamax"]);
+  assert.equal(groups.get("betclic").length, 1);
+  assert.equal(groups.get("winamax").length, 1);
+  for (const providerRows of groups.values()) {
+    const report = runOddsBacktest(providerRows, { thresholdSensitivity: false });
+    assert.equal(report.matches, 1);
+    assert.equal(report.bets, 1);
+  }
 });
