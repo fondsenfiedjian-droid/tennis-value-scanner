@@ -36,3 +36,14 @@ test("odds status counts quote freshness from scrapedAt, not local fetch time", 
   assert.match(html, /актуальных котировок из/);
   assert.match(html, /Котировки получены, но свежих нет/);
 });
+
+test("manual and scheduled refresh bypass the recent schedule cache", () => {
+  assert.match(html, /async function loadMatches\(force=false\)/);
+  assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
+  assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
+  assert.match(html, /\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
+});
+
+test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
+  assert.match(html, /isFreshCacheTimestamp\(saved\.savedAt,ODDS_CACHE_TTL\)/);
+});
