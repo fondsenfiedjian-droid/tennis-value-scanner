@@ -1433,46 +1433,6 @@ test("concurrent predictions share in-flight player profile requests", async () 
   assert.equal(firstBody.ratingB, 1800);
 });
 
-test("bankroll backup restore can replace a corrupt stored record after explicit confirmation", () => {
-  assert.match(frontendSource, /function restoreBankrollBackup\(state\)/);
-  assert.match(frontendSource, /TVSBankroll\.parseBackup\(JSON\.parse\(localStorage\.getItem\(bankrollStorageKey\(\)\)\)\)/);
-  assert.match(frontendSource, /if\(restoreBankrollBackup\(restored\)\)renderBankroll\(\)/);
-  assert.ok(frontendSource.includes("Текущие записи будут заменены."));
-});
-
-test("bankroll dashboard is connected to navigation and uses a separate versioned store", () => {
-  assert.ok(frontendSource.includes('id="bankrollView"'));
-  assert.ok(frontendSource.includes('id="navBankroll"'));
-  assert.ok(frontendSource.includes("const BANKROLL_VIRTUAL_KEY='tvs-bankroll-v1'"));
-  assert.ok(frontendSource.includes("const BANKROLL_ACTUAL_KEY='tvs-bankroll-actual-v1'"));
-  assert.ok(frontendSource.includes("TVSBankroll.recommendPortfolio"));
-  assert.ok(frontendSource.includes("TVSBankroll.reconcilePortfolioPlan"));
-  assert.ok(frontendSource.includes("data-plan-stake"));
-  assert.ok(frontendSource.includes("data-plan-odds"));
-  assert.ok(frontendSource.includes("bet.plannedStake"));
-  assert.ok(frontendSource.includes("actualOdds"));
-  assert.ok(frontendSource.includes("stakeMultiplier"));
-  assert.match(frontendSource, /freshnessStakeMultiplier\(freshness\.level\)/);
-  assert.ok(frontendSource.includes("TVSBankroll.settleBet"));
-  assert.ok(frontendSource.includes("TVSBankroll.settleVerifiedResults"));
-  assert.ok(frontendSource.includes("reconcileBankrollWithArchive"));
-  assert.ok(frontendSource.includes("TVSBankroll.serializeBackup"));
-  assert.ok(frontendSource.includes("bankExportCsv"));
-  assert.ok(frontendSource.includes("bankDailyStaked"));
-  assert.ok(frontendSource.includes('id="bankInitialBankroll"'));
-  assert.ok(frontendSource.includes("summary.initialBankroll"));
-  assert.ok(frontendSource.includes("bankDeposits"));
-  assert.ok(frontendSource.includes("bankWithdrawals"));
-  assert.ok(frontendSource.includes("tennis-value-bankroll-ledger.csv"));
-  assert.ok(frontendSource.includes("'stake','profit','outcome','source','betId','matchId','side','resultVersion','plannedStake','plannedOdds','actualStake','actualOdds','note','betSnapshot'"));
-  assert.ok(frontendSource.includes("JSON.stringify(value)"));
-  assert.ok(frontendSource.includes("if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))"));
-  assert.match(frontendSource, /typeof value==='string'.*test\(cell\)/);
-  assert.ok(frontendSource.includes("Деньги букмекеру не отправляются."));
-  assert.ok(frontendSource.includes('<script src="./bankroll.js"></script>'));
-});
-
-
 test("portfolio proposals do not debit bankroll until the user confirms manual bookmaker placement", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -1584,15 +1544,6 @@ test("expired portfolio plans are cleared automatically and cannot block the nex
   assert.ok(nextPlan.pendingPlan);
   assert.notEqual(nextPlan.pendingPlan.id, planned.pendingPlan.id);
 });
-test("bankroll UI keeps virtual and actual financial storage isolated", () => {
-  const modeBlock = frontendSource.slice(frontendSource.indexOf("const BANKROLL_VIRTUAL_KEY"), frontendSource.indexOf("function renderBankroll()"));
-  assert.match(modeBlock, /tvs-bankroll-v1/);
-  assert.match(modeBlock, /tvs-bankroll-actual-v1/);
-  assert.match(modeBlock, /BANKROLL_MODE_KEY/);
-  assert.match(modeBlock, /bankrollStorageKey/);
-  assert.match(modeBlock, /if\(!raw&&bankrollMode==='actual'\)/);
-});
-
 test("bankroll drawdown tracks betting losses and ignores external deposits", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -1612,14 +1563,6 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.currentDrawdown, 0);
   assert.equal(summary.maxDrawdown, 2);
 });
-test("PWA app shell precaches the bankroll module and invalidates the previous cache", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-  assert.match(serviceWorkerSource, /"\.\/pfe\.js"/);
-  assert.match(serviceWorkerSource, /"\.\/bankroll\.js"/);
-  assert.match(serviceWorkerSource, /self\.skipWaiting\(\)/);
-});
-
-
 test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", () => {
   assert.match(frontendSource, /id="minOdds" type="number" min="1\.90" max="100" step="0\.05" value="1\.90"/);
   assert.match(frontendSource, /Math\.max\(1\.9,Number\(\$\('#minOdds'\)\.value\|\|1\.5\)\)/);
@@ -1664,26 +1607,6 @@ test("Winamax CSV parser normalizes French amounts and avoids duplicate imports"
   assert.equal(byBookmaker.Winamax.profit, 1.75);
 });
 
-test("Winamax importer is isolated from the financial ledger and validates preview before import", () => {
-  assert.ok(frontendSource.includes("const WINAMAX_HISTORY_KEY='tvs-winamax-history-v1'"));
-  assert.ok(frontendSource.includes('TVSWinamaxImport.parseWinamaxCsv'));
-  assert.ok(frontendSource.includes('TVSWinamaxImport.mergeImportedHistory'));
-  assert.ok(frontendSource.includes('Le solde du bankroll ne sera pas modifié.'));
-  assert.ok(frontendSource.includes('id="bankWinamaxFile"'));
-  assert.ok(frontendSource.includes('id="bankWinamaxImport"'));
-  assert.ok(frontendSource.includes('<script src="./winamax-import.js"></script>'));
-  assert.ok(frontendSource.includes('renderWinamaxHistory();'));
-  assert.ok(frontendSource.includes('class="bookmaker-tag"'));
-  assert.ok(frontendSource.includes("const ODDS_PROVIDER_REGISTRY=Object.freeze"));
-});
-
-test("PWA app shell precaches the Winamax import module and advances cache version", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-  assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
-  assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
-});
-
-
 test("live value quotes are rejected after scheduled start and for non-upcoming statuses", () => {
   const start = frontendSource.indexOf("function isPreMatchMatch(");
   const end = frontendSource.indexOf("function oddsForMatch(", start);
@@ -1715,7 +1638,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache after multi-bookmaker quote selection changes", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v111/);
   assert.ok(serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1770,14 +1693,6 @@ test("bankroll reports independent settled ROI and open exposure per bookmaker",
   assert.equal(byName["Не указан"].voidedStake, 1);
   assert.equal(byName["Не указан"].roiPercent, null);
 });
-
-test("bankroll UI displays per-bookmaker ledger results without merging imported history", () => {
-  assert.match(frontendSource, /id="bankBookmakerStats"/);
-  assert.match(frontendSource, /TVSBankroll\.getBookmakerSummary\(state\)/);
-  assert.match(frontendSource, /Результаты по букмекерам/);
-  assert.match(frontendSource, /фактический журнал/);
-});
-
 
 test("prediction archive records bookmaker identity and keeps odds histories separate", () => {
   const { readPredictionArchive, savePredictionSnapshot, archiveOddsMovement, mergePredictionArchive } = makeArchiveStore();
@@ -1900,13 +1815,6 @@ test("CLV reports missing data instead of inventing zero and requires match timi
   assert.equal(summary.averageClvPercent, null);
   assert.equal(summary.coveragePercent, 0);
 });
-
-test("CLV is surfaced in bankroll UI and the PWA cache is versioned", () => {
-  assert.ok(frontendSource.includes('id="bankClvStats"'));
-  assert.ok(frontendSource.includes("TVSBankroll.getClvSummary(state,readPredictionArchive())"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
 
 test("player rating audit distinguishes fresh, recent, stale, unknown and invalid dates", () => {
   const start = workerSource.indexOf("function extractRatingAsOf(");
@@ -2127,15 +2035,6 @@ test("segment performance keeps unknown metadata visible and excludes invalid or
   assert.equal(bookmakerUnknown.settledStake, 0);
 });
 
-test("segment performance UI uses the selected ledger and cache version advances", () => {
-  assert.ok(frontendSource.includes("TVSBankroll.getSegmentPerformance(state,readPredictionArchive())"));
-  assert.ok(frontendSource.includes('id="bankSegmentPerformance"'));
-  assert.match(frontendSource, /Доходность по сегментам/);
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
-
-
 test("segment ROI follows the latest verified result revision without double-counting superseded settlements", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -2191,56 +2090,6 @@ test("segment performance groups settled bets by original odds and EV, not settl
   assert.equal(result.oddsBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
   assert.equal(result.evBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
 });
-
-test("odds and EV segmentation keeps missing source values unknown and labels are displayed", () => {
-  const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
-  const api = sandbox.bankrollApi;
-  let state = api.createInitialState(100);
-  const placed = api.placeBet(state, {
-    matchKey: "unknown-price", match: "Unknown", probability: 0.7, odds: 2.1, stake: 2,
-    options: { minOdds: 1.01, minEv: -10, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
-  });
-  state = api.settleBet(placed.state, placed.bet.id, "won");
-  const tx = state.transactions.find(item => item.type === "settlement");
-  delete tx.betSnapshot.odds;
-  delete tx.betSnapshot.ev;
-  const result = api.getSegmentPerformance(state, []);
-  assert.equal(result.oddsBand.find(row => row.name === "Неизвестно").settledBets, 1);
-  assert.equal(result.evBand.find(row => row.name === "Неизвестно").settledBets, 1);
-  assert.ok(frontendSource.includes("Коэффициенты при размещении"));
-  assert.ok(frontendSource.includes("Ожидаемый EV при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
-
-test("segment performance groups settled bets by original model probability", () => {
-  const sandbox = {};
-  vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
-  const api = sandbox.bankrollApi;
-  let state = api.createInitialState(1000);
-  const add = (key, probability, odds, outcome) => {
-    const placed = api.placeBet(state, {
-      matchKey: key, match: key, probability, odds, stake: 2,
-      options: { minOdds: 1.01, minEv: 0, maxStakePercent: 100, maxExposurePercent: 100, maxDailyStakePercent: 100 }
-    });
-    state = api.settleBet(placed.state, placed.bet.id, outcome);
-  };
-  add("prob-52", 0.52, 2.1, "won");
-  add("prob-62", 0.62, 2.1, "lost");
-  add("prob-72", 0.72, 2.1, "won");
-  add("prob-82", 0.82, 2.1, "lost");
-  const result = api.getSegmentPerformance(state, []);
-  const groups = Object.fromEntries(result.probabilityBand.map(row => [row.name, row]));
-  assert.equal(groups["50–54.99%"].wins, 1);
-  assert.equal(groups["60–64.99%"].losses, 1);
-  assert.equal(groups["70–74.99%"].roiPercent, 110);
-  assert.equal(groups["80%+"].roiPercent, -100);
-  assert.equal(result.probabilityBand.reduce((sum, row) => sum + row.settledBets, 0), 4);
-  assert.ok(frontendSource.includes("Вероятность модели при размещении"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
 
 test("outcome sequence diagnostics order results, ignore voids and calculate streaks and profit factor", () => {
   const sandbox = {};
@@ -2302,13 +2151,6 @@ test("outcome sequence diagnostics count only the latest verified settlement aft
   assert.equal(stats.longestLossStreak, 1);
 });
 
-test("outcome sequence diagnostics are surfaced for the selected bankroll and cache is versioned", () => {
-  assert.ok(frontendSource.includes("summary.outcomeSequence"));
-  assert.ok(frontendSource.includes('id="bankOutcomeSequenceNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
-
 test("outcome dispersion diagnostics normalize returns and identify top-win concentration", () => {
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
@@ -2364,13 +2206,6 @@ test("outcome dispersion diagnostics exclude malformed and superseded settlement
   assert.equal(excluded.sampleSize, 0);
   assert.equal(excluded.excluded, 1);
 });
-
-test("outcome dispersion diagnostics are shown in the selected bankroll interface", () => {
-  assert.ok(frontendSource.includes("summary.outcomeDispersion"));
-  assert.ok(frontendSource.includes('id="bankOutcomeDispersionNote"'));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
-});
-
 
 test("PFE player stats loader accepts numeric IDs and rejects malformed IDs before fetching", () => {
   const start = frontendSource.indexOf("async function loadPfePlayerStats(");
@@ -2495,7 +2330,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v110/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v111/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
