@@ -384,6 +384,11 @@
     if(!p||typeof p!=='object') return 'Игрок не указан';
     return p.name||p.full_name||p.display_name||[p.first_name,p.last_name].filter(Boolean).join(' ')||p.player_name||'Игрок не указан';
   }
+  function getPlayerId(p){
+    const raw=p&&typeof p==='object'?(p.id??p.playerId??p.player_id??p.playerID):null;
+    const id=Number(raw);
+    return Number.isSafeInteger(id)&&id>0?id:null;
+  }
   function matchDate(m){
     const raw=m.scheduled_time||m.scheduled_at||m.starts_at||m.start_time||m.match_time||m.date||m.live_at;
     if(!raw)return null;
@@ -628,7 +633,8 @@
       const oddsObservedAt=Date.now();
       const selectedQuotes=[quoteA,quoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
-      const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-event-id-a="'+escapeHtml(quoteA?.eventId||'')+'" data-event-id-b="'+escapeHtml(quoteB?.eventId||'')+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
+      const playerId1=getPlayerId(p1),playerId2=getPlayerId(p2);
+      const ids=(playerId1&&playerId2)?' data-player-a="'+escapeHtml(playerId1)+'" data-player-b="'+escapeHtml(playerId2)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-event-id-a="'+escapeHtml(quoteA?.eventId||'')+'" data-event-id-b="'+escapeHtml(quoteB?.eventId||'')+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
       return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-bottom odds-visible">'+oddsHtml+'</div><div class="match-details"><div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
@@ -803,8 +809,8 @@
     const matchPlayers=match.players||{};
     const sourceA=matchPlayers.p1||match.player1||{};
     const sourceB=matchPlayers.p2||match.player2||{};
-    const playerIdA=Number.isSafeInteger(Number(sourceA.id))&&Number(sourceA.id)>0?Number(sourceA.id):null;
-    const playerIdB=Number.isSafeInteger(Number(sourceB.id))&&Number(sourceB.id)>0?Number(sourceB.id):null;
+    const playerIdA=getPlayerId(sourceA);
+    const playerIdB=getPlayerId(sourceB);
     const date=archiveMatchDate(match);
     const captureStatus=archiveCaptureStatus(match);
     const rawMatchId=match.id??match.match_id;
@@ -1548,7 +1554,7 @@
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       const el=document.getElementById('model-'+i);
       const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9);
-      return a&&b&&a.id&&b.id&&eligibleOdds&&el?.hasAttribute('data-player-a');
+      return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
     // Reuse every valid local prediction; only three cache misses may request profiles.
     const cachedCandidates=[],uncachedCandidates=[];
