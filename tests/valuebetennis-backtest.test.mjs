@@ -139,3 +139,16 @@ test("paired Elo and Pinnacle comparison uses the same evaluated matches and ori
   assert.match(comparison.opening.note, /same evaluated matches/);
   assert.match(comparison.opening.note, /not betting ROI/);
 });
+
+test("paired comparison reorients canonical model probabilities to source player one by ID", () => {
+  const csv = [
+    header,
+    "9401,2025-01-01,740,atp,Hard,20,10,20,6-4 6-4,1.5,2.5,1.45,2.6",
+    "9402,2025-01-02,741,atp,Hard,20,10,20,6-4 6-4,1.5,2.5,1.45,2.6"
+  ].join("\n");
+  const report = runValuebetennisBacktest(csv, { evaluationStart: "20250102" });
+  const comparison = report.pairedMarketComparison.atp.opening;
+  assert.equal(comparison.matches, 1);
+  assert.ok(comparison.models.elo.brier < 0.25);
+  assert.ok(comparison.market.brier < 0.25);
+});
