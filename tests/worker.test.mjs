@@ -381,6 +381,50 @@ test("matches rejects an excessive result limit before upstream access", async (
   assert.equal(result.status, 400);
 });
 
+test("matches fresh=true bypasses Worker cache and refreshes the canonical cached schedule", async () => {
+  let cacheReads = 0;
+  let cacheWrites = 0;
+  let upstreamUrl = "";
+  let storedBody = null;
+  let storedHeaders = null;
+  let storedKey = null;
+  workerSandbox.caches.default.match = async key => {
+    cacheReads++;
+    assert.equal(key.url, "https://worker.test/matches?status=upcoming&draw=singles&limit=200");
+    return storedBody === null ? null : new Response(storedBody, { status: 200, headers: storedHeaders });
+  };
+  workerSandbox.caches.default.put = async (key, value) => {
+    cacheWrites++;
+    storedKey = key.url;
+    storedHeaders = Object.fromEntries(value.headers.entries());
+    storedBody = await value.text();
+  };
+  workerSandbox.fetch = async url => {
+    upstreamUrl = url;
+    return new Response(JSON.stringify({ data: [], meta: { count: 0 } }), { status: 200 });
+  };
+  const refreshed = await call("/matches?status=upcoming&draw=singles&limit=200&fresh=true");
+  assert.equal(refreshed.status, 200);
+  assert.equal(cacheReads, 0);
+  assert.equal(cacheWrites, 1);
+  assert.equal(storedKey, "https://worker.test/matches?status=upcoming&draw=singles&limit=200");
+  assert.equal(upstreamUrl, "https://api.livetennisapi.com/api/public/v1/matches?status=upcoming&draw=singles&limit=200");
+  assert.equal(refreshed.headers.get("X-Data-Cache"), "MISS");
+  assert.deepEqual(JSON.parse(JSON.stringify(await refreshed.json())), { data: [], meta: { count: 0 } });
+
+  const cached = await call("/matches?status=upcoming&draw=singles&limit=200");
+  assert.equal(cached.status, 200);
+  assert.equal(cacheReads, 1);
+  assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
+  assert.deepEqual(JSON.parse(JSON.stringify(await cached.json())), { data: [], meta: { count: 0 } });
+});
+
+test("matches rejects invalid fresh cache-bypass flags", async () => {
+  const result = await call("/matches?fresh=yes");
+  assert.equal(result.status, 400);
+  assert.equal((await result.json()).error, "fresh must be true or false");
+});
+
 test("matches rejects an unsupported tour filter", async () => {
   const result = await call("/matches?tour=invalid");
   assert.equal(result.status, 400);
