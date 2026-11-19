@@ -433,12 +433,16 @@
     if(node)node.textContent=label;
   }
   function extractMatches(payload){
-    if(Array.isArray(payload)) return payload.filter(x=>x&&typeof x==='object'&&x.players);
-    if(!payload||typeof payload!=='object') return [];
+    const isMatch=value=>value&&typeof value==='object'&&!Array.isArray(value)&&(value.players||(value.player1&&value.player2));
+    if(Array.isArray(payload)) return payload.filter(isMatch);
+    if(!payload||typeof payload!=='object') return null;
     for(const key of ['matches','data','results','events']){
-      if(payload[key]!==undefined){const found=extractMatches(payload[key]);if(found.length)return found;}
+      if(payload[key]!==undefined){
+        const found=extractMatches(payload[key]);
+        if(found!==null)return found;
+      }
     }
-    return [];
+    return null;
   }
   function playerName(p){
     if(typeof p==='string') return p;
@@ -2133,7 +2137,7 @@
     const oddsUpdated=await loadOdds();
     try{
       // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
-      if(!force&&saved&&Array.isArray(saved.matches)&&saved.matches.length&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
+      if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
@@ -2144,14 +2148,14 @@
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
-      if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
+      if(matches===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
       $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
-      if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
+      if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
