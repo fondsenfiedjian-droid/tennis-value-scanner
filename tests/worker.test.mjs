@@ -171,6 +171,32 @@ test("odds endpoint rejects malformed non-array Apify responses instead of cachi
   assert.equal(cacheWrites, 0);
 });
 
+test("odds endpoint forwards Apify rate-limit retry timing without exposing upstream body", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response("private upstream detail", {
+    status: 429,
+    headers: { "Retry-After": "120" }
+  });
+  const result = await call("/odds");
+  assert.equal(result.status, 429);
+  assert.equal(result.headers.get("Retry-After"), "120");
+  const payload = await result.json();
+  assert.equal(payload.upstreamStatus, 429);
+  assert.equal(payload.error, "Apify request failed");
+  assert.equal(JSON.stringify(payload).includes("private upstream detail"), false);
+});
+
+test("odds endpoint reports malformed JSON and never caches it", async () => {
+  let cacheWrites = 0;
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => { cacheWrites++; };
+  workerSandbox.fetch = async () => new Response("{not-json", { status: 200 });
+  const result = await call("/odds");
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).error, "Apify dataset response was not valid JSON");
+  assert.equal(cacheWrites, 0);
+});
+
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
