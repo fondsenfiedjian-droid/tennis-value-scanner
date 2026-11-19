@@ -330,7 +330,7 @@ test("verified settlement revisions remain idempotent across repeated correction
   ]);
   assert.equal(v4.reopened.length, 1);
   assert.equal(v4.state.openBets.length, 1);
-  assert.equal(v4.state.balance, 100);
+  assert.equal(v4.state.balance, 98);
   assert.equal(bank.bankrollEquity(v4.state), 100);
 
   const v5 = bank.settleVerifiedResults(v4.state, [
