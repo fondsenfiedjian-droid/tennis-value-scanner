@@ -281,7 +281,10 @@ export default {
           }
         });
         await cache.put(cacheKey, cacheResponse);
-        return response(payload);
+        return response(payload, 200, {
+          "Cache-Control": "public, max-age=300",
+          "X-Data-Cache": "MISS"
+        });
       } catch (error) {
         return response({ error: "Could not retrieve odds from Apify" }, 502);
       }
