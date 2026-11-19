@@ -557,3 +557,29 @@ test("scanner archive pairs both sides only within the same bookmaker", () => {
   assert.equal(adapted.ignored, 2);
   assert.deepEqual(adapted.rows.map(item => item.bookmaker).sort(), ["betclic", "winamax"]);
 });
+
+
+test("archive coverage reports duplicate collapse, snapshot cadence and calendar gaps", () => {
+  const rows = [
+    { ...base, match_id: "cadence-1", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "cadence-1", odds_captured_at: "2025-01-01T10:00:00Z" },
+    { ...base, match_id: "cadence-1", odds_captured_at: "2025-01-01T11:30:00Z" },
+    { ...base, match_id: "cadence-2", match_start: "2025-01-03T12:00:00Z",
+      odds_captured_at: "2025-01-03T10:00:00Z", player_a: "Player C", player_b: "Player D" }
+  ];
+  const coverage = runOddsBacktest(rows, { thresholdSensitivity: false }).archiveCoverage;
+  assert.equal(coverage.uniqueMatches, 2);
+  assert.equal(coverage.validSnapshots, 3);
+  assert.equal(coverage.duplicateSnapshotsCollapsed, 1);
+  assert.deepEqual(coverage.snapshotsPerMatch, {
+    min: 1, median: 1.5, max: 2, matchesWithSingleSnapshot: 1
+  });
+  assert.deepEqual(coverage.snapshotCadenceMinutes, {
+    intervals: 1, min: 90, median: 90, max: 90,
+    gapsOver2Hours: 0, gapsOver6Hours: 0, gapsOver24Hours: 0
+  });
+  assert.deepEqual(coverage.calendarCoverage, {
+    daysWithMatches: 2, calendarDaysInRange: 3, daysWithoutMatches: 1,
+    longestGapBetweenMatchDays: 2
+  });
+});
