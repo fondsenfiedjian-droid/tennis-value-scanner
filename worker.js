@@ -565,7 +565,7 @@ export default {
 
       const parseDecimal = value => {
         if (typeof value !== "number" && typeof value !== "string") return null;
-        if (typeof value === "string" && !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(value.trim())) return null;
+        if (typeof value === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value.trim())) return null;
         const number = Number(value);
         return Number.isFinite(number) ? number : null;
       };
