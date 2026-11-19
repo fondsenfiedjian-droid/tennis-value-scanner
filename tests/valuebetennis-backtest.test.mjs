@@ -136,6 +136,11 @@ test("paired Elo and Pinnacle comparison uses the same evaluated matches and ori
   assert.ok(comparison.opening.market.brier >= 0 && comparison.opening.market.brier <= 1);
   assert.ok(comparison.opening.models.elo.brier >= 0 && comparison.opening.models.elo.brier <= 1);
   assert.equal(typeof comparison.opening.models.elo.brierDifferenceVsMarket, "number");
+  assert.ok(comparison.opening.models.elo.brierDifferenceVsMarketCI95.lower <= comparison.opening.models.elo.brierDifferenceVsMarket);
+  assert.ok(comparison.opening.models.elo.brierDifferenceVsMarketCI95.upper >= comparison.opening.models.elo.brierDifferenceVsMarket);
+  assert.ok(comparison.opening.models.elo.logLossDifferenceVsMarketCI95.lower <= comparison.opening.models.elo.logLossDifferenceVsMarket);
+  assert.ok(comparison.opening.models.elo.logLossDifferenceVsMarketCI95.upper >= comparison.opening.models.elo.logLossDifferenceVsMarket);
+  assert.equal(comparison.closing.models.elo.brierDifferenceVsMarketCI95, null);
   assert.equal(comparison.opening.calibration.market.bins.reduce((sum, bin) => sum + bin.matches, 0), 2);
   assert.equal(comparison.opening.calibration.models.elo.bins.reduce((sum, bin) => sum + bin.matches, 0), 2);
   assert.ok(comparison.opening.calibration.market.expectedCalibrationErrorPct >= 0);
