@@ -52,10 +52,36 @@ function marketBenchmark(rows, fields) {
 function pairedModelMarketComparison(predictions, period) {
   const fields = ODDS_FIELDS[period];
   const names = ["elo", "surface", "form", "h2h", "combined"];
+  const makeCalibration = () => Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 }));
+  const addCalibration = (bins, probability, outcome) => {
+    const favouriteProbability = Math.max(probability, 1 - probability);
+    const favouriteOutcome = probability > 0.5 ? outcome : probability < 0.5 ? 1 - outcome : 0.5;
+    const index = Math.min(9, Math.max(0, Math.floor((favouriteProbability - 0.5) * 20)));
+    const bin = bins[index];
+    bin.n++;
+    bin.predicted += favouriteProbability;
+    bin.wins += favouriteOutcome;
+  };
+  const formatCalibration = (bins, count) => {
+    const used = bins.filter(bin => bin.n);
+    const ece = used.reduce((sum, bin) => sum + bin.n * Math.abs(bin.predicted / bin.n - bin.wins / bin.n), 0) / (count || 1);
+    return {
+      expectedCalibrationErrorPct: count ? Number((ece * 100).toFixed(2)) : null,
+      bins: bins.map((bin, index) => ({
+        range: String(50 + index * 5) + "-" + String(55 + index * 5) + "%",
+        matches: bin.n,
+        predictedFavouritePct: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
+        observedFavouriteWinPct: bin.n ? Number((bin.wins / bin.n * 100).toFixed(2)) : null,
+        sampleQuality: bin.n < 30 ? "low" : bin.n < 100 ? "limited" : "larger_sample"
+      }))
+    };
+  };
   const makeBucket = () => ({
     count: 0, missing: 0,
     market: { brier: 0, logLoss: 0 },
-    models: Object.fromEntries(names.map(name => [name, { brier: 0, logLoss: 0 }]))
+    marketCalibration: makeCalibration(),
+    models: Object.fromEntries(names.map(name => [name, { brier: 0, logLoss: 0 }])),
+    modelCalibration: Object.fromEntries(names.map(name => [name, makeCalibration()]))
   });
   const overall = makeBucket();
   const byYear = new Map(), bySurface = new Map(), byYearAndSurface = new Map();
@@ -84,6 +110,7 @@ function pairedModelMarketComparison(predictions, period) {
       bucket.count++;
       bucket.market.brier += marketBrier;
       bucket.market.logLoss += marketLogLoss;
+      addCalibration(bucket.marketCalibration, marketP, player1Won);
       for (const name of names) {
         // Model probabilities are always oriented to the lower-ID player.
         // Re-orient to Valuebetennis player1 without consulting the match result.
@@ -92,6 +119,7 @@ function pairedModelMarketComparison(predictions, period) {
         const p = clamp(modelP1);
         bucket.models[name].brier += (p - player1Won) ** 2;
         bucket.models[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
+        addCalibration(bucket.modelCalibration[name], p, player1Won);
       }
     }
   }
@@ -105,6 +133,10 @@ function pairedModelMarketComparison(predictions, period) {
       matches: bucket.count,
       matchesMissingOrInvalidOdds: bucket.missing,
       market,
+      calibration: {
+        market: formatCalibration(bucket.marketCalibration, bucket.count),
+        models: Object.fromEntries(names.map(name => [name, formatCalibration(bucket.modelCalibration[name], bucket.count)]))
+      },
       models: Object.fromEntries(names.map(name => {
         const model = metrics(bucket.models[name]);
         return [name, {
