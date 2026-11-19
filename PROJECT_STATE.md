@@ -1,0 +1,156 @@
+# Tennis Value Scanner — Project State
+
+Last updated: 2026-11-19  
+Repository: https://github.com/fondsenfiedjian-droid/tennis-value-scanner  
+Default branch: `main`
+
+This file is the durable handoff record for future development sessions. Update it whenever architecture, deployment state, user-approved scope, or the next priority changes. Treat repository code and this document as the source of truth; do not rely on conversational memory alone.
+
+## 1. Product purpose and scope
+
+Tennis Value Scanner is an analytical PWA for tennis match discovery, bookmaker odds comparison, probability estimation, and value-bet research.
+
+Primary priorities:
+1. Reliable, visible bookmaker odds and clear quote freshness/provenance.
+2. Probability estimates and EV calculation that do not confuse displayed odds with eligible odds.
+3. Prediction quality: Brier score, LogLoss, calibration, CLV, chronological holdouts, and honest sample-size warnings.
+4. Practical app usability on mobile.
+
+Bankroll/ledger is auxiliary: record actual bets, profit, and open obligations. Winamax CSV import is for manual reconciliation only.
+
+Explicit product constraints:
+- No automatic bet placement.
+- No automatic money movement or bookmaker account control.
+- No automatic stake changes, daily stop-loss, or blocking bets after losing days.
+- Do not imply that Winamax balance is available through an API.
+- Do not migrate hosting or purchase data/services without explicit user approval.
+- Keep analytical outputs separate from proof of profitability.
+
+## 2. Repository architecture
+
+Key files:
+- `index.html` — main PWA interface, match cards, odds display, model UI, settings and skin selection.
+- `worker.js` — Cloudflare Worker API proxy, including odds and player-stat routes.
+- `pfe.js` — Prediction Fusion Engine.
+- `bankroll.js` — ledger, bankroll and performance diagnostics.
+- `winamax-import.js` — manual Winamax CSV import.
+- `sw.js` — PWA service-worker shell/cache.
+- `wrangler.toml` — Worker configuration.
+- `scripts/backtest.mjs` — historical prediction backtest.
+- `scripts/odds-backtest.mjs` — historical odds/EV/CLV backtest.
+- `scripts/valuebetennis-backtest.mjs` — Valuebetennis CSV import and model-vs-market comparison.
+- `tests/` — regression tests for app UI, Worker, bankroll, PFE and backtests.
+- `.github/workflows/tests.yml` — GitHub Actions regression workflow.
+
+External services:
+- PWA (Netlify): https://fascinating-paprenjak-1aa9b3.netlify.app
+- Netlify project: `fascinating-paprenjak-1aa9b3`
+- Worker: https://tennis-value-api.fonds-enfiedjian.workers.dev
+- Worker name: `tennis-value-api`
+- Netlify billing/credits: https://app.netlify.com/account/billing
+
+Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Never expose secret values in code, logs, documentation, or chat.
+
+## 3. Current repository state (2026-11-19)
+
+Latest known main commit:
+- `28083a3097a6f53f29c39beaff3cdb67aca6893f`
+- Commit message: `Expect v103 PWA shell cache`
+
+Latest GitHub Actions run:
+- Run ID: `44503173521`
+- Result: completed successfully.
+- Workflow: Regression tests.
+- The preceding cache-bump commit run `44503164672` failed because ten tests still asserted older service-worker cache-version strings while the cache had already advanced. The immediately following commit updated the expected version; its run succeeded. Treat the earlier failure as a sequencing mismatch, not as proof that all tests are failing.
+- Latest recorded suite size: 290 tests; verify current logs before quoting a fresh pass count.
+
+Recent app changes in GitHub:
+- Best available bookmaker quote is displayed directly on the match card, without expanding details.
+- Displaying an odds quote is separate from EV eligibility: EV still uses only quotes inside configured minimum/maximum odds filters.
+- Missing odds and odds outside the EV range have distinct explanatory states.
+- Odds feed status reports quote count and retrieval/freshness information; stale or unavailable feed states are surfaced.
+- API connection state is dynamic rather than a permanently optimistic “connected” label.
+- Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
+- Service-worker cache version is v103.
+- Regression coverage added for odds display, EV filtering, cache-key consistency, API status and odds freshness.
+
+Important deployment distinction:
+- Code commits to GitHub do not mean the live Netlify PWA has been updated.
+- Netlify production deploys were previously paused due operational credits. Current deployment status must be checked before saying that new UI/code is live.
+- A successful GitHub Actions run validates repository tests, not the live Netlify site or live bookmaker feed.
+- Live Worker/API and quote feed have not been conclusively verified in the latest session. Do not claim live odds are currently arriving until checked.
+
+## 4. Odds and feed rules
+
+- Worker odds route requires `APIFY_TOKEN`.
+- Worker reads Apify dataset `ZBWihC1oYU8Pq9uBo` and caches responses for five minutes.
+- App freshness logic uses `scrapedAt` as scrape-time evidence, not as the exact bookmaker quote-publication or quote-change timestamp.
+- App treats quotes as fresh for up to 90 minutes and requires the two sides of a bookmaker pair to be within 30 minutes of each other.
+- Never present stale, incomplete, mismatched-bookmaker or unverified quote pairs as valid value opportunities.
+- Keep source provenance visible; distinguish scrape time, observation time, model calculation time and archive time.
+
+## 5. Prediction Fusion Engine (PFE)
+
+Implemented:
+- General Elo and bookmaker-market consensus are active model sources.
+- Correlated model inputs are grouped to avoid double counting.
+- PFE status distinguishes provisional, conflict and consensus.
+- Seeded Monte Carlo with configurable simulation count and uncertainty interval.
+- Historical model evaluation uses verified pre-match records and chronological holdout; candidate weights are diagnostic and are not automatically applied.
+- Recent-form and serve/return adapters require strict validation and sample thresholds.
+- Exact hold, tiebreak, set and match probabilities are calculated only when format/input requirements are verified; scenario outputs are diagnostic and must not silently alter EV or stakes.
+- Market comparison uses same-bookmaker paired quotes and strict match/result/time identity checks.
+- Brier, LogLoss, calibration and segment diagnostics are available.
+
+Cautions:
+- Elo trained from a cold start in 2026 is exploratory without prior-season warmup.
+- Heuristic Elo variants are not trained production models.
+- A market benchmark is not proof that a user can obtain that exact price.
+- Never claim a model is profitable based only on retrospective fit or a small sample.
+
+## 6. Historical data and licensing
+
+Valuebetennis:
+- Source: https://www.valuebetennis.com/en/donnees.htm
+- Licence: CC BY 4.0; attribute the source when reusing.
+- Annual CSVs contain ATP/WTA singles history and Pinnacle opening/last pre-match odds.
+- Dataset has one bookmaker and no complete quote-timestamp history; it is useful for descriptive market/model benchmarking, not a complete multi-bookmaker execution/CLV proof.
+
+Uploaded 2026 file previously validated:
+- 80,836 rows, 2026-01-01 through 2026-11-19.
+- 76,638 standard completed matches; 4,198 nonstandard outcomes excluded from standard benchmark.
+- 45,599 valid two-sided opening odds; 43,296 closing odds.
+- Parsed and diagnosed with Python; the full file was not run through the Node CLI at that time. Do not claim otherwise.
+- Do not commit user-provided historical archives to the public repository unless explicitly approved.
+
+Tennis-Data.co.uk terms were found to restrict use to private individuals and prohibit commercial product/model-training use without written permission. Do not ingest/train on that source without permission.
+
+## 7. UI design decisions
+
+- Default black skin remains unchanged.
+- Experimental “Olive Court” skin: matte olive/felt background, no leaf graphics or patterns; yellow, terracotta and burgundy accents; neutral chrome borders.
+- Settings include a skin selector; selection persists after Save.
+- The selector is in repository code; do not claim it is live until Netlify deployment is confirmed.
+- Financial green/red semantics remain reserved for financial results, not general decoration.
+
+## 8. Next actions — ordered
+
+1. Verify latest GitHub Actions result and inspect any current failures before making more changes.
+2. Verify current Netlify credit/deploy state and production deployment without changing hosting or spending money.
+3. Verify Worker health and odds route, then inspect the actual returned Apify item schema and timestamps. Do not assume `scrapedAt` exists or is reliable without checking live payloads.
+4. Once deployment is possible, deploy the current tested `main` build and confirm the live PWA shows odds, freshness and API status correctly.
+5. Improve app usability based on observed live behavior, not speculative feature construction.
+6. Continue prediction-quality work only with verified data, chronological splits and honest uncertainty/sample warnings.
+
+## 9. Development protocol
+
+For each work session:
+1. Read this file and inspect current `main` before changing anything.
+2. Identify one concrete next task and its acceptance criteria.
+3. Inspect relevant source and tests; avoid editing based only on remembered summaries.
+4. Make a focused change.
+5. Run relevant tests or GitHub Actions and inspect failures.
+6. Update this file with commit SHA, validation result, deployment state and next action.
+7. Report clearly what changed in GitHub, what passed, and what is not deployed/verified.
+
+Never invent test results, data availability, live API status, deployments, URLs, or file contents. Keep secrets out of documentation.
