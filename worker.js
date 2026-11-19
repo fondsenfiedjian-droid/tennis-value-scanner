@@ -265,10 +265,14 @@ export default {
         }
 
         const items = await upstream.json();
+        if (!Array.isArray(items)) {
+          return response({ error: "Apify dataset response was not an array" }, 502);
+        }
         const payload = {
           source: "Apify Winamax dataset",
           datasetId: APIFY_DATASET_ID,
-          count: Array.isArray(items) ? items.length : 0,
+          retrievedAt: new Date().toISOString(),
+          count: items.length,
           items
         };
         const cacheResponse = new Response(JSON.stringify(payload), {
