@@ -359,7 +359,15 @@
     }
   });
   const modal=$('#settingsModal');
-  const open=()=>modal.classList.add('show'), close=()=>modal.classList.remove('show');
+  const close=()=>modal.classList.remove('show');
+  function populateSettingsForm(){
+    const current=readSettings();
+    ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(current[id]!==undefined)$('#'+id).value=current[id];});
+    $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
+    $('#skinSelect').value=current.skin==='olive'?'olive':'black';
+    if(Array.isArray(current.tours))tourChecks.forEach(input=>input.checked=current.tours.includes(input.dataset.tour));
+  }
+  const open=()=>{populateSettingsForm();modal.classList.add('show');};
   const cancelSettings=()=>{applySkin(activeSkin);$('#skinSelect').value=activeSkin;close();};
   $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=cancelSettings;
   modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
@@ -424,7 +432,10 @@
       localStorage.setItem('tvs-settings',JSON.stringify(data));
       localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
       const savedAgain=readSettings();
-      if(normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin)throw new Error('Настройки не сохранились');
+      if(Number(savedAgain.minEv)!==minEv||Number(savedAgain.minOdds)!==minOdds||
+         Number(savedAgain.maxOdds)!==maxOdds||Number(savedAgain.bestBetMinOdds)!==bestBetMinOdds||
+         normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin)
+         throw new Error('Настройки не сохранились');
     }catch(error){
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
       return;
@@ -481,6 +492,15 @@
   let cachedOddsSavedAt = 0;
   let oddsRetrievedAt = null;
   let oddsLoadError = null;
+  let oddsDiagnostics = null;
+  function oddsDiagnosticsText(){
+    if(!oddsDiagnostics||typeof oddsDiagnostics!=='object')return '';
+    const d=oddsDiagnostics,outcomes=d.outcomeCounts||{};
+    const books=Array.isArray(d.bookmakers)?d.bookmakers.join(', '):'не определены';
+    return ' · диагностика источника: записей '+(Number(d.itemCount)||0)+', букмекеры: '+books+
+      ', исходы 1/2: '+(Number(outcomes.home)||0)+'/'+(Number(outcomes.away)||0)+
+      ', корректных кэф.: '+(Number(d.validDecimalOdds)||0)+', свежих отметок: '+(Number(d.freshScrapedAt)||0);
+  }
   function oddsFreshnessSummary(now=Date.now()){
     const timestamps=cachedOdds.map(item=>Date.parse(item?.scrapedAt)).filter(value=>Number.isFinite(value)&&value<=now+5*60*1000);
     const fresh=timestamps.filter(value=>now-value<=90*60*1000).length;
@@ -497,7 +517,7 @@
     if(oddsLoadError){
       node.textContent=(cachedOdds.length
         ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
-        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError+sourceSeen;
+        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError+sourceSeen+oddsDiagnosticsText();
       return;
     }
     if(cachedOdds.length){
@@ -506,7 +526,7 @@
         :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen;
       return;
     }
-    node.textContent='Источник Winamax ответил без котировок'+sourceSeen+'. Проверь доступность источника и расписание.';
+    node.textContent='Источник Winamax ответил без котировок'+sourceSeen+'. Проверь доступность источника и расписание.'+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
@@ -516,6 +536,7 @@
         cachedOdds=item.odds;
         cachedOddsSavedAt=item.savedAt;
         oddsRetrievedAt=typeof item.retrievedAt==='string'&&Number.isFinite(Date.parse(item.retrievedAt))?item.retrievedAt:null;
+         oddsDiagnostics=item.diagnostics&&typeof item.diagnostics==='object'?item.diagnostics:null;
       }else localStorage.removeItem('tvs-odds-cache');
     }
   }catch(e){localStorage.removeItem('tvs-odds-cache');}
@@ -531,7 +552,8 @@
       const retrievedTimestamp=Date.parse(payload.retrievedAt||'');
       oddsRetrievedAt=Number.isFinite(retrievedTimestamp)&&retrievedTimestamp<=Date.now()+5*60*1000?new Date(retrievedTimestamp).toISOString():null;
       oddsLoadError=null;
-      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds}));
+      oddsDiagnostics=payload.diagnostics&&typeof payload.diagnostics==='object'?payload.diagnostics:null;
+      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds,diagnostics:oddsDiagnostics}));
       renderOddsStatus();
       return true;
     }catch(err){
