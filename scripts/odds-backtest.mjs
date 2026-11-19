@@ -44,7 +44,7 @@ export function adaptScannerArchiveRows(rows) {
     const bookmaker = String(row.bookmaker || row.source || row.provider || "").trim().toLowerCase();
     let invalidReason = null;
     if (rawId && fallbackId && rawId !== fallbackId) invalidReason = "conflicting_match_ids";
-    else if (!id || id.length > 256 || /[\\u0000-\\u001f\\u007f]/.test(id)) invalidReason = "invalid_match_id";
+    else if (!id || id.length > 256 || /[\u0000-\u001f\u007f]/.test(id)) invalidReason = "invalid_match_id";
     else if (outcome !== "completed" || ![1, 2].includes(winnerNumber)) invalidReason = "unsupported_or_invalid_result";
     else if (start === null) invalidReason = "invalid_match_date";
     else if (!Number.isSafeInteger(captured) || captured <= 0) invalidReason = "invalid_capture_timestamp";
