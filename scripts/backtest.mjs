@@ -358,22 +358,33 @@ export function runBacktest(matches, options = {}) {
         raw, calibrated: scoreFavouriteCalibration(calibratedObservations)
       });
 
-      const surfaces = [...new Set(training.map(item => item.surface))].sort();
+      const surfaces = [...new Set([...training, ...evaluation].map(item => item.surface))].sort();
       for (const surfaceName of surfaces) {
         const surfaceTraining = training.filter(item => item.surface === surfaceName);
         const surfaceEvaluation = evaluation.filter(item => item.surface === surfaceName);
+        if (surfaceEvaluation.length === 0) continue;
+        const rawSurface = scoreFavouriteCalibration(surfaceEvaluation);
         const surfaceCalibrator = fitLogisticCalibration(surfaceTraining);
-        if (!surfaceCalibrator || surfaceEvaluation.length === 0) continue;
+        const surfaceBase = {
+          trainingYear, trainingYears, evaluationYear, candidate: name, scope: "surface",
+          surface: surfaceName, trainingMatches: surfaceTraining.length,
+          trainingSampleQuality: surfaceTraining.length < 30 ? "low" : surfaceTraining.length < 100 ? "limited" : surfaceTraining.length < 200 ? "limited_for_fit" : "larger_sample",
+          evaluationSampleQuality: surfaceEvaluation.length < 30 ? "low" : surfaceEvaluation.length < 100 ? "limited" : "larger_sample",
+          raw: rawSurface
+        };
+        if (!surfaceCalibrator) {
+          calibrationValidation.push({
+            ...surfaceBase,
+            status: surfaceTraining.length < 200 ? "insufficient_surface_training_data" : "surface_calibration_fit_failed"
+          });
+          continue;
+        }
         const transformed = surfaceEvaluation.map(item => ({
           probability: logistic(surfaceCalibrator.intercept + surfaceCalibrator.slope * logit(item.probability)),
           outcome: item.outcome
         }));
         calibrationValidation.push({
-          trainingYear, trainingYears, evaluationYear, candidate: name, scope: "surface",
-          surface: surfaceName, trainingMatches: surfaceTraining.length,
-          trainingSampleQuality: surfaceTraining.length < 30 ? "low" : surfaceTraining.length < 100 ? "limited" : "larger_sample",
-          evaluationSampleQuality: surfaceEvaluation.length < 30 ? "low" : surfaceEvaluation.length < 100 ? "limited" : "larger_sample",
-          raw: scoreFavouriteCalibration(surfaceEvaluation),
+          ...surfaceBase,
           calibrated: scoreFavouriteCalibration(transformed),
           calibrator: surfaceCalibrator
         });
