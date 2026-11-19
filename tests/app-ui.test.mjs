@@ -6,12 +6,12 @@ import vm from "node:vm";
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 const extractMatchesStart = html.indexOf("function extractMatches(payload)");
-const extractMatchesEnd = html.indexOf("function playerName(p)", extractMatchesStart);
+const extractMatchesEnd = html.indexOf("function archiveMatchDate(m)", extractMatchesStart);
 const extractMatchesSource = html.slice(extractMatchesStart, extractMatchesEnd);
 function runExtractMatches(payload) {
   const sandbox = {};
-  vm.runInNewContext(extractMatchesSource + "\nglobalThis.extract = extractMatches;", sandbox);
-  return sandbox.extract(payload);
+  vm.runInNewContext(extractMatchesSource + "\nglobalThis.scheduleFns = { extractMatches, playerName, matchDate };", sandbox);
+  return sandbox.scheduleFns;
 }
 
 const oddsMatchingStart = html.indexOf("function normalizePlayer(s)");
@@ -167,13 +167,13 @@ test("odds matching rejects stale quotes and quote pairs more than 30 minutes ap
 });
 
 test("valid empty match schedules are distinct from malformed API payloads", () => {
-  assert.deepEqual(Array.from(runExtractMatches([])), []);
-  assert.deepEqual(Array.from(runExtractMatches({ matches: [] })), []);
-  assert.deepEqual(Array.from(runExtractMatches({ data: { results: [] } })), []);
-  assert.equal(runExtractMatches({ error: "upstream failed" }), null);
-  assert.equal(runExtractMatches(null), null);
+  assert.deepEqual(Array.from(runExtractMatches([]).extractMatches([])), []);
+  assert.deepEqual(Array.from(runExtractMatches({ matches: [] }).extractMatches({ matches: [] })), []);
+  assert.deepEqual(Array.from(runExtractMatches({ data: { results: [] } }).extractMatches({ data: { results: [] } })), []);
+  assert.equal(runExtractMatches({ error: "upstream failed" }).extractMatches({ error: "upstream failed" }), null);
+  assert.equal(runExtractMatches(null).extractMatches(null), null);
   const match = { players: { p1: "Player A", p2: "Player B" } };
-  assert.deepEqual(Array.from(runExtractMatches({ matches: [match] })), [match]);
+  assert.deepEqual(Array.from(runExtractMatches({ matches: [match] }).extractMatches({ matches: [match] })), [match]);
 });
 
 test("empty valid schedules are cached and can be reused or shown offline", () => {
@@ -181,4 +181,29 @@ test("empty valid schedules are cached and can be reused or shown offline", () =
   assert.match(html, /if\(saved&&Array\.isArray\(saved\.matches\)\)/);
   assert.match(html, /if\(matches===null\)throw new Error/);
   assert.doesNotMatch(html, /if\(!matches\.length\)throw new Error/);
+});
+
+test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_time", () => {
+  const api = runExtractMatches(null);
+  const payload = {
+    data: [{
+      id: 18953,
+      tournament: "ATP Wimbledon",
+      tour: "atp",
+      surface: "grass",
+      round: "R16",
+      status: "upcoming",
+      scheduled_time: "2026-11-20T10:00:00Z",
+      players: {
+        p1: { name: "Player One" },
+        p2: { name: "Player Two" }
+      }
+    }],
+    meta: { count: 1, total: 1 }
+  };
+  const matches = api.extractMatches(payload);
+  assert.equal(matches.length, 1);
+  assert.equal(api.playerName(matches[0].players.p1), "Player One");
+  assert.equal(api.playerName(matches[0].players.p2), "Player Two");
+  assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
