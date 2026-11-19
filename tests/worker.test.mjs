@@ -421,13 +421,28 @@ test("daily best bet respects the configured minimum EV and odds floor", () => {
     { player: "B", odds: 1.8, ev: 20, freshnessLevel: "good" },
     { player: "C", odds: 2.1, ev: 6, freshnessLevel: "limited" },
     { player: "D", odds: 2.2, ev: 4, freshnessLevel: "medium" },
-    { player: "E", odds: 2.05, ev: 5, freshnessLevel: "good" }
+    { player: "E", odds: 2.05, ev: 5, freshnessLevel: "good" },
+    { player: "F", odds: 2.6, ev: 12, freshnessLevel: "good", valueEligible: false }
   ];
   assert.equal(sandbox.select(bets, 3).player, "E");
   assert.equal(sandbox.select(bets, 7), null);
   assert.equal(sandbox.select(bets, 0).player, "E");
   assert.equal(sandbox.select(bets, 2, 2.3).player, "A");
   assert.equal(sandbox.select(bets, 2, 2.5), null);
+  assert.notEqual(sandbox.select(bets, 3).player, "F");
+});
+
+test("value signal quality blocks stale inputs, invalid ratings and Elo-market conflicts", () => {
+  const start = frontendSource.indexOf("function assessValueSignalQuality(");
+  const end = frontendSource.indexOf("function selectBestBet(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.assess = assessValueSignalQuality;", sandbox);
+  assert.equal(sandbox.assess({ freshnessLevel: "good", pfeStatus: "consensus", ratingQuality: "valid" }).eligible, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.assess({ freshnessLevel: "limited", pfeStatus: "consensus", ratingQuality: "valid" }).reasons)), ["insufficient_freshness"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.assess({ freshnessLevel: "good", pfeStatus: "conflict", ratingQuality: "valid" }).reasons)), ["model_market_conflict"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.assess({ freshnessLevel: "good", pfeStatus: "consensus", ratingQuality: "invalid" }).reasons)), ["invalid_rating_quality"]);
+  assert.equal(sandbox.assess({ freshnessLevel: "good", pfeStatus: "provisional", ratingQuality: "valid" }).eligible, true);
 });
 
 test("daily best bet has its own persisted odds threshold setting and does not reuse the general odds filter", () => {
