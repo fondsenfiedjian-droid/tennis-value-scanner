@@ -809,8 +809,9 @@
     const matchPlayers=match.players||{};
     const sourceA=matchPlayers.p1||match.player1||{};
     const sourceB=matchPlayers.p2||match.player2||{};
-    const playerIdA=getPlayerId(sourceA);
-    const playerIdB=getPlayerId(sourceB);
+    const snapshotPlayerId=p=>{const raw=p&&typeof p==='object'?(p.id??p.playerId??p.player_id??p.playerID):null;const id=Number(raw);return Number.isSafeInteger(id)&&id>0?id:null;};
+    const playerIdA=snapshotPlayerId(sourceA);
+    const playerIdB=snapshotPlayerId(sourceB);
     const date=archiveMatchDate(match);
     const captureStatus=archiveCaptureStatus(match);
     const rawMatchId=match.id??match.match_id;
