@@ -522,13 +522,18 @@
   const ODDS_PROVIDER_REGISTRY=Object.freeze({
     winamax:{label:'Winamax',country:'FR',enabled:true}
   });
+  function isPreMatchMatch(match,matchStart,now=Date.now()){
+    if(!matchStart||typeof matchStart.getTime!=='function'||!Number.isFinite(matchStart.getTime())||matchStart.getTime()<=now)return false;
+    const status=String(match?.status||match?.event_status||'').trim().toLowerCase();
+    return !['live','in_progress','in progress','completed','finished','cancelled','canceled','retired','walkover','abandoned'].includes(status);
+  }
   function oddsForMatch(m){
     const p=m.players||{};
     const a=normalizePlayer(playerName(p.p1||m.player1));
     const b=normalizePlayer(playerName(p.p2||m.player2));
     if(!a||!b||a===b)return [];
-    const matchStart=matchDate(m);
-    if(!matchStart)return [];
+    const matchStart=matchDate(m),now=Date.now();
+    if(!isPreMatchMatch(m,matchStart,now))return [];
     const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
     const candidates=cachedOdds.filter(o=>{
       const provider=String(o?.bookmaker||'').trim().toLowerCase();
@@ -545,9 +550,9 @@
       if(!((home===a&&away===b)||(home===b&&away===a)))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
-      if(!o.startTime||Number.isNaN(eventStart.getTime())||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
+      if(!o.startTime||Number.isNaN(eventStart.getTime())||eventStart.getTime()<=now||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
       const scrapedAt=new Date(o.scrapedAt);
-      if(!o.scrapedAt||Number.isNaN(scrapedAt.getTime())||Date.now()-scrapedAt.getTime()>90*60*1000||scrapedAt.getTime()-Date.now()>5*60*1000)return false;
+      if(!o.scrapedAt||Number.isNaN(scrapedAt.getTime())||now-scrapedAt.getTime()>90*60*1000||scrapedAt.getTime()-now>5*60*1000)return false;
       const value=Number(o.oddsDecimal);
       return Number.isFinite(value)&&value>1;
     });
