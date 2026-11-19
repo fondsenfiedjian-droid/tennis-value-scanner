@@ -437,7 +437,7 @@ test("value signal quality blocks stale inputs, invalid ratings and Elo-market c
   const end = frontendSource.indexOf("function selectBestBet(", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.assess = assessValueSignalQuality;", sandbox);
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.assess = assessValueSignalQuality;", sandbox);
   assert.equal(sandbox.assess({ freshnessLevel: "good", pfeStatus: "consensus", ratingQuality: "valid" }).eligible, true);
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.assess({ freshnessLevel: "limited", pfeStatus: "consensus", ratingQuality: "valid" }).reasons)), ["insufficient_freshness"]);
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.assess({ freshnessLevel: "good", pfeStatus: "conflict", ratingQuality: "valid" }).reasons)), ["model_market_conflict"]);
