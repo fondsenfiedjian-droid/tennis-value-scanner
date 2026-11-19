@@ -2146,7 +2146,7 @@
       $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
-        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
         $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
