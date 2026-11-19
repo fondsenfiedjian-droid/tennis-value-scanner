@@ -61,9 +61,10 @@ const logit = value => Math.log(clampProbability(value) / (1 - clampProbability(
 const logistic = value => value >= 0 ? 1 / (1 + Math.exp(-value)) : Math.exp(value) / (1 + Math.exp(value));
 
 /**
- * Fit a two-parameter logistic recalibration on favourite probabilities.
- * The weak penalty shrinks the fit toward the identity transform (intercept 0,
- * slope 1), reducing instability when the training sample is imperfect.
+ * Fit a one-parameter, slope-only logistic recalibration on favourite probabilities.
+ * The intercept is fixed at zero to preserve the 50% anchor; a weak penalty
+ * shrinks the fitted slope toward the identity transform (slope 1), reducing
+ * instability when the training sample is imperfect.
  */
 export function fitLogisticCalibration(observations, options = {}) {
   const minMatches = Number.isInteger(options.minMatches) ? options.minMatches : 200;
