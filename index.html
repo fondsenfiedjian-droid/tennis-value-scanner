@@ -467,17 +467,27 @@
   let cachedOdds = [];
   let cachedOddsSavedAt = 0;
   let oddsLoadError = null;
+  function oddsFreshnessSummary(now=Date.now()){
+    const timestamps=cachedOdds.map(item=>Date.parse(item?.scrapedAt)).filter(value=>Number.isFinite(value)&&value<=now+5*60*1000);
+    const fresh=timestamps.filter(value=>now-value<=90*60*1000).length;
+    const latest=timestamps.length?Math.max(...timestamps):null;
+    return {fresh,stale:timestamps.length-fresh,unknown:cachedOdds.length-timestamps.length,latest};
+  }
   function renderOddsStatus(){
     const node=$('#oddsStatus');
     if(!node)return;
+    const summary=oddsFreshnessSummary();
+    const lastSeen=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
     if(oddsLoadError){
       node.textContent=(cachedOdds.length
-        ?'Ошибка обновления · используются сохранённые котировки ('+cachedOdds.length+')'
+        ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
         :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError;
       return;
     }
     if(cachedOdds.length){
-      node.textContent='Winamax: '+cachedOdds.length+' котировок · получены '+(cachedOddsSavedAt?new Date(cachedOddsSavedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно');
+      node.textContent=summary.fresh
+        ?'Winamax: '+summary.fresh+' актуальных котировок из '+cachedOdds.length+' · последняя выгрузка '+lastSeen
+        :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen;
       return;
     }
     node.textContent='Источник Winamax ответил без котировок. Проверь доступность источника и расписание.';
