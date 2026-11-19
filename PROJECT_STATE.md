@@ -118,7 +118,7 @@ Important deployment distinction:
 ## 4. Odds and feed rules
 
 - Worker odds route requires `APIFY_TOKEN`.
-- Worker reads Apify dataset `ZBWihC1oYU8Pq9uBo` and caches responses for five minutes.
+- Worker reads the latest successful run dataset through Apify task `s9Des4R3jhMfA8e3s` using `/actor-tasks/{taskId}/runs/last/dataset/items?status=SUCCEEDED`; it caches responses for five minutes.
 - App freshness logic uses `scrapedAt` as scrape-time evidence, not as the exact bookmaker quote-publication or quote-change timestamp.
 - App treats quotes as fresh for up to 90 minutes and requires the two sides of a bookmaker pair to be within 30 minutes of each other.
 - Never present stale, incomplete, mismatched-bookmaker or unverified quote pairs as valid value opportunities.
@@ -219,3 +219,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PWA cache advanced to `tennis-value-static-v111`.
 - Regression tests that asserted the removed UI were retired; remaining bankroll module unit tests are not loaded by the application.
 - Existing localStorage records are intentionally not erased by this UI removal.
+
+
+### Apify task integration preparation (2026-11-19)
+- User created Apify task `s9Des4R3jhMfA8e3s` from Actor `U02iN54229fsqL4EN` ("Winamax Odds Scraper API").
+- Worker `/odds` now resolves the most recent successful task run default dataset through Apify task last-run dataset-items endpoint, instead of reading fixed dataset `ZBWihC1oYU8Pq9uBo`.
+- Existing `APIFY_TOKEN` secret remains required; the task ID is non-secret configuration.
+- GitHub source changes do not deploy Cloudflare Worker. A successful task run and Worker deployment are still required before live odds can be verified.
