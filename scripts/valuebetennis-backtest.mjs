@@ -52,7 +52,7 @@ function marketBenchmark(rows, fields) {
 function pairedModelMarketComparison(predictions, period) {
   const fields = ODDS_FIELDS[period];
   const names = ["elo", "surface", "form", "h2h", "combined"];
-  const makeCalibration = () => Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0 }));
+  const makeCalibration = () => Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0, winsSquared: 0, fractionalVariance: 0 }));
   const addCalibration = (bins, probability, outcome) => {
     const favouriteProbability = Math.max(probability, 1 - probability);
     const favouriteOutcome = probability > 0.5 ? outcome : probability < 0.5 ? 1 - outcome : 0.5;
@@ -61,20 +61,31 @@ function pairedModelMarketComparison(predictions, period) {
     bin.n++;
     bin.predicted += favouriteProbability;
     bin.wins += favouriteOutcome;
+    bin.winsSquared += favouriteOutcome * favouriteOutcome;
+    bin.fractionalVariance += favouriteOutcome * (1 - favouriteOutcome);
   };
   const formatCalibration = (bins, count) => {
     const used = bins.filter(bin => bin.n);
     const ece = used.reduce((sum, bin) => sum + bin.n * Math.abs(bin.predicted / bin.n - bin.wins / bin.n), 0) / (count || 1);
     return {
       expectedCalibrationErrorPct: count ? Number((ece * 100).toFixed(2)) : null,
-      bins: bins.map((bin, index) => ({
-        range: String(50 + index * 5) + "-" + String(55 + index * 5) + "%",
-        matches: bin.n,
-        predictedFavouritePct: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
-        observedFavouriteWinPct: bin.n ? Number((bin.wins / bin.n * 100).toFixed(2)) : null,
-        absoluteCalibrationGapPp: bin.n ? Number((Math.abs(bin.predicted / bin.n - bin.wins / bin.n) * 100).toFixed(2)) : null,
-        sampleQuality: bin.n < 30 ? "low" : bin.n < 100 ? "limited" : "larger_sample"
-      }))
+      bins: bins.map((bin, index) => {
+        const observedRate = bin.n ? bin.wins / bin.n : null;
+        const variance = bin.n > 1
+          ? Math.max(0, (bin.winsSquared - bin.n * observedRate * observedRate + bin.fractionalVariance) / (bin.n - 1))
+          : null;
+        const margin = variance === null ? null : 1.96 * Math.sqrt(variance / bin.n);
+        return {
+          range: String(50 + index * 5) + "-" + String(55 + index * 5) + "%",
+          matches: bin.n,
+          predictedFavouritePct: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
+          observedFavouriteWinPct: bin.n ? Number((observedRate * 100).toFixed(2)) : null,
+          observedFavouriteLower95Pct: margin === null ? null : Number((Math.max(0, observedRate - margin) * 100).toFixed(2)),
+          observedFavouriteUpper95Pct: margin === null ? null : Number((Math.min(1, observedRate + margin) * 100).toFixed(2)),
+          absoluteCalibrationGapPp: bin.n ? Number((Math.abs(bin.predicted / bin.n - observedRate) * 100).toFixed(2)) : null,
+          sampleQuality: bin.n < 30 ? "low" : bin.n < 100 ? "limited" : "larger_sample"
+        };
+      })
     };
   };
   const makeBucket = () => ({
