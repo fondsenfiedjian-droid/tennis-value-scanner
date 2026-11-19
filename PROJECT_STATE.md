@@ -54,8 +54,9 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
-- `fbb134e4bf8002a9ff5fc03a5d21c4543be15344`
-- Commit message: `Verify official Live Tennis match response shape`
+- `8c4c2a6e0c09f81f26a23739fb3048c74aba8e6c`
+- Commit message: `Test Apify rate limits and malformed odds payloads`
+- The last application-code baseline before the Apify hardening was `fbb134e4bf8002a9ff5fc03a5d21c4543be15344` (`Verify official Live Tennis match response shape`).
 
 Latest GitHub Actions runs:
 - Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
@@ -69,11 +70,14 @@ Latest GitHub Actions runs:
 - Empty-schedule handling commit `b098eb73e861a74ab60fe50ed4c31944993f355d`: run `44508716312` completed successfully; 301 tests passed, 0 failed.
 - Schedule cache-bypass and rate-limit commit `0f806d1233e04e0d01df9a785442165df9a592ef`: run `44509212122` completed successfully; 305 tests passed, 0 failed. README documentation update `c03cbe55430833d9104e9f219486cda03e8f463d` followed.
 - Cache transparency commit `bc4eecb1a13c4cc0a760e519423a92ee278850f1`: run `44509477732` completed successfully; 306 tests passed, 0 failed.
-- Current head `fbb134e4bf8002a9ff5fc03a5d21c4543be15344`: run `44509641469` completed successfully; 307 tests passed, 0 failed.
+- Current head `8c4c2a6e0c09f81f26a23739fb3048c74aba8e6c`: run `44510888159` completed successfully; 309 tests passed, 0 failed.
+- Apify retry/JSON handling commit `6496a41f591533611be7714aaad73361fead062f`: run `44510880700` completed successfully.
 - An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
 - Worker `/odds` now rejects non-array Apify dataset responses with HTTP 502 instead of treating them as a successful empty feed; malformed data is not cached.
+- Worker `/odds` now forwards Apify `Retry-After` on upstream failures (including 429) while returning only a sanitized error and upstream status, not the upstream response body.
+- Worker `/odds` now distinguishes invalid JSON from a non-array JSON payload; neither failure is cached. Regression tests cover retry timing, sanitized errors, malformed JSON and cache-write prevention.
 - Worker `/odds` response includes `retrievedAt` separately from each quote's `scrapedAt`; the former records Worker retrieval time and must not be substituted for quote scrape time.
 - Regression tests cover missing Apify secret, method validation, successful array payload, cache MISS/HIT behavior, and malformed dataset rejection.
 - Frontend odds-matching tests execute the real matching functions and verify reversed player order, same-event pairing, tournament mismatch rejection, stale-quote rejection and the 30-minute pair-skew rule.
@@ -91,7 +95,7 @@ Recent app changes in GitHub:
 - Regression tests now include the official Live Tennis response shape (`data` list, `players.p1/p2.name`, `tour`, and UTC `scheduled_time`) as well as a valid empty `data` list.
 - API connection state is dynamic rather than a permanently optimistic “connected” label.
 - Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
-- Service-worker cache version is v103.
+- Service-worker cache version is v107.
 - Regression coverage added for odds display, EV filtering, cache-key consistency, API status and odds freshness.
 
 Important deployment distinction:
