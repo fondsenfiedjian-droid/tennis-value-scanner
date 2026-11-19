@@ -612,7 +612,7 @@ test("scanner archive rejects conflicting match identifiers and invalid numeric 
   });
   const rows = [
     row({ matchKey: "different-id" }),
-    row({ matchId: "bad\\u0000id", matchKey: "" }),
+    row({ matchId: "bad" + String.fromCharCode(0) + "id", matchKey: "" }),
     row({ capturedAt: "1735725600000.5", matchId: "fractional-capture" }),
     row({ quoteCapturedAt: "1735725590000.5", matchId: "fractional-quote" })
   ];
