@@ -383,12 +383,14 @@ test("market margin and no-vig edge are calculated only from one bookmaker", () 
   const end = frontendSource.indexOf("function isValidPredictionResult(", start);
   const sandbox = { Number, String };
   vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.calculate = calculateMarketContext;", sandbox);
-  const result = sandbox.calculate(1.8, 2.1, "Winamax", "winamax", 0.6, 0.4);
+  const result = sandbox.calculate(1.8, 2.1, "Winamax", "winamax", 0.6, 0.4, "event-1", "event-1");
   assert.ok(Math.abs(result.marginPercent - 3.1746031746) < 1e-8);
   assert.ok(Math.abs(result.marketProbabilityA - 53.8461538462) < 1e-8);
   assert.ok(Math.abs(result.edgeA - 6.1538461538) < 1e-8);
-  assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Betclic", 0.6, 0.4), null);
-  assert.equal(sandbox.calculate(1, 2.1, "Winamax", "Winamax", 0.6, 0.4), null);
+  assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Betclic", 0.6, 0.4, "event-1", "event-1"), null);
+  assert.equal(sandbox.calculate(1, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", "event-1"), null);
+  assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", "event-2"), null);
+  assert.equal(sandbox.calculate(1.8, 2.1, "Winamax", "Winamax", 0.6, 0.4, "event-1", ""), null);
 });
 
 test("frontend validates precise Elo probabilities against fair odds without rounding drift", () => {
