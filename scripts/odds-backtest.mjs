@@ -248,6 +248,16 @@ function summarizeOddsBuckets(selections) {
   });
 }
 
+export function groupOddsRowsByBookmaker(rows) {
+  const groups = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const bookmaker = String(row.bookmaker ?? row.source ?? row.provider ?? "unknown").trim().toLowerCase() || "unknown";
+    if (!groups.has(bookmaker)) groups.set(bookmaker, []);
+    groups.get(bookmaker).push(row);
+  }
+  return groups;
+}
+
 export function runOddsBacktest(rows, options = {}) {
   const minEv = Number.isFinite(options.minEv) ? options.minEv : 0.03;
   const minOdds = Number.isFinite(options.minOdds) ? options.minOdds : 1.9;
@@ -600,6 +610,22 @@ async function main() {
       rows.push(...adapted.rows);
       archiveIgnored += adapted.ignored;
     } else rows.push(...parsed);
+  }
+  const providerGroups = groupOddsRowsByBookmaker(rows);
+  if (providerGroups.size > 1) {
+    const reportsByBookmaker = Object.fromEntries([...providerGroups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([bookmaker, providerRows]) => {
+        const report = runOddsBacktest(providerRows, options);
+        report.ignoredUnsettledOrIncompleteArchiveRows = archiveIgnored;
+        return [bookmaker, report];
+      }));
+    console.log(JSON.stringify({
+      bookmakerCount: providerGroups.size,
+      reportsByBookmaker,
+      note: "Each bookmaker is evaluated independently. Prices, opening/closing snapshots, and CLV are never combined across providers."
+    }, null, 2));
+    return;
   }
   const report = runOddsBacktest(rows, options);
   report.ignoredUnsettledOrIncompleteArchiveRows = archiveIgnored;
