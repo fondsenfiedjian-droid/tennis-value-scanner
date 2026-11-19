@@ -489,8 +489,8 @@
     }
     if(cachedOdds.length){
       node.textContent=summary.fresh
-        ?'Winamax: '+summary.fresh+' актуальных котировок из '+cachedOdds.length+' · последняя выгрузка '+lastSeen
-        :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen;
+        ?'Winamax: '+summary.fresh+' актуальных котировок из '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen
+        :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen;
       return;
     }
     node.textContent='Источник Winamax ответил без котировок'+sourceSeen+'. Проверь доступность источника и расписание.';
