@@ -52,8 +52,6 @@ On the Android PWA:
 - Matches: manual refresh should show the source/cache status.
 - Odds: verify quote timestamps and that both sides belong to the same Winamax event.
 - EV: confirm odds outside the configured range may be visible but are not eligible for EV.
-- Bankroll: virtual and actual ledgers remain separate; actual ledger must be explicitly initialized.
-- Import: preview Winamax CSV, check duplicate count, then confirm only after review.
 - Offline: reopen with network disabled and confirm cached matches are labelled as cached/offline.
 
 Do not place real bets as an acceptance test. Do not infer profitability from a successful technical launch.
