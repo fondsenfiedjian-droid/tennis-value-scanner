@@ -2098,7 +2098,7 @@
       autoRefreshTimer=setInterval(()=>{
         if(nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt&&!document.hidden){
           nextAutoRefreshAt=Date.now()+minutes*60*1000;
-          loadMatches();
+          loadMatches(true);
         }
       },15000);
     }
@@ -2110,14 +2110,14 @@
       if(!nextAutoRefreshAt)nextAutoRefreshAt=Date.now()+minutes*60*1000;
       if(Date.now()>=nextAutoRefreshAt){
         nextAutoRefreshAt=Date.now()+minutes*60*1000;
-        loadMatches();
+        loadMatches(true);
       }
     }
   });
   window.addEventListener('pageshow',()=>{
     scheduleAutoRefresh();
   });
-  async function loadMatches(){
+  async function loadMatches(force=false){
     await archiveStorageReady;
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
     setConnectionStatus('ПРОВЕРКА API');
@@ -2127,8 +2127,8 @@
     const oddsUpdated=await loadOdds();
     try{
       // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
-      if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
-        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
+      if(!force&&saved&&Array.isArray(saved.matches)&&saved.matches.length&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
+        if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
@@ -2157,11 +2157,11 @@
       }
     }finally{btn.disabled=false;btn.textContent='↻  ОБНОВИТЬ ДАННЫЕ';}
   }
-  $('#refreshBtn').onclick=loadMatches;
+  $('#refreshBtn').onclick=()=>loadMatches(true);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navMatches').onclick=loadMatches;
   $('#navHome').onclick=showMain;
-  $('#navMatches').onclick=()=>{showMain();loadMatches();};
+  $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
   $('#navBankroll').onclick=showBankroll;
   readBankrollState();
