@@ -70,6 +70,14 @@ test("odds status counts quote freshness from scrapedAt, not local fetch time", 
   assert.match(html, /Котировки получены, но свежих нет/);
 });
 
+test("odds status distinguishes quote scrape time from upstream dataset retrieval time", () => {
+  assert.match(html, /let oddsRetrievedAt = null/);
+  assert.match(html, /Date\.parse\(payload\.retrievedAt\|\|'\'\)/);
+  assert.match(html, /retrievedAt:oddsRetrievedAt/);
+  assert.match(html, /источник получен/);
+  assert.match(html, /время ответа источника неизвестно/);
+});
+
 test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /async function loadMatches\(force=false\)/);
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
