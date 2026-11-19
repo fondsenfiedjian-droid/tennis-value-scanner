@@ -1613,7 +1613,7 @@
         const reliability=assessPredictionReliability({
           freshness,ratingQualityA:result.ratingQualityA,ratingQualityB:result.ratingQualityB,ratingQualityGap:result.ratingQualityGap,
           oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=90,matchDateKnown:!!matchDate(m),
-          bookmakerKnown:!!(bookmakerA&&bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
+          bookmakerKnown:!!(el.dataset.bookmakerA&&el.dataset.bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
           calibration:archiveProbabilityCalibration(readPredictionArchive())
         });
         const [pfePlayerA,pfePlayerB]=await Promise.all([
