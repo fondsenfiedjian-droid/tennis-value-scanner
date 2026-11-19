@@ -63,10 +63,19 @@ Do not place real bets as an acceptance test. Do not infer profitability from a 
 - PWA smoke failure: inspect Netlify deploy status, publish directory, and deploy commit.
 - Worker health failure: inspect Worker deployment and required secret-presence flags.
 - Matches failure: inspect Live Tennis key, plan/quota, upstream status, and Worker logs.
-- Odds endpoint error: inspect Apify token, dataset ID `ZBWihC1oYU8Pq9uBo`, upstream status, and Worker logs.
+- Odds endpoint error: inspect Apify token, task `s9Des4R3jhMfA8e3s`, whether it has a successful run, upstream status, and Worker logs.
 - Odds endpoint returns items but no eligible pairs: compare `diagnostics.fieldCoverage`, bookmaker names/country, outcome counts, freshness, event IDs, player names, competition, and start times. Do not weaken matching rules to force quotes onto unrelated matches.
 - Browser still shows old UI: close all PWA windows, reopen, and verify Service Worker cache version `tennis-value-static-v111`.
 
 ## Current deployment status
 
 Unknown until the manual production smoke check passes. Repository commits and CI results are not evidence of a live deployment.
+
+
+## Apify Winamax task
+
+- Actor: https://console.apify.com/actors/U02iN54229fsqL4EN/input
+- Task: https://console.apify.com/actors/tasks/s9Des4R3jhMfA8e3s/runs
+- Worker resolves the latest successful run default dataset dynamically. Do not pin a per-run dataset ID in Worker configuration.
+- Run the task once from Apify Console and verify **SUCCEEDED** plus two-sided match-winner rows before configuring a schedule.
+- Configure the schedule only after the first successful run is inspected and per-run cost is understood.
