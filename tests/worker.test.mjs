@@ -1823,30 +1823,38 @@ test("prediction reliability is transparent, excludes unavailable calibration an
   assert.match(frontendSource, /не вероятность победы и не рекомендация по размеру ставки/);
 });
 
-test("archive segment calibration groups only known surfaces and tournament categories", () => {
+test("archive segment calibration exposes probability buckets and rejects conflicting match metadata", () => {
   const start = frontendSource.indexOf("function archiveSegmentCalibration(");
-  const end = frontendSource.indexOf("\n  function ", start + 10);
+  const end = frontendSource.indexOf("\\n  function ", start + 10);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.segment = archiveSegmentCalibration;", sandbox);
   const rows = [
-    { matchKey: "m1", surface: "Clay", tour: "atp" },
-    { matchKey: "m2", surface: "Грунт", tour: "atp" },
-    { matchKey: "m3", surface: "Hard court", tour: "wta" },
-    { matchKey: "m4", surface: "Grass", tour: "challenger" },
-    { matchKey: "m5", surface: "", tour: "unknown" },
-    { matchKey: "m6", surface: "Unknown", tour: "" }
+    { matchId: 1, matchKey: "m1", side: "A", surface: "Clay", tour: "atp" },
+    { matchId: 1, matchKey: "m1", side: "B", surface: "Грунт", tour: "atp" },
+    { matchId: 2, matchKey: "m2", side: "A", surface: "Грунт", tour: "atp" },
+    { matchId: 3, matchKey: "m3", side: "A", surface: "Hard court", tour: "wta" },
+    { matchId: 4, matchKey: "m4", side: "A", surface: "Grass", tour: "challenger" },
+    { matchId: 5, matchKey: "m5", side: "A", surface: "", tour: "unknown" },
+    { matchId: 6, matchKey: "m6", side: "A", surface: "Unknown", tour: "" },
+    { matchId: 7, matchKey: "m7", side: "A", surface: "Hard", tour: "atp" },
+    { matchId: 7, matchKey: "m7", side: "B", surface: "Grass", tour: "atp" }
   ];
   const result = sandbox.segment(rows, segmentRows => ({
-    sampleSize: new Set(segmentRows.map(row => row.matchKey)).size,
-    brierScore: 0.2, logLoss: 0.6, preliminary: true, excluded: 0, ambiguous: 0
+    sampleSize: new Set(segmentRows.map(row => row.matchId)).size,
+    brierScore: 0.2, logLoss: 0.6, preliminary: true, excluded: 0, ambiguous: 0,
+    buckets: [{ lower: 60, upper: 65, count: 4, averagePredicted: 62, observedRate: 50, calibrationGap: -12 }]
   }));
-  const surfaces = result.find(group => group.key === "surface").items;
-  const tours = result.find(group => group.key === "tour").items;
-  assert.deepEqual(Array.from(surfaces, item => [item.name, item.sampleSize]), [["Грунт", 2], ["Трава", 1], ["Хард", 1]]);
-  assert.deepEqual(Array.from(tours, item => [item.name, item.sampleSize]), [["ATP", 2], ["Challenger", 1], ["WTA", 1]]);
+  const surfaces = result.find(group => group.key === "surface");
+  const tours = result.find(group => group.key === "tour");
+  assert.deepEqual(Array.from(surfaces.items, item => [item.name, item.sampleSize]), [["Грунт", 2], ["Трава", 1], ["Хард", 1]]);
+  assert.deepEqual(Array.from(tours.items, item => [item.name, item.sampleSize]), [["ATP", 3], ["Challenger", 1], ["WTA", 1]]);
+  assert.equal(surfaces.metadataConflicts, 1);
+  assert.equal(tours.metadataConflicts, 0);
+  assert.equal(surfaces.items[0].buckets[0].lower, 60);
   assert.ok(result.every(group => group.items.every(item => item.preliminary)));
-  assert.match(frontendSource, /archiveSegmentCalibration\(rows\)/);
+  assert.match(frontendSource, /bucket\\.averagePredicted\\.toFixed\\(1\\)/);
+  assert.match(frontendSource, /archiveSegmentCalibration\\(rows\\)/);
   assert.match(frontendSource, /id="archiveSegmentCalibration"/);
 });
 
