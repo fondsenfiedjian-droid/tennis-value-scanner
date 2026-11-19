@@ -1719,12 +1719,19 @@
   function freshnessStakeMultiplier(level){
     return level==='good'?1:level==='medium'?0.5:0;
   }
+  function assessValueSignalQuality({freshnessLevel,pfeStatus,ratingQuality}){
+    const reasons=[];
+    if(!['good','medium'].includes(freshnessLevel))reasons.push('insufficient_freshness');
+    if(pfeStatus==='conflict')reasons.push('model_market_conflict');
+    if(ratingQuality==='invalid')reasons.push('invalid_rating_quality');
+    return {eligible:reasons.length===0,reasons};
+  }
   function selectBestBet(bets,minEv=3,minOdds=1.9){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
     const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(15,Number(minOdds))):1.9;
     const freshnessRank={good:2,medium:1};
     return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&
-      ['good','medium'].includes(x.freshnessLevel))
+      ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible!==false)
       .sort((a,b)=>b.ev-a.ev||freshnessRank[b.freshnessLevel]-freshnessRank[a.freshnessLevel]||b.odds-a.odds)[0]||null;
   }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
@@ -1869,7 +1876,6 @@
         result.evB=el.dataset.oddsB?((result.probabilityExactB??result.probabilityB/100)*Number(el.dataset.oddsB)-1)*100:null;
         const betA={side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),ev:result.evA,match:m};
         const betB={side:'B',player:el.dataset.nameB,opponent:el.dataset.nameA,odds:Number(el.dataset.oddsB),bookmaker:el.dataset.bookmakerB||'Winamax',probability:Number(result.probabilityExactB===undefined?result.probabilityB:result.probabilityExactB*100),ev:result.evB,match:m};
-        for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
         savePredictionSnapshot(m,el,result,modelCalculatedAt);
         await flushArchiveWrites();
         const fmt=(v)=>Number(v).toFixed(2);
@@ -1880,8 +1886,6 @@
           ?'<div class="archive-meta">Рынок '+escapeHtml(marketContext.bookmaker)+': маржа '+fmt(marketContext.marginPercent)+'% · без маржи '+fmt(marketContext.marketProbabilityA)+'% / '+fmt(marketContext.marketProbabilityB)+'% · перевес модели '+(marketContext.edgeA>=0?'+':'')+fmt(marketContext.edgeA)+' / '+(marketContext.edgeB>=0?'+':'')+fmt(marketContext.edgeB)+' п.п.</div>'
           :'';
 
-        const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)?'model-positive':'model-negative';
-        const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)?'model-positive':'model-negative';
         el.classList.remove('model-muted');
         const dateA=validRatingDate(result.ratingsAsOfA)||'не указана';const dateB=validRatingDate(result.ratingsAsOfB)||'не указана';const ratingStatusLabel=status=>({fresh:'свежий',recent:'недавний',stale:'устаревший',unknown:'дата неизвестна',invalid:'некорректная дата'})[status]||'неизвестно';const ratingAuditA=ratingStatusLabel(result.ratingFreshnessA?.status),ratingAuditB=ratingStatusLabel(result.ratingFreshnessB?.status);const ratingQualityLabel=q=>q?.status==='review'?'проверить значение':q?.status==='invalid'?'некорректное значение':'в пределах проверки';const ratingQualityA=ratingQualityLabel(result.ratingQualityA),ratingQualityB=ratingQualityLabel(result.ratingQualityB);const ratingQualityWarning=result.ratingQualityA?.status==='review'||result.ratingQualityB?.status==='review'||result.ratingQualityGap==='review';
         const currentOddsAge=currentOddsAgeMinutes(el.dataset.oddsAgeMinutes,el.dataset.oddsObservedAt);
@@ -1962,6 +1966,14 @@
           probability:marketContext.marketProbabilityA/100,quality:1
         });
         const pfeAssessment=TVSPFE.fusePredictions(pfeModels);
+        const valueGateA=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityA?.status});
+        const valueGateB=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityB?.status});
+        betA.valueEligible=valueGateA.eligible;betB.valueEligible=valueGateB.eligible;
+        for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
+        const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)&&valueGateA.eligible?'model-positive':'model-negative';
+        const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)&&valueGateB.eligible?'model-positive':'model-negative';
+        const valueGateReasons=[...new Set([...valueGateA.reasons,...valueGateB.reasons])];
+        const valueGateLabel=valueGateReasons.length?'Value-сигнал заблокирован: '+valueGateReasons.map(reason=>({insufficient_freshness:'недостаточная свежесть',model_market_conflict:'Elo расходится с рынком',invalid_rating_quality:'некорректные данные рейтинга'}[reason]||reason)).join('; '):'Проверка качества пройдена';
         const pfeLabel=pfeAssessment.status==='provisional'?'предварительно · недостаточно независимых источников':
           pfeAssessment.status==='conflict'?'обнаружено расхождение Elo и рынка':'Elo и рынок согласуются';
         const pfeSourceLabels=pfeAssessment.groups.map(group=>{
@@ -1997,11 +2009,11 @@
             ?'Симуляция не запущена: формат матча не указан в источнике'
             :'Симуляция не запускалась: нет двух проверенных профилей';
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br>'+escapeHtml(simulationLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+(valueGateReasons.length?'limited':'good')+'">'+escapeHtml(valueGateLabel)+'</div>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br>'+escapeHtml(simulationLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed);
-        if(result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
-        if(result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
+        if(valueGateA.eligible&&result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
+        if(valueGateB.eligible&&result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
       }catch(err){
         if(renderId!==predictionRenderId)return;
         failed++;el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
