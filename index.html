@@ -2144,7 +2144,7 @@
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
-      const res=await fetch(API+'/matches?status=upcoming&draw=singles&limit=200');
+      const res=await fetch(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const matches=extractMatches(payload);
