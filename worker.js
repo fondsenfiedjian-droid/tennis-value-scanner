@@ -498,8 +498,12 @@ export default {
         );
 
         const body = await upstream.json();
-        const result = response(body, upstream.status);
+        const responseHeaders = {};
+        const retryAfter = upstream.headers.get("Retry-After");
+        if (retryAfter) responseHeaders["Retry-After"] = retryAfter;
         if (upstream.ok) {
+          responseHeaders["Cache-Control"] = "public, max-age=900";
+          responseHeaders["X-Data-Cache"] = "MISS";
           const cacheResponse = new Response(JSON.stringify(body), {
             status: 200,
             headers: {
@@ -511,7 +515,7 @@ export default {
           });
           await cache.put(cacheKey, cacheResponse);
         }
-        return result;
+        return response(body, upstream.status, responseHeaders);
       } catch (error) {
         return response({ error: "Could not reach Live Tennis API" }, 502);
       }
