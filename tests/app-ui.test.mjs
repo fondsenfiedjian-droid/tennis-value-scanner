@@ -28,3 +28,11 @@ test("app header reports real API state instead of claiming the schedule is alwa
   assert.match(html, /setConnectionStatus\('API НЕДОСТУПЕН'\)/);
   assert.match(html, /setConnectionStatus\('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ'\)/);
 });
+
+test("odds status counts quote freshness from scrapedAt, not local fetch time", () => {
+  assert.match(html, /function oddsFreshnessSummary\(now=Date\.now\(\)\)/);
+  assert.match(html, /Date\.parse\(item\?\.scrapedAt\)/);
+  assert.match(html, /now-value<=90\*60\*1000/);
+  assert.match(html, /актуальных котировок из/);
+  assert.match(html, /Котировки получены, но свежих нет/);
+});
