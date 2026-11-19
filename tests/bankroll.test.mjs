@@ -360,6 +360,37 @@ test("verified settlement revisions remain idempotent across repeated correction
   assert.equal(bank.validateState(duplicateV5.state), duplicateV5.state);
 });
 
+test("all bankroll performance diagnostics count only the latest verified result revision", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 7654, side: "A",
+    match: "Player A — Player B", player: "Player A", opponent: "Player B",
+    bookmaker: "Winamax", surface: "Hard", tour: "atp"
+  });
+  const won = bank.settleVerifiedResults(placed.state, [
+    { matchId: 7654, resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ]).state;
+  const lost = bank.settleVerifiedResults(won, [
+    { matchId: 7654, resultOutcome: "completed", resultWinner: 2, resultVersion: 2 }
+  ]).state;
+  const summary = bank.getSummary(lost);
+  assert.equal(summary.realizedProfit, -2);
+  assert.equal(summary.outcomeSequence.settledBets, 1);
+  assert.equal(summary.outcomeSequence.wins, 0);
+  assert.equal(summary.outcomeSequence.losses, 1);
+  assert.equal(summary.outcomeDispersion.sampleSize, 1);
+  assert.equal(summary.outcomeDispersion.netProfit, -2);
+  assert.equal(summary.currentDrawdown, 2);
+  assert.equal(summary.maxDrawdown, 2);
+  const segments = bank.getSegmentPerformance(lost, []);
+  const hard = segments.surface.find(row => row.name === "Хард");
+  assert.equal(hard.settledBets, 1);
+  assert.equal(hard.wins, 0);
+  assert.equal(hard.losses, 1);
+  assert.equal(hard.profit, -2);
+  assert.equal(lost.transactions.filter(tx => tx.type === "settlement").length, 1);
+  assert.equal(lost.transactions.filter(tx => tx.type === "settlement_reversed").length, 1);
+});
+
 test("official result revisions never overwrite a manually confirmed settlement", () => {
   const placed = bank.placeBet(bank.createInitialState(100), {
     probability: 0.6, odds: 2.1, stake: 2, matchId: 988, side: "A"
