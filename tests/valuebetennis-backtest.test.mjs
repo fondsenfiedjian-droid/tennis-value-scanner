@@ -142,6 +142,14 @@ test("paired Elo and Pinnacle comparison uses the same evaluated matches and ori
   assert.ok(comparison.opening.calibration.market.expectedCalibrationErrorPct <= 100);
   for (const bin of comparison.opening.calibration.market.bins.filter(item => item.matches > 0)) {
     assert.ok(bin.absoluteCalibrationGapPp >= 0 && bin.absoluteCalibrationGapPp <= 100);
+    if (bin.matches > 1) {
+      assert.ok(bin.observedFavouriteLower95Pct <= bin.observedFavouriteWinPct);
+      assert.ok(bin.observedFavouriteUpper95Pct >= bin.observedFavouriteWinPct);
+      assert.ok(bin.observedFavouriteLower95Pct >= 0 && bin.observedFavouriteUpper95Pct <= 100);
+    } else {
+      assert.equal(bin.observedFavouriteLower95Pct, null);
+      assert.equal(bin.observedFavouriteUpper95Pct, null);
+    }
   }
   assert.equal(comparison.closing.calibration.market.bins.reduce((sum, bin) => sum + bin.matches, 0), 1);
   assert.match(comparison.opening.note, /same evaluated matches/);
