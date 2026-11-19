@@ -154,7 +154,7 @@
 <div class="app">
   <header>
     <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
-    <div class="status">РАСПИСАНИЕ ПОДКЛЮЧЕНО</div>
+    <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
   </header>
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
@@ -428,6 +428,10 @@
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  function setConnectionStatus(label){
+    const node=$('#connectionStatus');
+    if(node)node.textContent=label;
+  }
   function extractMatches(payload){
     if(Array.isArray(payload)) return payload.filter(x=>x&&typeof x==='object'&&x.players);
     if(!payload||typeof payload!=='object') return [];
@@ -2106,6 +2110,7 @@
   async function loadMatches(){
     await archiveStorageReady;
     const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
+    setConnectionStatus('ПРОВЕРКА API');
     $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
     let saved=null;
     try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
@@ -2115,6 +2120,7 @@
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length&&Date.now()-saved.savedAt<15*60*1000){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
@@ -2124,6 +2130,7 @@
       const matches=extractMatches(payload);
       if(!matches.length)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
+      setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
       $('#filterSummary').textContent='Live Tennis API · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
@@ -2131,8 +2138,10 @@
       if(saved&&Array.isArray(saved.matches)&&saved.matches.length){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&Date.now()-saved.savedAt<=ODDS_CACHE_TTL){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
         $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
+        setConnectionStatus('API НЕДОСТУПЕН');
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
         $('#matchCount').textContent='—';
       }
