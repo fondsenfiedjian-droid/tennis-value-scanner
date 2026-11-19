@@ -223,3 +223,19 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 test("service worker cache version advances when settings behavior changes", () => {
   assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v108"/);
 });
+
+test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
+  const openAt=html.indexOf("const open=()=>{populateSettingsForm();modal.classList.add('show');};");
+  const populateAt=html.indexOf("function populateSettingsForm()");
+  const saveAt=html.indexOf("const savedAgain=readSettings();");
+  assert.ok(openAt>0&&populateAt>0&&saveAt>0);
+  assert.match(html.slice(populateAt,openAt), /\['minEv','minOdds','maxOdds','bestBetMinOdds'\]/);
+  assert.match(html.slice(saveAt,saveAt+550), /Number\(savedAgain\.minEv\)!==minEv/);
+});
+
+test("Winamax empty-state diagnostics expose upstream dataset coverage", () => {
+  assert.match(html, /function oddsDiagnosticsText\(\)/);
+  assert.match(html, /validDecimalOdds/);
+  assert.match(html, /freshScrapedAt/);
+  assert.match(html, /diagnostics:oddsDiagnostics/);
+});
