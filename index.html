@@ -466,6 +466,7 @@
   const ODDS_CACHE_TTL=10*60*1000;
   let cachedOdds = [];
   let cachedOddsSavedAt = 0;
+  let oddsRetrievedAt = null;
   let oddsLoadError = null;
   function oddsFreshnessSummary(now=Date.now()){
     const timestamps=cachedOdds.map(item=>Date.parse(item?.scrapedAt)).filter(value=>Number.isFinite(value)&&value<=now+5*60*1000);
@@ -478,6 +479,8 @@
     if(!node)return;
     const summary=oddsFreshnessSummary();
     const lastSeen=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
+    const retrievedTimestamp=Date.parse(oddsRetrievedAt||'');
+    const sourceSeen=Number.isFinite(retrievedTimestamp)?' · источник получен '+new Date(retrievedTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно';
     if(oddsLoadError){
       node.textContent=(cachedOdds.length
         ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
@@ -490,7 +493,7 @@
         :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen;
       return;
     }
-    node.textContent='Источник Winamax ответил без котировок. Проверь доступность источника и расписание.';
+    node.textContent='Источник Winamax ответил без котировок'+sourceSeen+'. Проверь доступность источника и расписание.';
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
@@ -499,6 +502,7 @@
       if(Array.isArray(item.odds)&&isFreshCacheTimestamp(item.savedAt,ODDS_CACHE_TTL)){
         cachedOdds=item.odds;
         cachedOddsSavedAt=item.savedAt;
+        oddsRetrievedAt=typeof item.retrievedAt==='string'&&Number.isFinite(Date.parse(item.retrievedAt))?item.retrievedAt:null;
       }else localStorage.removeItem('tvs-odds-cache');
     }
   }catch(e){localStorage.removeItem('tvs-odds-cache');}
@@ -511,8 +515,10 @@
       if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
       cachedOdds=payload.items;
       cachedOddsSavedAt=Date.now();
+      const retrievedTimestamp=Date.parse(payload.retrievedAt||'');
+      oddsRetrievedAt=Number.isFinite(retrievedTimestamp)&&retrievedTimestamp<=Date.now()+5*60*1000?new Date(retrievedTimestamp).toISOString():null;
       oddsLoadError=null;
-      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,odds:cachedOdds}));
+      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds}));
       renderOddsStatus();
       return true;
     }catch(err){
