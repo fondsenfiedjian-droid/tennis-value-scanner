@@ -62,7 +62,18 @@
           (tx.actualStake !== undefined && tx.actualStake !== null && (!Number.isFinite(tx.actualStake) || tx.actualStake < 0)) ||
           (tx.plannedOdds !== undefined && tx.plannedOdds !== null && (!Number.isFinite(tx.plannedOdds) || tx.plannedOdds <= 1)) ||
           (tx.actualOdds !== undefined && tx.actualOdds !== null && (!Number.isFinite(tx.actualOdds) || tx.actualOdds <= 1)) ||
-          (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1))) {
+          (tx.resultVersion !== undefined && tx.resultVersion !== null && (!Number.isSafeInteger(tx.resultVersion) || tx.resultVersion < 1)) ||
+          (tx.betSnapshot !== undefined && (!tx.betSnapshot || typeof tx.betSnapshot !== "object" ||
+            typeof tx.betSnapshot.id !== "string" || tx.betSnapshot.id !== tx.betId ||
+            !Number.isFinite(tx.betSnapshot.stake) || tx.betSnapshot.stake <= 0 ||
+            !Number.isFinite(tx.betSnapshot.odds) || tx.betSnapshot.odds <= 1 ||
+            !Number.isFinite(tx.betSnapshot.probability) || tx.betSnapshot.probability <= 0 || tx.betSnapshot.probability >= 1 ||
+            tx.betSnapshot.stake !== tx.stake ||
+            typeof tx.betSnapshot.placedAt !== "string" || !Number.isFinite(Date.parse(tx.betSnapshot.placedAt)) ||
+            (tx.matchId !== undefined && tx.matchId !== tx.betSnapshot.matchId) ||
+            (tx.side !== undefined && tx.side !== tx.betSnapshot.side) ||
+            (tx.betSnapshot.matchId !== null && tx.betSnapshot.matchId !== undefined &&
+              (!Number.isSafeInteger(tx.betSnapshot.matchId) || tx.betSnapshot.matchId <= 0 || !["A", "B"].includes(tx.betSnapshot.side))))) {
         throw new Error("В журнале найдена некорректная операция.");
       }
       ids.add(tx.id);
