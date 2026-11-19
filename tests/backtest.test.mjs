@@ -303,6 +303,31 @@ test("backtest reports year-by-surface counts, metrics and sample quality", () =
 });
 
 
+test("surface walk-forward calibration reports insufficient prior samples instead of silently omitting the segment", () => {
+  const rows = [];
+  for (let i = 0; i < 199; i++) {
+    rows.push({
+      tourney_date: "20240101", tourney_id: "2024-T", match_num: String(i + 1),
+      winner_id: String(i * 2 + 1), loser_id: String(i * 2 + 2),
+      score: "6-4 6-4", surface: "Clay"
+    });
+  }
+  rows.push({
+    tourney_date: "20250101", tourney_id: "2025-T", match_num: "1",
+    winner_id: "1001", loser_id: "1002", score: "6-4 6-4", surface: "Clay"
+  });
+  const report = runBacktest(rows, { evaluationStart: "20250101" });
+  const validation = report.calibrationValidation.find(item =>
+    item.evaluationYear === "2025" && item.candidate === "elo" &&
+    item.scope === "surface" && item.surface === "Clay"
+  );
+  assert.ok(validation);
+  assert.equal(validation.status, "insufficient_surface_training_data");
+  assert.equal(validation.trainingMatches, 199);
+  assert.equal(validation.raw.matches, 1);
+  assert.equal(validation.calibrated, undefined);
+});
+
 test("walk-forward calibration accumulates all prior years and uses pre-window warm-up matches", () => {
   const rows = [];
   for (const [year, count] of [["2022", 205], ["2024", 205], ["2025", 29]]) {
