@@ -372,3 +372,33 @@ test("backtest keeps player orientation independent of the match outcome", () =>
   assert.equal(report.metrics.elo.accuracy, 0);
   assert.equal(report.metrics.elo.brier, Number((prediction.probabilities.elo ** 2).toFixed(5)));
 });
+
+
+test("backtest metrics and predictions are invariant to CSV row order", () => {
+  const rows = [
+    { tourney_date: "20250101", tourney_id: "A", match_num: "2", winner_id: "3", loser_id: "4", score: "6-4 6-4", surface: "Clay" },
+    { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250102", tourney_id: "A", match_num: "3", winner_id: "2", loser_id: "3", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250103", tourney_id: "B", match_num: "1", winner_id: "4", loser_id: "1", score: "6-4 6-4", surface: "Grass" }
+  ];
+  const first = runBacktest(rows, { includePredictions: true });
+  const shuffled = runBacktest([...rows].reverse(), { includePredictions: true });
+  assert.deepEqual(shuffled.metrics, first.metrics);
+  assert.deepEqual(shuffled.calibration, first.calibration);
+  assert.deepEqual(shuffled.predictions, first.predictions);
+  assert.deepEqual(shuffled.breakdowns, first.breakdowns);
+});
+
+test("backtest excludes every row of a conflicting duplicate match", () => {
+  const rows = [
+    { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "20250102", tourney_id: "A", match_num: "2", winner_id: "3", loser_id: "4", score: "6-4 6-4", surface: "Clay" }
+  ];
+  const report = runBacktest(rows);
+  assert.equal(report.matches, 1);
+  assert.equal(report.conflictingDuplicateMatches, 1);
+  assert.equal(report.conflictingDuplicateRows, 2);
+  assert.equal(report.excluded, 2);
+  assert.equal(report.duplicateRows, 0);
+});
