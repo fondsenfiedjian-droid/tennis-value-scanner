@@ -1507,6 +1507,23 @@ test("PWA app shell precaches the Winamax import module and advances cache versi
 });
 
 
+test("live value quotes are rejected after scheduled start and for non-upcoming statuses", () => {
+  const start = frontendSource.indexOf("function isPreMatchMatch(");
+  const end = frontendSource.indexOf("function oddsForMatch(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Number, String, Date };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\\nglobalThis.isPreMatch = isPreMatchMatch;", sandbox);
+  const now = Date.parse("2026-11-19T12:00:00Z");
+  const future = new Date(now + 3600000);
+  assert.equal(sandbox.isPreMatch({ status: "upcoming" }, future, now), true);
+  assert.equal(sandbox.isPreMatch({ status: "live" }, future, now), false);
+  assert.equal(sandbox.isPreMatch({ status: "completed" }, future, now), false);
+  assert.equal(sandbox.isPreMatch({ status: "cancelled" }, future, now), false);
+  assert.equal(sandbox.isPreMatch({ status: "upcoming" }, new Date(now - 1), now), false);
+  assert.equal(sandbox.isPreMatch({ status: "upcoming" }, null, now), false);
+  assert.match(frontendSource, /eventStart\\.getTime\\(\\)<=now/);
+});
+
 test("odds matching supports provider-specific event IDs and keeps the best price per player side", () => {
   assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
