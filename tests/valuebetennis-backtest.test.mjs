@@ -45,8 +45,11 @@ test("Valuebetennis backtest labels prediction evaluation as non-ROI", () => {
   const report = runValuebetennisBacktest(sample, { evaluationStart: "20250103" });
   assert.equal(report.source, "Valuebetennis open data (CC BY 4.0)");
   assert.equal(report.tours.join(","), "atp,wta");
-  assert.equal(report.report.warmupMatches, 1);
-  assert.equal(report.report.evaluatedMatches, 1);
+  assert.equal(report.report, null);
+  assert.equal(report.reportsByTour.atp.warmupMatches, 1);
+  assert.equal(report.reportsByTour.atp.evaluatedMatches, 0);
+  assert.equal(report.reportsByTour.wta.warmupMatches, 0);
+  assert.equal(report.reportsByTour.wta.evaluatedMatches, 1);
   assert.match(report.importantLimit, /does not establish betting ROI/);
   assert.equal(report.marketBenchmarks.opening.matchesWithTwoValidOdds, 2);
   assert.equal(report.marketBenchmarks.opening.matchesExcludedNonstandardOutcome, 1);
@@ -83,4 +86,17 @@ test("Valuebetennis importer excludes every row in a conflicting duplicate match
   assert.equal(report.conflictingDuplicateRows, 2);
   assert.equal(report.rejectedRows, 2);
   assert.equal(report.rejectedByReason.conflicting_duplicate_match, 2);
+});
+
+test("Valuebetennis backtests ATP and WTA independently even when player IDs overlap", () => {
+  const csv = [
+    header,
+    "9101,2025-01-01,710,atp,Hard,777,778,777,6-4 6-4,1.7,2.2,1.65,2.3",
+    "9102,2025-01-02,711,wta,Hard,777,779,779,4-6 4-6,2.1,1.8,2.2,1.7"
+  ].join("\\n");
+  const report = runValuebetennisBacktest(csv);
+  assert.deepEqual(report.tours, ["atp", "wta"]);
+  assert.equal(report.report, null);
+  assert.equal(report.reportsByTour.atp.totalMatches, 1);
+  assert.equal(report.reportsByTour.wta.totalMatches, 1);
 });
