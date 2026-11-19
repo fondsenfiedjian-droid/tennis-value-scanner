@@ -158,6 +158,15 @@ Uploaded 2026 file previously validated:
 - Parsed and diagnosed with Python; the full file was not run through the Node CLI at that time. Do not claim otherwise.
 - Do not commit user-provided historical archives to the public repository unless explicitly approved.
 
+Preliminary 2026 chronological Elo diagnostic (19 Nov 2026):
+- Analysed the user-provided Valuebetennis 2026 CSV locally; it was not committed to the repository.
+- Input: 80,836 rows; 76,638 standard completed matches after outcome/player validation; no duplicate match IDs observed.
+- Evaluation: 2026-10-01 through 2026-11-19 (14,496 matches; ATP 8,565, WTA 5,931); Jan-Sep 2026 used only as Elo warm-up. This is still a cold-start single-season experiment.
+- Independent chronological implementation of the repository's K=32 Elo and 70/30 surface blend, with same-day batch updates, scored on the paired opening-odds sample (7,853 matches): Elo Brier 0.23392 / log-loss 0.66013 versus no-vig Pinnacle market 0.18762 / 0.55341. Paired Brier loss gap +0.04630 (approx. 95% CI +0.04274 to +0.04986); log-loss gap +0.10672 (95% CI +0.09846 to +0.11497). Closing sample (7,551): Elo 0.23375 / 0.65976 versus market 0.18646 / 0.55006.
+- Surface blend did not improve on overall Elo in this holdout. These are probability-quality comparisons, not betting ROI. Do not tune EV thresholds or claim profitability from this result.
+- Next validation step: add at least 2025 Valuebetennis data as warm-up, then evaluate 2026 chronologically on the same paired opening/closing odds; ideally add 2021-2024 for longer player-rating warm-up. Valuebetennis publishes these seasons under CC BY 4.0; cite the source if reused. Keep the user's 2026 CSV private and out of Git.
+
+
 Tennis-Data.co.uk terms were found to restrict use to private individuals and prohibit commercial product/model-training use without written permission. Do not ingest/train on that source without permission.
 
 ## 7. UI design decisions
