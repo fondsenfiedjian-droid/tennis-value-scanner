@@ -53,18 +53,23 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 
 ## 3. Current repository state (2026-11-19)
 
-Latest known main commit:
-- `28083a3097a6f53f29c39beaff3cdb67aca6893f`
-- Commit message: `Expect v103 PWA shell cache`
+Latest known main commit (2026-11-19):
+- `056dd42754b63223f660d04a2b8f2e80fd5af6fc`
+- Commit message: `Assert both fallback paths reject stale cache`
 
-Latest GitHub Actions run:
-- Run ID: `44503173521`
-- Result: completed successfully.
-- Workflow: Regression tests.
-- The preceding cache-bump commit run `44503164672` failed because ten tests still asserted older service-worker cache-version strings while the cache had already advanced. The immediately following commit updated the expected version; its run succeeded. Treat the earlier failure as a sequencing mismatch, not as proof that all tests are failing.
-- Latest recorded suite size: 290 tests; verify current logs before quoting a fresh pass count.
+Latest GitHub Actions runs:
+- Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
+- Manual-refresh/cache change commit `00329d4fa805e8cdb247f7a7bed63ebaffbf6d59`: run `44507070552` completed successfully.
+- UI regression test commit `38ae43dc38c509429bdde9d051e5c659e03ba8d1`: run `44507092712` completed successfully.
+- Fallback timestamp validation commit `be304ca21f403dbf9235c7c3fd7e2dde8bea58af`: run `44507118462` completed successfully.
+- Added assertions commit `b43f2c559a2c780cdcdb9a1e213582a8f56ccfdf`: run `44507127578` completed successfully.
+- Current head `056dd42754b63223f660d04a2b8f2e80fd5af6fc`: run `44507158161` was still running at last check; verify before reporting final CI status.
+- An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
+- Manual refresh button and Matches navigation now force a fresh schedule request instead of silently reusing the 15-minute schedule cache. Configured automatic refresh and foreground catch-up also force a refresh; initial startup may still reuse a valid recent cache.
+- Match-cache timestamps are now validated for finite, non-future values before reuse, including offline fallback. Expired or future-dated caches are not treated as valid.
+- UI regression tests cover manual/scheduled refresh bypass and both cache fallback validation paths.
 - Best available bookmaker quote is displayed directly on the match card, without expanding details.
 - Displaying an odds quote is separate from EV eligibility: EV still uses only quotes inside configured minimum/maximum odds filters.
 - Missing odds and odds outside the EV range have distinct explanatory states.
@@ -135,7 +140,7 @@ Tennis-Data.co.uk terms were found to restrict use to private individuals and pr
 
 ## 8. Next actions — ordered
 
-1. Verify latest GitHub Actions result and inspect any current failures before making more changes.
+1. Confirm current head CI run `44507158161` and inspect any failures.
 2. Verify current Netlify credit/deploy state and production deployment without changing hosting or spending money.
 3. Verify Worker health and odds route, then inspect the actual returned Apify item schema and timestamps. Do not assume `scrapedAt` exists or is reliable without checking live payloads.
 4. Once deployment is possible, deploy the current tested `main` build and confirm the live PWA shows odds, freshness and API status correctly.
