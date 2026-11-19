@@ -349,3 +349,21 @@ test("verified settlement revisions remain idempotent across repeated correction
   assert.equal(duplicateV5.state.balance, 98);
   assert.equal(bank.validateState(duplicateV5.state), duplicateV5.state);
 });
+
+test("official result revisions never overwrite a manually confirmed settlement", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 988, side: "A"
+  });
+  const manual = bank.settleBet(placed.state, placed.bet.id, "won");
+  assert.equal(manual.balance, 102.2);
+
+  const reconciled = bank.settleVerifiedResults(manual, [
+    { matchId: 988, resultOutcome: "completed", resultWinner: 2, resultVersion: 99 }
+  ]);
+  assert.equal(reconciled.updated, 0);
+  assert.equal(reconciled.state.balance, 102.2);
+  assert.equal(bank.realizedProfit(reconciled.state), 2.2);
+  assert.equal(reconciled.state.transactions.filter(tx => tx.type === "settlement").length, 1);
+  assert.equal(reconciled.state.transactions.find(tx => tx.type === "settlement").source, "manual");
+  assert.equal(bank.validateState(reconciled.state), reconciled.state);
+});
