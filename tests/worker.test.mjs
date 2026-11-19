@@ -2405,6 +2405,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
           json: async () => payload
         };
       },
+      fetchWithTimeout: async url => sandbox.fetch(url),
       TVSPFE: {
         normalizeRecentFormProfile: (value, options) => {
           calls.recent++;
