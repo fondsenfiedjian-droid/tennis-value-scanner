@@ -72,6 +72,7 @@ function pairedModelMarketComparison(predictions, period) {
         matches: bin.n,
         predictedFavouritePct: bin.n ? Number((bin.predicted / bin.n * 100).toFixed(2)) : null,
         observedFavouriteWinPct: bin.n ? Number((bin.wins / bin.n * 100).toFixed(2)) : null,
+        absoluteCalibrationGapPp: bin.n ? Number((Math.abs(bin.predicted / bin.n - bin.wins / bin.n) * 100).toFixed(2)) : null,
         sampleQuality: bin.n < 30 ? "low" : bin.n < 100 ? "limited" : "larger_sample"
       }))
     };
