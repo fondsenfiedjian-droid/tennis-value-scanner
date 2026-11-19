@@ -258,13 +258,19 @@ export default {
         );
 
         if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
           return response({
             error: "Apify request failed",
             upstreamStatus: upstream.status
-          }, upstream.status);
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
         }
 
-        const items = await upstream.json();
+        let items;
+        try {
+          items = await upstream.json();
+        } catch {
+          return response({ error: "Apify dataset response was not valid JSON" }, 502);
+        }
         if (!Array.isArray(items)) {
           return response({ error: "Apify dataset response was not an array" }, 502);
         }
