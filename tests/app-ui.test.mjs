@@ -221,7 +221,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v110"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v111"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -250,4 +250,14 @@ test("frontend API requests have a bounded timeout and clear their timer", () =>
   for (const route of ["/odds", "/matches", "/result", "/player-stats", "/predict"]) {
     assert.ok(html.includes("fetchWithTimeout(API+'"+route), "route "+route+" must use the timeout wrapper");
   }
+});
+
+
+test("bankroll tab and assets are fully removed from the application shell", () => {
+  for (const obsolete of ["bankrollView", "navBankroll", "bankroll.js", "winamax-import.js", "TVSBankroll", "Банкролл"]) {
+    assert.ok(!html.includes(obsolete), "application must not contain "+obsolete);
+    assert.ok(!serviceWorker.includes(obsolete), "service worker must not cache "+obsolete);
+  }
+  assert.match(html, /id="navHome"/);
+  assert.match(html, /id="navStats"/);
 });
