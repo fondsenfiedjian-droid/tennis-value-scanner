@@ -130,6 +130,9 @@ test("paired Elo and Pinnacle comparison uses the same evaluated matches and ori
   assert.equal(comparison.opening.matchesMissingOrInvalidOdds, 0);
   assert.equal(comparison.closing.matches, 1);
   assert.equal(comparison.closing.matchesMissingOrInvalidOdds, 1);
+  assert.equal(comparison.opening.byYear["2025"].matches, 2);
+  assert.equal(comparison.opening.bySurface.Hard.matches, 1);
+  assert.equal(comparison.opening.byYearAndSurface["2025|Hard"].matches, 1);
   assert.ok(comparison.opening.market.brier >= 0 && comparison.opening.market.brier <= 1);
   assert.ok(comparison.opening.models.elo.brier >= 0 && comparison.opening.models.elo.brier <= 1);
   assert.equal(typeof comparison.opening.models.elo.brierDifferenceVsMarket, "number");
