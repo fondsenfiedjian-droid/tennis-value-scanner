@@ -54,6 +54,16 @@ function internalCacheRequest(request, pathname) {
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
+async function fetchUpstream(input, init = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function response(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -226,7 +236,7 @@ async function getPlayerProfile(playerId, apiKey) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached.json();
 
-    const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
+    const res = await fetchUpstream("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
       headers: { "X-API-Key": apiKey, "Accept": "application/json" }
     });
     if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
@@ -286,7 +296,7 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        const upstream = await fetch(
+        const upstream = await fetchUpstream(
           `https://api.apify.com/v2/datasets/${APIFY_DATASET_ID}/items?clean=true&format=json&limit=1000`,
           {
             headers: {
@@ -345,7 +355,7 @@ export default {
       if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
       try {
         // Live Tennis documents /usage as quota-exempt.
-        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/usage", {
+        const upstream = await fetchUpstream("https://api.livetennisapi.com/api/public/v1/usage", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         const body = await upstream.json();
@@ -375,7 +385,7 @@ export default {
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
+        const upstream = await fetchUpstream("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         let stats;
@@ -440,7 +450,7 @@ export default {
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
+        const upstream = await fetchUpstream("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         const body = await upstream.json();
