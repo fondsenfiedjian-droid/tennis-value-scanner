@@ -19,6 +19,7 @@ function marketBenchmark(rows, fields) {
   let valid = 0, invalid = 0, overround = 0, favouriteWins = 0, decisiveFavourite = 0, excludedNonstandard = 0;
   let brier = 0, logLoss = 0;
   for (const row of rows) {
+    if (/\b(?:W\/O|RET|ABD|DEF|DEFAULT)\b/i.test(String(row.score ?? ""))) { excludedNonstandard++; continue; }
     const [field1, field2] = fields;
     const odds1 = parseOdds(row[field1]), odds2 = parseOdds(row[field2]);
     if (!odds1 || !odds2) { invalid++; continue; }
@@ -38,6 +39,7 @@ function marketBenchmark(rows, fields) {
   return {
     matchesWithTwoValidOdds: valid,
     matchesMissingOrInvalidOdds: invalid,
+    matchesExcludedNonstandardOutcome: excludedNonstandard,
     averageOverroundPct: valid ? Number((100 * overround / valid).toFixed(3)) : null,
     marketFavouriteWinRatePct: decisiveFavourite ? Number((100 * favouriteWins / decisiveFavourite).toFixed(2)) : null,
     marketFavouriteSample: decisiveFavourite,
