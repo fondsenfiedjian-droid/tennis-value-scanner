@@ -402,3 +402,20 @@ test("backtest excludes every row of a conflicting duplicate match", () => {
   assert.equal(report.excluded, 2);
   assert.equal(report.duplicateRows, 0);
 });
+
+
+test("identical duplicate odds metadata is recognized regardless of object key order", () => {
+  const first = {
+    tourney_date: "20250101", tourney_id: "A", match_num: "1",
+    winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard",
+    sourceOdds: { opening1: "1.8", opening2: "2.1", player1Id: "1" }
+  };
+  const second = {
+    ...first,
+    sourceOdds: { player1Id: "1", opening2: "2.1", opening1: "1.8" }
+  };
+  const report = runBacktest([first, second]);
+  assert.equal(report.matches, 1);
+  assert.equal(report.duplicateRows, 1);
+  assert.equal(report.conflictingDuplicateMatches, 0);
+});
