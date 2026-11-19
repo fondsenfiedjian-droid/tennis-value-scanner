@@ -140,6 +140,7 @@ export function runBacktest(matches, options = {}) {
   const byYear = new Map(), bySurfaceMetrics = new Map(), byYearAndSurface = new Map();
   const yearlyObservations = new Map();
   const yearlyEvaluationObservations = new Map();
+  const predictions = [];
   const addMetric = (bucket, probability) => {
     bucket.n++;
     bucket.brier += (probability - 1) ** 2;
@@ -195,7 +196,7 @@ export function runBacktest(matches, options = {}) {
     const score = String(row.score ?? "");
     if (!date || !validId(winner) || !validId(loser) || winner === loser || /\b(?:W\/O|RET|ABD|DEF|DEFAULT)\b/i.test(score)) return null;
     const surface = ["Hard", "Clay", "Grass", "Carpet"].includes(row.surface) ? row.surface : null;
-    return { date, winner, loser, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? "") };
+    return { date, winner, loser, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
   }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
   const seenMatches = new Set();
@@ -248,8 +249,10 @@ export function runBacktest(matches, options = {}) {
         const yearSurfaceBucket = byYearAndSurface.get(yearSurfaceKey);
         yearSurfaceBucket.matches++;
       }
+      const modelProbabilities = {};
       for (const [name, delta] of Object.entries(features)) {
         const probability = sigmoid(1500 + delta, 1500);
+        modelProbabilities[name] = probability;
         const favouriteProbability = Math.max(probability, 1 - probability);
         const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
         yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: match.surface ?? "Unknown" });
@@ -267,6 +270,10 @@ export function runBacktest(matches, options = {}) {
           yearlyEvaluationObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
         }
       }
+      if (insideEvaluationWindow && options.includePredictions === true) predictions.push({
+        date, winnerId: match.winner, loserId: match.loser, surface: match.surface,
+        sourceOdds: match.sourceOdds, probabilities: modelProbabilities
+      });
       updates.push(match);
     }
 
@@ -416,6 +423,7 @@ export function runBacktest(matches, options = {}) {
     metrics: formatMetrics(totals),
     calibration: Object.fromEntries(Object.entries(totals).map(([name, bucket]) => [name, formatCalibration(bucket)])),
     calibrationValidation,
+    ...(options.includePredictions === true ? { predictions } : {}),
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
       bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
