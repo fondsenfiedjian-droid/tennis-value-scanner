@@ -262,7 +262,7 @@ export function runOddsBacktest(rows, options = {}) {
   if (!Number.isFinite(maxClosingAgeMinutes) || maxClosingAgeMinutes < 0 || maxClosingAgeMinutes > maxSnapshotAgeMinutes) throw new RangeError("maxClosingAgeMinutes must be between 0 and maxSnapshotAgeMinutes");
 
   const matches = new Map();
-  let rejectedSnapshots = 0, staleSnapshots = 0;
+  let rejectedSnapshots = 0, staleSnapshots = 0, duplicateSnapshotsCollapsed = 0;
   const modelTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterOddsCapture: 0, atOrAfterMatchStart: 0, nonUpcomingStatus: 0 };
   const quoteTimestampCoverage = { provided: 0, missing: 0, invalid: 0, afterObservation: 0, afterModelCalculation: 0, staleAtObservation: 0, sideSkew: 0, acceptedSides: 0 };
   const acceptedSnapshotAges = [];
@@ -343,6 +343,7 @@ export function runOddsBacktest(rows, options = {}) {
       if (sameTime.oddsA !== oddsA || sameTime.oddsB !== oddsB || sameTime.probabilityA !== probabilityA) {
         throw new Error("Conflicting duplicate timestamp snapshot for match_id " + id);
       }
+      duplicateSnapshotsCollapsed++;
       continue;
     }
     snapshotGroup.push({ captured, oddsA, oddsB, probabilityA, row: index });
@@ -445,8 +446,26 @@ export function runOddsBacktest(rows, options = {}) {
   const archiveMatches = [...matches.values()];
   const matchStarts = archiveMatches.map(match => match.start).sort((a, b) => a - b);
   const snapshotCounts = archiveMatches.map(match => match.snapshots.length).sort((a, b) => a - b);
-  const medianSnapshotCount = snapshotCounts.length
-    ? snapshotCounts[Math.floor((snapshotCounts.length - 1) / 2)] : null;
+  const medianOf = values => {
+    if (!values.length) return null;
+    const sorted = values.slice().sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  const medianSnapshotCount = medianOf(snapshotCounts);
+  const snapshotIntervals = [];
+  let matchesWithSingleSnapshot = 0;
+  for (const match of archiveMatches) {
+    const ordered = match.snapshots.slice().sort((a, b) => a.captured - b.captured);
+    if (ordered.length === 1) matchesWithSingleSnapshot++;
+    for (let i = 1; i < ordered.length; i++) snapshotIntervals.push((ordered[i].captured - ordered[i - 1].captured) / 60000);
+  }
+  const sortedIntervals = snapshotIntervals.slice().sort((a, b) => a - b);
+  const matchDays = [...new Set(archiveMatches.map(match => new Date(match.start).toISOString().slice(0, 10)))].sort();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const calendarDaysInRange = matchDays.length ? Math.round((Date.parse(matchDays.at(-1) + "T00:00:00Z") - Date.parse(matchDays[0] + "T00:00:00Z")) / dayMs) + 1 : 0;
+  const dayGaps = matchDays.slice(1).map((day, index) => Math.round((Date.parse(day + "T00:00:00Z") - Date.parse(matchDays[index] + "T00:00:00Z")) / dayMs));
+  const daysWithoutMatches = Math.max(0, calendarDaysInRange - matchDays.length);
   const ratingDateCounts = { provided: 0, missing: 0, invalid: 0, beforeMatchDate: 0, sameMatchDate: 0, afterMatchDate: 0 };
   for (const row of rows) {
     const values = [row.rating_as_of_a, row.rating_as_of_b];
@@ -487,8 +506,25 @@ export function runOddsBacktest(rows, options = {}) {
     surfaces: [...new Set(archiveMatches.map(match => match.surface).filter(Boolean))].sort(),
     snapshotsPerMatch: snapshotCounts.length ? {
       min: snapshotCounts[0], median: medianSnapshotCount,
-      max: snapshotCounts[snapshotCounts.length - 1]
+      max: snapshotCounts[snapshotCounts.length - 1],
+      matchesWithSingleSnapshot
     } : null,
+    duplicateSnapshotsCollapsed,
+    snapshotCadenceMinutes: sortedIntervals.length ? {
+      intervals: sortedIntervals.length,
+      min: Number(sortedIntervals[0].toFixed(1)),
+      median: Number(medianOf(sortedIntervals).toFixed(1)),
+      max: Number(sortedIntervals.at(-1).toFixed(1)),
+      gapsOver2Hours: sortedIntervals.filter(value => value > 120).length,
+      gapsOver6Hours: sortedIntervals.filter(value => value > 360).length,
+      gapsOver24Hours: sortedIntervals.filter(value => value > 1440).length
+    } : null,
+    calendarCoverage: {
+      daysWithMatches: matchDays.length,
+      calendarDaysInRange,
+      daysWithoutMatches,
+      longestGapBetweenMatchDays: dayGaps.length ? Math.max(...dayGaps) : null
+    },
     matchesWithQualifyingClosingSnapshot: qualifyingClosingMatchCount,
     matchesWithoutQualifyingClosingSnapshot: Math.max(0, archiveMatches.length - qualifyingClosingMatchCount)
   };
