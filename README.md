@@ -24,7 +24,7 @@ Base URL: `https://tennis-value-api.fonds-enfiedjian.workers.dev`
 
 ### Match filters
 
-`/matches` accepts `status` (`live`, `upcoming`, `completed`, `cancelled`), `limit` (1–200), `offset` (0–100000), `tour` (`atp`, `wta`, `challenger`, `itf`, `juniors`), `draw` (`singles` or `doubles`), `from`, `to`, `player`, `country`, `has_market`, and `has_analysis`. Filter values are validated before the upstream request.
+`/matches` accepts `status` (`live`, `upcoming`, `completed`, `cancelled`), `limit` (1–200), `offset` (0–100000), `tour` (`atp`, `wta`, `challenger`, `itf`, `juniors`), `draw` (`singles` or `doubles`), `from`, `to`, `player`, `country`, `has_market`, and `has_analysis`. Filter values are validated before the upstream request. The Worker-only `fresh=true` flag bypasses the 15-minute Cloudflare cache, fetches the upstream schedule and refreshes the canonical cache entry; it is not forwarded to Live Tennis. The PWA uses this for explicit manual refreshes.
 
 ### Prediction input
 
@@ -34,7 +34,7 @@ Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ra
 
 ## Caching
 
-- Match queries: Cloudflare cache for 15 minutes.
+- Match queries: Cloudflare cache for 15 minutes. Responses expose `X-Data-Cache: HIT|MISS`; upstream `Retry-After` is forwarded on rate limits. Use `fresh=true` only when a real upstream refresh is required, since it bypasses this cache and consumes an API request.
 - Winamax odds: Cloudflare cache for 5 minutes.
 - Player profiles: Cloudflare cache for 7 days.
 - Frontend match cache: 15 minutes.
