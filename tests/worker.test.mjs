@@ -1628,7 +1628,8 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
   assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
   assert.match(frontendSource, /const bestQuoteForSide=\(quotes,side\)=>quotes\.filter/);
-  assert.match(frontendSource, /const quoteA=bestQuoteForSide\(matched,'1'\),quoteB=bestQuoteForSide\(matched,'2'\)/);
+  assert.match(frontendSource, /const displayQuoteA=bestQuoteForSide\(allMatched,'1'\),displayQuoteB=bestQuoteForSide\(allMatched,'2'\)/);
+  assert.match(frontendSource, /const oddsA=displayQuoteA\?Number\(displayQuoteA\.oddsDecimal\):null,oddsB=displayQuoteB\?Number\(displayQuoteB\.oddsDecimal\):null/);
   assert.match(frontendSource, /if\(!isPreMatchMatch\(m,matchStart,now\)\)return \[\]/);
   assert.match(frontendSource, /data-event-id-a=/);
   assert.match(frontendSource, /el\.dataset\.eventIdA,el\.dataset\.eventIdB/);
