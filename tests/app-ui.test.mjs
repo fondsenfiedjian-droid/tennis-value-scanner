@@ -5,6 +5,15 @@ import vm from "node:vm";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
+const extractMatchesStart = html.indexOf("function extractMatches(payload)");
+const extractMatchesEnd = html.indexOf("function playerName(p)", extractMatchesStart);
+const extractMatchesSource = html.slice(extractMatchesStart, extractMatchesEnd);
+function runExtractMatches(payload) {
+  const sandbox = {};
+  vm.runInNewContext(extractMatchesSource + "\nglobalThis.extract = extractMatches;", sandbox);
+  return sandbox.extract(payload);
+}
+
 const oddsMatchingStart = html.indexOf("function normalizePlayer(s)");
 const oddsMatchingEnd = html.indexOf("function normalizeTour(value)", oddsMatchingStart);
 const oddsMatchingSource = html.slice(oddsMatchingStart, oddsMatchingEnd);
@@ -143,4 +152,21 @@ test("odds matching rejects stale quotes and quote pairs more than 30 minutes ap
     scrapedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString()
   });
   assert.equal(getOddsMatching([freshHome, skewedAway]).oddsForMatch(match).length, 0);
+});
+
+test("valid empty match schedules are distinct from malformed API payloads", () => {
+  assert.deepEqual(Array.from(runExtractMatches([])), []);
+  assert.deepEqual(Array.from(runExtractMatches({ matches: [] })), []);
+  assert.deepEqual(Array.from(runExtractMatches({ data: { results: [] } })), []);
+  assert.equal(runExtractMatches({ error: "upstream failed" }), null);
+  assert.equal(runExtractMatches(null), null);
+  const match = { players: { p1: "Player A", p2: "Player B" } };
+  assert.deepEqual(Array.from(runExtractMatches({ matches: [match] })), [match]);
+});
+
+test("empty valid schedules are cached and can be reused or shown offline", () => {
+  assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\)&&isFreshCacheTimestamp/);
+  assert.match(html, /if\(saved&&Array\.isArray\(saved\.matches\)\)/);
+  assert.match(html, /if\(matches===null\)throw new Error/);
+  assert.doesNotMatch(html, /if\(!matches\.length\)throw new Error/);
 });
