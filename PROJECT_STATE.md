@@ -54,8 +54,8 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
-- `3529145e5f164dfbe81b72e3abad04e301d74a7a`
-- Commit message: `Test real bookmaker odds-to-match pairing`
+- `4aa34b6186416cc18c91877d8c8097f96ecd51fc`
+- Commit message: `Assert timestamp remains visible in offline odds state`
 
 Latest GitHub Actions runs:
 - Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
@@ -64,7 +64,8 @@ Latest GitHub Actions runs:
 - Fallback timestamp validation commit `be304ca21f403dbf9235c7c3fd7e2dde8bea58af`: run `44507118462` completed successfully.
 - Added assertions commit `b43f2c559a2c780cdcdb9a1e213582a8f56ccfdf`: run `44507127578` completed successfully.
 - Worker odds endpoint validation commit `d03d984c36312a000557b898b426cb3c1e535474`: run `44507715902` completed successfully; 295 tests passed, 0 failed.
-- Current head `3529145e5f164dfbe81b72e3abad04e301d74a7a`: run `44507849997` completed successfully; 298 tests passed, 0 failed.
+- Odds-to-match matching commit `3529145e5f164dfbe81b72e3abad04e301d74a7a`: run `44507849997` completed successfully; 298 tests passed, 0 failed.
+- Current head `4aa34b6186416cc18c91877d8c8097f96ecd51fc`: run `44508513931` completed successfully; 299 tests passed, 0 failed.
 - An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
@@ -78,7 +79,8 @@ Recent app changes in GitHub:
 - Best available bookmaker quote is displayed directly on the match card, without expanding details.
 - Displaying an odds quote is separate from EV eligibility: EV still uses only quotes inside configured minimum/maximum odds filters.
 - Missing odds and odds outside the EV range have distinct explanatory states.
-- Odds feed status reports quote count and retrieval/freshness information; stale or unavailable feed states are surfaced.
+- Odds feed status reports quote count and quote freshness from `scrapedAt`, separately from the Worker/Apify dataset retrieval timestamp `retrievedAt`; this distinction persists in local cache and remains visible during offline fallback. Missing retrieval timestamps are shown as unknown, not inferred from local browser time.
+- Service-worker static shell cache is v104, so the updated PWA shell replaces older cached copies.
 - API connection state is dynamic rather than a permanently optimistic “connected” label.
 - Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
 - Service-worker cache version is v103.
@@ -145,11 +147,11 @@ Tennis-Data.co.uk terms were found to restrict use to private individuals and pr
 
 ## 8. Next actions — ordered
 
-1. Confirm current head CI run `44507715902`: passed 295/295 tests.
-2. Verify current Netlify credit/deploy state and production deployment without changing hosting or spending money.
-3. Verify Worker health and odds route, then inspect the actual returned Apify item schema and timestamps. Direct live endpoint access was unavailable during this session, so production feed remains unverified. Do not assume `scrapedAt` exists or is reliable without checking live payloads.
-4. Once deployment is possible, deploy the current tested `main` build and confirm the live PWA shows odds, freshness and API status correctly.
-5. Improve app usability based on observed live behavior, not speculative feature construction.
+1. Verify current production Worker `/health` and `/odds`, including the actual Apify item field names, `scrapedAt` coverage, timestamp distribution, bookmaker coverage and two-sided market completeness. Live endpoint access was unavailable during the latest session, so production feed remains unverified; do not infer live data quality from synthetic tests.
+2. Verify Netlify credit/deploy state and production deployment without changing hosting or spending money. The current browser-access checks for both Netlify and Worker endpoints failed, so deployment and live service state are unknown.
+3. Once production access is confirmed, deploy the current tested `main` build and verify the live PWA displays real odds, both timestamp types, freshness and API errors correctly.
+4. Run a small monitored operational trial: compare several upcoming matches against Winamax manually, record missing/mismatched/stale quotes, and verify probabilities/EV against independently checked inputs before using outputs for decisions.
+5. Improve usability based on observed live behavior, not speculative feature construction.
 6. Continue prediction-quality work only with verified data, chronological splits and honest uncertainty/sample warnings.
 
 ## 9. Development protocol
