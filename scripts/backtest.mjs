@@ -141,11 +141,12 @@ export function runBacktest(matches, options = {}) {
   const yearlyObservations = new Map();
   const yearlyEvaluationObservations = new Map();
   const predictions = [];
-  const addMetric = (bucket, probability) => {
+  const addMetric = (bucket, probability, outcome) => {
     bucket.n++;
-    bucket.brier += (probability - 1) ** 2;
-    bucket.logLoss -= Math.log(Math.max(1e-15, probability));
-    bucket.correct += probability > 0.5 ? 1 : probability === 0.5 ? 0.5 : 0;
+    const p = clampProbability(probability);
+    bucket.brier += (p - outcome) ** 2;
+    bucket.logLoss -= outcome * Math.log(p) + (1 - outcome) * Math.log(1 - p);
+    bucket.correct += p > 0.5 ? outcome : p < 0.5 ? 1 - outcome : 0.5;
   };
   const formatMetrics = bucket => Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => {
     const value = bucket[name];
@@ -196,7 +197,9 @@ export function runBacktest(matches, options = {}) {
     const score = String(row.score ?? "");
     if (!date || !validId(winner) || !validId(loser) || winner === loser || /\b(?:W\/O|RET|ABD|DEF|DEFAULT)\b/i.test(score)) return null;
     const surface = ["Hard", "Clay", "Grass", "Carpet"].includes(row.surface) ? row.surface : null;
-    return { date, winner, loser, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
+    const player1 = Number(winner) < Number(loser) ? winner : loser;
+    const player2 = player1 === winner ? loser : winner;
+    return { date, winner, loser, player1, player2, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
   }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
   const seenMatches = new Set();
@@ -217,18 +220,18 @@ export function runBacktest(matches, options = {}) {
 
     const updates = [];
     for (const match of day) {
-      const ra = overall.get(match.winner) ?? 1500;
-      const rb = overall.get(match.loser) ?? 1500;
-      const sA = match.surface ? bySurface.get(match.surface + ":" + match.winner) : null;
-      const sB = match.surface ? bySurface.get(match.surface + ":" + match.loser) : null;
+      const ra = overall.get(match.player1) ?? 1500;
+      const rb = overall.get(match.player2) ?? 1500;
+      const sA = match.surface ? bySurface.get(match.surface + ":" + match.player1) : null;
+      const sB = match.surface ? bySurface.get(match.surface + ":" + match.player2) : null;
       const surfaceA = sA?.rating ?? ra, surfaceB = sB?.rating ?? rb;
       const useSurface = Boolean(match.surface && (sA?.count ?? 0) >= minSurfaceMatches && (sB?.count ?? 0) >= minSurfaceMatches);
-      const historyA = form.get(match.winner) ?? [], historyB = form.get(match.loser) ?? [];
+      const historyA = form.get(match.player1) ?? [], historyB = form.get(match.player2) ?? [];
       const formA = (historyA.reduce((sum, item) => sum + (item.won ? 1 : 0), 0) + 2) / (historyA.length + 4);
       const formB = (historyB.reduce((sum, item) => sum + (item.won ? 1 : 0), 0) + 2) / (historyB.length + 4);
       const h = h2h.get(pairKey(match.winner, match.loser)) ?? { a: 0, b: 0 };
-      const lowerIdWonDiff = h.a - h.b;
-      const h2hDiff = (Number(match.winner) < Number(match.loser) ? lowerIdWonDiff : -lowerIdWonDiff) / (h.a + h.b + 4);
+      // player1 is always the lower numeric ID, matching the H2H record's a-side.
+      const h2hDiff = (h.a - h.b) / (h.a + h.b + 4);
       const features = {
         elo: ra - rb,
         surface: useSurface ? 0.7 * (ra - rb) + 0.3 * (surfaceA - surfaceB) : ra - rb,
@@ -253,16 +256,17 @@ export function runBacktest(matches, options = {}) {
       for (const [name, delta] of Object.entries(features)) {
         const probability = sigmoid(1500 + delta, 1500);
         modelProbabilities[name] = probability;
+        const player1Won = match.winner === match.player1 ? 1 : 0;
         const favouriteProbability = Math.max(probability, 1 - probability);
-        const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
+        const favouriteWon = probability > 0.5 ? player1Won : probability < 0.5 ? 1 - player1Won : 0.5;
         yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: match.surface ?? "Unknown" });
         if (insideEvaluationWindow) {
           const surfaceKey = match.surface ?? "Unknown";
           const yearSurfaceBucket = byYearAndSurface.get(year + "|" + surfaceKey);
-          addMetric(totals[name], probability);
-          addMetric(byYear.get(year)[name], probability);
-          addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
-          addMetric(yearSurfaceBucket.metrics[name], probability);
+          addMetric(totals[name], probability, player1Won);
+          addMetric(byYear.get(year)[name], probability, player1Won);
+          addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability, player1Won);
+          addMetric(yearSurfaceBucket.metrics[name], probability, player1Won);
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
@@ -271,7 +275,8 @@ export function runBacktest(matches, options = {}) {
         }
       }
       if (insideEvaluationWindow && options.includePredictions === true) predictions.push({
-        date, winnerId: match.winner, loserId: match.loser, surface: match.surface,
+        date, winnerId: match.winner, loserId: match.loser,
+        player1Id: match.player1, player2Id: match.player2, surface: match.surface,
         sourceOdds: match.sourceOdds, probabilities: modelProbabilities
       });
       updates.push(match);
