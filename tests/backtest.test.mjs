@@ -356,3 +356,19 @@ test("walk-forward calibration accumulates all prior years and uses pre-window w
   assert.equal(validation.evaluationSampleQuality, "low");
   assert.equal(validation.raw.matches, 29);
 });
+
+test("backtest keeps player orientation independent of the match outcome", () => {
+  const rows = [
+    { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4", surface: "Hard" },
+    { tourney_date: "20250102", tourney_id: "A", match_num: "2", winner_id: "1", loser_id: "2", score: "6-4", surface: "Hard" },
+    { tourney_date: "20250103", tourney_id: "A", match_num: "3", winner_id: "2", loser_id: "1", score: "4-6", surface: "Hard" }
+  ];
+  const report = runBacktest(rows, { evaluationStart: "20250103", includePredictions: true });
+  const prediction = report.predictions[0];
+  assert.equal(prediction.player1Id, "1");
+  assert.equal(prediction.player2Id, "2");
+  assert.equal(prediction.winnerId, "2");
+  assert.ok(prediction.probabilities.elo > 0.5);
+  assert.equal(report.metrics.elo.accuracy, 0);
+  assert.equal(report.metrics.elo.brier, Number((prediction.probabilities.elo ** 2).toFixed(5)));
+});
