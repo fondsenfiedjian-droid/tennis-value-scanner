@@ -48,6 +48,11 @@ test("Valuebetennis backtest labels prediction evaluation as non-ROI", () => {
   assert.equal(report.report.warmupMatches, 1);
   assert.equal(report.report.evaluatedMatches, 1);
   assert.match(report.importantLimit, /does not establish betting ROI/);
+  assert.equal(report.marketBenchmarks.opening.matchesWithTwoValidOdds, 2);
+  assert.equal(report.marketBenchmarks.opening.matchesExcludedNonstandardOutcome, 1);
+  assert.equal(report.marketBenchmarks.closing.matchesWithTwoValidOdds, 2);
+  assert.ok(report.marketBenchmarks.closing.noVigPlayer1ProbabilityBrier >= 0);
+  assert.match(report.marketBenchmarks.closing.note, /no simulated betting ROI/);
 });
 
 test("Valuebetennis backtest combines seasonal files without losing rows", () => {
