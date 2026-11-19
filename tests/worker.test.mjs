@@ -150,7 +150,7 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(storedKey, "https://worker.test/odds");
-  assert.equal(storedHeaders["Cache-Control"], "public, max-age=300");
+  assert.equal(storedHeaders["cache-control"], "public, max-age=300");
   assert.equal(result.headers.get("X-Data-Cache"), "MISS");
 
   workerSandbox.fetch = async () => { throw new Error("cache hit must not call Apify"); };
