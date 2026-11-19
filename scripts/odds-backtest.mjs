@@ -71,7 +71,7 @@ export function adaptScannerArchiveRows(rows) {
     if (group.sides[side]) {
       const previous = group.sides[side];
       const ratingAsOf = String(row.ratingAsOf ?? "").trim();
-      if (previous.odds !== odds || previous.probability !== probability ||
+      if (previous.odds !== odds || previous.probability !== probability / 100 ||
           previous.player !== player || previous.opponent !== opponent || previous.ratingAsOf !== ratingAsOf || previous.quoteCapturedAt !== quoteCaptured || previous.quoteObservedAt !== quoteObserved) {
         throw new Error("Conflicting duplicate side snapshot or rating provenance in archive for " + id);
       }
