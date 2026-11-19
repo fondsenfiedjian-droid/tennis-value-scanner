@@ -97,6 +97,6 @@ test("Valuebetennis backtests ATP and WTA independently even when player IDs ove
   const report = runValuebetennisBacktest(csv);
   assert.deepEqual(report.tours, ["atp", "wta"]);
   assert.equal(report.report, null);
-  assert.equal(report.reportsByTour.atp.totalMatches, 1);
-  assert.equal(report.reportsByTour.wta.totalMatches, 1);
+  assert.equal(report.reportsByTour.atp.matches, 1);
+  assert.equal(report.reportsByTour.wta.matches, 1);
 });
