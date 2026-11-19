@@ -215,3 +215,6 @@ node scripts/valuebetennis-backtest.mjs data/valuebetennis-matchs-2021.csv data/
 
 The source publishes the files under CC BY 4.0; attribution is required: Valuebetennis, “Tennis results and odds since 2021”, https://www.valuebetennis.com/en/donnees.htm. The source includes Pinnacle opening and last recorded pre-match odds, but this adapter deliberately uses match results only for Elo prediction evaluation. The CSV does not provide archived pre-match probabilities or complete quote-capture provenance, so it cannot by itself support a strict EV/ROI backtest. Do not treat its odds columns as proof of a model's historical value edge.
 
+
+
+Valuebetennis market benchmark note: the importer separately summarizes Pinnacle opening and last pre-match odds (two-sided coverage, average overround, favourite win rate, no-vig Brier/Log Loss), excluding retirements and walkovers. These descriptive baselines are not simulated betting ROI. Archived model probabilities and complete quote-capture provenance are absent, so this source alone cannot establish a strict EV/ROI backtest.
