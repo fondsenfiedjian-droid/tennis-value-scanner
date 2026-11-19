@@ -340,6 +340,13 @@ test("threshold sensitivity compares fixed EV and odds grids on a chronological 
   const report = runOddsBacktest(rows);
   const sensitivity = report.thresholdSensitivity;
   assert.equal(sensitivity.status, "evaluated");
+  assert.equal(report.researchAssessment.status, "exploratory_only");
+  assert.equal(report.researchAssessment.independentChronologicalHoldout, true);
+  assert.equal(report.researchAssessment.trainingMatches, 7);
+  assert.equal(report.researchAssessment.validationMatches, 3);
+  assert.equal(report.researchAssessment.baselineThreshold.minEvPercent, 3);
+  assert.equal(report.researchAssessment.baselineThreshold.minOdds, 1.9);
+  assert.match(report.researchAssessment.note, /do not prove a persistent edge/);
   assert.equal(sensitivity.split, "chronological_70_30_by_match_day");
   assert.equal(sensitivity.trainingDays, 7);
   assert.equal(sensitivity.validationDays, 3);
