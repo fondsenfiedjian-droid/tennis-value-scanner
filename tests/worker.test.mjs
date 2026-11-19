@@ -408,7 +408,7 @@ test("matches fresh=true bypasses Worker cache and refreshes the canonical cache
   assert.equal(cacheReads, 0);
   assert.equal(cacheWrites, 1);
   assert.equal(storedKey, "https://worker.test/matches?status=upcoming&draw=singles&limit=200");
-  assert.equal(upstreamUrl, "https://api.livetennisapi.com/api/public/v1/matches?status=upcoming&draw=singles&limit=200");
+  assert.equal(upstreamUrl, "https://api.livetennisapi.com/api/public/v1/matches?status=upcoming&limit=200&draw=singles");
   assert.equal(refreshed.headers.get("X-Data-Cache"), "MISS");
   assert.deepEqual(JSON.parse(JSON.stringify(await refreshed.json())), { data: [], meta: { count: 0 } });
 
