@@ -114,3 +114,25 @@ test("Valuebetennis importer maps French surface labels", () => {
   const parsed = parseValuebetennisCsv(csv);
   assert.deepEqual(parsed.rows.map(row => row.surface), ["Hard", "Clay", "Hard", "Grass", "Carpet"]);
 });
+
+test("paired Elo and Pinnacle comparison uses the same evaluated matches and orients player-one probabilities", () => {
+  const csv = [
+    header,
+    "9301,2025-01-01,730,atp,Hard,1,2,1,6-4 6-4,1.7,2.2,1.65,2.3",
+    "9302,2025-01-02,731,atp,Hard,1,3,3,4-6 4-6,2.0,1.8,2.1,1.7",
+    "9303,2025-01-03,732,atp,Clay,1,4,1,6-3 6-4,1.7,2.2,,2.3"
+  ].join("\n");
+  const report = runValuebetennisBacktest(csv, { evaluationStart: "20250102" });
+  const comparison = report.pairedMarketComparison.atp;
+  assert.equal(report.reportsByTour.atp.warmupMatches, 1);
+  assert.equal(report.reportsByTour.atp.evaluatedMatches, 2);
+  assert.equal(comparison.opening.matches, 2);
+  assert.equal(comparison.opening.matchesMissingOrInvalidOdds, 0);
+  assert.equal(comparison.closing.matches, 1);
+  assert.equal(comparison.closing.matchesMissingOrInvalidOdds, 1);
+  assert.ok(comparison.opening.market.brier >= 0 && comparison.opening.market.brier <= 1);
+  assert.ok(comparison.opening.models.elo.brier >= 0 && comparison.opening.models.elo.brier <= 1);
+  assert.equal(typeof comparison.opening.models.elo.brierDifferenceVsMarket, "number");
+  assert.match(comparison.opening.note, /same evaluated matches/);
+  assert.match(comparison.opening.note, /not betting ROI/);
+});
