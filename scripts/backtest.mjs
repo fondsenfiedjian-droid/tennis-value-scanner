@@ -191,6 +191,10 @@ export function runBacktest(matches, options = {}) {
     const ece = used.reduce((sum, bin) => sum + bin.matches * Math.abs(bin.gap) / 100, 0) / (bucket.n || 1);
     return { expectedCalibrationError: Number((ece * 100).toFixed(2)), bins };
   };
+  const stableOddsKey = value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return JSON.stringify(value ?? null);
+    return JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))));
+  };
   const clean = matches.map(row => {
     const date = dateKey(row.tourney_date);
     const winner = String(row.winner_id ?? ""), loser = String(row.loser_id ?? "");
@@ -209,7 +213,7 @@ export function runBacktest(matches, options = {}) {
     a.winner.localeCompare(b.winner) ||
     a.loser.localeCompare(b.loser) ||
     String(a.surface ?? "").localeCompare(String(b.surface ?? "")) ||
-    JSON.stringify(a.sourceOdds ?? null).localeCompare(JSON.stringify(b.sourceOdds ?? null))
+    stableOddsKey(a.sourceOdds).localeCompare(stableOddsKey(b.sourceOdds))
   );
 
   const matchGroups = new Map();
@@ -224,7 +228,7 @@ export function runBacktest(matches, options = {}) {
   let duplicateRows = 0, conflictingDuplicateMatches = 0, conflictingDuplicateRows = 0;
   for (const group of matchGroups.values()) {
     const signature = match => JSON.stringify([
-      match.date, match.winner, match.loser, match.surface, match.sourceOdds
+      match.date, match.winner, match.loser, match.surface, stableOddsKey(match.sourceOdds)
     ]);
     if (new Set(group.map(signature)).size > 1) {
       conflictingDuplicateMatches++;
