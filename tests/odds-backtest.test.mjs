@@ -600,3 +600,45 @@ test("multi-bookmaker archive rows are partitioned before independent backtests"
     assert.equal(report.bets, 1);
   }
 });
+
+
+test("scanner archive rejects conflicting match identifiers and invalid numeric timestamps", () => {
+  const row = (overrides = {}) => ({
+    capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "audit-id",
+    tour: "atp", surface: "Hard", player: "Player A", opponent: "Player B", side: "A",
+    odds: "2.20", probability: "50", modelCalculatedAt: "1735725599000",
+    quoteCapturedAt: "1735725590000", quoteObservedAt: "1735725595000",
+    captureStatus: "upcoming", resultOutcome: "completed", resultWinner: "1", ...overrides
+  });
+  const rows = [
+    row({ matchKey: "different-id" }),
+    row({ matchId: "bad\\u0000id", matchKey: "" }),
+    row({ capturedAt: "1735725600000.5", matchId: "fractional-capture" }),
+    row({ quoteCapturedAt: "1735725590000.5", matchId: "fractional-quote" })
+  ];
+  const adapted = adaptScannerArchiveRows(rows);
+  assert.equal(adapted.rows.length, 0);
+  assert.equal(adapted.ignored, 4);
+  assert.deepEqual(adapted.ignoredByReason, {
+    conflicting_match_ids: 1, invalid_match_id: 1,
+    invalid_capture_timestamp: 1, invalid_quote_timestamp: 1
+  });
+});
+
+test("scanner archive requires reciprocal player and opponent identity across both sides", () => {
+  const row = (side, player, opponent) => ({
+    capturedAt: "1735725600000", matchDate: "2025-01-01T12:00:00.000Z", matchId: "identity-audit",
+    tour: "atp", surface: "Hard", player, opponent, side,
+    odds: side === "A" ? "2.20" : "1.80", probability: "50",
+    modelCalculatedAt: "1735725599000", quoteCapturedAt: "1735725590000",
+    quoteObservedAt: "1735725595000", captureStatus: "upcoming",
+    resultOutcome: "completed", resultWinner: "1"
+  });
+  const adapted = adaptScannerArchiveRows([
+    row("A", "Player A", "Player B"),
+    row("B", "Player C", "Player A")
+  ]);
+  assert.equal(adapted.rows.length, 0);
+  assert.equal(adapted.ignored, 1);
+  assert.deepEqual(adapted.ignoredByReason, { opponent_identity_mismatch: 1 });
+});
