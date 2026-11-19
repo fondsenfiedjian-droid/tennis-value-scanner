@@ -95,6 +95,10 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
 });
 
+test("forced schedule refresh bypasses both browser and Worker caches", () => {
+  assert.match(html, /fetch\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
+});
+
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
   assert.equal((html.match(/isFreshCacheTimestamp\(saved\.savedAt,ODDS_CACHE_TTL\)/g)||[]).length, 2);
   assert.doesNotMatch(html, /Date\.now\(\)-saved\.savedAt<=ODDS_CACHE_TTL/);
