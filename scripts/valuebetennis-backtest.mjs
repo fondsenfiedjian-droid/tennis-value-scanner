@@ -75,7 +75,7 @@ export function parseValuebetennisCsv(text){
     if(!/^\d+$/.test(p1)||Number(p1)<=0||!/^\d+$/.test(p2)||Number(p2)<=0||p1===p2){reject("invalid_player_ids");continue;}
     if(winner!==p1&&winner!==p2){reject("winner_not_in_match");continue;}
     if(!id){reject("missing_match_id");continue;}
-    if(tour&&!["atp","wta"].includes(tour)){reject("unsupported_tour");continue;}
+    if(!["atp","wta"].includes(tour)){reject(tour?"unsupported_tour":"missing_tour");continue;}
     normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
   }
   return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
@@ -115,7 +115,7 @@ export function runValuebetennisBacktest(csvTexts,options={}){
   const marketRows=rows.map(row=>({joueur1_id:row.sourceOdds.player1Id,vainqueur_id:row.sourceOdds.winnerId,cote1_ouverture:row.sourceOdds.opening1,cote2_ouverture:row.sourceOdds.opening2,cote1_cloture:row.sourceOdds.closing1,cote2_cloture:row.sourceOdds.closing2,score:row.score}));
   const tours=[...new Set(rows.map(x=>x.tour).filter(Boolean))].sort(),years=[...new Set(rows.map(x=>x.tourney_date.slice(0,4)))].sort();
   return{source:"Valuebetennis open data (CC BY 4.0)",inputRows:parsed.reduce((n,x)=>n+x.inputRows,0),normalizedRows:rows.length,rejectedRows:parseRejected+deduped.conflictingDuplicateRows,rejectedByReason,duplicateRows:deduped.duplicateRows,conflictingDuplicateMatches:deduped.conflictingDuplicateMatches,conflictingDuplicateRows:deduped.conflictingDuplicateRows,delimiters:[...new Set(parsed.map(x=>x.delimiter))],tours,years:years.length?{from:years[0],to:years.at(-1),count:years.length}:null,marketBenchmarks:{opening:marketBenchmark(marketRows,ODDS_FIELDS.opening),closing:marketBenchmark(marketRows,ODDS_FIELDS.closing)},
-    report:runBacktest(rows,options),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
+    report:tours.length===1?runBacktest(rows,options):null,reportsByTour:Object.fromEntries(tours.map(tour=>[tour,runBacktest(rows.filter(row=>row.tour===tour),options)])),importantLimit:"The source provides match results and Pinnacle opening/last pre-match odds, but no archived pre-match model probabilities or full quote capture provenance. This run measures chronological Elo prediction quality only; it does not establish betting ROI or qualify for the strict odds-backtest."};
 }
 async function main(){
   const args=process.argv.slice(2),options={},files=[];
