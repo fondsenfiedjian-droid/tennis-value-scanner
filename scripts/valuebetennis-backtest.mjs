@@ -92,7 +92,11 @@ function pairedModelMarketComparison(predictions, period) {
     count: 0, missing: 0,
     market: { brier: 0, logLoss: 0 },
     marketCalibration: makeCalibration(),
-    models: Object.fromEntries(names.map(name => [name, { brier: 0, logLoss: 0 }])),
+    models: Object.fromEntries(names.map(name => [name, {
+      brier: 0, logLoss: 0,
+      brierDiffSum: 0, brierDiffSquared: 0,
+      logLossDiffSum: 0, logLossDiffSquared: 0
+    }])),
     modelCalibration: Object.fromEntries(names.map(name => [name, makeCalibration()]))
   });
   const overall = makeBucket();
@@ -129,8 +133,17 @@ function pairedModelMarketComparison(predictions, period) {
         const modelP1 = prediction.player1Id === prediction.sourceOdds.player1Id
           ? prediction.probabilities[name] : 1 - prediction.probabilities[name];
         const p = clamp(modelP1);
-        bucket.models[name].brier += (p - player1Won) ** 2;
-        bucket.models[name].logLoss -= player1Won * Math.log(p) + (1 - player1Won) * Math.log(1 - p);
+        const modelBrier = (p - player1Won) ** 2;
+        const modelLogLoss = -player1Won * Math.log(p) - (1 - player1Won) * Math.log(1 - p);
+        const brierDifference = modelBrier - marketBrier;
+        const logLossDifference = modelLogLoss - marketLogLoss;
+        const modelBucket = bucket.models[name];
+        modelBucket.brier += modelBrier;
+        modelBucket.logLoss += modelLogLoss;
+        modelBucket.brierDiffSum += brierDifference;
+        modelBucket.brierDiffSquared += brierDifference * brierDifference;
+        modelBucket.logLossDiffSum += logLossDifference;
+        modelBucket.logLossDiffSquared += logLossDifference * logLossDifference;
         addCalibration(bucket.modelCalibration[name], p, player1Won);
       }
     }
@@ -151,10 +164,23 @@ function pairedModelMarketComparison(predictions, period) {
       },
       models: Object.fromEntries(names.map(name => {
         const model = metrics(bucket.models[name]);
+        const paired = bucket.models[name];
+        const interval = (sum, sumSquared, lowerBound = -Infinity, upperBound = Infinity) => {
+          if (bucket.count < 2) return null;
+          const mean = sum / bucket.count;
+          const variance = Math.max(0, (sumSquared - sum * sum / bucket.count) / (bucket.count - 1));
+          const margin = 1.96 * Math.sqrt(variance / bucket.count);
+          return {
+            lower: Number(Math.max(lowerBound, mean - margin).toFixed(5)),
+            upper: Number(Math.min(upperBound, mean + margin).toFixed(5))
+          };
+        };
         return [name, {
           ...model,
           brierDifferenceVsMarket: bucket.count ? Number((model.brier - market.brier).toFixed(5)) : null,
-          logLossDifferenceVsMarket: bucket.count ? Number((model.logLoss - market.logLoss).toFixed(5)) : null
+          brierDifferenceVsMarketCI95: interval(paired.brierDiffSum, paired.brierDiffSquared, -1, 1),
+          logLossDifferenceVsMarket: bucket.count ? Number((model.logLoss - market.logLoss).toFixed(5)) : null,
+          logLossDifferenceVsMarketCI95: interval(paired.logLossDiffSum, paired.logLossDiffSquared)
         }];
       }))
     };
@@ -166,7 +192,7 @@ function pairedModelMarketComparison(predictions, period) {
     byYear: byKey(byYear),
     bySurface: byKey(bySurface),
     byYearAndSurface: byKey(byYearAndSurface),
-    note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Positive differences mean the model scores worse than the market. Year/surface groups with small samples are descriptive only. This is not betting ROI."
+    note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Difference confidence intervals are approximate normal 95% intervals over per-match paired loss differences and are null for fewer than two matches; they are not a multiple-comparison correction. Positive differences mean the model scores worse than the market. Year/surface groups with small samples are descriptive only. This is not betting ROI."
   };
 }
 
