@@ -54,8 +54,8 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
-- `4aa34b6186416cc18c91877d8c8097f96ecd51fc`
-- Commit message: `Assert timestamp remains visible in offline odds state`
+- `b098eb73e861a74ab60fe50ed4c31944993f355d`
+- Commit message: `Align service-worker tests with v105`
 
 Latest GitHub Actions runs:
 - Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
@@ -65,7 +65,8 @@ Latest GitHub Actions runs:
 - Added assertions commit `b43f2c559a2c780cdcdb9a1e213582a8f56ccfdf`: run `44507127578` completed successfully.
 - Worker odds endpoint validation commit `d03d984c36312a000557b898b426cb3c1e535474`: run `44507715902` completed successfully; 295 tests passed, 0 failed.
 - Odds-to-match matching commit `3529145e5f164dfbe81b72e3abad04e301d74a7a`: run `44507849997` completed successfully; 298 tests passed, 0 failed.
-- Current head `4aa34b6186416cc18c91877d8c8097f96ecd51fc`: run `44508513931` completed successfully; 299 tests passed, 0 failed.
+- Odds timestamp display commit `4aa34b6186416cc18c91877d8c8097f96ecd51fc`: run `44508513931` completed successfully; 299 tests passed, 0 failed.
+- Current head `b098eb73e861a74ab60fe50ed4c31944993f355d`: run `44508716312` completed successfully; 301 tests passed, 0 failed.
 - An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
@@ -80,7 +81,8 @@ Recent app changes in GitHub:
 - Displaying an odds quote is separate from EV eligibility: EV still uses only quotes inside configured minimum/maximum odds filters.
 - Missing odds and odds outside the EV range have distinct explanatory states.
 - Odds feed status reports quote count and quote freshness from `scrapedAt`, separately from the Worker/Apify dataset retrieval timestamp `retrievedAt`; this distinction persists in local cache and remains visible during offline fallback. Missing retrieval timestamps are shown as unknown, not inferred from local browser time.
-- Service-worker static shell cache is v104, so the updated PWA shell replaces older cached copies.
+- Service-worker static shell cache is v105, so the updated PWA shell replaces older cached copies.
+- Match schedule parsing now distinguishes a valid empty schedule (`[]` or a recognized empty `matches`/`data`/`results`/`events` array) from an unrecognized API payload. Empty schedules render as no matches and are cached/reused; they no longer trigger a false format error or silently fall back to stale matches.
 - API connection state is dynamic rather than a permanently optimistic “connected” label.
 - Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
 - Service-worker cache version is v103.
