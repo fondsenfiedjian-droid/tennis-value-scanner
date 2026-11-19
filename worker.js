@@ -7,6 +7,45 @@ const cors = {
 
 const APIFY_DATASET_ID = "ZBWihC1oYU8Pq9uBo";
 
+function diagnoseOddsItems(items, now = Date.now()) {
+  const fields = [
+    "bookmaker", "bookmakerCountry", "sport", "marketType", "line",
+    "eventId", "outcome", "homeTeam", "awayTeam", "eventName",
+    "competition", "startTime", "scrapedAt", "oddsDecimal"
+  ];
+  const present = Object.fromEntries(fields.map(field => [
+    field,
+    items.filter(item => item && typeof item === "object" && !Array.isArray(item)
+      && item[field] !== undefined && item[field] !== null && item[field] !== "").length
+  ]));
+  const timestamps = items.map(item => Date.parse(item?.scrapedAt))
+    .filter(value => Number.isFinite(value));
+  const validOdds = items.filter(item => {
+    const value = Number(item?.oddsDecimal);
+    return Number.isFinite(value) && value > 1;
+  }).length;
+  const bookmakers = [...new Set(items.map(item => String(item?.bookmaker || "").trim()).filter(Boolean))];
+  const outcomes = {
+    home: items.filter(item => String(item?.outcome || "").toLowerCase() === "home").length,
+    away: items.filter(item => String(item?.outcome || "").toLowerCase() === "away").length,
+    other: items.filter(item => !["home", "away"].includes(String(item?.outcome || "").toLowerCase())).length
+  };
+  const freshTimestamps = timestamps.filter(value => value <= now + 5 * 60 * 1000 && now - value <= 90 * 60 * 1000).length;
+  return {
+    schemaVersion: 1,
+    itemCount: items.length,
+    objectItems: items.filter(item => item && typeof item === "object" && !Array.isArray(item)).length,
+    bookmakers,
+    outcomeCounts: outcomes,
+    validDecimalOdds: validOdds,
+    parseableScrapedAt: timestamps.length,
+    freshScrapedAt: freshTimestamps,
+    oldestScrapedAt: timestamps.length ? new Date(Math.min(...timestamps)).toISOString() : null,
+    newestScrapedAt: timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null,
+    fieldCoverage: present
+  };
+}
+
 function internalCacheRequest(request, pathname) {
   const cacheUrl = new URL(request.url);
   cacheUrl.pathname = pathname;
@@ -279,6 +318,7 @@ export default {
           datasetId: APIFY_DATASET_ID,
           retrievedAt: new Date().toISOString(),
           count: items.length,
+          diagnostics: diagnoseOddsItems(items),
           items
         };
         const cacheResponse = new Response(JSON.stringify(payload), {
