@@ -16,7 +16,7 @@ Primary priorities:
 3. Prediction quality: Brier score, LogLoss, calibration, CLV, chronological holdouts, and honest sample-size warnings.
 4. Practical app usability on mobile.
 
-Bankroll/ledger is auxiliary: record actual bets, profit, and open obligations. Winamax CSV import is for manual reconciliation only.
+The Bankroll tab and its UI integration have been removed from the active PWA. Legacy bankroll/import source files and tests may remain in the repository but are not loaded by the active app.
 
 Explicit product constraints:
 - No automatic bet placement.
@@ -226,3 +226,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Worker `/odds` now resolves the most recent successful task run default dataset through Apify task last-run dataset-items endpoint, instead of reading fixed dataset `ZBWihC1oYU8Pq9uBo`.
 - Existing `APIFY_TOKEN` secret remains required; the task ID is non-secret configuration.
 - GitHub source changes do not deploy Cloudflare Worker. A successful task run and Worker deployment are still required before live odds can be verified.
+
+
+### Apify live-feed integration and current verification (2026-11-19, latest)
+- Apify task `s9Des4R3jhMfA8e3s` completed a successful manual run: 6 rows across 3 ATP Finals matches, two match-winner outcomes per match; displayed run cost was $0.000. This is a limited sample, not proof of broad market coverage.
+- Worker `/odds` now requests `/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000`, so it resolves the most recent successful task dataset dynamically. Apify documents this endpoint and the `status=SUCCEEDED` filter.
+- Code commit `c5d80fbc8f6e7c8eae1969854545b242aa79a49f` passed GitHub Actions run `44542779184`: 303 tests passed, 0 failed.
+- Deployment runbook was corrected to match the active PWA: removed obsolete Bankroll and Winamax CSV import acceptance steps.
+- Current Cloudflare Worker deployment and live `/odds` response remain unverified. The verification environment could not reach the Worker endpoint, and no Cloudflare deployment action is connected here. Do not enable an Apify schedule until Worker deployment and live odds verification are complete.
+- Next operator action: deploy Worker `tennis-value-api` from the repository using an authenticated Wrangler session (`npx wrangler deploy`), then run the manual production smoke workflow and inspect actual Winamax quote timestamps, event matching and two-sided coverage. Netlify frontend deployment is not required for the Worker-only change unless the PWA source also changes.
