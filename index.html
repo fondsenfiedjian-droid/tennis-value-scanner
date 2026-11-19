@@ -43,7 +43,7 @@
     .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#211815;color:white;font-weight:700}.actions .primary{background:#8e422d;border-color:#8e422d}
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
     .best-bet{background:linear-gradient(135deg,#211018,#090909);border:1px solid #a51f45;border-radius:16px;padding:14px;margin:0 0 12px}.best-bet-title{font-size:13px;font-weight:850;color:#d58a8e;letter-spacing:.02em}.best-bet-empty{font-size:13px;color:#c9bdb6;margin-top:7px;line-height:1.45}.best-bet-main{font-size:16px;font-weight:850;margin-top:8px;line-height:1.4}.best-bet-meta{font-size:12px;color:#c9bdb6;margin-top:6px;line-height:1.6}.best-bet-value{color:#d58a8e;font-weight:850}.match-list{display:grid;gap:10px}.match-card{background:linear-gradient(145deg,#191615,#0e0d0c 72%);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
-    .match-card{position:relative;cursor:pointer;transition:border-color .15s,background .15s}.match-card .match-top{padding-right:92px}.bookmaker-tag{position:absolute;top:8px;right:11px;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border:1px solid #a9a6a3;border-radius:6px;background:#171412;color:#e6bd58;font-size:9px;font-weight:850;letter-spacing:.06em}.match-card:focus{outline:2px solid #c66b49;outline-offset:2px}.match-card.expanded{border-color:#c66b49;background:#281912}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.loading{text-align:center;padding:24px;color:var(--muted)}
+    .match-card{position:relative;cursor:pointer;transition:border-color .15s,background .15s}.match-card .match-top{padding-right:92px}.bookmaker-tag{position:absolute;top:8px;right:11px;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border:1px solid #a9a6a3;border-radius:6px;background:#171412;color:#e6bd58;font-size:9px;font-weight:850;letter-spacing:.06em}.match-card:focus{outline:2px solid #c66b49;outline-offset:2px}.match-card.expanded{border-color:#c66b49;background:#281912}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.match-card .odds-visible{margin-top:9px;color:#f0c2a8;font-size:13px;line-height:1.5}.match-card .odds-visible b{color:#f5eee9}.loading{text-align:center;padding:24px;color:var(--muted)}
     .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#100e0d;border:1px solid #625149;font-size:12px;line-height:1.55}.model-result strong{color:#e7a083}.model-positive{color:#e6bd58;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}.data-freshness{margin-top:7px;padding:7px 8px;border-radius:8px;font-size:11px;line-height:1.45}.data-freshness.good{background:#211a0d;color:#d58a8e;border:1px solid #8a6c32}.data-freshness.medium{background:#302817;color:#f5d99d;border:1px solid #6a5428}.data-freshness.limited{background:#351f25;color:#f2b7c0;border:1px solid #75404b}
     .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.stats-actions button{flex:1 1 130px;border:1px solid var(--line);background:#211815;color:white;padding:11px;border-radius:10px}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
@@ -614,24 +614,30 @@
       const minOdds=Math.max(1.9,Number($('#minOdds').value||1.5));
       const maxOdds=Number($('#maxOdds').value||5);
       const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
-      const matched=(winnerEnabled?oddsForMatch(m):[]).filter(o=>{
+      const allMatched=winnerEnabled?oddsForMatch(m):[];
+      const matched=allMatched.filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
       });
-      const bestQuoteForSide=side=>matched.filter(o=>oddsSideForPlayer(o,a)===side).sort((x,y)=>Number(y.oddsDecimal)-Number(x.oddsDecimal))[0]||null;
-      const quoteA=bestQuoteForSide('1'),quoteB=bestQuoteForSide('2');
+      const bestQuoteForSide=(quotes,side)=>quotes.filter(o=>oddsSideForPlayer(o,a)===side).sort((x,y)=>Number(y.oddsDecimal)-Number(x.oddsDecimal))[0]||null;
+      // Display the best live quote even outside the EV filter; only in-range quotes feed the value calculation.
+      const quoteA=bestQuoteForSide(matched,'1'),quoteB=bestQuoteForSide(matched,'2');
+      const displayQuoteA=bestQuoteForSide(allMatched,'1'),displayQuoteB=bestQuoteForSide(allMatched,'2');
       const oddsA=quoteA?Number(quoteA.oddsDecimal):null,oddsB=quoteB?Number(quoteB.oddsDecimal):null;
       const bookmakerA=quoteA?String(quoteA.bookmaker||'').trim():'';
       const bookmakerB=quoteB?String(quoteB.bookmaker||'').trim():'';
       const providers=[...new Set([bookmakerA,bookmakerB].filter(Boolean))];
       const bookmakerName=providers.join(' / ');
       const bookmakerTag=providers.length?'<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>':'';
-      const oddsHtml=matched.length?'<div class="match-bottom">'+[quoteA?'<b>1</b> '+escapeHtml(bookmakerA)+' <b>'+oddsA.toFixed(2)+'</b>':'',quoteB?'<b>2</b> '+escapeHtml(bookmakerB)+' <b>'+oddsB.toFixed(2)+'</b>':''].filter(Boolean).join(' · ')+'</div>':'<div class="match-bottom">Нет коэффициентов в заданном диапазоне</div>';
+      const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
+        displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
+        displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты Winamax не найдены';
       const oddsObservedAt=Date.now();
       const selectedQuotes=[quoteA,quoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
       const ids=(p1&&p2&&p1.id&&p2.id)?' data-player-a="'+escapeHtml(p1.id)+'" data-player-b="'+escapeHtml(p2.id)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-event-id-a="'+escapeHtml(quoteA?.eventId||'')+'" data-event-id-b="'+escapeHtml(quoteB?.eventId||'')+'" data-quote-captured-a="'+(quoteA&&Number.isFinite(Date.parse(quoteA.scrapedAt))?Date.parse(quoteA.scrapedAt):'')+'" data-quote-captured-b="'+(quoteB&&Number.isFinite(Date.parse(quoteB.scrapedAt))?Date.parse(quoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
-      return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-details">'+oddsHtml+'<div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
+      return '<article class="match-card" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-bottom odds-visible">'+oddsHtml+'</div><div class="match-details"><div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
       const toggle=()=>{const open=card.classList.toggle('expanded');card.setAttribute('aria-expanded',String(open));const hint=card.querySelector('.card-hint');if(hint)hint.textContent=open?'Нажми, чтобы свернуть':'Нажми, чтобы открыть подробности';};
@@ -1859,7 +1865,7 @@
     const cachedCandidates=[],uncachedCandidates=[];
     for(const candidate of allCandidates){
       const el=document.getElementById('model-'+candidate.i);
-      const key='tvs-elo-v2-'+el.dataset.playerA+'-'+el.dataset.playerB;
+      const key='tvs-elo-v3-'+(el.dataset.surface||'unknown')+'-'+el.dataset.playerA+'-'+el.dataset.playerB;
       let validCache=false;
       try{
         const raw=localStorage.getItem(key);
