@@ -203,10 +203,19 @@ Never invent test results, data availability, live API status, deployments, URLs
 
 Latest launch-preparation changes:
 - Frontend API calls for odds, matches, results, player statistics, and predictions now use a 15-second abort timeout and show a readable timeout message. This prevents the UI from waiting indefinitely on a stalled API request.
-- PWA Service Worker cache advanced to `tennis-value-static-v110`; test expectations were updated to the same version.
+- PWA Service Worker cache advanced to `tennis-value-static-v111`; test expectations were updated to the same version.
 - Added `.github/workflows/production-smoke.yml`, a manual production smoke test. It checks the Netlify PWA, Worker health, presence (not values) of both required secrets, match response shape, and odds response/diagnostics. It reports an empty odds dataset explicitly rather than treating it as valid coverage.
 - Added `DEPLOYMENT_RUNBOOK.md` with the shortest safe sequence for Netlify publication, Worker deployment, smoke testing, Android PWA refresh, and real-device acceptance.
-- Regression tests were updated for frontend request timeouts, PWA cache v110, and the PFE loader's timeout wrapper.
+- Regression tests were updated for frontend request timeouts, PWA cache v111, and the PFE loader's timeout wrapper.
 - Do not treat the launch as complete until the latest regression workflow is green and the manual production smoke workflow passes against the live URLs.
 
 Deployment still requires operator access to Netlify and Cloudflare. No deployment credentials were added to the repository, and no secrets were exposed. Use the existing Netlify deploy integration or the manual Netlify trigger, and deploy the Worker from an authenticated Wrangler session as described in `DEPLOYMENT_RUNBOOK.md`.
+
+
+## Bankroll tab removal (2026-11-19)
+- Removed the entire Bankroll screen and navigation tab from `index.html`.
+- Removed its UI handlers, ledger initialization/reconciliation hooks, Winamax history import controls, and portfolio-plan button from the Best Bet card.
+- Removed bankroll and Winamax importer scripts from the app HTML and PWA app shell.
+- PWA cache advanced to `tennis-value-static-v111`.
+- Regression tests that asserted the removed UI were retired; remaining bankroll module unit tests are not loaded by the application.
+- Existing localStorage records are intentionally not erased by this UI removal.
