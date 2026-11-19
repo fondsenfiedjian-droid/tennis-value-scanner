@@ -448,3 +448,31 @@ test("walk-forward evaluation for a past season is invariant to later-season res
   assert.deepEqual(withFutureRows.breakdowns.byYear["2025"], baseline.breakdowns.byYear["2025"]);
   assert.equal(withFutureRows.evaluatedMatches, baseline.evaluatedMatches);
 });
+
+
+test("walk-forward calibration excludes earlier matches from the evaluation calendar year", () => {
+  const makeRows = (date, yearTag, count, offset) => Array.from({ length: count }, (_, i) => ({
+    tourney_date: date,
+    tourney_id: yearTag,
+    match_num: String(i + 1),
+    winner_id: String(offset + i * 2 + 1),
+    loser_id: String(offset + i * 2 + 2),
+    score: "6-4 6-4",
+    surface: "Hard"
+  }));
+  const rows = [
+    ...makeRows("20240101", "2024-T", 205, 1000),
+    ...makeRows("20250101", "2025-pre-window", 300, 10000),
+    ...makeRows("20250701", "2025-evaluation", 12, 20000)
+  ];
+  const report = runBacktest(rows, { evaluationStart: "20250701", evaluationEnd: "20251231" });
+  const validation = report.calibrationValidation.find(item =>
+    item.evaluationYear === "2025" && item.candidate === "elo" && item.scope === "tour"
+  );
+  assert.ok(validation);
+  assert.deepEqual(validation.trainingYears, ["2024"]);
+  assert.equal(validation.trainingMatches, 205);
+  assert.equal(validation.raw.matches, 12);
+  assert.equal(report.warmupMatches, 505);
+  assert.equal(report.evaluatedMatches, 12);
+});
