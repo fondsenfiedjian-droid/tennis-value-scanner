@@ -1853,7 +1853,7 @@ test("archive segment calibration exposes probability buckets and rejects confli
   assert.equal(tours.metadataConflicts, 0);
   assert.equal(surfaces.items[0].buckets[0].lower, 60);
   assert.ok(result.every(group => group.items.every(item => item.preliminary)));
-  assert.match(frontendSource, /bucket\\.averagePredicted\\.toFixed\\(1\\)/);
+  assert.match(frontendSource, /bucket\.averagePredicted\.toFixed\(1\)/);
   assert.match(frontendSource, /archiveSegmentCalibration\\(rows\\)/);
   assert.match(frontendSource, /id="archiveSegmentCalibration"/);
 });
