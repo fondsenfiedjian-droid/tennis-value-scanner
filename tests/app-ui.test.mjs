@@ -21,3 +21,10 @@ test("prediction pre-check uses the same versioned surface cache key as predicti
   assert.match(html, /const key='tvs-elo-v3-'\+\(el\.dataset\.surface\|\|'unknown'\)\+'-'\+el\.dataset\.playerA\+'-'\+el\.dataset\.playerB/);
   assert.match(html, /const cacheKey='tvs-elo-v3-'\+\(el\.dataset\.surface\|\|'unknown'\)\+'-'\+idA\+'-'\+idB/);
 });
+
+test("app header reports real API state instead of claiming the schedule is always connected", () => {
+  assert.match(html, /id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API/);
+  assert.match(html, /setConnectionStatus\('API: ОНЛАЙН'\)/);
+  assert.match(html, /setConnectionStatus\('API НЕДОСТУПЕН'\)/);
+  assert.match(html, /setConnectionStatus\('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ'\)/);
+});
