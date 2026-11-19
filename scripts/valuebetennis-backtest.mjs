@@ -100,12 +100,16 @@ function pairedModelMarketComparison(predictions, period) {
     modelCalibration: Object.fromEntries(names.map(name => [name, makeCalibration()]))
   });
   const overall = makeBucket();
-  const byYear = new Map(), bySurface = new Map(), byYearAndSurface = new Map();
+  const byYear = new Map(), bySurface = new Map(), byYearAndSurface = new Map(), byH2hMeetings = new Map();
+  const h2hBand = count => count === 0 ? "0" : count === 1 ? "1" : count === 2 ? "2" : count === 3 ? "3" : "4+";
   const clamp = value => Math.min(1 - 1e-12, Math.max(1e-12, value));
   for (const prediction of predictions) {
     const year = String(prediction.date).slice(0, 4);
     const surface = prediction.surface ?? "Unknown";
     const buckets = [overall];
+    const h2hBandKey = h2hBand(prediction.h2hMeetings ?? 0);
+    if (!byH2hMeetings.has(h2hBandKey)) byH2hMeetings.set(h2hBandKey, makeBucket());
+    buckets.push(byH2hMeetings.get(h2hBandKey));
     for (const [map, key] of [[byYear, year], [bySurface, surface], [byYearAndSurface, year + "|" + surface]]) {
       if (!map.has(key)) map.set(key, makeBucket());
       buckets.push(map.get(key));
@@ -192,6 +196,7 @@ function pairedModelMarketComparison(predictions, period) {
     byYear: byKey(byYear),
     bySurface: byKey(bySurface),
     byYearAndSurface: byKey(byYearAndSurface),
+    byPriorH2hMeetings: byKey(byH2hMeetings),
     note: "Paired probability-quality comparison on exactly the same evaluated matches with valid two-sided Pinnacle odds. Difference confidence intervals are approximate normal 95% intervals over per-match paired loss differences and are null for fewer than two matches; they are not a multiple-comparison correction. Positive differences mean the model scores worse than the market. Year/surface groups with small samples are descriptive only. This is not betting ROI."
   };
 }
