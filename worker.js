@@ -168,6 +168,24 @@ function normalizeSurface(value) {
   return null;
 }
 
+function collectEloDiagnostics(profile) {
+  const found = [];
+  const seen = new Set();
+  function walk(value, path = "$", depth = 0) {
+    if (!value || typeof value !== "object" || depth > 8 || seen.has(value) || found.length >= 40) return;
+    seen.add(value);
+    for (const [key, child] of Object.entries(value)) {
+      const childPath = path + "." + key;
+      if (/elo|rating/i.test(key) && (typeof child === "number" || typeof child === "string" || child === null)) {
+        found.push({ path: childPath, value: child });
+      }
+      if (child && typeof child === "object") walk(child, childPath, depth + 1);
+    }
+  }
+  walk(profile);
+  return found;
+}
+
 function findEloForSurface(profile, requestedSurface) {
   const surface = normalizeSurface(requestedSurface);
   if (surface) {
@@ -704,7 +722,13 @@ export default {
             ratingTypeA: selectedA?.type || null,
             ratingTypeB: selectedB?.type || null,
             surface: requestedSurface,
-            source
+            source,
+            diagnostic: {
+              profileKeysA: profileA && typeof profileA === "object" ? Object.keys(profileA) : [],
+              profileKeysB: profileB && typeof profileB === "object" ? Object.keys(profileB) : [],
+              eloFieldsA: collectEloDiagnostics(profileA),
+              eloFieldsB: collectEloDiagnostics(profileB)
+            }
           }, 422);
         }
       } else {
