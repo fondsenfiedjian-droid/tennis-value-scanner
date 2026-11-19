@@ -139,6 +139,7 @@ export function runBacktest(matches, options = {}) {
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0, winsSquared: 0, fractionalVariance: 0 })) }]));
   const byYear = new Map(), bySurfaceMetrics = new Map(), byYearAndSurface = new Map();
   const yearlyObservations = new Map();
+  const yearlyEvaluationObservations = new Map();
   const addMetric = (bucket, probability) => {
     bucket.n++;
     bucket.brier += (probability - 1) ** 2;
@@ -234,30 +235,36 @@ export function runBacktest(matches, options = {}) {
         h2h: (ra - rb) + 60 * h2hDiff,
         combined: (ra - rb) + (useSurface ? 0.3 * ((surfaceA - surfaceB) - (ra - rb)) : 0) + 80 * (formA - formB) + 60 * h2hDiff
       };
+      const year = date.slice(0, 4);
       const insideEvaluationWindow = (!evaluationStart || date >= evaluationStart) && (!evaluationEnd || date <= evaluationEnd);
+      if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
       if (insideEvaluationWindow) {
-        const year = date.slice(0, 4);
         if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
-        if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
+        if (!yearlyEvaluationObservations.has(year)) yearlyEvaluationObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
         const surfaceKey = match.surface ?? "Unknown";
         if (!bySurfaceMetrics.has(surfaceKey)) bySurfaceMetrics.set(surfaceKey, makeMetricBucket());
         const yearSurfaceKey = year + "|" + surfaceKey;
         if (!byYearAndSurface.has(yearSurfaceKey)) byYearAndSurface.set(yearSurfaceKey, { matches: 0, metrics: makeMetricBucket() });
         const yearSurfaceBucket = byYearAndSurface.get(yearSurfaceKey);
         yearSurfaceBucket.matches++;
-        for (const [name, delta] of Object.entries(features)) {
-          const probability = sigmoid(1500 + delta, 1500);
+      }
+      for (const [name, delta] of Object.entries(features)) {
+        const probability = sigmoid(1500 + delta, 1500);
+        const favouriteProbability = Math.max(probability, 1 - probability);
+        const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
+        yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: match.surface ?? "Unknown" });
+        if (insideEvaluationWindow) {
+          const surfaceKey = match.surface ?? "Unknown";
+          const yearSurfaceBucket = byYearAndSurface.get(year + "|" + surfaceKey);
           addMetric(totals[name], probability);
           addMetric(byYear.get(year)[name], probability);
           addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability);
           addMetric(yearSurfaceBucket.metrics[name], probability);
-          const favouriteProbability = Math.max(probability, 1 - probability);
-          const favouriteWon = probability > 0.5 ? 1 : probability < 0.5 ? 0 : 0.5;
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
           addCalibration(yearSurfaceBucket.metrics[name], favouriteProbability, favouriteWon);
-          yearlyObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
+          yearlyEvaluationObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
         }
       }
       updates.push(match);
@@ -316,19 +323,20 @@ export function runBacktest(matches, options = {}) {
   const evaluatedMatches = totals.elo.n;
 
   const calibrationValidation = [];
-  const years = [...yearlyObservations.keys()].sort();
-  for (let yearIndex = 1; yearIndex < years.length; yearIndex++) {
-    const trainingYear = years[yearIndex - 1];
-    const evaluationYear = years[yearIndex];
-    if (Number(evaluationYear) !== Number(trainingYear) + 1) continue;
+  const trainingYearsAvailable = [...yearlyObservations.keys()].sort();
+  const evaluationYears = [...yearlyEvaluationObservations.keys()].sort();
+  for (const evaluationYear of evaluationYears) {
+    const trainingYears = trainingYearsAvailable.filter(year => year < evaluationYear);
+    if (!trainingYears.length) continue;
+    const trainingYear = trainingYears.at(-1);
     for (const name of ["elo", "surface", "form", "h2h", "combined"]) {
-      const training = yearlyObservations.get(trainingYear)[name];
-      const evaluation = yearlyObservations.get(evaluationYear)[name];
+      const training = trainingYears.flatMap(year => yearlyObservations.get(year)[name]);
+      const evaluation = yearlyEvaluationObservations.get(evaluationYear)[name];
       const calibrator = fitLogisticCalibration(training);
       const raw = scoreFavouriteCalibration(evaluation);
       if (!calibrator) {
         calibrationValidation.push({
-          trainingYear, evaluationYear, candidate: name, scope: "tour",
+          trainingYear, trainingYears, evaluationYear, candidate: name, scope: "tour",
           status: "insufficient_training_data",
           trainingMatches: training.length,
           trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
@@ -342,7 +350,7 @@ export function runBacktest(matches, options = {}) {
         outcome: item.outcome
       }));
       calibrationValidation.push({
-        trainingYear, evaluationYear, candidate: name, scope: "tour",
+        trainingYear, trainingYears, evaluationYear, candidate: name, scope: "tour",
         trainingMatches: training.length,
         trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
         evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
@@ -361,7 +369,7 @@ export function runBacktest(matches, options = {}) {
           outcome: item.outcome
         }));
         calibrationValidation.push({
-          trainingYear, evaluationYear, candidate: name, scope: "surface",
+          trainingYear, trainingYears, evaluationYear, candidate: name, scope: "surface",
           surface: surfaceName, trainingMatches: surfaceTraining.length,
           trainingSampleQuality: surfaceTraining.length < 30 ? "low" : surfaceTraining.length < 100 ? "limited" : "larger_sample",
           evaluationSampleQuality: surfaceEvaluation.length < 30 ? "low" : surfaceEvaluation.length < 100 ? "limited" : "larger_sample",
