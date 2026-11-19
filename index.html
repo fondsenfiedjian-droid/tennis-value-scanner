@@ -448,6 +448,16 @@
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  async function fetchWithTimeout(url,options={},timeoutMs=15000){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      return await fetch(url,{...options,signal:controller.signal});
+    }catch(error){
+      if(controller.signal.aborted)throw new Error('Превышено время ожидания API ('+Math.round(timeoutMs/1000)+' с).');
+      throw error;
+    }finally{clearTimeout(timer);}
+  }
   function setConnectionStatus(label){
     const node=$('#connectionStatus');
     if(node)node.textContent=label;
@@ -543,7 +553,7 @@
   renderOddsStatus();
   async function loadOdds(){
     try{
-      const res=await fetch(API+'/odds');
+      const res=await fetchWithTimeout(API+'/odds');
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Winamax API: '+res.status));
       if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
@@ -1650,7 +1660,7 @@
     try{
       for(const id of ids){
         try{
-          const res=await fetch(API+'/result?id='+encodeURIComponent(id));
+          const res=await fetchWithTimeout(API+'/result?id='+encodeURIComponent(id));
           const result=await res.json();
           const current=readPredictionArchive();
           const updated=applyVerifiedMatchResult(current,result,Date.now());
@@ -1878,7 +1888,7 @@
     if(cached&&Date.now()-cached.savedAt<cachedTtl)return cached.value;
     const task=(async()=>{
       try{
-        const response=await fetch(API+'/player-stats?id='+encodeURIComponent(id));
+        const response=await fetchWithTimeout(API+'/player-stats?id='+encodeURIComponent(id));
         const retryAfterHeader=response.headers?.get?.('Retry-After');
         const retryAfterText=String(retryAfterHeader||'').trim();
         const retryAfterDate=Date.parse(retryAfterText);
@@ -1964,7 +1974,7 @@
         const cached=localStorage.getItem(cacheKey);
         if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data)){result=item.data;modelCalculatedAt=Number(item.savedAt);}else localStorage.removeItem(cacheKey);}
         if(!result){
-          const res=await fetch(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,surface:el.dataset.surface||"",oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
+          const res=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,surface:el.dataset.surface||"",oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
           result=await res.json();
           if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
           if(!isValidPredictionResult(result))throw new Error('Сервер вернул некорректный прогноз');
@@ -2175,7 +2185,7 @@
         $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
-      const res=await fetch(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
+      const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const cacheHeader=String(res.headers.get('X-Data-Cache')||'').toUpperCase();
