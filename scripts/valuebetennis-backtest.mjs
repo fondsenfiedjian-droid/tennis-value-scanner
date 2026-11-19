@@ -4,7 +4,7 @@ import { basename } from "node:path";
 import { parseCsv, runBacktest } from "./backtest.mjs";
 
 const REQUIRED = ["match_id","date","tournoi_id","genre","surface","joueur1_id","joueur2_id","vainqueur_id","score"];
-const SURFACES = new Map([["hard","Hard"],["clay","Clay"],["grass","Grass"],["carpet","Carpet"]]);
+const SURFACES = new Map([["hard","Hard"],["dur","Hard"],["dur intérieur","Hard"],["clay","Clay"],["terre battue","Clay"],["grass","Grass"],["gazon","Grass"],["carpet","Carpet"],["moquette intérieur","Carpet"]]);
 const ODDS_FIELDS = {
   opening: ["cote1_ouverture", "cote2_ouverture"],
   closing: ["cote1_cloture", "cote2_cloture"]
