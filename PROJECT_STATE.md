@@ -189,3 +189,11 @@ For each work session:
 7. Report clearly what changed in GitHub, what passed, and what is not deployed/verified.
 
 Never invent test results, data availability, live API status, deployments, URLs, or file contents. Keep secrets out of documentation.
+
+### Settings and Winamax diagnostics hardening (2026-11-19)
+- Settings modal now reloads persisted values each time it opens, and the Save handler verifies all numeric thresholds plus refresh rate and skin after writing local storage.
+- Skin preview remains immediate; Cancel restores the saved theme.
+- Winamax /odds response diagnostics are now retained in the local odds cache and displayed in the empty/error status: dataset record count, bookmakers, home/away outcome counts, valid decimal odds and fresh scrape timestamps.
+- PWA cache advanced to v109.
+- Latest verified code head: 0060d79691c41d72838e9392d62dc67630b6a1ff; CI run 44514147745: 314 tests passed, 0 failed.
+- The repository currently has only a test workflow, no Netlify/Cloudflare deployment workflow. Live Netlify and Worker endpoints could not be reached from the verification environment; production deployment and live odds feed remain unverified.
