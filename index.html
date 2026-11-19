@@ -484,7 +484,7 @@
     if(oddsLoadError){
       node.textContent=(cachedOdds.length
         ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
-        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError;
+        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError+sourceSeen;
       return;
     }
     if(cachedOdds.length){
