@@ -97,7 +97,7 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
 });
 
 test("forced schedule refresh bypasses both browser and Worker caches", () => {
-  assert.match(html, /fetch\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
+  assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
 });
 
 test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
@@ -221,7 +221,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v109"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v110"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -238,4 +238,16 @@ test("Winamax empty-state diagnostics expose upstream dataset coverage", () => {
   assert.match(html, /validDecimalOdds/);
   assert.match(html, /freshScrapedAt/);
   assert.match(html, /diagnostics:oddsDiagnostics/);
+});
+
+
+test("frontend API requests have a bounded timeout and clear their timer", () => {
+  assert.match(html, /async function fetchWithTimeout/);
+  assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),timeoutMs\)/);
+  assert.match(html, /signal:controller\.signal/);
+  assert.match(html, /Превышено время ожидания API/);
+  assert.match(html, /finally\{clearTimeout\(timer\)\}/);
+  for (const route of ["/odds", "/matches", "/result", "/player-stats", "/predict"]) {
+    assert.ok(html.includes("fetchWithTimeout(API+'"+route), "route "+route+" must use the timeout wrapper");
+  }
 });
