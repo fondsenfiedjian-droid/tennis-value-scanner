@@ -281,6 +281,16 @@ test("portfolio reconciliation rejects worse actual odds or oversized actual sta
 
 
 
+test("bankroll validation rejects corrupted settlement snapshots used for later result corrections", () => {
+  const placed = bank.placeBet(bank.createInitialState(100), {
+    probability: 0.6, odds: 2.1, stake: 2, matchId: 4321, side: "A"
+  });
+  const settled = bank.settleBet(placed.state, placed.bet.id, "won", { source: "verified", resultVersion: 1 });
+  const corrupted = JSON.parse(JSON.stringify(settled));
+  corrupted.transactions.find(tx => tx.type === "settlement").betSnapshot.odds = 99;
+  assert.throws(() => bank.validateState(corrupted), /некорректная операция/);
+});
+
 test("bankroll validation rejects malformed planned and actual execution audit values", () => {
   const invalidBet = bank.createInitialState(100);
   const placed = bank.placeBet(invalidBet, { probability: 0.62, odds: 2.1, stake: 1 });
