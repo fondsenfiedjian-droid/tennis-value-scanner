@@ -246,7 +246,7 @@ test("frontend API requests have a bounded timeout and clear their timer", () =>
   assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),timeoutMs\)/);
   assert.match(html, /signal:controller\.signal/);
   assert.match(html, /Превышено время ожидания API/);
-  assert.match(html, /finally\{clearTimeout\(timer\)\}/);
+  assert.match(html, /finally\{clearTimeout\(timer\);?\}/);
   for (const route of ["/odds", "/matches", "/result", "/player-stats", "/predict"]) {
     assert.ok(html.includes("fetchWithTimeout(API+'"+route), "route "+route+" must use the timeout wrapper");
   }
