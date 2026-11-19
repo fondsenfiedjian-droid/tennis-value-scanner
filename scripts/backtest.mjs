@@ -343,20 +343,20 @@ export function runBacktest(matches, options = {}) {
           evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
           raw
         });
-        continue;
+      } else {
+        const calibratedObservations = evaluation.map(item => ({
+          probability: logistic(calibrator.intercept + calibrator.slope * logit(item.probability)),
+          outcome: item.outcome
+        }));
+        calibrationValidation.push({
+          trainingYear, trainingYears, evaluationYear, candidate: name, scope: "tour",
+          trainingMatches: training.length,
+          trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
+          evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
+          calibrator,
+          raw, calibrated: scoreFavouriteCalibration(calibratedObservations)
+        });
       }
-      const calibratedObservations = evaluation.map(item => ({
-        probability: logistic(calibrator.intercept + calibrator.slope * logit(item.probability)),
-        outcome: item.outcome
-      }));
-      calibrationValidation.push({
-        trainingYear, trainingYears, evaluationYear, candidate: name, scope: "tour",
-        trainingMatches: training.length,
-        trainingSampleQuality: training.length < 30 ? "low" : training.length < 100 ? "limited" : "larger_sample",
-        evaluationSampleQuality: evaluation.length < 30 ? "low" : evaluation.length < 100 ? "limited" : "larger_sample",
-        calibrator,
-        raw, calibrated: scoreFavouriteCalibration(calibratedObservations)
-      });
 
       const surfaces = [...new Set([...training, ...evaluation].map(item => item.surface))].sort();
       for (const surfaceName of surfaces) {
