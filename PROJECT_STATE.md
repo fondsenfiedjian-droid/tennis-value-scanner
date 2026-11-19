@@ -54,8 +54,8 @@ Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Ne
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
-- `b098eb73e861a74ab60fe50ed4c31944993f355d`
-- Commit message: `Align service-worker tests with v105`
+- `c03cbe55430833d9104e9f219486cda03e8f463d`
+- Commit message: `Document explicit schedule refresh and rate-limit behavior`
 
 Latest GitHub Actions runs:
 - Project-state documentation commit `c50e91b491320337b14dfeaf2279c003b8270527`: run `44505644676` completed successfully.
@@ -66,7 +66,8 @@ Latest GitHub Actions runs:
 - Worker odds endpoint validation commit `d03d984c36312a000557b898b426cb3c1e535474`: run `44507715902` completed successfully; 295 tests passed, 0 failed.
 - Odds-to-match matching commit `3529145e5f164dfbe81b72e3abad04e301d74a7a`: run `44507849997` completed successfully; 298 tests passed, 0 failed.
 - Odds timestamp display commit `4aa34b6186416cc18c91877d8c8097f96ecd51fc`: run `44508513931` completed successfully; 299 tests passed, 0 failed.
-- Current head `b098eb73e861a74ab60fe50ed4c31944993f355d`: run `44508716312` completed successfully; 301 tests passed, 0 failed.
+- Empty-schedule handling commit `b098eb73e861a74ab60fe50ed4c31944993f355d`: run `44508716312` completed successfully; 301 tests passed, 0 failed.
+- Current tested application-code commit `0f806d1233e04e0d01df9a785442165df9a592ef`: run `44509212122` completed successfully; 305 tests passed, 0 failed. README documentation update `c03cbe55430833d9104e9f219486cda03e8f463d` followed.
 - An earlier cache-bump commit run `44503164672` failed because ten tests asserted older service-worker cache-version strings after the cache advanced. The immediately following commit updated the expected version and passed. This was a sequencing mismatch, not a persistent test failure.
 
 Recent app changes in GitHub:
@@ -74,14 +75,15 @@ Recent app changes in GitHub:
 - Worker `/odds` response includes `retrievedAt` separately from each quote's `scrapedAt`; the former records Worker retrieval time and must not be substituted for quote scrape time.
 - Regression tests cover missing Apify secret, method validation, successful array payload, cache MISS/HIT behavior, and malformed dataset rejection.
 - Frontend odds-matching tests execute the real matching functions and verify reversed player order, same-event pairing, tournament mismatch rejection, stale-quote rejection and the 30-minute pair-skew rule.
-- Manual refresh button and Matches navigation now force a fresh schedule request instead of silently reusing the 15-minute schedule cache. Configured automatic refresh and foreground catch-up also force a refresh; initial startup may still reuse a valid recent cache.
+- Manual refresh button and Matches navigation now force a fresh schedule request through both cache layers: the PWA bypasses its recent schedule cache and passes Worker-only `fresh=true`; the Worker skips its 15-minute Cloudflare cache, fetches Live Tennis and refreshes the canonical cache entry. Initial startup can still reuse a valid recent browser cache or Worker cache.
+- Worker `/matches` responses now expose `X-Data-Cache: HIT|MISS`; upstream `Retry-After` is forwarded for rate-limit handling. The `fresh` flag is validated and never forwarded to Live Tennis.
 - Match-cache timestamps are now validated for finite, non-future values before reuse, including offline fallback. Expired or future-dated caches are not treated as valid.
 - UI regression tests cover manual/scheduled refresh bypass and both cache fallback validation paths.
 - Best available bookmaker quote is displayed directly on the match card, without expanding details.
 - Displaying an odds quote is separate from EV eligibility: EV still uses only quotes inside configured minimum/maximum odds filters.
 - Missing odds and odds outside the EV range have distinct explanatory states.
 - Odds feed status reports quote count and quote freshness from `scrapedAt`, separately from the Worker/Apify dataset retrieval timestamp `retrievedAt`; this distinction persists in local cache and remains visible during offline fallback. Missing retrieval timestamps are shown as unknown, not inferred from local browser time.
-- Service-worker static shell cache is v105, so the updated PWA shell replaces older cached copies.
+- Service-worker static shell cache is v106, so the updated PWA shell replaces older cached copies.
 - Match schedule parsing now distinguishes a valid empty schedule (`[]` or a recognized empty `matches`/`data`/`results`/`events` array) from an unrecognized API payload. Empty schedules render as no matches and are cached/reused; they no longer trigger a false format error or silently fall back to stale matches.
 - API connection state is dynamic rather than a permanently optimistic “connected” label.
 - Prediction cache lookup uses the same versioned, surface-specific key as prediction storage.
