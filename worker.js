@@ -425,6 +425,11 @@ export default {
         return response({ error: "Invalid status. Use live, upcoming, completed, or cancelled." }, 400);
       }
 
+      const freshParam = url.searchParams.get("fresh");
+      if (freshParam !== null && !["true", "false"].includes(freshParam.toLowerCase())) {
+        return response({ error: "fresh must be true or false" }, 400);
+      }
+      const forceRefresh = freshParam?.toLowerCase() === "true";
       const params = new URLSearchParams({ status });
       const allowedParams = ["limit", "offset", "tour", "draw", "from", "to", "player", "country", "has_market", "has_analysis"];
       for (const key of allowedParams) {
@@ -473,8 +478,9 @@ export default {
         // Cache identical match queries for fifteen minutes to protect the free API quota.
         const cache = caches.default;
         const cacheUrl = new URL(request.url);
+        cacheUrl.searchParams.delete("fresh");
         const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
-        const cached = await cache.match(cacheKey);
+        const cached = forceRefresh ? null : await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
           headers.set("X-Data-Cache", "HIT");
