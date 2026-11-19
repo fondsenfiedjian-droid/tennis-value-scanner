@@ -218,3 +218,8 @@ The source publishes the files under CC BY 4.0; attribution is required: Valuebe
 
 
 Valuebetennis market benchmark note: the importer separately summarizes Pinnacle opening and last pre-match odds (two-sided coverage, average overround, favourite win rate, no-vig Brier/Log Loss), excluding retirements and walkovers. These descriptive baselines are not simulated betting ROI. Archived model probabilities and complete quote-capture provenance are absent, so this source alone cannot establish a strict EV/ROI backtest.
+
+
+### Historical data source policy
+
+Valuebetennis is the selected public historical source for this adapter because its published CSVs are CC BY 4.0, with attribution required. Tennis-Data.co.uk is not an approved automated model-training input for this project: its published notice restricts use to private individuals and explicitly excludes commercial products and automated bots/scrapers/AI data-training use. Do not scrape, import or train on those files without a separate written licence. A second bookmaker source must be selected only after its data-use terms explicitly permit the intended analysis and model validation.
