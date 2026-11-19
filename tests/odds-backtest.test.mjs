@@ -421,7 +421,7 @@ test("archive coverage reports date span, bookmaker, tours, surfaces and snapsho
   assert.deepEqual(coverage.bookmakers, ["winamax"]);
   assert.deepEqual(coverage.tours, ["atp"]);
   assert.deepEqual(coverage.surfaces, ["Clay", "Hard"]);
-  assert.deepEqual(coverage.snapshotsPerMatch, { min: 1, median: 1, max: 2 });
+  assert.deepEqual(coverage.snapshotsPerMatch, { min: 1, median: 1.5, max: 2, matchesWithSingleSnapshot: 1 });
   assert.equal(coverage.matchesWithQualifyingClosingSnapshot, 1);
   assert.equal(coverage.matchesWithoutQualifyingClosingSnapshot, 1);
 });
