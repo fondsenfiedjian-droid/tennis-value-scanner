@@ -16,6 +16,7 @@ function fixture(tour) {
     "match_id,stat_a,stat_b",
     "m1,10,20",
     "m2,11,",
+    "m1,14,22",
     "outside,12,13"
   ].join("\n");
   return files;
@@ -29,7 +30,7 @@ test("audits ATP and WTA metadata and stat-family match coverage", () => {
   assert.equal(report.tours.ATP.metadata.headers.includes("Player 1"), true);
   assert.equal(report.tours.ATP.metadata.qualityChecks.status, "clean");
   assert.equal(report.tours.ATP.metadata.qualityChecks.rowsWithUnexpectedSurface, 0);
-  assert.equal(report.tours.ATP.statFiles[0].rows, 3);
+  assert.equal(report.tours.ATP.statFiles[0].rows, 4);
   assert.equal(report.tours.ATP.statFiles[0].repeatedMatchIdRows, 1);
   assert.equal(report.tours.ATP.metadata.invalidDateRows, 0);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.matchedUniqueIds, 2);
