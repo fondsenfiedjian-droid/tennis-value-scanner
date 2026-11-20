@@ -12,7 +12,7 @@ const validDate = value => {
   return date.getUTCFullYear()===y && date.getUTCMonth()===m-1 && date.getUTCDate()===d ? s : null;
 };
 const validRank = value => Number.isFinite(value) && value>0 && value<=10000;
-function latestBefore(records, date) {
+function hasOnDate(records, date) {\n  let low=0, high=records.length;\n  while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}\n  return low<records.length && records[low].date===date;\n}\nfunction latestBefore(records, date) {
   let low=0, high=records.length;
   while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}
   return low ? records[low-1] : null;
@@ -43,7 +43,7 @@ export function buildPrematchRankRows(matches, rankingRows) {
       const age2=Math.max(0,Math.round((Date.parse(date.slice(0,4)+"-"+date.slice(4,6)+"-"+date.slice(6,8)+"T00:00:00Z")-Date.parse(lr.date.slice(0,4)+"-"+lr.date.slice(4,6)+"-"+lr.date.slice(6,8)+"T00:00:00Z"))/86400000));
       maxAge=Math.max(maxAge,age,age2);ageTotal+=age+age2;ageCount+=2;
     } else if(wr||lr) one++; else none++;
-    if(date && ((indexes.get(w)??[]).some(x=>x.date===date)||(indexes.get(l)??[]).some(x=>x.date===date))) exactSameDayExcluded++;
+    if(date && (hasOnDate(indexes.get(w)??[],date)||hasOnDate(indexes.get(l)??[],date))) exactSameDayExcluded++;
     return {...row,winner_rank,loser_rank,rank_snapshot_winner_date:wr?.date??"",rank_snapshot_loser_date:lr?.date??""};
   });
   return {rows:enriched,coverage:{matches:matches.length,bothPlayersRanked:both,onePlayerRanked:one,neitherRanked:none,bothCoveragePct:Number((100*both/Math.max(1,matches.length)).toFixed(2)),sameDayRankingRowsExcluded:exactSameDayExcluded,averageSnapshotAgeDays:ageCount?Number((ageTotal/ageCount).toFixed(1)):null,maxSnapshotAgeDays:maxAge}};
