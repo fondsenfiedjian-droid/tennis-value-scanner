@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const APP_URL = process.env.APP_URL || "https://fascinating-paprenjak-1aa9b3.netlify.app";
@@ -29,7 +28,7 @@ if ([scheduleStart, scheduleEnd, oddsStart, oddsEnd].some(index => index < 0)) {
 
 const sandbox = { cachedOdds: oddsResponse.data.items, Date, Set, Map, Number, String, Math, Object, Array, RegExp, JSON };
 const source = html.slice(scheduleStart, scheduleEnd) + "\n" + html.slice(oddsStart, oddsEnd) +
-  "\nglobalThis.checkFns = { extractMatches, playerName, matchDate, oddsForMatch, oddsSideForPlayer };";
+  "\nglobalThis.checkFns = { extractMatches, playerName, getPlayerId, matchDate, oddsForMatch, oddsSideForPlayer };";
 vm.runInNewContext(source, sandbox);
 
 const matches = sandbox.checkFns.extractMatches(matchesResponse.data);
@@ -53,7 +52,13 @@ for (const match of matches) {
       quoteCount: selected.length,
       side1: sideA[0]?.oddsDecimal ?? null,
       side2: sideB[0]?.oddsDecimal ?? null,
-      bookmaker: selected[0]?.bookmaker || ""
+      bookmaker: selected[0]?.bookmaker || "",
+      playerIdA: sandbox.checkFns.getPlayerId(players.p1 || match.player1),
+      playerIdB: sandbox.checkFns.getPlayerId(players.p2 || match.player2),
+      surface: match.surface || match.court || match.court_name || (/finals/i.test(match.tournament_name || match.tournament || "") && /turin/i.test(match.tournament_name || match.tournament || "") ? "hard" : ""),
+      matchData: match,
+      playerA,
+      playerB
     });
   } else {
     unmatchedWithReason.push({ match: playerA + " — " + playerB, tournament: match.tournament_name || match.tournament || "" });
@@ -72,5 +77,51 @@ if (matched.length === 0 && odds.length > 0) {
 }
 if (matched.some(row => row.side1 === null || row.side2 === null)) {
   throw new Error("A matched event did not map both prices to the correct player sides");
+}
+const predictionCandidate = matched.find(row =>
+  row.playerIdA && row.playerIdB &&
+  [Number(row.side1), Number(row.side2)].some(value => Number.isFinite(value) && value >= 1.9)
+);
+if (predictionCandidate) {
+  const predictionResponse = await fetch(API_URL + "/predict", {
+    method: "POST",
+    signal: timeout,
+    headers: { "Content-Type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      playerIdA: predictionCandidate.playerIdA,
+      playerIdB: predictionCandidate.playerIdB,
+      playerA: predictionCandidate.playerA,
+      playerB: predictionCandidate.playerB,
+      surface: predictionCandidate.surface,
+      oddsA: Number(predictionCandidate.side1),
+      oddsB: Number(predictionCandidate.side2)
+    })
+  });
+  const prediction = await predictionResponse.json();
+  if (!predictionResponse.ok) {
+    throw new Error("Live Elo prediction failed: " + (prediction.error || predictionResponse.status));
+  }
+  const pA = Number(prediction.probabilityExactA);
+  const pB = Number(prediction.probabilityExactB);
+  if (!Number.isFinite(pA) || !Number.isFinite(pB) || Math.abs(pA + pB - 1) > 1e-10) {
+    throw new Error("Live Elo prediction returned invalid complementary probabilities");
+  }
+  const expectedEvA = (pA * Number(predictionCandidate.side1) - 1) * 100;
+  const expectedEvB = (pB * Number(predictionCandidate.side2) - 1) * 100;
+  if (Math.abs(expectedEvA - Number(prediction.evA)) > 0.02 ||
+      Math.abs(expectedEvB - Number(prediction.evB)) > 0.02) {
+    throw new Error("Live EV does not match the probability × odds formula");
+  }
+  console.log("LIVE ELO + EV", JSON.stringify({
+    match: predictionCandidate.match,
+    source: prediction.source,
+    ratings: [prediction.ratingA, prediction.ratingB],
+    probabilities: [prediction.probabilityA, prediction.probabilityB],
+    odds: [predictionCandidate.side1, predictionCandidate.side2],
+    ev: [prediction.evA, prediction.evB],
+    surface: prediction.surface || predictionCandidate.surface || null
+  }));
+} else {
+  console.log("Live Elo/EV not requested: no matched event had two player IDs and an odds candidate at or above 1.90.");
 }
 console.log("Production odds matching check passed.");
