@@ -136,6 +136,18 @@ export function auditMatchChartingFiles(filesByName) {
     const invalidDateRows = dateValues.filter(value => value && !validDate(value)).length;
     const surfaces = {};
     const hands = { player1: {}, player2: {} };
+    const tournamentCounts = {};
+    const roundCounts = {};
+    const metadataFields = ["Tournament", "Round", "Time", "Court", "Surface", "Umpire", "Best of", "Final TB?", "Charted by"];
+    const metadataFieldCoverage = {};
+    for (const field of metadataFields) {
+      const nonEmpty = matchRows.filter(row => text(row[field])).length;
+      metadataFieldCoverage[field] = {
+        nonEmptyRows: nonEmpty,
+        missingRows: matchRows.length - nonEmpty,
+        coveragePct: Number((100 * nonEmpty / Math.max(1, matchRows.length)).toFixed(2))
+      };
+    }
     const allowedSurfaces = new Set(["Hard", "Clay", "Grass", "Carpet"]);
     const allowedHands = new Set(["R", "L"]);
     let rowsWithUnexpectedSurface = 0;
@@ -149,7 +161,13 @@ export function auditMatchChartingFiles(filesByName) {
       if (![h1, h2].every(hand => hand === "Unknown" || allowedHands.has(hand))) rowsWithUnexpectedHand++;
       hands.player1[h1] = (hands.player1[h1] || 0) + 1;
       hands.player2[h2] = (hands.player2[h2] || 0) + 1;
+      const tournament = text(row.Tournament) || "Unknown";
+      const round = text(row.Round) || "Unknown";
+      tournamentCounts[tournament] = (tournamentCounts[tournament] || 0) + 1;
+      roundCounts[round] = (roundCounts[round] || 0) + 1;
     }
+    const rowsWithMissingTournament = metadataFieldCoverage.Tournament.missingRows;
+    const rowsWithMissingRound = metadataFieldCoverage.Round.missingRows;
     const files = [];
     for (const suffix of FILES.slice(1)) {
       const name = `charting-${tour}-${suffix}.csv`;
@@ -169,14 +187,19 @@ export function auditMatchChartingFiles(filesByName) {
         dateRange: dates.length ? { from: dates[0], to: dates.at(-1) } : null,
         surfaceCounts: surfaces,
         playerHandCounts: hands,
+        tournamentCounts,
+        roundCounts,
+        metadataFieldCoverage,
         qualityChecks: {
           rowsWithUnexpectedSurface,
           rowsWithUnexpectedHand,
+          rowsWithMissingTournament,
+          rowsWithMissingRound,
           invalidDateRows,
           missingDateRows,
           rowsWithRecognizedSurface: matchRows.length - rowsWithUnexpectedSurface,
           rowsWithRecognizedHands: matchRows.length - rowsWithUnexpectedHand,
-          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates || invalidDateRows || missingDateRows ? "review-required" : "clean"
+          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || rowsWithMissingTournament || rowsWithMissingRound || metadataDuplicates || invalidDateRows || missingDateRows ? "review-required" : "clean"
         }
       },
       statFiles: files
@@ -194,7 +217,7 @@ async function main() {
   const files = {};
   for (const path of paths) files[basename(path)] = await readFile(path, "utf8");
   const report = auditMatchChartingFiles(files);
-  await writeFile(output, JSON.stringify(report, null, 2) + "\\n");
+  await writeFile(output, JSON.stringify(report, null, 2) + "\n");
   for (const [tour, data] of Object.entries(report.tours)) {
     console.log(`${tour}: ${data.metadata.uniqueMatchIds} unique charted matches; ${data.metadata.dateRange?.from ?? "?"}–${data.metadata.dateRange?.to ?? "?"}`);
     for (const file of data.statFiles) console.log(`  ${file.file}: ${file.rows} rows, ${file.metadataMatchCoverage?.metadataCoveragePct ?? "n/a"}% metadata ID coverage`);
