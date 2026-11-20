@@ -900,3 +900,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Linkage data acquisition widened after the first expanded run: the workflow now downloads all 118 pinned ATP/WTA main-tour annual result files (1968–2026), not only 2013–2026, alongside the 144 lower-tier files. This targets historical MCP chartings whose match dates predate 2013. Updated linkage totals are pending the new CI audit.
+
+
+- Full-history MCP linkage audit completed successfully (run 44835316124): 10,671/11,822 unique charted IDs linked (90.26%): ATP 7,045/7,565 (93.13%), WTA 3,626/4,257 (85.18%). Source-tier split: 10,193 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous exact candidates; 50 round conflicts; 830 event mismatches; 271 pairs had no candidate in the supplied archive.
+- Full-history date diagnostics: 282 links have MCP dates earlier than Sackmann event-week dates; 11 links exceed 21 days; 10,378 offsets are 0–21 days. Extreme offsets remain (-261 WTA, +361 ATP). These are not chronology-safe until individually explained; all linked MCP features remain blocked from rolling pre-match PFE use.
