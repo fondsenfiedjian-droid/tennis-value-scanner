@@ -72,6 +72,35 @@ function eventKeys(name, year) {
   const keys = new Set([base]);
   if (base.endsWith("masters") && base.length > 7) keys.add(base.slice(0, -7));
   if (base === "canadamasters") ["canada", "toronto", "montreal"].forEach(x => keys.add(x));
+  const cityMasters = {
+    paris:"parismasters", rome:"romemasters", madrid:"madridmasters", miami:"miamimasters",
+    indianwells:"indianwellsmaster", montecarlo:"montecarlomasters", cincinnati:"cincinnatimasters",
+    shanghai:"shanghaimasters", toronto:"canadamasters", montreal:"canadamasters"
+  };
+  if (cityMasters[base]) keys.add(cityMasters[base]);
+  if (base === "tourfinals" || base === "masterscup" || base === "atpfinals") {
+    ["tourfinals","masterscup","atpfinals"].forEach(x => keys.add(x));
+    const host = Number(year) >= 2021 ? "turin" : Number(year) >= 2009 ? "london" : Number(year) >= 2005 ? "shanghai" : Number(year) >= 2002 ? "houston" : "";
+    if (host) keys.add(host);
+  }
+  if (base === "adelaide") keys.add("adelaideinternational");
+  if (base === "singapore" && Number(year) >= 2014 && Number(year) <= 2018) keys.add("wtatourchampionships");
+  if (base === "istanbul" && Number(year) >= 2011 && Number(year) <= 2013) keys.add("wtatourchampionships");
+  if (base === "doha" && Number(year) >= 2008 && Number(year) <= 2010) keys.add("wtatourchampionships");
+  const davisAliases = {
+    daviscupworldgroupf:["daviscupfinalsf","daviscupfinals"],
+    daviscupworldgroupsf:["daviscupfinalssf","daviscupfinals"],
+    daviscupworldgroupqf:["daviscupfinalsqf","daviscupfinals"],
+    daviscupworldgroupr1:["daviscupqlsr1","daviscupworldgroupr1"],
+    daviscupworldgrouppo:["daviscupwg1po","daviscupwg2po"],
+    daviscupwg2:["daviscupwg2"]
+  };
+  if (davisAliases[base]) davisAliases[base].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupf") ["fedcupfinalsf","fedcupworldgroupf"].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupsf") ["fedcupfinalssf","fedcupworldgroupsf"].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupr1") ["fedcupqlsr1","fedcupworldgroupr1"].forEach(x => keys.add(x));
+  if (base === "bjkcupqualifiers") keys.add("billiejeankingcupqualifiers");
+  if (base === "bjkcupfinals") keys.add("billiejeankingcupfinals");
   if (base === "australianopen") keys.add("melbourne");
   if (base === "rolandgarros") ["frenchopen", "paris"].forEach(x => keys.add(x));
   if (base === "wimbledon") keys.add("london");
