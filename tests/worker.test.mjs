@@ -1987,11 +1987,18 @@ test("prediction reliability is transparent, excludes unavailable calibration an
   assert.equal(preliminary.maxScore, 80);
   assert.equal(preliminary.calibrationIncluded, false);
   assert.ok(preliminary.reasons.some(reason => reason.includes("не менее 30")));
-  const calibrated = assess({ ...base, calibration: { sampleSize: 40, brierScore: 0.17 } });
+  const calibrated = assess({ ...base, calibration: { sampleSize: 60, brierScore: 0.17 } });
   assert.equal(calibrated.score, 100);
   assert.equal(calibrated.maxScore, 100);
   assert.equal(calibrated.calibrationIncluded, true);
+  assert.equal(calibrated.calibrationEligible, true);
   assert.equal(calibrated.tier, "высокая");
+  const smallSample = assess({ ...base, calibration: { sampleSize: 40, brierScore: 0.17 } });
+  assert.equal(smallSample.calibrationEligible, false);
+  const weakCalibration = assess({ ...base, calibration: { sampleSize: 60, brierScore: 0.23 } });
+  assert.equal(weakCalibration.calibrationEligible, false);
+  const boundaryCalibration = assess({ ...base, calibration: { sampleSize: 50, brierScore: 0.22 } });
+  assert.equal(boundaryCalibration.calibrationEligible, true);
   const weak = assess({
     ...base, freshness: { level: "limited", details: "stale" },
     ratingQualityA: { status: "review" }, ratingQualityB: { status: "invalid" },
@@ -1999,7 +2006,7 @@ test("prediction reliability is transparent, excludes unavailable calibration an
     bookmakerKnown: false, probabilitiesValid: false,
     calibration: { sampleSize: 35, brierScore: 0.31 }
   });
-  assert.equal(weak.score, 13);
+  assert.equal(weak.score, 10);
   assert.equal(weak.maxScore, 100);
   assert.equal(weak.tier, "ограниченная");
   assert.ok(weak.reasons.length >= 4);
