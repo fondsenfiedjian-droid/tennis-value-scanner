@@ -47,3 +47,26 @@ test("links unique initial-surname aliases and normalizes historical round label
  assert.equal(report.totals.winnerCrossChecks,1);
  assert.equal(report.totals.winnerMismatches,0);
 });
+
+test("classifies unresolved links without exposing player names",()=>{
+ const resultRows=[
+  "1,Wimbledon,20240701,Novak Djokovic,Carlos Alcaraz,F",
+  "2,Wimbledon,20240702,James Smith,Rafael Nadal,R16",
+  "3,Wimbledon,20240703,John Smith,Carlos Alcaraz,R32",
+  "4,Wimbledon,20240704,Roger Federer,Rafael Nadal,R16"
+ ];
+ const metadataRows=[
+  "2024-wimbledon-1201,2024,wimbledon,1201,N. Djokovic,X. Unknown,,",
+  "2024-wimbledon-1202,2024,wimbledon,1202,J. Smith,A. Alcaraz,,",
+  "2024-wimbledon-1203,2024,wimbledon,1203,N. Djokovic,R. Federer,,"
+ ];
+ const report=auditSlamMatchLinkage([
+  {filename:"2024-wimbledon-matches.csv",content:[metaHeader,...metadataRows].join("\n")},
+  {filename:"atp_matches_2024.csv",content:[resultHeader,...resultRows].join("\n")}
+ ]);
+ assert.equal(report.totals.unmatched,3);
+ assert.equal(report.totals.aliasUnavailable,1);
+ assert.equal(report.totals.aliasAmbiguous,1);
+ assert.equal(report.totals.aliasNoCandidate,1);
+ assert.equal(JSON.stringify(report).includes("X. Unknown"),false);
+});
