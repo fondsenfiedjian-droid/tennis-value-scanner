@@ -21,7 +21,7 @@ test("Valuebetennis CSV maps source columns into chronological Elo rows", () => 
   assert.equal(parsed.rejectedByReason.winner_not_in_match, 1);
   assert.deepEqual(parsed.rows[0], {
     tourney_date: "20250102", tourney_id: "500", match_num: "1001",
-    winner_id: "11", loser_id: "22", score: "6-4 6-3", surface: "Hard", tour: "atp", sourceOdds: { opening1: "1.80", opening2: "2.10", closing1: "1.75", closing2: "2.20", player1Id: "11", winnerId: "11" }
+    winner_id: "11", loser_id: "22", score: "6-4 6-3", surface: "Hard", tour: "atp", durationMinutes: null, sourceOdds: { opening1: "1.80", opening2: "2.10", closing1: "1.75", closing2: "2.20", player1Id: "11", winnerId: "11" }
   });
   assert.equal(parsed.rows[1].surface, "Clay");
   assert.equal(parsed.rows[1].tour, "wta");
@@ -33,10 +33,9 @@ test("Valuebetennis importer retains valid match duration and treats missing or 
     "9701,2025-05-01T12:00:00Z,901,atp,Hard,101,102,101,6-4 6-4,128,1.7,2.2,1.65,2.3",
     "9702,2025-05-02T12:00:00Z,902,atp,Hard,103,104,104,6-4 6-4,,1.8,2.1,1.75,2.2",
     "9703,2025-05-03T12:00:00Z,903,atp,Hard,105,106,105,6-4 6-4,999,1.8,2.1,1.75,2.2"
-  ].join("\\n");
+  ].join("\n");
   const parsed = parseValuebetennisCsv(csv);
   assert.deepEqual(parsed.rows.map(row => row.durationMinutes), [128, null, null]);
-});
 });
 
 test("Valuebetennis importer excludes matches ending inside an unfinished set", () => {
