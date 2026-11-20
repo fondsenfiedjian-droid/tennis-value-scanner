@@ -81,6 +81,8 @@ const predictionCandidates = matched.filter(row =>
   row.playerIdA && row.playerIdB &&
   [Number(row.side1), Number(row.side2)].some(value => Number.isFinite(value) && value >= 1.9)
 ).slice(0, 3);
+let successfulPredictions = 0;
+let unavailableRatings = 0;
 if (predictionCandidates.length) {
   for (const candidate of predictionCandidates) {
     const predictionResponse = await fetch(API_URL + "/predict", {
@@ -99,6 +101,16 @@ if (predictionCandidates.length) {
     });
     const prediction = await predictionResponse.json();
     if (!predictionResponse.ok) {
+      if (predictionResponse.status === 422 && String(prediction.error || "").includes("Elo rating is unavailable")) {
+        unavailableRatings++;
+        console.log("LIVE ELO UNAVAILABLE", JSON.stringify({
+          match: candidate.match,
+          error: prediction.error,
+          ratings: [prediction.ratingA ?? null, prediction.ratingB ?? null],
+          ratingTypes: [prediction.ratingTypeA ?? null, prediction.ratingTypeB ?? null]
+        }));
+        continue;
+      }
       throw new Error("Live Elo prediction failed for " + candidate.match + ": " + (prediction.error || predictionResponse.status));
     }
     const pA = Number(prediction.probabilityExactA);
@@ -112,6 +124,7 @@ if (predictionCandidates.length) {
         Math.abs(expectedEvB - Number(prediction.evB)) > 0.02) {
       throw new Error("Live EV does not match the probability × odds formula for " + candidate.match);
     }
+    successfulPredictions++;
     console.log("LIVE ELO + EV", JSON.stringify({
       match: candidate.match,
       source: prediction.source,
@@ -121,6 +134,10 @@ if (predictionCandidates.length) {
       ev: [prediction.evA, prediction.evB],
       surface: prediction.surface || candidate.surface || null
     }));
+  }
+  console.log("Prediction coverage:", successfulPredictions, "calculated;", unavailableRatings, "without usable Elo ratings.");
+  if (successfulPredictions === 0) {
+    throw new Error("No live Elo prediction could be calculated for the selected matched markets");
   }
 } else {
   console.log("Live Elo/EV not requested: no matched event had two player IDs and an odds candidate at or above 1.90.");
