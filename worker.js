@@ -386,7 +386,7 @@ export default {
           return response({ error: "Invalid Apify datasetId" }, 400);
         }
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v4/" + encodeURIComponent(datasetId));
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v5/" + encodeURIComponent(datasetId));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
