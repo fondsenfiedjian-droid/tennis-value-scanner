@@ -105,6 +105,20 @@ jobs:
             ${{ runner.temp }}/wta-prematch-rank-report.json
           if-no-files-found: error
           retention-days: 30
+      - name: Run frozen-coefficient recent holdout (2023–2026)
+        run: |
+          set -euo pipefail
+          node scripts/sackmann-prematch-rank-research.mjs --tour atp --rankings-dir research-rankings/atp --from 20230101 --to 20260525 --freeze-model-year 2023 --k 32 --min-training 1000 --max-training 20000 --max-rank-age-days 45 --out "$RUNNER_TEMP/atp-frozen-holdout-report.json" "$RUNNER_TEMP/atp-normalized.csv"
+          node scripts/sackmann-prematch-rank-research.mjs --tour wta --rankings-dir research-rankings/wta --from 20230101 --to 20260525 --freeze-model-year 2023 --k 32 --min-training 1000 --max-training 20000 --max-rank-age-days 45 --out "$RUNNER_TEMP/wta-frozen-holdout-report.json" "$RUNNER_TEMP/wta-normalized.csv"
+      - name: Upload frozen holdout reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-frozen-rank-age-holdout
+          path: |
+            ${{ runner.temp }}/atp-frozen-holdout-report.json
+            ${{ runner.temp }}/wta-frozen-holdout-report.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Validate normalized outputs and classify source-key collisions
         run: |
           node --input-type=module <<'NODE'
