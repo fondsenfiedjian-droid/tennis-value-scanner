@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { auditPointStateTransitions, inferPointStateTransition } from "../scripts/point-state-transition-audit.mjs";
 
 const state = overrides => ({
@@ -84,4 +88,25 @@ test("does not coerce missing set or game counters into zero",()=>{
  }));
  assert.equal(result.status,"ambiguous");
  assert.equal(result.reason,"no-score-change");
+});
+
+test("CLI runs when invoked with a relative script path and writes aggregate-only output",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"pfe-point-state-"));
+ try{
+  const input=join(dir,"points.csv"),output=join(dir,"report.json");
+  const csv=[
+   "match_id,sets_p1,sets_p2,games_p1,games_p2,points_p1,points_p2,server,is_tiebreak,timestamp_utc",
+   'm1,0,0,"[0]","[0]",0,0,1,false,2026-06-01T10:00:00Z',
+   'm1,0,0,"[0]","[0]",15,0,1,false,2026-06-01T10:00:10Z'
+  ].join("\n");
+  await writeFile(input,csv);
+  const run=spawnSync(process.execPath,["scripts/point-state-transition-audit.mjs","--input",input,"--out",output],{encoding:"utf8"});
+  assert.equal(run.status,0,run.stderr);
+  const report=JSON.parse(await readFile(output,"utf8"));
+  assert.equal(report.totals.matches,1);
+  assert.equal(report.totals.inferred,1);
+  assert.equal(JSON.stringify(report).includes("m1"),false);
+ }finally{
+  await rm(dir,{recursive:true,force:true});
+ }
 });
