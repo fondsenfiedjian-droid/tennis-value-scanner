@@ -398,4 +398,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PWA cache refresh for strict reliability gate (2026-11-20)
 - PR #42 changed the precached index.html, but code review after production smoke found the service-worker cache name was still v121. Since the worker caches the app shell and updates on a cache-name change, existing installed PWAs could retain the previous shell until a navigation fetch refreshed it.
 - Follow-up PR advances the service-worker cache to v122 and updates the corresponding regression expectations. No application logic changes in this follow-up.
-- First regression attempt exposed one stale cache-version assertion in tests/app-ui.test.mjs still pinned to v121; updated it to v122. Worker test expectations were already updated. Rerun and Netlify publication pending.
+- First regression attempt exposed one stale cache-version assertion in tests/app-ui.test.mjs still pinned to v121; updated it to v122. PR-head regression run 44755686832 failed only on that stale expectation; rerun 447557... passed. PR #43 merged as b6a9fb79ab0ed9294b3e942f972bf20957ad3c67. Main regression run 44755965832 passed; Cloudflare Worker deploy run 44756011508 and Workers Builds production check passed; production smoke run 44756011478 passed. Smoke confirmed Netlify PWA HTTP 200, service-worker cache v122 live, Worker health OK, and Winamax /odds HTTP 200 with 20 items, 20 valid decimal odds and 20 fresh scrape timestamps.
+
+
+### Current production release status (2026-11-20)
+- Reliability gate PR #42 is merged and production smoke passed. The «Ставка дня» selection now requires >=50 verified pre-match calibration matches and Brier <=0.22 in addition to the pre-existing quality gates. The «EV дня» selection remains unchanged.
+- PWA cache follow-up PR #43 is merged; current production service-worker shell cache is v122, ensuring installed clients detect the updated precached app shell.
+- PR #43 regression workflow run 44755965832 passed; Cloudflare deployment run 44756011508 passed; Workers Builds production check passed; automatic smoke run 44756011478 passed.
+- Smoke evidence: Netlify PWA HTTP 200; service worker v122; Worker health OK; Winamax feed HTTP 200 with 20 items, all 20 valid decimal odds and all 20 with fresh scrape timestamps at check time. These are point-in-time feed diagnostics, not a guarantee that quotes remain available at bet placement.
+- Live Tennis API quota remains separate; do not call quota-consuming endpoints until quota reset is confirmed via /usage.
