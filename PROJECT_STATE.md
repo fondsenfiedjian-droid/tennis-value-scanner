@@ -445,3 +445,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Cloudflare Worker deployment passed (workflow run 44760515056). Production smoke check is still running; PWA cache v125 publication is not yet confirmed.
 
 - Production smoke check for the v125 release passed (workflow run 44760515033): deployed PWA and production API checks succeeded. Cloudflare Worker deploy action also passed; the separate Workers Builds status check was still in progress at the time of verification.
+
+### Calibration leakage guard — earliest scheduled start (2026-11-20)
+- Calibration now compares every candidate snapshot against the earliest known scheduled match start across all archived snapshots for that match, not the first date among only `upcoming` rows.
+- This prevents a later schedule revision from reclassifying a snapshot taken after the original start as a valid pre-match forecast.
+- Added regression coverage for a match rescheduled after its original start; the later snapshot must not enter calibration.
+- PWA shell cache advanced from v125 to v126. Existing archive data remains unchanged; no external API calls.
