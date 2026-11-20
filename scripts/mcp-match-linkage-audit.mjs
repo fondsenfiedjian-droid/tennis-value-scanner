@@ -35,6 +35,7 @@ function eventKeys(name, year) {
   const keys = new Set([base]);
   if (base.endsWith("masters") && base.length > 7) keys.add(base.slice(0, -7));
   if (base === "canadamasters") ["canada", "toronto", "montreal"].forEach(x => keys.add(x));
+  if (base === "wtachampionships" || base === "tourchampionships") ["wtatourchampionships", "wtachampionships"].forEach(x => keys.add(x));
   if (base === "olympics") {
     const host = {1988:"seoul",1992:"barcelona",1996:"atlanta",2000:"sydney",2004:"athens",2008:"beijing",2012:"london",2016:"riodejaneiro",2021:"tokyo",2024:"paris"}[year];
     if (host) keys.add(host);
@@ -43,6 +44,15 @@ function eventKeys(name, year) {
   if (base === "tokyoolympics") keys.add("tokyo");
   if (base === "daviscupqualifiers") keys.add("daviscupqls");
   return [...keys];
+}
+function matchingEvents(name, year, eventSet) {
+  const keys = eventKeys(name, year);
+  const matched = new Set();
+  for (const event of eventSet) {
+    if (keys.includes(event)) matched.add(event);
+    else if (keys.some(key => ["daviscup", "fedcup", "bjkcup"].some(prefix => key.startsWith(prefix) && event.startsWith(key)))) matched.add(event);
+  }
+  return [...matched];
 }
 function add(map, key, row) {
   if (!map.has(key)) map.set(key, []);
@@ -105,20 +115,22 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
   const windowDays = Number.isInteger(options.dateWindowDays) ? options.dateWindowDays : 21;
   const index = buildIndex(resultRows, tour);
   const groups = new Map();
+  let missingMatchIdRows = 0;
   for (const row of metadataRows) {
     const id = text(row.match_id);
+    if (!id) { missingMatchIdRows++; continue; }
     if (!groups.has(id)) groups.set(id, []);
     groups.get(id).push(row);
   }
   const duplicates = [...groups.values()].filter(group => group.length > 1);
   const uniqueRows = [...groups.values()].filter(group => group.length === 1).map(group => group[0]);
   const stats = {
-    metadataRows: metadataRows.length, uniqueMetadataIds: groups.size,
+    metadataRows: metadataRows.length, uniqueMetadataIds: groups.size, missingMatchIdRows,
     duplicateMetadataIds: duplicates.length, duplicateMetadataRowsExcluded: duplicates.reduce((n,g)=>n+g.length,0),
     resultRows: index.resultRows, invalidResultDateRows: index.invalidResultDates, resultDateRange: index.resultDateRange,
     validMetadataDateRows: 0, invalidMetadataDateRows: 0, missingMetadataDateRows: 0,
     missingPlayerNameRows: 0, missingTournamentRows: 0, missingRoundRows: 0, invalidRoundRows: 0,
-    eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0,
+    eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
     ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
     linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0,
     unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, byYear: {}
@@ -140,11 +152,16 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
       continue;
     }
     const year = date.slice(0, 4);
+    if (index.resultDateRange && (date < index.resultDateRange.from || date > index.resultDateRange.to)) {
+      stats.outsideResultDateCoverage++;
+      stats.unmatched++;
+      stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
+      continue;
+    }
     if (!stats.byYear[year]) stats.byYear[year] = {metadata:0,linked:0,fullName:0,alias:0,unmatched:0};
     const ys = stats.byYear[year]; ys.metadata++;
-    const keys = eventKeys(tournament, year);
     const eventSet = index.eventsByYear.get(year) || new Set();
-    const available = keys.filter(key => eventSet.has(key));
+    const available = matchingEvents(tournament, year, eventSet);
     if (!available.length) {
       stats.eventNotFound++; stats.unmatched++; ys.unmatched++;
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
@@ -168,19 +185,20 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     } else if (!fullExact.length) {
       const a1 = alias(p1), a2 = alias(p2);
       if (a1 && a2) {
-        let collision = false, missing = false;
+        let collision = false;
+        const aliasEvents = [];
         for (const event of available) {
           const r1 = index.aliasRoster.get([year,event,a1].join("|"));
           const r2 = index.aliasRoster.get([year,event,a2].join("|"));
-          if (r1 && r1.size > 1 || r2 && r2.size > 1) collision = true;
-          if (!r1 || !r1.size || !r2 || !r2.size) missing = true;
+          if ((r1 && r1.size > 1) || (r2 && r2.size > 1)) collision = true;
+          else if (r1 && r1.size === 1 && r2 && r2.size === 1) aliasEvents.push(event);
         }
-        if (collision) { stats.ambiguousAliasIdentities++; reason = "alias-identity-collision"; }
-        else if (missing) { stats.aliasUnavailable++; reason = "alias-unavailable"; }
+        if (!aliasEvents.length && collision) { stats.ambiguousAliasIdentities++; reason = "alias-identity-collision"; }
+        else if (!aliasEvents.length) { stats.aliasUnavailable++; reason = "alias-unavailable"; }
         else {
           const aliasPair = pair(a1,a2);
-          const aliasExact = round ? collect(index.aliasRound,year,available,round,aliasPair) : [];
-          const aliasAny = collect(index.aliasEvent,year,available,null,aliasPair);
+          const aliasExact = round ? collect(index.aliasRound,year,aliasEvents,round,aliasPair) : [];
+          const aliasAny = collect(index.aliasEvent,year,aliasEvents,null,aliasPair);
           const candidates = round ? aliasExact : aliasAny;
           const filtered = withinDateWindow(candidates,date,windowDays).eligible;
           if (filtered.length === 1) { candidate = filtered[0]; method = round ? "alias" : "alias-no-round"; }
