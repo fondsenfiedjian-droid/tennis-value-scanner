@@ -67,7 +67,7 @@ function inferPointScoreWinner(before, after) {
   if (![p1, p2, q1, q2].every(Boolean)) return { status: "ambiguous", reason: "missing-point-score", method: "point-score" };
 
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
-  const numericScores = [p1, p2, q1, q2].every(v => /^\\d+$/.test(v));
+  const numericScores = [p1, p2, q1, q2].every(v => /^\d+$/.test(v));
   const normalScoreValues = new Set(["0", "15", "30", "40"]);
   const tiebreak = isTrue(before.is_tiebreak) || isTrue(after.is_tiebreak) ||
     (numericScores && [p1, p2, q1, q2].some(v => !normalScoreValues.has(v)));
