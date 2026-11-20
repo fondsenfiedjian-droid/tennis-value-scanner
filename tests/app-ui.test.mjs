@@ -296,7 +296,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v114"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v115"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -327,6 +327,18 @@ test("frontend API requests have a bounded timeout and clear their timer", () =>
   }
 });
 
+
+test("highest EV of the day is separate from the balanced best bet and opens its match", () => {
+  assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
+  assert.match(html, /id="highestEvContent"/);
+  assert.match(html, /id="highestEvOpen"/);
+  assert.match(html, /const highest=bets\.filter\(x=>Number\.isFinite\(x\.ev\)&&x\.ev>0/);
+  assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.probability-a\.probability\)/);
+  assert.match(html, /data-match-index=/);
+  assert.match(html, /data-match-index="\+Number\(highest\.matchIndex\)\+"/);
+  assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
+  assert.match(html, /const best=selectBestBet\(bets,minEv,bestBetMinOdds\)/);
+});
 
 test("bankroll tab and assets are fully removed from the application shell", () => {
   for (const obsolete of ["bankrollView", "navBankroll", "bankroll.js", "winamax-import.js", "TVSBankroll", "Банкролл"]) {
