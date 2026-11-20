@@ -873,3 +873,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added research-only point-state PFE candidates to `docs/PFE_FEATURE_MAP.md`: transition-derived serve/return outcomes, hold/break, tiebreak and score-pressure features, plus a separate in-play model path. The server-to-transition alignment, partial-tape coverage, same-event chronology and tier calibration are explicit validation gates; no feature is active.
 
 - Added `scripts/point-state-transition-audit.mjs` and synthetic tests for score-state transitions (normal games, advantage, tiebreak, game/set boundaries and ambiguous jumps). The CLI accepts CSV/gzip and emits aggregate diagnostics only; no IDs or player-level data. Server-to-transition alignment and tape completeness remain unverified; no sample data imported and no production feature enabled. See `docs/POINT_STATE_TRANSITION_RESEARCH.md`.
+
+- Extended Match Charting metadata audit to report Tournament/Round/Time/Court/Surface/Umpire/Best-of/Final-TB/Charted-by field coverage and aggregate event/round distributions, enabling a future unique-only linkage to historical results. Fixed the JSON artifact newline and added an end-to-end CLI test. No raw data or player rows are retained.
+
+- Corrected escaped template literals in the new Match Charting audit fixtures after the first CI run reported a test-file syntax error; rerunning the regression workflow on the corrected commit.
+
+- Match Charting metadata field audit completed (run 44833318668): Tournament coverage ATP 100% / WTA 99.60%; Round 99.99% / 99.72%; Best-of 99.56% / 99.58%; other fields Time 54.11% / 41.49%, Court 74.13% / 66.98%, Umpire 60.30% / 53.59%. Most round labels align with results archive codes. JSON artifact newline is valid; regression and documentation guard passed.
