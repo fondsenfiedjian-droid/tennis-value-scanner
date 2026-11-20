@@ -3,6 +3,7 @@ import { gunzipSync } from "node:zlib";
 import { parseCsv } from "./backtest.mjs";
 
 const integer = value => {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) ? n : null;
 };
@@ -17,13 +18,13 @@ const gameArray = value => {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(integer) : null;
+    if (!Array.isArray(parsed)) return null;
+    const values = parsed.map(integer);
+    return values.every(value => value !== null) ? values : null;
   } catch {
     return null;
   }
 };
-
-const sameArray = (a, b) => a.length === b.length && a.every((value, i) => value === b[i]);
 
 
 function inferSetOrGameWinner(before, after) {
@@ -124,6 +125,7 @@ export function auditPointStateTransitions(rows) {
     if (!groups.has(id)) groups.set(id, []);
     groups.get(id).push(row);
   }
+  if (!groups.size) throw new Error("No rows with match IDs supplied");
   const totals = {
     matches: groups.size, rowsWithoutMatchId, transitions: 0, inferred: 0, ambiguous: 0,
     byMethod: {}, byReason: {}, transitionsWithServerBefore: 0,
@@ -138,7 +140,7 @@ export function auditPointStateTransitions(rows) {
   for (const states of groups.values()) {
     const transitions = Math.max(0, states.length - 1);
     let inferred = 0;
-    if (states.length && Number(states[0].sets_p1) === 0 && Number(states[0].sets_p2) === 0 &&
+    if (states.length && integer(states[0].sets_p1) === 0 && integer(states[0].sets_p2) === 0 &&
       JSON.stringify(gameArray(states[0].games_p1)) === "[0]" &&
       JSON.stringify(gameArray(states[0].games_p2)) === "[0]" &&
       String(states[0].points_p1) === "0" && String(states[0].points_p2) === "0") {
