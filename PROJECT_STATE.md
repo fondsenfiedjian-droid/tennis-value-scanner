@@ -373,3 +373,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Follow-up review found that the initial EV-day implementation had widened candidate discovery below the app's established 1.90 minimum-odds floor. This could bypass the existing user-facing scanner filter.
 - Corrected candidate discovery and EV-day selection to preserve the existing 1.90–15.00 range. The two cards now differ by selection objective and risk disclosure, not by silently overriding the global odds floor.
 - PWA cache advanced to v120; regression expectations updated.
+
+
+### EV day — small-stake risk positioning (2026-11-20)
+- User clarified that «EV дня» is a small-stake, high-upside/bingo-style opportunity, not a large-stake recommendation. It should represent a non-blind chance grounded in the model's estimated probability and the quote, while retaining quality gates.
+- UI update: card title is «EV ДНЯ · РИСКОВЫЙ ШАНС». The detail view explicitly labels the play as a small-stake opportunity, not a recommendation for a large amount.
+- Added implied market probability (100 / decimal odds) and the model's probability edge in percentage points, alongside model probability, fair odds, EV, reliability and freshness. Existing candidate filters remain unchanged: positive EV, odds 1.90–15.00, reliability >=65, good/medium freshness and positive value-quality gate.
+- «Ставка дня» remains reliability-first and unchanged. No stake sizing, staking advice or bankroll automation was added.
+- Service-worker shell cache advanced to v121.
+- First PR regression attempt: 327/330 passed; three failures were stale test expectations still pinned to cache v120 (one app UI assertion and two Worker assertions), not runtime behavior. Updated all three expectations to v121. Rerun pending.
+- Deployment preview and production deployment status: pending final regression result and merge.
