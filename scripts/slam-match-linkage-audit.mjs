@@ -105,12 +105,12 @@ export function auditSlamMatchLinkage(files){
       if(winner==="1"||winner==="2"){
         winnerChecks++;
         const expected=normalizeName(winner==="1"?p1:p2);
-        if(normalizeName(candidate.winner_name)!==expected)winnerMismatches++;
+        if(nameAlias(candidate.winner_name)!==nameAlias(winner==="1"?p1:p2))winnerMismatches++;
       } else if(winner){
         const expected=normalizeName(winner);
         if(expected===normalizeName(p1)||expected===normalizeName(p2)){
           winnerChecks++;
-          if(normalizeName(candidate.winner_name)!==expected)winnerMismatches++;
+          if(nameAlias(candidate.winner_name)!==nameAlias(winner))winnerMismatches++;
         }
       }
     }
