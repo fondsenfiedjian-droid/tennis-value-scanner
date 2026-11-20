@@ -206,7 +206,7 @@ export function runBacktest(matches, options = {}) {
     const player2 = player1 === winner ? loser : winner;
     const duration = Number(row.durationMinutes);
     const durationMinutes = Number.isFinite(duration) && duration >= 1 && duration <= 600 ? duration : null;
-    return { date, winner, loser, player1, player2, surface, durationMinutes, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
+    return { date, winner, loser, player1, player2, surface, round: String(row.round ?? ""), durationMinutes, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
   }).filter(Boolean).sort((a, b) =>
     a.date.localeCompare(b.date) ||
     a.tourneyId.localeCompare(b.tourneyId) ||
@@ -221,8 +221,11 @@ export function runBacktest(matches, options = {}) {
 
   const matchGroups = new Map();
   for (const match of clean) {
+    // Source match numbers can collide in older WTA archive years. Include
+    // date, unordered player pair and round so separate matches are not
+    // discarded as conflicting duplicates merely because their source key repeats.
     const key = match.tourneyId && match.matchNum
-      ? match.tourneyId + ":" + match.matchNum
+      ? [match.tourneyId, match.date, match.matchNum, pairKey(match.winner, match.loser), match.round].join(":")
       : match.date + ":" + pairKey(match.winner, match.loser) + ":" + (match.surface ?? "unknown");
     if (!matchGroups.has(key)) matchGroups.set(key, []);
     matchGroups.get(key).push(match);

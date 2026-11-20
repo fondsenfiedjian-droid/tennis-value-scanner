@@ -699,3 +699,40 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No production model, deployment, Live Tennis API, Apify, paid service or archive data storage is affected.
 - PR #68 merged to `main` on 2026-11-20 as `55985093c3f87a740417cd72f0c9a20835a07b07`. Regression tests `44810204287` and project-state guard `44810204145` passed. A local focused check also passed seven score-completeness cases. No production deployment or API/Apify usage was required.
 - Real ATP/WTA 2025 files were inspected for schema compatibility, but the importer has not yet been run against the full archive. Next: run the importer on a small, representative ATP/WTA CSV sample, then execute separate chronological backtests and evaluate rank/age features without leakage.
+
+
+### Full Sackmann archive import validation — implementation in review (2026-11-20)
+- Expanded the existing non-commercial research audit workflow to download yearly ATP and WTA main-tour match files from 1968 through 2026 into the ephemeral GitHub Actions runner.
+- The workflow now executes the actual `scripts/sackmann-import.mjs` CLI separately for ATP and WTA, then checks that both normalized outputs are non-empty and reports aggregate date coverage, match counts, rank/age/surface coverage and duplicate match-key counts.
+- The existing source-field coverage audit remains in place. Only aggregate diagnostics are uploaded; raw archive CSVs and normalized player-level match data remain in the ephemeral runner and are not committed or uploaded as artifacts.
+- The workflow is triggered by a PR touching the Sackmann audit/import files, or manually with workflow_dispatch. The current implementation PR will therefore exercise the complete import against real source files when its checks run.
+- No Live Tennis API calls, Apify runs, paid services, production model changes or production deployment are involved. Source is CC BY-NC-SA 4.0; this remains non-commercial research only.
+- Branch: `research/run-sackmann-full-import-validation`. Validation result and run ID will be recorded after CI completes.
+
+
+### Full Sackmann archive import validation — first real-data run (2026-11-20)
+- GitHub Actions run `44811037749` successfully downloaded all 118 ATP/WTA yearly main-tour CSVs for 1968–2026, executed the actual importer separately for each tour, validated non-empty normalized outputs, and completed the aggregate source-field audit. No source or normalized player-level CSVs were committed or uploaded.
+- ATP: 199,389 source rows across 59 files; 192,654 imported completed matches; 3 invalid-player rows; 6,732 unfinished/retired rows; 2,893 rows with unsupported/unknown surface values counted in diagnostics. Imported data spans 1967-12-28 through 2026-05-25. Both-player rank coverage 76.06%, age 97.38%, known surface 98.50%. Import-key duplicate groups: 0.
+- WTA: 162,182 source rows across 59 files; 157,508 imported completed matches; 1 invalid-player row; 4,673 unfinished/retired rows; 4,690 rows with unsupported/unknown surface values counted in diagnostics. Imported data spans 1967-12-25 through 2026-05-25. Both-player rank coverage 64.97%, age 94.66%, known surface 97.02%. Initial key audit found 13 repeated `tourney_id:match_num` groups; these are not yet classified as exact duplicates versus conflicting key collisions.
+- Aggregate source audit found serve/return stats on both players in 51.12% of ATP and 29.36% of WTA standard outcomes; coverage varies substantially by surface and era. Do not assume stats are available for every historical match.
+- Regression tests, project-state guard and full archive audit workflow passed on the initial PR head. Aggregate audit artifact ID `14667800013` retained for 30 days.
+- Follow-up in this same PR adds a privacy-preserving classification of the 13 WTA duplicate-key groups (identical rows versus conflicting outcomes, with year-level counts) before deciding whether importer deduplication or key correction is appropriate.
+- No Live Tennis API, Apify, paid services, production model changes or production deployment used. Source remains CC BY-NC-SA 4.0 and research-only/non-commercial.
+
+
+### WTA source match-number collisions and backtest identity correction (2026-11-20)
+- The full-archive audit found 13 WTA groups sharing the legacy `tourney_id:match_num` key (7 in 1973, 1 in 1982, 3 in 1990, 2 in 2009). All 13 groups had differing match signatures; these are source-key collisions, not confirmed exact duplicate rows.
+- Existing `runBacktest` previously grouped only by `tourney_id:match_num` and would have excluded every row in such a collision group. Updated grouping to use the natural match identity: tournament ID + date + source match number + unordered player pair + round. Exact duplicate rows remain deduplicated, while conflicting rows for the same natural match remain excluded.
+- Added a regression test for two distinct matches reusing the same source tournament match number. Existing exact-duplicate and true-conflict tests remain in place.
+- The full archive workflow now distinguishes source-key collisions from actual duplicate natural-match groups and reports collision years, date/pair variation, and natural duplicate counts without logging player-level data. Awaiting the new CI run before treating the correction as validated.
+
+
+### Sackmann full-import and natural-key validation — checks passed, PR #71 merge pending (2026-11-20)
+- Final archive workflow on PR head `ea328ce2ecdfc56407808128aef6db82af3b7bb7`: run `44811788230` passed. It downloaded 118 yearly ATP/WTA main-tour files (1968–2026), imported both tours, validated outputs, and completed aggregate source coverage audit.
+- Final import totals remain ATP 192,654 and WTA 157,508 completed matches (350,162 total). Date coverage: ATP 1967-12-28–2026-05-25; WTA 1967-12-25–2026-05-25. Both-player rank coverage: ATP 76.06%, WTA 64.97%; both-player age coverage: ATP 97.38%, WTA 94.66%; known surface: ATP 98.50%, WTA 97.02%.
+- Duplicate diagnosis: the 13 WTA `tourney_id:match_num` collisions are all different player pairs on the same date (7 in 1973, 1 in 1982, 3 in 1990, 2 in 2009). There are zero duplicate natural-match groups after including date, unordered player pair and round. ATP has zero source-key collisions.
+- `scripts/backtest.mjs` now uses tournament ID + date + source match number + unordered player pair + round as its match identity. This preserves separate matches that reuse a legacy source match number while retaining exact-duplicate deduplication and exclusion of genuinely conflicting duplicate rows.
+- Added a regression test for reused source match numbers. Regression run `44811788247`: 368 passed, 0 failed. Project-state guard `44811788222`: passed. Cloudflare Worker build check: passed. Netlify hosting-rule checks were neutral (no app deploy required). Archive workflow `44811788230`: passed.
+- Only aggregate diagnostics were uploaded (artifact ID `14667800013` from the first successful run and a refreshed aggregate report from the final run); raw source and normalized match-level CSVs were kept on the ephemeral runner and not committed or uploaded.
+- PR #71 is ready to merge after this documentation update. No Live Tennis API quota, Apify, paid services, production model change or production deployment used. Sackmann data remains CC BY-NC-SA 4.0 research-only/non-commercial.
+- Next research task after merge: build separate chronological ATP/WTA walk-forward tests comparing Elo-only against Elo + pre-match rank, Elo + age, and Elo + rank + age. Use same-match availability subsets, no future information, and report paired Brier/LogLoss; do not activate any factor in production without independent out-of-sample improvement.
