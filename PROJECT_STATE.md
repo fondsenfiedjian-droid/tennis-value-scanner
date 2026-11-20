@@ -476,3 +476,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The filter does not use the EV odds-range setting: all complete matched pairs remain visible, while the existing range continues to affect value-bet eligibility only.
 - Prediction loading receives only the displayed matches. No scraper settings, API polling, or Live Tennis API quota usage changed.
 - PWA shell cache advanced from v128 to v129.
+
+
+### Launch verification after PR #51 (2026-11-20)
+- PR #51 merged to main as `a817bb60796be6bd394c891462308cb94f08b0df`.
+- PR regression and project-state guard passed; main regression run `44765152451` passed.
+- Cloudflare Worker deploy run `44765205019` passed.
+- Automatic production smoke run `44765204894` passed: Netlify PWA HTTP 200; service-worker cache v129 published; Worker health and required configuration flags OK; Winamax `/odds` HTTP 200 with 20 records, 20 valid decimal odds and 20 fresh scrape timestamps.
+- The smoke run's `/usage` check confirmed Live Tennis API free quota exhausted: 328 calls against 100/day, 227 errors, 0 remaining. Do not call quota-consuming match/result/prediction endpoints until the provider quota resets or the user explicitly authorizes a paid plan.
+- Apify task-run metadata diagnostic remains HTTP 403, but the dataset endpoint returned 20 fresh odds records. Do not alter scraper settings based on this metadata-only 403.
+- Remaining launch acceptance: after quota reset, perform one controlled schedule fetch, refresh the installed PWA, confirm only upcoming matches with complete fresh Winamax pairs appear, then manually compare a small sample against Winamax and verify prediction/archive/result workflow. No feature expansion before acceptance.
