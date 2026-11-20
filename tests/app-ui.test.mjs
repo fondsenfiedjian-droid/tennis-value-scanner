@@ -462,8 +462,8 @@ test("match list shows only pairs with a complete fresh Winamax winner-odds pair
 });
 
 test("optional player statistics are not fetched during automatic prediction scans", () => {
-  assert.equal((html.match(/loadPfePlayerStats\\(/g) || []).length, 1,
+  assert.equal(html.split("loadPfePlayerStats(").length - 1, 1,
     "the player-statistics loader must remain defined but must not be called automatically");
-  assert.match(html, /const deferredPlayerStats=\\{accessStatus:'not_requested',recent:null,serve:null\\}/);
-  assert.match(html, /not_requested:'не запрашивалась автоматически \\(экономия квоты\\)'/);
+  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"));
+  assert.ok(html.includes("not_requested:'не запрашивалась автоматически (экономия квоты)'"));
 });
