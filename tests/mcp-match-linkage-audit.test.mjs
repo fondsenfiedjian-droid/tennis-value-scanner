@@ -12,10 +12,16 @@ const result = overrides => ({
   match_num: "1", winner_name: "Novak Djokovic", loser_name: "Carlos Alcaraz",
   round: "R32", ...overrides
 });
-const audit = (metadata, results, options) => auditMcpMatchLinkage({
-  metadata: { ATP: metadata, WTA: [] },
-  results: { ATP: results, WTA: [] }
-}, options).tours.ATP;
+const audit = (metadata, results, options = {}) => {
+  const sentinel = { tourney_id:"sentinel", tourney_name:"Snapshot Boundary", tourney_date:"20261231",
+    match_num:"999", winner_name:"Sentinel One", loser_name:"Sentinel Two", round:"F" };
+  const rows = options.includeFutureSentinel === false ? results : [...results, sentinel];
+  const { includeFutureSentinel, ...auditOptions } = options;
+  return auditMcpMatchLinkage({
+    metadata: { ATP: metadata, WTA: [] },
+    results: { ATP: rows, WTA: [] }
+  }, auditOptions).tours.ATP;
+};
 
 test("links full player names using event alias, round and event-date window", () => {
   const report = audit([meta()], [result()]);
@@ -69,7 +75,7 @@ test("links cross-year events when the archived tournament start date is in Dece
 });
 
 test("separates metadata dates outside the pinned results snapshot", () => {
-  const report = audit([meta({ Date: "20260909" })], [result()]);
+  const report = audit([meta({ Date: "20260909" })], [result()], { includeFutureSentinel:false });
   assert.equal(report.linked, 0);
   assert.equal(report.outsideResultDateCoverage, 1);
 });
