@@ -1735,7 +1735,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v126/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v127/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2434,7 +2434,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v126/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v127/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -3226,4 +3226,23 @@ test("archive snapshot duplicate suppression preserves schedule and capture-stat
   match.status = "live";
   savePredictionSnapshot(match, element, result);
   assert.equal(readPredictionArchive().length, 4);
+});
+
+
+test("archive import preserves model-version and schedule-revision snapshots", () => {
+  const { mergePredictionArchive } = makeArchiveStore();
+  const base = {
+    matchKey: "same-match", matchId: 9001, matchDate: "2026-11-25T12:00:00.000Z",
+    captureStatus: "upcoming", side: "A", player: "Player A", opponent: "Player B",
+    odds: 2, probability: 55, ev: 10, capturedAt: 1000,
+    model: "general-elo-v1", modelVersion: "1", modelCalculatedAt: 900
+  };
+  const nextVersion = { ...base, model: "general-elo-v2", modelVersion: "2" };
+  const rescheduled = { ...nextVersion, matchDate: "2026-11-25T13:00:00.000Z", captureStatus: "live" };
+  const merged = mergePredictionArchive([base], [nextVersion, rescheduled]);
+  assert.equal(merged.added, 2);
+  assert.equal(merged.rows.length, 3);
+  assert.equal(merged.rows.filter(row => row.modelVersion === "1").length, 1);
+  assert.equal(merged.rows.filter(row => row.modelVersion === "2").length, 2);
+  assert.ok(merged.rows.some(row => row.matchDate === "2026-11-25T13:00:00.000Z" && row.captureStatus === "live"));
 });
