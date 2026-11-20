@@ -1193,8 +1193,11 @@
       if(hasCaptureStatus&&preMatchRows.length<sideRows.length)postStart++;
       if(!preMatchRows.length){if(hasCaptureStatus&&sideRows.every(row=>row.captureStatus!=='upcoming'))continue;}
       const candidateRows=preMatchRows.length?preMatchRows:sideRows;
-      const matchDate=candidateRows.map(row=>Date.parse(row.matchDate)).find(value=>Number.isFinite(value)&&value>0);
-      if(!Number.isFinite(matchDate)){missingStart++;continue;}
+      const knownMatchDates=sideRows.map(row=>Date.parse(row.matchDate)).filter(value=>Number.isFinite(value)&&value>0);
+      if(!knownMatchDates.length){missingStart++;continue;}
+      // A later reschedule must never make a snapshot captured after the original
+      // scheduled start eligible for pre-match calibration.
+      const matchDate=Math.min(...knownMatchDates);
       const timed=candidateRows.filter(row=>row.capturedAt!==null&&row.capturedAt!==undefined&&row.capturedAt!==''&&Number.isFinite(Number(row.capturedAt))&&Number(row.capturedAt)>0);
       const preMatch=timed.filter(row=>Number(row.capturedAt)<matchDate);
       if(timed.some(row=>Number(row.capturedAt)>=matchDate))postStart++;
