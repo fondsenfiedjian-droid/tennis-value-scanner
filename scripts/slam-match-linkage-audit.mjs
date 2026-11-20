@@ -107,8 +107,7 @@ export function auditSlamMatchLinkage(files){
         const expected=normalizeName(winner==="1"?p1:p2);
         if(nameAlias(candidate.winner_name)!==nameAlias(winner==="1"?p1:p2))winnerMismatches++;
       } else if(winner){
-        const expected=normalizeName(winner);
-        if(expected===normalizeName(p1)||expected===normalizeName(p2)){
+        if(nameAlias(winner)===nameAlias(p1)||nameAlias(winner)===nameAlias(p2)){
           winnerChecks++;
           if(nameAlias(candidate.winner_name)!==nameAlias(winner))winnerMismatches++;
         }
