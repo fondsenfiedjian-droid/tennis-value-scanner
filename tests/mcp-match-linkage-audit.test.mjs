@@ -49,3 +49,15 @@ test("requires both tour metadata files and result data",()=>{
  assert.throws(()=>auditMcpMatchLinkage([]),/No MCP/);
  assert.throws(()=>auditMcpMatchLinkage([{filename:"charting-m-matches.csv",content:metaHeader}]),/ATP\/WTA MCP metadata/);
 });
+
+test("tolerates embedded quote characters in Match Charting metadata",()=>{
+ const header="match_id,Player 1,Player 2,Date,Tournament,Round,Umpire";
+ const row="20240710-M-Wimbledon-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Wimbledon,QF,Chair umpire said \"wide\"";
+ const report=auditMcpMatchLinkage([
+  {filename:"charting-m-matches.csv",content:[header,row].join("\n")},
+  {filename:"charting-w-matches.csv",content:metaHeader},
+  {filename:"atp_matches_2024.csv",content:[resultHeader,"2024-0451,Wimbledon,20240708,120,Novak Djokovic,Carlos Alcaraz,QF"].join("\n")},
+  {filename:"wta_matches_2024.csv",content:resultHeader}
+ ]);
+ assert.equal(report.byTour.ATP.linkedUnique,1);
+});
