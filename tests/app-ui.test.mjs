@@ -155,6 +155,51 @@ test("odds matching pairs both sides of the same Winamax event and maps reversed
   assert.equal(matching.oddsSideForPlayer(selected.find(q => q.outcome === "away"), "Novak Djokovic"), "1");
 });
 
+test("odds matching accepts reversed first and last name order", () => {
+  const home = makeWinamaxQuote({
+    homeTeam: "Djokovic Novak",
+    awayTeam: "Alcaraz Carlos",
+    eventName: "Djokovic Novak - Alcaraz Carlos",
+    outcome: "home"
+  });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = {
+    player1: "Novak Djokovic",
+    player2: "Carlos Alcaraz",
+    startTime: home.startTime,
+    tournament_name: "ATP Finals"
+  };
+  const matching = getOddsMatching([home, away]);
+  const selected = matching.oddsForMatch(match);
+  assert.equal(selected.length, 2);
+  assert.equal(matching.oddsSideForPlayer(selected[0], "Novak Djokovic"), "1");
+});
+
+test("odds matching accepts a first-name initial but rejects conflicting full names", () => {
+  const home = makeWinamaxQuote({
+    homeTeam: "Carlos Alcaraz",
+    awayTeam: "Jannik Sinner",
+    eventName: "Carlos Alcaraz - Jannik Sinner",
+    outcome: "home"
+  });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = {
+    player1: "Sinner J.",
+    player2: "Alcaraz Carlos",
+    startTime: home.startTime,
+    tournament_name: "ATP Finals"
+  };
+  const matching = getOddsMatching([home, away]);
+  const selected = matching.oddsForMatch(match);
+  assert.equal(selected.length, 2);
+  assert.equal(matching.oddsSideForPlayer(selected[0], "Sinner J."), "2");
+  const conflicting = {
+    ...match,
+    player1: "John Sinner"
+  };
+  assert.equal(matching.oddsForMatch(conflicting).length, 0);
+});
+
 test("odds matching rejects quotes from different event IDs or mismatched competitions", () => {
   const home = makeWinamaxQuote({ outcome: "home" });
   const awayDifferentEvent = makeWinamaxQuote({ outcome: "away", eventId: "event-2" });
