@@ -493,3 +493,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Automatic scans now mark player statistics as not requested; the loader remains available for a future explicit on-demand feature. Elo ratings, Winamax odds, EV, reliability gates, archive snapshots, and the two bet recommendations are unchanged.
 - Regression test ensures the optional player-statistics loader is not called automatically. PWA shell cache advances from v129 to v130.
 - This reduces a clear source of quota consumption but does not prove it was the only cause of the 328-call day. Do not resume quota-consuming API checks until the provider's daily counter resets.
+
+
+### Workload archive conflict hardening (2026-11-20)
+- Code review found a defensive-validation bug in `calculateArchiveWorkloadProfile`: after detecting contradictory repeated rows for one side, the side was marked invalid (`null`), but a third duplicate/conflicting row could dereference that null marker and throw instead of rejecting the archive group.
+- The adapter now keeps contradictory sides invalid without dereferencing the marker. A regression case includes three conflicting rows for the same side and verifies the malformed match is rejected without crashing.
+- PWA shell cache advanced from v130 to v131 because the precached workload module changed. No prediction probabilities, EV, recommendation gates, archive records, API calls, or scraper settings are changed.
+- Validation and deployment status: PR validation pending; production deployment not yet confirmed.
