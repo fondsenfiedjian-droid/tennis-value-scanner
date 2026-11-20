@@ -511,3 +511,21 @@ test("configured minimum EV and odds range gate both recommendation types",()=>{
   assert.match(html,/oddsInRange&&meetsMinEv&&bet\.odds>=1\.9&&bet\.ev>0\)dayBets\.push\(bet\)/);
   assert.match(html,/v>=valueFilters\.minOdds&&v<=valueFilters\.maxOdds/);
 });
+
+
+test("minimum EV setting is exclusive to Bet of the Day",()=>{
+  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/selectBestBet\(bets,filters\.minEv,/);
+  assert.match(html,/selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
+  assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
+  assert.match(html,/if\(oddsInRange&&bet\.odds>=1\.9&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)dayBets\.push\(bet\)/);
+  assert.match(html,/result\.evA!==null&&result\.evA>0&&valueGateA\.eligible\?'model-positive'/);
+  assert.match(html,/if\(valueGateA\.eligible&&result\.evA!==null&&result\.evA>0\)positive\+\+/);
+});
+
+test("skin selection applies and persists immediately",()=>{
+  assert.match(html,/document\.body\.dataset\.skin=selected/);
+  assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
+  assert.match(html,/settings\.skin=selected/);
+  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+});
