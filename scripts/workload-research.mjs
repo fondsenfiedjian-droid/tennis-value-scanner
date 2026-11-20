@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+import { readFile, writeFile } from "node:fs/promises";
+import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
+import { runBacktest } from "./backtest.mjs";
+
+const FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "minutes7", "durationCoverage7"];
+const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
+const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
+const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
+const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
+const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
+
+export function buildPreMatchWorkload(rows) {
+  const clean = rows.filter(row =>
+    !/\b(?:W\/O|RET|ABD|DEF|DEFAULT)\b/i.test(String(row.score ?? "")) &&
+    /^\d{8}$/.test(String(row.tourney_date ?? "")) &&
+    /^\d+$/.test(String(row.winner_id ?? "")) &&
+    /^\d+$/.test(String(row.loser_id ?? ""))
+  ).slice().sort((a,b) =>
+    a.tourney_date.localeCompare(b.tourney_date) ||
+    String(a.tourney_id ?? "").localeCompare(String(b.tourney_id ?? "")) ||
+    String(a.match_num ?? "").localeCompare(String(b.match_num ?? ""))
+  );
+  const histories = new Map(), features = new Map();
+  let index = 0;
+  while (index < clean.length) {
+    const date = clean[index].tourney_date, today = dayNumber(date), day = [];
+    while (index < clean.length && clean[index].tourney_date === date) day.push(clean[index++]);
+    const get = player => {
+      const history = histories.get(player) ?? [];
+      const prior = history.filter(item => today - item.day >= 1 && today - item.day <= 7);
+      const prior3 = prior.filter(item => today - item.day <= 3);
+      const playingDays7 = new Set(prior.map(item => item.date)).size;
+      const knownDurations = prior.filter(item => Number.isFinite(item.durationMinutes));
+      const minutes7 = knownDurations.reduce((sum,item) => sum + item.durationMinutes, 0);
+      const latest = history.at(-1);
+      return {
+        matches3: prior3.length,
+        matches7: prior.length,
+        playingDays7,
+        restDays: latest ? Math.min(30, today - latest.day) : 30,
+        minutes7,
+        durationCoverage7: prior.length ? knownDurations.length / prior.length : 0
+      };
+    };
+    for (const row of day) {
+      const winner = String(row.winner_id), loser = String(row.loser_id);
+      const p1 = Number(winner) < Number(loser) ? winner : loser;
+      const p2 = p1 === winner ? loser : winner;
+      const a = get(p1), b = get(p2);
+      features.set(pairKey(date,p1,p2), Object.fromEntries(FEATURE_NAMES.map(name => [name, a[name] - b[name]])));
+    }
+    // Update only after every match on the date has been evaluated. Same-day
+    // matches are deliberately excluded because completion order is unknown.
+    for (const row of day) {
+      const duration = Number(row.durationMinutes);
+      const durationMinutes = Number.isFinite(duration) && duration >= 1 && duration <= 600 ? duration : null;
+      for (const player of [String(row.winner_id), String(row.loser_id)]) {
+        if (!histories.has(player)) histories.set(player, []);
+        histories.get(player).push({ date, day: today, durationMinutes });
+      }
+    }
+  }
+  return features;
+}
+
+function solve(matrix, vector) {
+  const n = vector.length, a = matrix.map((row,i) => [...row, vector[i]]);
+  for (let col=0; col<n; col++) {
+    let pivot=col;
+    for(let row=col+1;row<n;row++) if(Math.abs(a[row][col])>Math.abs(a[pivot][col])) pivot=row;
+    if(Math.abs(a[pivot][col])<1e-12) return Array(n).fill(0);
+    [a[col],a[pivot]]=[a[pivot],a[col]];
+    const divisor=a[col][col];
+    for(let j=col;j<=n;j++) a[col][j]/=divisor;
+    for(let row=0;row<n;row++) if(row!==col){
+      const factor=a[row][col];
+      for(let j=col;j<=n;j++) a[row][j]-=factor*a[col][j];
+    }
+  }
+  return a.map(row=>row[n]);
+}
+
+function fitStandardization(training) {
+  return FEATURE_NAMES.map(name => {
+    const values=training.map(row=>row.features[name]);
+    const mean=values.reduce((a,b)=>a+b,0)/values.length;
+    const variance=values.reduce((sum,value)=>sum+(value-mean)**2,0)/values.length;
+    return {name,mean,sd:Math.sqrt(variance)||1};
+  });
+}
+
+function fitCorrection(training, standardization, penalty=0.05) {
+  const width=FEATURE_NAMES.length;
+  let beta=Array(width).fill(0);
+  for(let iteration=0;iteration<40;iteration++){
+    const gradient=Array(width).fill(0), hessian=Array.from({length:width},()=>Array(width).fill(0));
+    for(const row of training){
+      const x=standardization.map(item=>(row.features[item.name]-item.mean)/item.sd);
+      const p=sigmoid(logit(row.baseProbability)+x.reduce((sum,value,i)=>sum+value*beta[i],0));
+      const error=row.outcome-p, weight=p*(1-p);
+      for(let i=0;i<width;i++){
+        gradient[i]+=error*x[i];
+        for(let j=0;j<width;j++) hessian[i][j]+=weight*x[i]*x[j];
+      }
+    }
+    for(let i=0;i<width;i++){gradient[i]-=penalty*beta[i];hessian[i][i]+=penalty;}
+    const step=solve(hessian,gradient.map(value=>value/training.length));
+    const maxStep=Math.max(...step.map(Math.abs));
+    beta=beta.map((value,i)=>value+step[i]);
+    if(maxStep<1e-7)break;
+  }
+  return beta;
+}
+
+function metrics(rows, beta=null, standardization=null) {
+  let brier=0,logLoss=0,baseBrier=0,baseLogLoss=0,dBrier=0,dBrier2=0,dLog=0,dLog2=0;
+  for(const row of rows){
+    const p0=clamp(row.baseProbability);
+    const z=beta&&standardization?standardization.reduce((sum,item,i)=>sum+((row.features[item.name]-item.mean)/item.sd)*beta[i],0):0;
+    const p=clamp(sigmoid(logit(p0)+z)),y=row.outcome;
+    const b0=(p0-y)**2,b=(p-y)**2;
+    const l0=-y*Math.log(p0)-(1-y)*Math.log(1-p0);
+    const l=-y*Math.log(p)-(1-y)*Math.log(1-p);
+    baseBrier+=b0;baseLogLoss+=l0;brier+=b;logLoss+=l;
+    const db=b-b0,dl=l-l0;dBrier+=db;dBrier2+=db*db;dLog+=dl;dLog2+=dl*dl;
+  }
+  const n=rows.length;
+  const ci=(sum,sum2)=>n>1?1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n):null;
+  return {
+    matches:n,
+    baseline:{brier:n?Number((baseBrier/n).toFixed(6)):null,logLoss:n?Number((baseLogLoss/n).toFixed(6)):null},
+    workloadAdjusted:{brier:n?Number((brier/n).toFixed(6)):null,logLoss:n?Number((logLoss/n).toFixed(6)):null},
+    pairedDifferenceWorkloadMinusBaseline:{
+      brier:n?Number((dBrier/n).toFixed(6)):null,
+      brierCI95:n>1?{lower:Number((dBrier/n-ci(dBrier,dBrier2)).toFixed(6)),upper:Number((dBrier/n+ci(dBrier,dBrier2)).toFixed(6))}:null,
+      logLoss:n?Number((dLog/n).toFixed(6)):null,
+      logLossCI95:n>1?{lower:Number((dLog/n-ci(dLog,dLog2)).toFixed(6)),upper:Number((dLog/n+ci(dLog,dLog2)).toFixed(6))}:null
+    }
+  };
+}
+
+export function runWorkloadResearch(csvTexts) {
+  const inputs=Array.isArray(csvTexts)?csvTexts:[csvTexts];
+  const parsed=inputs.map(parseValuebetennisCsv);
+  const rows=parsed.flatMap(item=>item.rows);
+  const tours=[...new Set(rows.map(row=>row.tour).filter(Boolean))].sort();
+  const reports={};
+  for(const tour of tours){
+    const tourRows=rows.filter(row=>row.tour===tour);
+    const workload=buildPreMatchWorkload(tourRows);
+    const backtest=runBacktest(tourRows,{evaluationStart:"20250101",evaluationEnd:"20261231",includePredictions:true});
+    const matched=[];
+    let missingFeature=0;
+    for(const prediction of backtest.predictions??[]){
+      const key=pairKey(prediction.date,prediction.player1Id,prediction.player2Id);
+      const features=workload.get(key);
+      if(!features){missingFeature++;continue;}
+      matched.push({
+        year:prediction.date.slice(0,4),
+        baseProbability:prediction.probabilities.elo,
+        outcome:prediction.winnerId===prediction.player1Id?1:0,
+        features
+      });
+    }
+    const training=matched.filter(row=>row.year==="2025");
+    const evaluation=matched.filter(row=>row.year==="2026");
+    const standardization=fitStandardization(training);
+    const beta=fitCorrection(training,standardization);
+    reports[tour]={
+      trainingYear:"2025",
+      evaluationYear:"2026",
+      training:metrics(training,beta,standardization),
+      evaluation:metrics(evaluation,beta,standardization),
+      trainingFeatureCoverage:training.length,
+      evaluationFeatureCoverage:evaluation.length,
+      predictionsWithoutWorkloadFeatures:missingFeature,
+      standardizedFeatureCoefficients:Object.fromEntries(FEATURE_NAMES.map((name,i)=>[name,Number(beta[i].toFixed(5))])),
+      standardization:Object.fromEntries(standardization.map(item=>[item.name,{mean:Number(item.mean.toFixed(4)),sd:Number(item.sd.toFixed(4))}])),
+      durationCoverageNote:"minutes7 sums only observed durations; durationCoverage7 records the share of prior-week matches with known duration. Unknown durations are not fabricated.",
+      sameDayLeakageProtection:"All matches on a UTC calendar date are scored from the history available before that date; same-day matches are added only after every prediction for that date is prepared.",
+      limitation:"This is a research-only logistic correction to Elo, trained only on 2025 and evaluated only on 2026. It is not production model integration and does not estimate betting ROI."
+    };
+  }
+  return {
+    source:"Valuebetennis open data (CC BY 4.0)",
+    inputRows:parsed.reduce((sum,item)=>sum+item.inputRows,0),
+    normalizedRows:rows.length,
+    years:[...new Set(rows.map(row=>row.tourney_date.slice(0,4)))].sort(),
+    tours,
+    reports,
+    citation:"Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm",
+    method:"Pre-match workload differences: previous 3/7 calendar days, distinct playing days in 7 days, rest days capped at 30, known prior 7-day minutes and duration coverage. Same-day matches excluded."
+  };
+}
+
+async function main(){
+  const args=process.argv.slice(2),files=[];
+  let output="workload-research-report.json";
+  for(let i=0;i<args.length;i++){
+    if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing output path");output=args[++i];}
+    else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
+    else files.push(args[i]);
+  }
+  if(!files.length)throw new Error("Usage: node scripts/workload-research.mjs [--out report.json] file-2025.csv file-2026.csv");
+  const texts=[];
+  for(const file of files){texts.push(await readFile(file,"utf8"));console.error("Loaded "+file);}
+  const report=runWorkloadResearch(texts);
+  await writeFile(output,JSON.stringify(report,null,2)+"\n");
+  console.log(JSON.stringify(report,null,2));
+  console.error("Research only: lower Brier/log-loss is better; this is not betting ROI.");
+}
+if(process.argv[1]&&import.meta.url.endsWith(process.argv[1]))await main();
