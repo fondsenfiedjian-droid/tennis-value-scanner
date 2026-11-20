@@ -24,8 +24,8 @@ function completedScore(value,bestOf){
   return sets >= (Number(bestOf)===5?3:2);
 }
 export function auditLowerTierFiles(files){
+  if(!Array.isArray(files)||files.length===0) throw new Error("No lower-tier files supplied");
   const groups=new Map();
-  const schemaCounts={};
   for(const file of files){
     const name=basename(file.filename);
     const m=name.match(/^(atp|wta)_matches_(futures|qual_chall|qual_itf)_(\d{4})\.csv$/i);
