@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
-import { parseCsv } from "./backtest.mjs";
 
 const FILES = [
   "matches",
@@ -22,6 +21,40 @@ const validDate = value => /^\d{8}$/.test(text(value)) &&
   Number(text(value).slice(0,4)) >= 1900 &&
   Number(text(value).slice(4,6)) >= 1 && Number(text(value).slice(4,6)) <= 12 &&
   Number(text(value).slice(6,8)) >= 1 && Number(text(value).slice(6,8)) <= 31;
+
+
+function parseChartingCsv(source) {
+  source = source.replace(/^\\uFEFF/, "");
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  const pushField = () => { row.push(field); field = ""; };
+  const pushRow = () => { pushField(); if (row.some(value => value !== "")) rows.push(row); row = []; };
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (quoted) {
+      if (ch === '"' && source[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"' && [",", "\\n", "\\r", undefined].includes(source[i + 1])) quoted = false;
+      else field += ch;
+      continue;
+    }
+    if (ch === '"' && field.length === 0) quoted = true;
+    else if (ch === ",") pushField();
+    else if (ch === "\\n") pushRow();
+    else if (ch === "\\r" && source[i + 1] === "\\n") { /* CRLF */ }
+    else if (ch === "\\r") field += ch;
+    else field += ch;
+  }
+  if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting CSV");
+  if (field !== "" || row.length) pushRow();
+  if (!rows.length) return [];
+  const headers = rows.shift();
+  if (headers.some(header => header === "")) throw new SyntaxError("CSV contains an empty header");
+  if (new Set(headers).size !== headers.length) throw new SyntaxError("CSV contains duplicate headers");
+  return rows.map((values, index) => {
+    if (values.length > headers.length) throw new SyntaxError(`CSV row ${index + 2} has more fields than the header`);
+    return Object.fromEntries(headers.map((key, i) => [key, values[i] ?? ""]));
+  });
+}
 
 function summarizeFile(path, rows, matchIds) {
   const headers = rows.length ? Object.keys(rows[0]) : [];
@@ -66,7 +99,7 @@ export function auditMatchChartingFiles(filesByName) {
     const metadataName = `charting-${tour}-matches.csv`;
     const metadata = filesByName[metadataName];
     if (typeof metadata !== "string") throw new Error(`Missing required file: ${metadataName}`);
-    const matchRows = parseCsv(metadata);
+    const matchRows = parseChartingCsv(metadata);
     const ids = matchRows.map(row => text(row.match_id)).filter(Boolean);
     const matchIds = new Set(ids);
     const dates = matchRows.map(row => text(row.Date)).filter(validDate).sort();
@@ -84,7 +117,7 @@ export function auditMatchChartingFiles(filesByName) {
     for (const suffix of FILES.slice(1)) {
       const name = `charting-${tour}-${suffix}.csv`;
       if (typeof filesByName[name] !== "string") throw new Error(`Missing required file: ${name}`);
-      files.push(summarizeFile(name, parseCsv(filesByName[name]), matchIds));
+      files.push(summarizeFile(name, parseChartingCsv(filesByName[name]), matchIds));
     }
     const metadataDuplicates = ids.length - matchIds.size;
     report.tours[tour === "m" ? "ATP" : "WTA"] = {
