@@ -883,3 +883,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added a research-only Match Charting-to-Sackmann linkage audit: pinned ATP/WTA main-tour yearly results 1968–2026, unique-only tournament/year/player-pair/round/date join, alias-roster uniqueness checks, 21-day date window, duplicate/date/round/alias ambiguity exclusions. Workflow retains aggregate report only; raw CSVs remain ephemeral. Challenger/ITF/junior/team-event linkage is out of scope for this pass.
 
 - Added an explicit synthetic cross-year case with the results snapshot extending beyond the event's December start date, ensuring January United Cup matches can link without being misclassified as outside the overall archive window.
+
+- Expanded event aliases for historic Grand Slams and Olympics (year-specific host city, including cross-name variants); added a synthetic Olympics alias test. Exact player-pair, round and date gates remain mandatory.
