@@ -68,7 +68,7 @@ test("result checks retry pending matches every 30 minutes and settled matches d
     { matchId: "104", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "cancelled" },
     { matchId: "105", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "unresolved" }
   ];
-  assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), ["101", "103", "104", "105"]);
+  assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
 test("match cards expose current bookmaker odds without opening the details", () => {
