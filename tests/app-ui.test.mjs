@@ -30,6 +30,7 @@ const oddsMatchingEnd = html.indexOf("function normalizeTour(value)", oddsMatchi
 const oddsMatchingSource = html.slice(oddsMatchingStart, oddsMatchingEnd);
 function getOddsMatching(quotes) {
   const sandbox = {
+    ODDS_FRESHNESS_MAX_AGE_MS: 6 * 60 * 60 * 1000,
     cachedOdds: quotes,
     playerName: value => String(value ?? ""),
     matchDate: match => new Date(match.startTime)
@@ -104,7 +105,7 @@ test("odds status counts quote freshness from scrapedAt, not local fetch time", 
   assert.match(html, /now-value<=ODDS_FRESHNESS_MAX_AGE_MS/);
   assert.match(html, /const ODDS_FRESHNESS_MAX_AGE_MS=6\*60\*60\*1000/);
   assert.match(html, /ODDS_FRESHNESS_MAX_AGE_MINUTES=6\*60/);
-  assert.match(html, /актуальных котировок из/);
+  assert.match(html, /котировок не старше 6 ч из/);
   assert.match(html, /Котировки получены, но свежих нет/);
 });
 
@@ -318,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v117"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v118"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
