@@ -1,0 +1,80 @@
+name: Grand Slam point-by-point database coverage audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/slam-point-audit.mjs"
+      - "tests/slam-point-audit.test.mjs"
+      - ".github/workflows/slam-point-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned singles Slam match and point files
+        run: |
+          set -euo pipefail
+          commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
+          mkdir -p research-data
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$commit?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const files = tree.tree.filter(item =>
+            /^slam_pointbypoint\/\d{4}-(ausopen|frenchopen|wimbledon|usopen)-(matches|points)\.csv$/i.test(item.path)
+          ).map(item => item.path).sort();
+          if (files.length !== 98) throw new Error("Expected 98 pinned singles Slam files, found " + files.length);
+          await writeFile(process.env.RUNNER_TEMP + "/slam-files.txt", files.join("\n") + "\n");
+          console.log("Pinned singles Slam files: " + files.length);
+          NODE
+          cat "$RUNNER_TEMP/slam-files.txt" | xargs -r -n 1 -P 6 sh -c '
+            set -eu
+            path="$1"
+            name="${path##*/}"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/83733587353df8a41f2fd4f516147d5aa83f5a8d/$path" \
+              --output "research-data/$name"
+            test -s "research-data/$name"
+          ' _
+          test "$(find research-data -type f | wc -l)" -eq 98
+      - name: Audit Slam match metadata and point-level field availability
+        run: |
+          set -euo pipefail
+          node scripts/slam-point-audit.mjs --input-dir research-data --out "$RUNNER_TEMP/slam-point-audit.json"
+      - name: Publish aggregate coverage summary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/slam-point-audit.json", "utf8"));
+          const rows = [
+            "| Events | Match rows | Unique match IDs | Point rows | Linked point match IDs | Orphan point IDs | Matches without points |",
+            "|---:|---:|---:|---:|---:|---:|---:|",
+            `| ${report.totals.events} | ${report.totals.matchRows} | ${report.totals.uniqueMatchIds} | ${report.totals.pointRows} | ${report.totals.pointMatchIdsLinkedToMetadata} | ${report.totals.orphanPointMatchIds} | ${report.totals.metadataMatchIdsWithoutPoints} |`,
+            "",
+            "| Candidate field | Events present | Non-empty across all points | Zero among numeric values |",
+            "|---|---:|---:|---:|",
+            ...Object.entries(report.fieldAvailability).map(([field,s]) => `| ${field} | ${s.eventsPresent} | ${s.nonEmptyPct}% | ${s.zeroPctOfNumeric}% |`)
+          ];
+          await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
+          NODE
+      - name: Upload aggregate-only Slam coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grand-slam-point-coverage-audit
+          path: ${{ runner.temp }}/slam-point-audit.json
+          if-no-files-found: error
+          retention-days: 30
