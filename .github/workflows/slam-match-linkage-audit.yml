@@ -77,7 +77,7 @@ jobs:
           const rows = [
             "| Events | Metadata rows | Unique linked | ATP | WTA | Ambiguous | Unmatched | Missing names | Round conflicts | Winner checks | Winner mismatches |",
             "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-            \`| \${report.totals.events} | \${report.totals.metadataRows} | \${report.totals.linkedUniqueMatches} | \${report.totals.linkedATP} | \${report.totals.linkedWTA} | \${report.totals.ambiguous} | \${report.totals.unmatched} | \${report.totals.missingPlayerNames} | \${report.totals.roundConflicts} | \${report.totals.winnerCrossChecks} | \${report.totals.winnerMismatches} |\`
+            "| " + report.totals.events + " | " + report.totals.metadataRows + " | " + report.totals.linkedUniqueMatches + " | " + report.totals.linkedATP + " | " + report.totals.linkedWTA + " | " + report.totals.ambiguous + " | " + report.totals.unmatched + " | " + report.totals.missingPlayerNames + " | " + report.totals.roundConflicts + " | " + report.totals.winnerCrossChecks + " | " + report.totals.winnerMismatches + " |"
           ];
           await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           NODE
