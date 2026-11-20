@@ -1485,19 +1485,26 @@
     components.push({name:'Полнота данных матча',score:completenessPoints,max:15});
     if(completeCount<4)reasons.push('Не все сведения о матче, котировках и вероятностях доступны');
     let maxScore=80;
-    if(Number(calibration?.sampleSize)>=30&&Number.isFinite(calibration?.brierScore)){
-      const brier=calibration.brierScore;
-      const points=brier<=0.18?20:brier<=0.22?15:brier<=0.26?9:3;
+    const calibrationSampleSize=Number(calibration?.sampleSize);
+    const calibrationBrier=calibration?.brierScore;
+    const calibrationIncluded=Number.isFinite(calibrationSampleSize)&&calibrationSampleSize>=30&&Number.isFinite(calibrationBrier);
+    let calibrationEligible=false;
+    if(calibrationIncluded){
+      const brier=calibrationBrier;
+      const points=brier<=0.18?20:brier<=0.20?15:brier<=0.22?9:brier<=0.26?3:0;
       components.push({name:'Историческая калибровка',score:points,max:20});
       maxScore=100;
-      if(points<20)reasons.push('Историческая калибровка пока показывает заметную ошибку');
+      calibrationEligible=calibrationSampleSize>=50&&brier<=0.22;
+      if(calibrationSampleSize<50)reasons.push('Для «Ставки дня» требуется не менее 50 проверенных матчей калибровки');
+      if(brier>0.22)reasons.push('Brier score выше 0.22: историческая точность недостаточна для «Ставки дня»');
+      else if(points<20)reasons.push('Историческая калибровка пока показывает заметную ошибку');
     }else{
       reasons.push('Исторической выборки недостаточно: требуется не менее 30 завершённых матчей');
     }
     const score=components.reduce((sum,item)=>sum+item.score,0);
     const normalized=Math.round(score/maxScore*100);
     const tier=normalized>=85?'высокая':normalized>=65?'средняя':'ограниченная';
-    return {score,maxScore,normalized,tier,components,reasons,calibrationIncluded:maxScore===100};
+    return {score,maxScore,normalized,tier,components,reasons,calibrationIncluded,calibrationEligible};
   }
   function freshnessStakeMultiplier(level){
     return level==='good'?1:level==='medium'?0.5:0;
@@ -1780,7 +1787,7 @@
         const valueGateA=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityA?.status});
         const valueGateB=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityB?.status});
         betA.valueEligible=valueGateA.eligible;betB.valueEligible=valueGateB.eligible;
-        const calibrationReady=reliability.calibrationIncluded===true&&reliability.normalized>=85&&freshness.level==='good'&&pfeAssessment.status!=='conflict'&&pfeAssessment.independentGroups>=2;
+        const calibrationReady=reliability.calibrationEligible===true&&reliability.normalized>=85&&freshness.level==='good'&&pfeAssessment.status!=='conflict'&&pfeAssessment.independentGroups>=2;
         for(const [bet,gate] of [[betA,valueGateA],[betB,valueGateB]]){
           bet.reliabilityScore=reliability.normalized;
           bet.reliabilityTier=reliability.tier;
