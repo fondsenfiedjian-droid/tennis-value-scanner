@@ -284,3 +284,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 ### Documentation rule
 - Update this `PROJECT_STATE.md` after every material architecture, product-scope, data-source, subscription, deployment, validation or priority decision. Record commit/PR/run identifiers and distinguish confirmed facts from pending checks. Read this file at the start of each work session and update it before reporting the session as complete.
+
+
+### Automated project-state documentation guard (2026-11-20)
+- Added `.github/workflows/project-state-guard.yml` (commit `2c1b09d3e478bb4147a7628777c73b093bae95d3`).
+- On every pull request targeting `main`, GitHub Actions compares the PR base and head file lists. If implementation/configuration files changed, the same PR must also modify `PROJECT_STATE.md`; otherwise the check fails with a clear error.
+- Documentation-only changes are allowed without a second state-file edit.
+- This is an enforcement check for pull requests, not an AI summarizer: it ensures the state file is included but cannot independently infer and write accurate technical decisions. The developer/assistant must add the substantive update in the same PR.
+- Direct pushes to `main` do not pass through this PR guard. Prefer pull requests for all implementation changes; branch-protection enforcement of this check has not been configured/verified.
