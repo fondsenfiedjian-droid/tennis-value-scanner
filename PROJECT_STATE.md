@@ -879,3 +879,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Corrected escaped template literals in the new Match Charting audit fixtures after the first CI run reported a test-file syntax error; rerunning the regression workflow on the corrected commit.
 
 - Match Charting metadata field audit completed (run 44833318668): Tournament coverage ATP 100% / WTA 99.60%; Round 99.99% / 99.72%; Best-of 99.56% / 99.58%; other fields Time 54.11% / 41.49%, Court 74.13% / 66.98%, Umpire 60.30% / 53.59%. Most round labels align with results archive codes. JSON artifact newline is valid; regression and documentation guard passed.
+
+- Added a research-only Match Charting-to-Sackmann linkage audit: pinned ATP/WTA main-tour yearly results 1968–2026, unique-only tournament/year/player-pair/round/date join, alias-roster uniqueness checks, 21-day date window, duplicate/date/round/alias ambiguity exclusions. Workflow retains aggregate report only; raw CSVs remain ephemeral. Challenger/ITF/junior/team-event linkage is out of scope for this pass.
