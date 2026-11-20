@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { auditMatchChartingFiles } from "../scripts/match-charting-audit.mjs";
 
-const names = ["Overview","Rally","ServeBasics","ReturnDepth","ReturnOutcomes","ShotTypes","ShotDirection","ServeDirection","ServeInfluence","NetPoints"];
+const names = ["Overview","Rally","ServeBasics","ReturnDepth","ReturnOutcomes","ShotTypes","ShotDirection","ServeDirection","ServeInfluence","NetPoints","KeyPointsReturn","KeyPointsServe","ShotDirOutcomes","SnV","SvBreakSplit","SvBreakTotal"];
 function fixture(tour) {
   const prefix = `charting-${tour}-`;
   const files = {};
