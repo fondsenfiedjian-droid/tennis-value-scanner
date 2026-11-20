@@ -61,7 +61,7 @@ function deterministicSample(rows, limit, seedText) {
 
 export function fitLogistic(rows, featureNames, options = {}) {
   const minMatches = Number.isInteger(options.minMatches) ? options.minMatches : 1000;
-  const maxRows = Number.isInteger(options.maxRows) ? options.maxRows : 50000;
+  const maxRows = Number.isInteger(options.maxRows) ? options.maxRows : 20000;
   const penalty = Number.isFinite(options.penalty) && options.penalty >= 0 ? options.penalty : 1;
   if (rows.length < minMatches) return null;
   const training = deterministicSample(rows, maxRows, String(options.seed ?? "rank-age"));
