@@ -389,6 +389,18 @@ test("backtest metrics and predictions are invariant to CSV row order", () => {
   assert.deepEqual(shuffled.breakdowns, first.breakdowns);
 });
 
+test("backtest preserves distinct matches when a source tournament match number is reused", () => {
+  const rows = [
+    { tourney_date: "19730101", tourney_id: "1973-W", match_num: "1", round: "F", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
+    { tourney_date: "19730101", tourney_id: "1973-W", match_num: "1", round: "SF", winner_id: "3", loser_id: "4", score: "6-3 6-3", surface: "Hard" }
+  ];
+  const report = runBacktest(rows);
+  assert.equal(report.matches, 2);
+  assert.equal(report.conflictingDuplicateMatches, 0);
+  assert.equal(report.conflictingDuplicateRows, 0);
+  assert.equal(report.excluded, 0);
+});
+
 test("backtest excludes every row of a conflicting duplicate match", () => {
   const rows = [
     { tourney_date: "20250101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard" },
