@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           node scripts/sackmann-import.mjs --tour atp --input-dir research-data --output "$RUNNER_TEMP/atp-normalized.csv"
           node scripts/sackmann-import.mjs --tour wta --input-dir research-data --output "$RUNNER_TEMP/wta-normalized.csv"
-      - name: Validate normalized outputs and publish aggregate diagnostics only
+      - name: Validate normalized outputs and classify duplicate keys
         run: |
           node --input-type=module <<'NODE'
           import { readFile } from "node:fs/promises";
@@ -53,14 +53,30 @@ jobs:
             const rows = parseCsv(await readFile(`${process.env.RUNNER_TEMP}/${tour}-normalized.csv`, "utf8"));
             if (!rows.length) throw new Error(`${tour.toUpperCase()} importer produced no completed matches`);
             const dates = rows.map(row => row.tourney_date).filter(Boolean).sort();
-            const keyCounts = new Map();
+            const groups = new Map();
             for (const row of rows) {
               const key = row.tourney_id && row.match_num
                 ? `${row.tourney_id}:${row.match_num}`
                 : `${row.tourney_date}:${[row.winner_id,row.loser_id].sort((a,b)=>Number(a)-Number(b)).join(":")}`;
-              keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key).push(row);
             }
-            const duplicateKeys = [...keyCounts.values()].filter(count => count > 1).length;
+            const duplicateGroups = [...groups.values()].filter(group => group.length > 1);
+            const identicalDuplicateGroups = duplicateGroups.filter(group =>
+              new Set(group.map(row => JSON.stringify([
+                row.tourney_date,row.winner_id,row.loser_id,row.score,row.surface
+              ]))).size === 1
+            );
+            const conflictingDuplicateGroups = duplicateGroups.filter(group =>
+              new Set(group.map(row => JSON.stringify([
+                row.tourney_date,row.winner_id,row.loser_id,row.score,row.surface
+              ]))).size > 1
+            );
+            const duplicateYears = {};
+            for (const group of duplicateGroups) {
+              const year = group[0].tourney_date.slice(0,4) || "unknown";
+              duplicateYears[year] = (duplicateYears[year] ?? 0) + 1;
+            }
             const summary = {
               tour: tour.toUpperCase(),
               importedMatches: rows.length,
@@ -69,16 +85,20 @@ jobs:
               rankBothPct: Number((100 * rows.filter(r => r.winner_rank && r.loser_rank).length / rows.length).toFixed(2)),
               ageBothPct: Number((100 * rows.filter(r => r.winner_age && r.loser_age).length / rows.length).toFixed(2)),
               knownSurfacePct: Number((100 * rows.filter(r => r.surface).length / rows.length).toFixed(2)),
-              duplicateMatchKeys: duplicateKeys
+              duplicateGroups: duplicateGroups.length,
+              duplicateRowsBeyondFirst: duplicateGroups.reduce((sum,group)=>sum+group.length-1,0),
+              identicalDuplicateGroups: identicalDuplicateGroups.length,
+              conflictingDuplicateGroups: conflictingDuplicateGroups.length,
+              duplicateYears
             };
             reports.push(summary);
             console.log(JSON.stringify(summary));
           }
           const fs = await import("node:fs/promises");
           const lines = [
-            "| Tour | Imported matches | First date | Last date | Both ranks | Both ages | Known surface | Duplicate keys |",
+            "| Tour | Imported matches | First date | Last date | Both ranks | Both ages | Known surface | Duplicate groups (identical/conflicting) |",
             "|---|---:|---|---|---:|---:|---:|---:|",
-            ...reports.map(r => `| ${r.tour} | ${r.importedMatches} | ${r.firstDate} | ${r.lastDate} | ${r.rankBothPct}% | ${r.ageBothPct}% | ${r.knownSurfacePct}% | ${r.duplicateMatchKeys} |`)
+            ...reports.map(r => `| ${r.tour} | ${r.importedMatches} | ${r.firstDate} | ${r.lastDate} | ${r.rankBothPct}% | ${r.ageBothPct}% | ${r.knownSurfacePct}% | ${r.duplicateGroups} (${r.identicalDuplicateGroups}/${r.conflictingDuplicateGroups}) |`)
           ];
           await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           NODE
