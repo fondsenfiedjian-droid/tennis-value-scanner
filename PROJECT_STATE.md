@@ -708,3 +708,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The workflow is triggered by a PR touching the Sackmann audit/import files, or manually with workflow_dispatch. The current implementation PR will therefore exercise the complete import against real source files when its checks run.
 - No Live Tennis API calls, Apify runs, paid services, production model changes or production deployment are involved. Source is CC BY-NC-SA 4.0; this remains non-commercial research only.
 - Branch: `research/run-sackmann-full-import-validation`. Validation result and run ID will be recorded after CI completes.
+
+
+### Full Sackmann archive import validation — first real-data run (2026-11-20)
+- GitHub Actions run `44811037749` successfully downloaded all 118 ATP/WTA yearly main-tour CSVs for 1968–2026, executed the actual importer separately for each tour, validated non-empty normalized outputs, and completed the aggregate source-field audit. No source or normalized player-level CSVs were committed or uploaded.
+- ATP: 199,389 source rows across 59 files; 192,654 imported completed matches; 3 invalid-player rows; 6,732 unfinished/retired rows; 2,893 rows with unsupported/unknown surface values counted in diagnostics. Imported data spans 1967-12-28 through 2026-05-25. Both-player rank coverage 76.06%, age 97.38%, known surface 98.50%. Import-key duplicate groups: 0.
+- WTA: 162,182 source rows across 59 files; 157,508 imported completed matches; 1 invalid-player row; 4,673 unfinished/retired rows; 4,690 rows with unsupported/unknown surface values counted in diagnostics. Imported data spans 1967-12-25 through 2026-05-25. Both-player rank coverage 64.97%, age 94.66%, known surface 97.02%. Initial key audit found 13 repeated `tourney_id:match_num` groups; these are not yet classified as exact duplicates versus conflicting key collisions.
+- Aggregate source audit found serve/return stats on both players in 51.12% of ATP and 29.36% of WTA standard outcomes; coverage varies substantially by surface and era. Do not assume stats are available for every historical match.
+- Regression tests, project-state guard and full archive audit workflow passed on the initial PR head. Aggregate audit artifact ID `14667800013` retained for 30 days.
+- Follow-up in this same PR adds a privacy-preserving classification of the 13 WTA duplicate-key groups (identical rows versus conflicting outcomes, with year-level counts) before deciding whether importer deduplication or key correction is appropriate.
+- No Live Tennis API, Apify, paid services, production model changes or production deployment used. Source remains CC BY-NC-SA 4.0 and research-only/non-commercial.
