@@ -276,7 +276,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Keep “Максимальный EV дня” separate from the reliability-first “Ставка дня”. EV alone must never determine the latter. Display exact selected player, odds, probability, fair odds, EV, reliability, sample size, freshness and risk notes.
 
 ### Current next priorities
-1. Confirm final status of GitHub Actions runs 44743290693 (Worker deploy) and 44743290609 (production smoke).
+1. Verify deployment of the temporary six-hour Winamax freshness allowance and confirm the live PWA/Worker versions.
 2. Avoid Live Tennis API calls beyond quota-exempt usage checks until the daily quota resets; then perform one controlled verification.
 3. Inspect and tighten the reliability gate for “Ставка дня”; verify that it can return no pick when evidence is insufficient.
 4. Verify that predictions and final results are consistently recorded in the archive for later calibration.
@@ -348,3 +348,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Main now ships cache v117 with `human-factor.js` precached. This is a stale smoke-test assertion, not evidence that the PWA itself failed to load.
 - Follow-up PR replaces the brittle fixed cache-version check with validation that a versioned service worker is present and that `human-factor.js` is precached. The rerun will confirm the live deployed version.
 - No production archive data is accessed; this correction affects CI verification only.
+
+
+### Temporary Winamax quote-freshness window (2026-11-20)
+- User declined the paid hourly Apify schedule; the existing six-hour schedule remains unchanged.
+- Temporary app allowance increased from 90 minutes to six hours, aligned with that existing schedule. This affects quote freshness summaries, eligibility for match pairing, data-freshness classification, reliability inputs and market input inclusion in PFE.
+- A quote older than six hours remains stale; future timestamps remain rejected. The 30-minute maximum difference between the two sides of a bookmaker market pair is unchanged.
+- The interface labels these as quotes "не старше 6 ч"; this is a freshness allowance, not proof that the bookmaker price has remained unchanged.
+- Worker diagnostics use the same six-hour threshold. Service-worker cache advanced from v117 to v118 so installed PWAs can receive the change.
+- This is a temporary operational compromise. Restore the stricter threshold when a more frequent, affordable feed is available. Do not treat six-hour-old odds as suitable for large stakes solely because they pass this freshness window.
