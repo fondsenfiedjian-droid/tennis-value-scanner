@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v118"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v119"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -363,8 +363,12 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /box\.onclick=openDetails/);
   assert.match(html, /box\.onkeydown=/);
   assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const highest=bets\.filter\(x=>Number\.isFinite\(x\.ev\)&&x\.ev>0/);
-  assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.probability-a\.probability\)/);
+  assert.match(html, /const highest=selectHighestEvBet\(evBets\)/);
+  assert.match(html, /x\.reliabilityScore>=65/);
+  assert.match(html, /x\.valueEligible===true/);
+  assert.match(html, /Качество данных:/);
+  assert.match(html, /EV — оценка модели, а не гарантия прибыли/);
+  assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\)/);
   assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
 });
 

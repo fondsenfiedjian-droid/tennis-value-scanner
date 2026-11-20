@@ -357,3 +357,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The interface labels these as quotes "не старше 6 ч"; this is a freshness allowance, not proof that the bookmaker price has remained unchanged.
 - Worker diagnostics use the same six-hour threshold. Service-worker cache advanced from v117 to v118 so installed PWAs can receive the change.
 - This is a temporary operational compromise. Restore the stricter threshold when a more frequent, affordable feed is available. Do not treat six-hour-old odds as suitable for large stakes solely because they pass this freshness window.
+
+
+### EV of the Day — risk-aware independent selection (2026-11-20)
+- User clarified that «EV дня» should favor a genuinely high positive expected value even when the estimated win probability is lower; this is intentionally distinct from the reliability-first «Ставка дня».
+- Implemented a separate candidate pool for EV day. It can inspect decimal odds from 1.50 to 15.00 independently of the 1.90 floor used by the reliability-first daily bet.
+- Selection ranks by EV descending, then data reliability and model probability as tie-breakers. It requires positive EV, valid probability, reliability index >=65/100, good or medium freshness, and an explicit positive value-data gate. Stale, conflicted, invalid-rating or insufficient-quality candidates are excluded.
+- The card now shows the exact selected side, odds, EV, model probability, fair odds, reliability index and freshness. It explicitly warns when data quality is below the strict «Ставка дня» filter, when odds may be up to six hours old, or when model win probability is below 50%; it states EV is not a guarantee of profit.
+- «Ставка дня» selection and its strict calibration/reliability gate are unchanged. EV day is not described as a large-stake recommendation.
+- Candidate discovery now includes odds >=1.50 (up to 15.00), while the separate «Ставка дня» candidate pool retains its existing >=1.90 floor.
+- PWA service-worker cache advanced from v118 to v119. Regression tests added for high-EV preference and all exclusion gates.
