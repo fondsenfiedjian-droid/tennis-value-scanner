@@ -62,7 +62,7 @@ async function main(){
  const rankings=[];
  for(const name of rankingFiles){const rows=parseCsv(await readFile(join(opts["rankings-dir"],name),"utf8"));for(const row of rows)rankings.push(row);console.error("Loaded "+rows.length+" weekly ranking rows from "+name);}
  const matches=[];
- for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));matches.push(...rows);console.error("Loaded "+rows.length+" matches from "+basename(file));}
+ for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));for(const row of rows)matches.push(row);console.error("Loaded "+rows.length+" matches from "+basename(file));}
  const built=buildPrematchRankRows(matches,rankings);
  const report=runRankAgeWalkForward(built.rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000)});
  report.rankSource="latest official weekly ranking snapshot strictly earlier than tournament date";
