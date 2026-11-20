@@ -59,7 +59,11 @@ jobs:
           if (!html.includes("Tennis Value Scanner")) {
             throw new Error("PWA HTML does not contain the expected app title");
           }
-          console.log("PWA HTML: HTTP", appResponse.status, "title present");
+          if (!html.includes('id="bestBet"') || !html.includes("СТАВКА ДНЯ") ||
+              !html.includes('id="highestEv"') || !html.includes("best-bet-odds")) {
+            throw new Error("PWA HTML is missing the reliability-first Bet of the Day UI");
+          }
+          console.log("PWA HTML: HTTP", appResponse.status, "title and Bet of the Day UI present");
 
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
