@@ -23,10 +23,16 @@ const FILES = [
 ];
 const TOURS = ["m", "w"];
 const text = value => String(value ?? "").trim();
-const validDate = value => /^\d{8}$/.test(text(value)) &&
-  Number(text(value).slice(0,4)) >= 1900 &&
-  Number(text(value).slice(4,6)) >= 1 && Number(text(value).slice(4,6)) <= 12 &&
-  Number(text(value).slice(6,8)) >= 1 && Number(text(value).slice(6,8)) <= 31;
+const validDate = value => {
+  const valueText = text(value);
+  if (!/^\\d{8}$/.test(valueText)) return false;
+  const year = Number(valueText.slice(0, 4));
+  const month = Number(valueText.slice(4, 6));
+  const day = Number(valueText.slice(6, 8));
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
 
 
 function parseChartingCsv(source) {
