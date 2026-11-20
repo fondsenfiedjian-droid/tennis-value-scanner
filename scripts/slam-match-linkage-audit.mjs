@@ -39,10 +39,14 @@ export function auditSlamMatchLinkage(files){
   for(const [eventKey,meta] of [...slamMeta.entries()].sort(([a],[b])=>a.localeCompare(b))){
     let linked=0,linkedATP=0,linkedWTA=0,ambiguous=0,unmatched=0,missingNames=0,roundConflicts=0,winnerChecks=0,winnerMismatches=0;
     let firstDate=null,lastDate=null;
-    const seenIds=new Set();
+    const seenIds=new Set(),metadataRoundCounts={},metadataWinnerCounts={},mainTourRoundCounts={},roundConflictPairs={};
     for(const row of meta.rows){
       const id=String(row.match_id??"").trim();if(id)seenIds.add(id);
       const p1=String(row.player1??"").trim(),p2=String(row.player2??"").trim();
+      const rawRound=String(row.round??"").trim()||"MISSING";
+      metadataRoundCounts[rawRound]=(metadataRoundCounts[rawRound]||0)+1;
+      const rawWinner=String(row.winner??"").trim()||"MISSING";
+      metadataWinnerCounts[rawWinner]=(metadataWinnerCounts[rawWinner]||0)+1;
       if(!p1||!p2){missingNames++;continue;}
       const key=[meta.year,meta.slam,pairKey(p1,p2)].join(":");
       let candidates=index.get(key)||[];
@@ -54,7 +58,14 @@ export function auditSlamMatchLinkage(files){
       if(candidates.length===0){unmatched++;continue;}
       if(candidates.length>1){ambiguous++;continue;}
       const candidate=candidates[0];
-      if(round&&normalizeRound(candidate.round)!==round){roundConflicts++;continue;}
+      const candidateRound=String(candidate.round??"").trim()||"MISSING";
+      mainTourRoundCounts[candidateRound]=(mainTourRoundCounts[candidateRound]||0)+1;
+      if(round&&normalizeRound(candidate.round)!==round){
+        roundConflicts++;
+        const pair=round+" -> "+normalizeRound(candidate.round);
+        roundConflictPairs[pair]=(roundConflictPairs[pair]||0)+1;
+        continue;
+      }
       linked++;
       if(candidate.__tour==="ATP")linkedATP++;else if(candidate.__tour==="WTA")linkedWTA++;
       const date=String(candidate.tourney_date??"");
@@ -78,6 +89,7 @@ export function auditSlamMatchLinkage(files){
       year:meta.year,slam:meta.slam,metadataRows,uniqueMetadataMatchIds:seenIds.size,
       linkedUniqueMatches:linked,linkedATP,linkedWTA,ambiguous,unmatched,missingPlayerNames:missingNames,roundConflicts,
       winnerCrossChecks:winnerChecks,winnerMismatches,
+      metadataRoundCounts,metadataWinnerCounts,mainTourRoundCounts,roundConflictPairs,
       linkagePct:metadataRows?Number((100*linked/metadataRows).toFixed(2)):null,
       linkedResultDateRange:firstDate&&lastDate?{from:firstDate,to:lastDate}:null,
       mainTourResultRows:(resultEventCounts["ATP:"+meta.year+":"+meta.slam]||0)+(resultEventCounts["WTA:"+meta.year+":"+meta.slam]||0)
