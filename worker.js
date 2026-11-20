@@ -510,6 +510,7 @@ export default {
         // task run was started manually, by API, or by an Apify schedule.
         // A metadata failure must never take down an otherwise healthy odds feed.
         let taskRun = null;
+        let taskRunDiagnostic = "not_checked";
         try {
           const runResponse = await fetch(
             `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last?status=SUCCEEDED`,
@@ -520,21 +521,34 @@ export default {
               }
             }
           );
-          if (runResponse.ok) {
-            const runPayload = await runResponse.json();
-            const run = runPayload?.data || runPayload;
-            if (run && typeof run === "object" && !Array.isArray(run)) {
-              const origin = typeof run.meta?.origin === "string" ? run.meta.origin : null;
-              taskRun = {
-                status: typeof run.status === "string" ? run.status : "SUCCEEDED",
-                startedAt: run.startedAt || null,
-                finishedAt: run.finishedAt || null,
-                origin,
-                scheduled: Boolean(run.meta?.scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER")
-              };
+          if (!runResponse.ok) {
+            taskRunDiagnostic = "http_" + runResponse.status;
+          } else {
+            let runPayload;
+            try {
+              runPayload = await runResponse.json();
+            } catch {
+              taskRunDiagnostic = "invalid_json";
+            }
+            if (runPayload !== undefined) {
+              const run = runPayload?.data || runPayload;
+              if (run && typeof run === "object" && !Array.isArray(run)) {
+                const origin = typeof run.meta?.origin === "string" ? run.meta.origin : null;
+                taskRun = {
+                  status: typeof run.status === "string" ? run.status : "SUCCEEDED",
+                  startedAt: run.startedAt || null,
+                  finishedAt: run.finishedAt || null,
+                  origin,
+                  scheduled: Boolean(run.meta?.scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER")
+                };
+                taskRunDiagnostic = "ok";
+              } else if (taskRunDiagnostic !== "invalid_json") {
+                taskRunDiagnostic = "invalid_payload";
+              }
             }
           }
         } catch {
+          taskRunDiagnostic = "request_failed";
           // Keep feed availability independent from optional run metadata.
         }
         const payload = {
@@ -543,6 +557,7 @@ export default {
           retrievedAt: new Date().toISOString(),
           count: items.length,
           taskRun,
+          taskRunDiagnostic,
           diagnostics: diagnoseOddsItems(items),
           items
         };

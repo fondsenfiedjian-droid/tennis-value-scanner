@@ -99,5 +99,6 @@ jobs:
             "fresh scrape timestamps:", odds.diagnostics.freshScrapedAt ?? "unknown",
             "cache:", oddsResponse.headers.get("X-Data-Cache") || "unknown");
           console.log("Apify task run:", odds.taskRun ? JSON.stringify(odds.taskRun) : "metadata unavailable");
+          console.log("Apify task run metadata diagnostic:", odds.taskRunDiagnostic || "not provided");
           console.log("Production smoke check passed. Empty or stale odds remain visible as a feed-quality issue.");
           NODE

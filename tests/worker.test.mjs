@@ -161,6 +161,7 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
     origin: "SCHEDULER",
     scheduled: true
   });
+  assert.equal(payload.taskRunDiagnostic, "ok");
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000"));
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last?status=SUCCEEDED"));
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
@@ -174,6 +175,25 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.equal(cached.status, 200);
   assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
   assert.equal((await cached.json()).count, 1);
+});
+
+test("odds feed remains available and reports metadata HTTP failures", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async url => {
+    if (url.includes("/runs/last?status=SUCCEEDED")) {
+      return new Response("forbidden", { status: 403 });
+    }
+    return new Response(JSON.stringify([
+      { bookmaker: "Winamax", oddsDecimal: 1.91, scrapedAt: new Date().toISOString() }
+    ]), { status: 200 });
+  };
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.count, 1);
+  assert.equal(payload.taskRun, null);
+  assert.equal(payload.taskRunDiagnostic, "http_403");
 });
 
 test("odds diagnostics report schema coverage, bookmaker names, outcomes and quote freshness", async () => {
