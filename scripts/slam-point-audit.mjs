@@ -77,11 +77,11 @@ function combineSlamEvents(events) {
   }),{events:0,matchRows:0,uniqueMatchIds:0,pointRows:0,pointMatchIdsLinkedToMetadata:0,orphanPointMatchIds:0,metadataMatchIdsWithoutPoints:0});
   const fields = {};
   for (const event of events) for (const [field, stat] of Object.entries(event.candidateFields)) {
-    if (!fields[field]) fields[field] = { eventsPresent:0, eventsWithData:0, eventsWithNumeric:0, eventsAllNumericZero:0, totalNonEmpty:0, totalNumeric:0, totalZeros:0, categoryCounts:{} };
+    if (!fields[field]) fields[field] = { eventsPresent:0, eventsWithData:0, eventsWithNumeric:0, eventsWithOnlyZeroNumericValues:0, totalNonEmpty:0, totalNumeric:0, totalZeros:0, categoryCounts:{} };
     const f=fields[field]; f.eventsPresent++; f.totalNonEmpty+=stat.nonEmpty; f.totalNumeric+=stat.numericValues; f.totalZeros+=stat.zeroValues;
     if (stat.nonEmpty > 0) f.eventsWithData++;
     if (stat.numericValues > 0) f.eventsWithNumeric++;
-    if (stat.numericValues > 0 && stat.zeroValues === stat.numericValues) f.eventsAllNumericZero++;
+    if (stat.numericValues > 0 && stat.zeroValues === stat.numericValues) f.eventsWithOnlyZeroNumericValues++;
     for (const [category,count] of Object.entries(stat.categoryCounts || {})) f.categoryCounts[category]=(f.categoryCounts[category]||0)+count;
   }
   for (const f of Object.values(fields)) {
