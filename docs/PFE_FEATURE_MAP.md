@@ -108,3 +108,7 @@ A pinned audit covers 49 singles Slam event pairs (2011–2024; 98 files). Candi
 ## Grand Slam point-by-point audit findings
 
 Grand Slam point-by-point audit results: 49 events, 10,513 match metadata IDs, 1,922,136 point rows; 10,508 metadata matches have point data, zero orphan point IDs, five matches without point rows. Player names are 99.84% complete, but winner/status/event/round/court/player IDs are populated in only 8.16% of rows on average. Candidate availability: Speed_KMH 95.20% (47 events; 24.78% zeros), Speed_MPH 85.52% (43 events; 25.75% zeros), RallyCount 63.55% (28 events), distance run 52.49% (24 events), ServeDepth/ServeWidth 33.90% (20 events), ReturnDepth 28.35% (20 events). Zero values and field definitions require event-specific validation; no production feature activation.
+
+## Slam match-to-results linkage
+
+A separate exact-linkage audit connects Slam match metadata to ATP/WTA main-tour results using normalized full player-name pairs, Slam and year. It accepts only unique links and reports ambiguity, unmatched pairs, missing names and round conflicts. The linked tournament date is the event-week date, not the exact match date; within-event chronology remains unproven. No linked player-level data is retained and no features are production-enabled.
