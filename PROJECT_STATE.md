@@ -910,3 +910,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Linkage chronology refinement: for December/January charted matches, the audit now checks the adjacent calendar year's results and selects only a unique exact event/pair/round candidate with a plausible event-week offset (-7 to +21 days). This prevents a same-year false match when a tournament crosses New Year. Small negative offsets are not automatically anomalies; offsets below -7 or above +21 remain quarantined.
+
+
+- Cross-year linkage/date-window audit completed (run 44836426492): 10,690/11,822 unique MCP IDs linked (90.42%); ATP 7,053/7,565 (93.23%), WTA 3,637/4,257 (85.44%). Twenty adjacent-year links were accepted. Tier split: 10,212 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous candidates; 52 round conflicts; 849 event mismatches; 231 no-pair candidates.
+- With the -7 to +21 day event-week plausibility window, 10,667 linked matches have plausible date offsets and 23 remain anomalies (12 below -7 days, 11 above +21). Of 299 negative offsets, 287 are only -1 to -7 days and are treated as plausible event-week alignment, not errors. Extreme offsets: ATP -345/+366; WTA -261/+31. No MCP features are production-enabled; same-event order remains unverified.
