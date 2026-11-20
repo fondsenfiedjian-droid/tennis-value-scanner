@@ -352,7 +352,32 @@ async function getPlayerProfile(playerId, apiKey) {
   }
 }
 
+async function startScheduledApifyTask(env) {
+  if (!env.APIFY_TOKEN) throw new Error("APIFY_TOKEN secret is not configured");
+  const runResponse = await fetch(
+    `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.APIFY_TOKEN}`,
+        "Accept": "application/json"
+      }
+    }
+  );
+  if (!runResponse.ok) throw new Error("Apify task start failed with HTTP " + runResponse.status);
+  const payload = await runResponse.json();
+  const run = payload?.data || payload;
+  console.log("Scheduled Winamax Apify run started", run?.id || "run ID unavailable", run?.status || "status unavailable");
+  return run;
+}
+
 export default {
+  async scheduled(controller, env, ctx) {
+    const task = startScheduledApifyTask(env).catch(error => {
+      console.error("Scheduled Winamax Apify run failed:", error?.message || String(error));
+    });
+    ctx.waitUntil(task);
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
