@@ -51,7 +51,7 @@ These semantics are useful for point-level reconstruction, but they do not by th
 
 ## Lower-tier history research
 
-A separate coverage audit now targets ATP Futures, ATP Challenger/qualifying and WTA qualifying/ITF source files. Treat these as separate competitive levels; do not merge into the main-tour Elo stream until tier-aware rating transitions pass chronological holdout tests. Initial audit found more than 1.33 million completed match rows, with repeated natural match identities in WTA ITF/qualifying requiring further inspection.
+A separate coverage audit now covers ATP Futures, ATP Challenger/qualifying and WTA qualifying/ITF source files. It found 1,336,767 completed source rows and 1,325,071 unique natural match identities after deduplication. WTA ITF/qualifying had 11,696 repeated groups, all exact duplicate records by the audited signature and zero conflicting groups. Core both-player serve-stat coverage is 57.52% for ATP Challenger/qualifying, 4.84% for ATP Futures and 8.99% for WTA ITF/qualifying. Treat these as separate competitive levels; do not merge into the main-tour Elo stream until tier-aware rating transitions pass chronological holdout tests.
 
 ## Immediate next work
 
