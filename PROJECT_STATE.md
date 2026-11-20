@@ -555,3 +555,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Paired approximate 95% intervals for the second-half test excluded zero for both metrics and both tours. They are per-match normal intervals, not corrected for the multiple specifications tested.
 - Interpretation: the direction of the workload signal is not dependent on one feature or only on the original 2025→2026 split. The full four-feature combination has the largest observed improvement, but this is still one historical season with related temporal folds, correlated predictors and a research correction fitted to Elo. It is not independent multi-season confirmation, causal evidence, betting ROI, CLV or proof of profitability.
 - Decision: retain the workload module as research/diagnostics only. Do not integrate into production probabilities, EV or either recommendation until it passes additional season-by-season holdouts, surface/tournament segment stability, calibration and market-comparison checks.
+
+
+### Human Factor workload surface-stability validation — in review (2026-11-20)
+- Extended the research-only report to segment the already-trained core workload correction by Hard, Clay, Grass, Carpet and Unknown surface categories.
+- Each surface segment is evaluated on the same full-year 2026 holdout and the July–November 2026 temporal holdout. The temporal model is trained once on January–June 2026 across the tour, then evaluated unchanged within each surface; no surface-specific model fitting is used.
+- Report sample counts with every segment so small or missing surface groups are not mistaken for reliable evidence.
+- No production probabilities, EV, recommendation logic, Worker, PWA, API or quota behavior changes.
