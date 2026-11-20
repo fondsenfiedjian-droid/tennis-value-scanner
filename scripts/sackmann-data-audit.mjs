@@ -11,8 +11,13 @@ const number = value => value === "" || value == null ? null : Number(value);
 const validCount = value => Number.isInteger(number(value)) && number(value) >= 0;
 const validPositive = value => Number.isInteger(number(value)) && number(value) > 0;
 const validAge = value => Number.isFinite(number(value)) && number(value) >= 13 && number(value) <= 60;
-const validDate = value => /^\d{8}$/.test(String(value ?? "")) &&
-  new Date(Date.UTC(+String(value).slice(0,4), +String(value).slice(4,6)-1, +String(value).slice(6,8))).toISOString().slice(0,10).replaceAll("-","") === String(value);
+const validDate = value => {
+  const raw=String(value ?? "");
+  if(!/^\d{8}$/.test(raw))return false;
+  const year=Number(raw.slice(0,4)),month=Number(raw.slice(4,6)),day=Number(raw.slice(6,8));
+  const date=new Date(Date.UTC(year,month-1,day));
+  return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;
+};
 
 function validSide(prefix, row) {
   const svpt = number(row[prefix + "_svpt"]);
@@ -56,7 +61,9 @@ function addRow(summary, row) {
   const fullStats = winnerStats && loserStats && [
     "w_ace","w_df","w_SvGms","w_bpSaved","w_bpFaced",
     "l_ace","l_df","l_SvGms","l_bpSaved","l_bpFaced"
-  ].every(field => validCount(row[field]));
+  ].every(field => validCount(row[field])) &&
+    number(row.w_bpSaved)<=number(row.w_bpFaced) &&
+    number(row.l_bpSaved)<=number(row.l_bpFaced);
   if (fullStats) summary.statsBothSides++;
   for (const field of COUNT_FIELDS) if (validCount(row[field])) summary.columns[field]++;
 }
