@@ -335,7 +335,7 @@ test("highest EV of the day is separate from the balanced best bet and opens its
   assert.match(html, /const highest=bets\.filter\(x=>Number\.isFinite\(x\.ev\)&&x\.ev>0/);
   assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.probability-a\.probability\)/);
   assert.match(html, /data-match-index=/);
-  assert.match(html, /data-match-index="\+Number\(highest\.matchIndex\)\+"/);
+  assert.match(html, /Number\\(highest\\.matchIndex\\)/);
   assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
   assert.match(html, /const best=selectBestBet\(bets,minEv,bestBetMinOdds\)/);
 });
