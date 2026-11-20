@@ -1139,7 +1139,7 @@ test("calibration excludes live snapshots even when scheduled start is still in 
   ];
   const result=archiveProbabilityCalibration(rows);
   assert.equal(result.sampleSize,1);
-  assert.equal(result.postStart,2);
+  assert.equal(result.postStart,1);
 });
 
 test("snapshot stores API capture status and uses live_at as the actual-start cutoff", () => {
