@@ -292,3 +292,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Documentation-only changes are allowed without a second state-file edit.
 - This is an enforcement check for pull requests, not an AI summarizer: it ensures the state file is included but cannot independently infer and write accurate technical decisions. The developer/assistant must add the substantive update in the same PR.
 - Direct pushes to `main` do not pass through this PR guard. Prefer pull requests for all implementation changes; branch-protection enforcement of this check has not been configured/verified.
+
+
+### Human-factor baseline (2026-11-20)
+- Added `human-factor.js` as an isolated, dependency-free module for objective workload/recovery measurements: match counts in rolling 72-hour and 7-day windows, elapsed rest hours/days, consecutive calendar days with matches, and known match-duration minutes.
+- Added explicit duration-coverage reporting. Missing durations remain unknown; invalid/future timestamps are excluded and counted; duplicate match IDs are deduplicated.
+- Added descriptive player-to-player workload deltas. The module intentionally emits no human-factor score and makes no probability adjustment.
+- Added `tests/human-factor.test.mjs` covering time windows, rest, consecutive days, incomplete duration data, invalid/future timestamps, epoch timestamps, empty history and descriptive comparisons.
+- This is an experimental foundation only: it is not yet wired into live predictions or the PWA because the current live feed does not provide a complete, verified per-player recent-match history with reliable duration data. Do not infer player fatigue or psychology when source data is absent.
+- Next: identify a lawful, reliable recent-results feed; build a strictly pre-match history adapter; run chronological ablation tests (baseline vs workload features) on a held-out period. Only then consider learning coefficients and allowing any probability adjustment. Psychological proxies remain deferred until they can be measured without subjective labels.
