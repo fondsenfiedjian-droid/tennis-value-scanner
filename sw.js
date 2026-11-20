@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-value-static-v113";
+const CACHE_NAME = "tennis-value-static-v114";
 const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./pfe.js"];
 
 self.addEventListener("install", event => {
