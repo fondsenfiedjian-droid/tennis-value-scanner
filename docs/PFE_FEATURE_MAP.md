@@ -22,7 +22,11 @@ The first audit found 7,565 ATP and 4,257 WTA unique metadata IDs. The initial t
 | Serve direction | ServeDirection: deuce_wide/middle/t, ad_wide/middle/t, error categories | No model feature yet | File contains error totals but no obvious serve-attempt denominator |
 | Serve influence | ServeInfluence: pts, won_1+ through won_10+ | No model feature yet | Threshold labels and cumulative/non-cumulative meaning must be decoded |
 | Net play | NetPoints: net_pts, pts_won, net_winner, induced_forced, net_unforced, passed_at_net | net-point win rate = pts_won / net_pts | Confirm player perspective and treatment of approach/forced outcomes |
-| Key points | KeyPointsServe, KeyPointsReturn | Serve/return performance on break points and other key-point classes | Decode row codes and denominator semantics first |\n| Serve-and-volley | SnV | Serve-and-volley frequency and point outcome | Confirm column meanings and player perspective |\n| Serve/break splits | SvBreakSplit, SvBreakTotal | Serve and break performance by match/set context | Avoid double-counting aggregate and split rows |\n| Directional outcomes | ShotDirOutcomes | Direction-specific shot outcomes | Decode all row/column labels before aggregation |\n| Rally outcomes | Rally: pts, pl1_won, pl1_winners/forced/unforced, pl2_won/winners/forced/unforced | Rally-length-specific win/error profile | The meaning of row codes and rally-length bins must be decoded first |
+| Key points | KeyPointsServe, KeyPointsReturn | Serve/return performance on break points and other key-point classes | Decode row codes and denominator semantics first |
+| Serve-and-volley | SnV | Serve-and-volley frequency and point outcome | Confirm column meanings and player perspective |
+| Serve/break splits | SvBreakSplit, SvBreakTotal | Serve and break performance by match/set context | Avoid double-counting aggregate and split rows |
+| Directional outcomes | ShotDirOutcomes | Direction-specific shot outcomes | Decode all row/column labels before aggregation |
+| Rally outcomes | Rally: pts, pl1_won, pl1_winners/forced/unforced, pl2_won/winners/forced/unforced | Rally-length-specific win/error profile | The meaning of row codes and rally-length bins must be decoded first |
 
 ## Research protocol
 
