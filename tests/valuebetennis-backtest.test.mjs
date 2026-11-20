@@ -35,7 +35,7 @@ test("Valuebetennis importer excludes matches ending inside an unfinished set", 
     "9503,2026-11-19,803,atp,Hard,5,6,5,6-3 2-2,1.8,2.0,1.7,2.1",
     "9504,2026-11-19,804,atp,Hard,7,8,7,6-4 3-6 6-2,1.8,2.0,1.7,2.1",
     "9505,2026-11-19,805,atp,Hard,9,10,9,6-4 7-6(6),1.8,2.0,1.7,2.1"
-  ].join("\\n");
+  ].join("\n");
   const parsed = parseValuebetennisCsv(csv);
   assert.equal(parsed.inputRows, 5);
   assert.equal(parsed.rows.length, 2);
