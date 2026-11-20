@@ -124,3 +124,32 @@ test("rejects invalid evaluation date windows", () => {
     tour: "atp", evaluationStart: "20240230"
   }), /valid ordered/);
 });
+
+test("frozen holdout keeps coefficients trained before the first evaluation year",()=>{
+ const rows=[
+  ...makeSeason("2000"),
+  ...makeSeason("2001"),
+  ...makeSeason("2002"),
+  ...makeSeason("2003")
+ ];
+ const report=runRankAgeWalkForward(rows,{
+  tour:"atp",
+  evaluationStart:"20020101",
+  evaluationEnd:"20031231",
+  freezeModelYear:"2002",
+  minTrainingMatches:100,
+  maxTrainingRows:250
+ });
+ assert.equal(report.modelPolicy.type,"frozen-coefficients");
+ assert.equal(report.modelPolicy.frozenFromYear,"2002");
+ assert.equal(report.modelPolicy.fitYear,"2002");
+ assert.equal(report.byYear["2002"].rankAge.trainingMatches,report.byYear["2003"].rankAge.trainingMatches);
+ assert.equal(report.byYear["2002"].rankAge.trainingSample,report.byYear["2003"].rankAge.trainingSample);
+ assert.equal(report.summary.rankAge.trainingMatches,report.byYear["2002"].rankAge.trainingMatches);
+ assert.ok(report.summary.rankAge.matches>0);
+});
+test("frozen model year must match the first evaluation calendar year",()=>{
+ assert.throws(()=>runRankAgeWalkForward(makeSeason("2000"),{
+  tour:"atp",evaluationStart:"20000101",freezeModelYear:"2001"
+ }),/same calendar year/);
+});
