@@ -19,7 +19,7 @@ test("workload features use only earlier UTC calendar days and exclude same-day 
   const features=buildPreMatchWorkload(rows);
   const target=features.get("20250105:1:5");
   assert.deepEqual(target,{
-    matches3:1,matches7:3,playingDays7:2,restDays:2,minutes7:270,durationCoverage7:1
+    matches3:1,matches7:3,playingDays7:2,restDays:-28,minutes7:270,durationCoverage7:1
   });
   assert.deepEqual(features.get("20250105:1:6"),target);
 });
@@ -41,12 +41,13 @@ test("workload windows count calendar dates inclusively and cap long rest interv
   const rows=[
     row("20250101",1,1,2,100),
     row("20250108",2,1,3,100),
-    row("20250220",3,1,4,100)
+    row("20250215",3,4,7,100),
+    row("20250220",4,1,4,100)
   ];
   const features=buildPreMatchWorkload(rows);
   assert.deepEqual(features.get("20250108:1:3"),{
-    matches3:0,matches7:1,playingDays7:1,restDays:7,minutes7:100,durationCoverage7:1
+    matches3:0,matches7:1,playingDays7:1,restDays:-23,minutes7:100,durationCoverage7:1
   });
-  assert.equal(features.get("20250220:1:4").restDays,30);
-  assert.equal(features.get("20250220:1:4").matches7,0);
+  assert.equal(features.get("20250220:1:4").restDays,25);
+  assert.equal(features.get("20250220:1:4").matches7,-1);
 });
