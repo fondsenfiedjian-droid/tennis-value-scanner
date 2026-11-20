@@ -879,3 +879,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Corrected escaped template literals in the new Match Charting audit fixtures after the first CI run reported a test-file syntax error; rerunning the regression workflow on the corrected commit.
 
 - Match Charting metadata field audit completed (run 44833318668): Tournament coverage ATP 100% / WTA 99.60%; Round 99.99% / 99.72%; Best-of 99.56% / 99.58%; other fields Time 54.11% / 41.49%, Court 74.13% / 66.98%, Umpire 60.30% / 53.59%. Most round labels align with results archive codes. JSON artifact newline is valid; regression and documentation guard passed.
+
+
+- PFE aggregate-family codebook: verified Overview player/set orientation and serve/return denominators against MatchChart 0.3.2 MatchStats formulas; verified ServeBasics player perspective and first-/second-serve rows against source rows; verified Rally Player1/Player2 orientation and core rally-length buckets. Other families remain explicitly blocked until row-code intersections and denominators are independently verified.
+- Added strict aggregate-only Match Charting linkage audit against the pinned Sackmann main-tour archive (2013–2026). It requires exact normalized full-name pair, tour, year, explicit event alias and round; ambiguous, event-mismatched and unmatched records remain excluded. Only aggregate counts and date-offset diagnostics are retained; no player names, match IDs or linked player-level dataset are emitted.
+- Sources remain CC BY-NC-SA 4.0, non-commercial only. New linkage workflow uses ephemeral runner storage and uploads only an aggregate JSON artifact. No production features or rating inputs changed.
