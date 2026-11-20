@@ -31,7 +31,7 @@ test("rejects empty lower-tier input",()=>{
 
 test("separates exact duplicate and conflicting natural match identities",()=>{
  const conflict=row1.replace("6-4 6-3","6-3 6-4");
- const report=auditLowerTierFiles([{filename:"atp_matches_futures_2024.csv",content:[header,row1,row1,conflict].join("\\n")}]);
+ const report=auditLowerTierFiles([{filename:"atp_matches_futures_2024.csv",content:[header,row1,row1,conflict].join("\n")}]);
  const g=report.groups[0];
  assert.equal(g.completedMatches,3);
  assert.equal(g.uniqueCompletedMatchGroups,1);
