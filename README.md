@@ -240,3 +240,12 @@ The module does **not** assign a subjective fatigue/psychology score and does **
 ### Archive-derived workload (experimental)
 
 The app prediction archive can provide a **partial sample** of prior completed matches for a player. The experimental adapter counts only verified A/B player-ID pairs on earlier UTC calendar days, excluding same-day matches and the target match. It deliberately does not estimate rest hours or match duration because the archive stores scheduled dates rather than actual finish times. This sparse, selection-biased archive must not be described as complete workload history or used to adjust probabilities without chronological validation.
+
+
+## Sackmann historical data coverage audit (research only)
+
+The optional GitHub Actions workflow `.github/workflows/sackmann-data-audit.yml` downloads Jeff Sackmann's ATP/WTA match CSVs for 1991–2026 into an ephemeral runner and measures coverage for serve/return statistics, rankings, player age, handedness, surface and match duration. It publishes aggregate coverage percentages only; it does not publish raw match rows, player-level records or source CSVs.
+
+The source data is compiled by Jeff Sackmann / Tennis Abstract and is licensed CC BY-NC-SA 4.0 (attribution, non-commercial use and share-alike). The research report carries the same license. This workflow is an audit only: it does not alter live predictions, EV, recommendations, API usage or production data. Do not use Sackmann-derived data commercially without separate permission.
+
+Sources: [Jeff Sackmann ATP](https://github.com/JeffSackmann/tennis_atp), [Jeff Sackmann WTA](https://github.com/JeffSackmann/tennis_wta), [archival mirror](https://github.com/Aneeshers/tennis-sackmann-archive).
