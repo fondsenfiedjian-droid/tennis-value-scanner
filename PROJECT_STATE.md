@@ -867,3 +867,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Linkage audit refinement classifies unmatched rows by alias ambiguity, missing roster identity, or no matching player pair. It stores aggregate counts only and never emits player names.
 
 - Added `docs/DATA_SOURCE_REGISTRY.md`: pinned historical baseline, TennisMyLife live ATP/WTA candidate and its non-commercial/no-redistribution terms, Live Tennis API academic point-state dataset (173,571 match index; 22,031 observed matches / 3.18M score states), and AcesAPI as an optional credit-limited cross-check. No new provider data or API key was ingested; no paid calls or subscriptions were made. All candidates remain behind quality, licensing and chronology gates.
+
+- Public Live Tennis API Zenodo sample is versioned: use v1.0.3, which follows the v1.0.2 UTC timestamp correction. The public players file dropped the external Sackmann ID crosswalk; do not assume direct player-ID joins from the public sample. Full research data is described as retaining the crosswalk, subject to institutional access approval.
