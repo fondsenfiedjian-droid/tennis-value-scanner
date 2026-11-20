@@ -310,3 +310,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added module `human-factor.js` and tests `tests/human-factor.test.mjs`; README and this journal document its experimental status.
 - This is a backend-independent source module, not a frontend or Worker change; no Netlify/Cloudflare deployment is required or claimed.
 - Probability and EV calculations remain unchanged. Next engineering step is to inspect what reliable pre-match player-history fields are already available in the local prediction/result archive, then determine whether a strictly pre-match workload adapter can be built without extra API quota. Do not assume match durations exist.
+
+
+### Archive workload adapter (2026-11-20)
+- Added `calculateArchiveWorkloadProfile()` to `human-factor.js` on branch `feat/archive-workload-adapter`.
+- Uses only archive rows marked `resultOutcome=completed`, requires consistent A/B sides with distinct numeric player IDs and matching scheduled date, deduplicates by match ID, and excludes the target match plus all same-day matches to avoid uncertain within-day ordering/data leakage.
+- Reports counts in the previous 3 and 7 UTC calendar days and distinct playing days. It explicitly returns null for rest hours and match duration because the archive stores scheduled match dates, not actual completion timestamps or reliable duration.
+- Coverage is labelled `partial_prediction_archive_not_complete_tour_history`; archived prediction rows are a sparse, selection-biased sample and cannot establish total player workload.
+- Added tests for valid counts, same-day exclusion, non-completed exclusions, incomplete/contradictory identities and invalid targets.
+- This adapter remains descriptive only; it is not connected to probability or EV. Before model integration, test archive coverage and incremental value on strictly chronological held-out predictions. Never present archive counts as complete tour history.

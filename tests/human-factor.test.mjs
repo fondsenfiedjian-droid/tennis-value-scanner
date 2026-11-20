@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateWorkloadProfile, compareWorkloadProfiles } from "../human-factor.js";
+import { calculateWorkloadProfile, compareWorkloadProfiles, calculateArchiveWorkloadProfile } from "../human-factor.js";
 
 const NOW = "2026-11-20T12:00:00.000Z";
 
@@ -93,4 +93,45 @@ test("never returns a probability or an invented human-factor score", () => {
   assert.equal("probabilityAdjustment" in profile, false);
   assert.equal("score" in profile, false);
   assert.equal(profile.interpretation, "measurements_only_not_probability_adjusted");
+});
+
+
+test("archive adapter counts only completed, verified prior matches and excludes same-day matches", () => {
+  const rows = [];
+  const add = (id, date, a, b, outcome = "completed") => {
+    rows.push(
+      { matchId: id, matchDate: date, playerId: a, side: "A", resultOutcome: outcome, resultWinner: 1 },
+      { matchId: id, matchDate: date, playerId: b, side: "B", resultOutcome: outcome, resultWinner: 1 }
+    );
+  };
+  add("m1", "2026-11-19T10:00:00Z", 101, 202);
+  add("m2", "2026-11-18T10:00:00Z", 303, 101);
+  add("m3", "2026-11-16T10:00:00Z", 101, 404);
+  add("same-day", "2026-11-20T08:00:00Z", 101, 505);
+  add("retired", "2026-11-17T10:00:00Z", 101, 606, "retired");
+  const profile = calculateArchiveWorkloadProfile(rows, 101, "2026-11-20T12:00:00Z", "target");
+  assert.equal(profile.status, "archive_sample_only");
+  assert.equal(profile.matchesPrevious3CalendarDays, 2);
+  assert.equal(profile.matchesPrevious7CalendarDays, 3);
+  assert.equal(profile.playingDaysPrevious7CalendarDays, 3);
+  assert.equal(profile.restHours, null);
+  assert.equal(profile.matchDurationMinutes, null);
+});
+
+test("archive adapter rejects incomplete or contradictory side identities", () => {
+  const rows = [
+    { matchId: "bad", matchDate: "2026-11-19T10:00:00Z", playerId: 101, side: "A", resultOutcome: "completed", resultWinner: 1 },
+    { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 101, side: "A", resultOutcome: "completed", resultWinner: 1 },
+    { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 999, side: "A", resultOutcome: "completed", resultWinner: 1 },
+    { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 202, side: "B", resultOutcome: "completed", resultWinner: 1 }
+  ];
+  const profile = calculateArchiveWorkloadProfile(rows, 101, "2026-11-20T12:00:00Z");
+  assert.equal(profile.matchesPrevious7CalendarDays, 0);
+  assert.equal(profile.rejectedArchiveGroups, 2);
+});
+
+test("archive adapter returns unknown for invalid player or target date", () => {
+  const profile = calculateArchiveWorkloadProfile([], 0, "not-a-date");
+  assert.equal(profile.status, "invalid_target");
+  assert.equal(profile.matchesPrevious7CalendarDays, null);
 });
