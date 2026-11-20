@@ -40,6 +40,10 @@ test("historical endpoint reads the fixed dataset without changing the Winamax f
   assert.equal(payload.datasetId, "1UFINeSkMhdbaTfPa");
   assert.equal(payload.datasetName, "tennis-results-history-2026-11-19");
   assert.equal(payload.count, 1);
+  assert.equal(payload.diagnostics.finished, 1);
+  assert.equal(payload.diagnostics.bothOddsValid, 1);
+  assert.equal(payload.diagnostics.surfaceCounts.clay, 1);
+  assert.equal(payload.diagnostics.missingWinner, 0);
   assert.equal(payload.items[0].surface, "clay");
   assert.match(payload.retrievedAt, /^2026-\d{2}-\d{2}T/);
   assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/1UFINeSkMhdbaTfPa/items?clean=true&format=json&limit=1000");
