@@ -1,0 +1,74 @@
+name: Match Charting linkage to historical results
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/mcp-match-linkage-audit.mjs"
+      - "tests/mcp-match-linkage-audit.test.mjs"
+      - ".github/workflows/mcp-match-linkage-audit.yml"
+      - "docs/PFE_FEATURE_MAP.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned MCP metadata and historical results
+        env:
+          MCP_COMMIT: 1813a1309b7ed7ebf1c7e884b32bf675d00e4edf
+          RESULTS_COMMIT: 83733587353df8a41f2fd4f516147d5aa83f5a8d
+        run: |
+          set -euo pipefail
+          mkdir -p research-data
+          for tour in m w; do
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/$MCP_COMMIT/charting-$tour-matches.csv" \
+              --output "research-data/charting-$tour-matches.csv"
+            test -s "research-data/charting-$tour-matches.csv"
+          done
+          for year in {2013..2026}; do
+            for tour in atp wta; do
+              file="${tour}_matches_${year}.csv"
+              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+                "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$RESULTS_COMMIT/$tour/$file" \
+                --output "research-data/$file"
+              test -s "research-data/$file"
+            done
+          done
+          echo "Downloaded $(find research-data -type f | wc -l) pinned source files"
+      - name: Run strict aggregate-only linkage audit
+        run: node scripts/mcp-match-linkage-audit.mjs --input-dir research-data --out "$RUNNER_TEMP/mcp-match-linkage-audit.json"
+      - name: Publish aggregate summary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/mcp-match-linkage-audit.json", "utf8"));
+          const t = report.totals;
+          const lines = [
+            "| Tour | Metadata IDs | Unique exact links | Link rate | Ambiguous | Round conflicts | Event mismatches | No player pair in year |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
+            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.uniqueMatchIds + " | " + x.linkedUnique + " | " + x.linkagePct + "% | " + x.ambiguous + " | " + x.roundConflicts + " | " + x.eventMismatches + " | " + x.noPlayerPairInYear + " |"),
+            "",
+            "Total unique metadata IDs: " + t.uniqueMatchIds + "; exact unique links: " + t.linkedUnique + " (" + t.linkagePct + "%).",
+            "No player-level linkage records or identifiers are retained."
+          ];
+          await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          NODE
+      - name: Upload aggregate-only linkage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-historical-match-linkage-audit
+          path: ${{ runner.temp }}/mcp-match-linkage-audit.json
+          if-no-files-found: error
+          retention-days: 30
