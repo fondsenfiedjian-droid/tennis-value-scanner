@@ -20,9 +20,7 @@ function winnerSide(r){
 }
 function incompleteScore(r){
  if(!text(r.score)||r.finished!==true||!Array.isArray(r.sets)||!r.sets.length)return false;
- const a=Number(r.player1Sets),b=Number(r.player2Sets);
- const complete=r.sets.filter(s=>Number.isFinite(Number(s?.player1))&&Number.isFinite(Number(s?.player2))&&Math.max(Number(s.player1),Number(s.player2))>=6).length;
- return Number.isFinite(a)&&Number.isFinite(b)&&complete<a+b;
+ return r.sets.some(s=>Number.isFinite(Number(s?.player1))&&Number.isFinite(Number(s?.player2))&&Math.max(Number(s.player1),Number(s.player2))<6);
 }
 export function normalizeHistoricalMatch(raw){
  const r=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw:{};
