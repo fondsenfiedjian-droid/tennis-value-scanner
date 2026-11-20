@@ -430,3 +430,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added regression coverage for version filtering, legacy/unversioned exclusions, Brier calculation and active-version wiring.
 - PWA shell cache advanced from v123 to v124 so installed clients can receive the changed calibration logic and labels.
 - PR #46: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/46. Regression workflow run 44759547826 passed (333 tests, 0 failed); project-state guard run 44759547883 passed. The first test attempts exposed stale cache-version and segment-call assertions; those test expectations were corrected, with no production logic rollback required. No archive records are migrated or deleted, and no API calls or bookmaker settings are changed.
+
+
+### Archive snapshot identity hardening (2026-11-20)
+- Snapshot de-duplication now requires the archived model name/version to match the active model (general-elo-v2, version 2), as well as the existing quote, probability, rating and bookmaker fields.
+- Scheduled match date and capture status must also match before a recent snapshot is considered a duplicate. This preserves material schedule/status revisions and prevents a model-version change from silently suppressing a new forecast snapshot.
+- Added regression tests proving an otherwise identical v1 snapshot does not suppress v2, and a schedule/status revision is retained.
+- PWA shell cache advanced from v124 to v125.
+- No existing archive rows are rewritten or deleted; no API calls or bookmaker configuration changes.
