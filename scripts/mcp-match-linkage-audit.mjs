@@ -116,7 +116,7 @@ function withinDateWindow(rows, matchDate, windowDays) {
 function addDateConflictDeltas(stats, rows, matchDate) {
   const checked = withinDateWindow(rows, matchDate, 21);
   for (const delta of checked.deltas) {
-    const bin = delta < 0 ? "before-event" : delta <= 28 ? "22-28-days" : delta <= 35 ? "29-35-days" : "over-35-days";
+    const bin = delta <= -15 ? "15+-days-before" : delta <= -8 ? "8-14-days-before" : delta <= -4 ? "4-7-days-before" : delta < 0 ? "1-3-days-before" : delta <= 28 ? "22-28-days-after" : delta <= 35 ? "29-35-days-after" : "over-35-days-after";
     stats.dateConflictDeltaBins[bin] = (stats.dateConflictDeltaBins[bin] || 0) + 1;
   }
 }
@@ -177,7 +177,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     validMetadataDateRows: 0, invalidMetadataDateRows: 0, missingMetadataDateRows: 0,
     missingPlayerNameRows: 0, missingTournamentRows: 0, missingRoundRows: 0, invalidRoundRows: 0,
     eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
-    dateConflictDeltaBins: {"before-event":0,"22-28-days":0,"29-35-days":0,"over-35-days":0},
+    dateConflictDeltaBins: {"1-3-days-before":0,"4-7-days-before":0,"8-14-days-before":0,"15+-days-before":0,"22-28-days-after":0,"29-35-days-after":0,"over-35-days-after":0},
     ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
     linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0, linkedFromAdjacentYear: 0,
     unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, unmatchedByReason: {}, unmatchedTournamentByReason: {}, byYear: {}
