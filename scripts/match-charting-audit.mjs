@@ -47,8 +47,14 @@ function parseChartingCsv(source) {
   if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting CSV");
   if (field !== "" || row.length) pushRow();
   if (!rows.length) return [];
-  const headers = rows.shift().map((header, index) => header || `__unnamed_${index + 1}`);
-  if (new Set(headers).size !== headers.length) throw new SyntaxError("CSV contains duplicate headers after empty-header normalization");
+  const rawHeaders = rows.shift();
+  const headerCounts = new Map();
+  const headers = rawHeaders.map((header, index) => {
+    const base = header || `__unnamed_${index + 1}`;
+    const count = (headerCounts.get(base) || 0) + 1;
+    headerCounts.set(base, count);
+    return count === 1 ? base : `${base}__duplicate_${count}`;
+  });
   return rows.map((values, index) => {
     if (values.length > headers.length) throw new SyntaxError(`CSV row ${index + 2} has more fields than the header`);
     return Object.fromEntries(headers.map((key, i) => [key, values[i] ?? ""]));
