@@ -132,6 +132,14 @@ if (predictionCandidates.length) {
       probabilities: [prediction.probabilityA, prediction.probabilityB],
       odds: [candidate.side1, candidate.side2],
       ev: [prediction.evA, prediction.evB],
+      ratingsAsOf: [prediction.ratingsAsOfA || null, prediction.ratingsAsOfB || null],
+      ratingFreshness: [prediction.ratingFreshnessA?.status || "unknown", prediction.ratingFreshnessB?.status || "unknown"],
+      ratingQuality: [prediction.ratingQualityA?.status || "unknown", prediction.ratingQualityB?.status || "unknown"],
+      marketNoVigProbability: (() => {
+        const impliedA = 1 / Number(candidate.side1), impliedB = 1 / Number(candidate.side2);
+        const total = impliedA + impliedB;
+        return [Number((impliedA / total * 100).toFixed(2)), Number((impliedB / total * 100).toFixed(2))];
+      })(),
       surface: prediction.surface || candidate.surface || null
     }));
   }
