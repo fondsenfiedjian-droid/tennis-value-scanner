@@ -150,17 +150,19 @@ export function auditMatchChartingFiles(filesByName) {
         uniqueMatchIds: matchIds.size,
         duplicateMatchIdRows: metadataDuplicates,
         validDateRows: dates.length,
-        invalidDateRows: matchRows.length - dates.length,
+        invalidDateRows,
+        missingDateRows,
         dateRange: dates.length ? { from: dates[0], to: dates.at(-1) } : null,
         surfaceCounts: surfaces,
         playerHandCounts: hands,
         qualityChecks: {
           rowsWithUnexpectedSurface,
           rowsWithUnexpectedHand,
-          invalidDateRows: matchRows.length - dates.length,
+          invalidDateRows,
+          missingDateRows,
           rowsWithRecognizedSurface: matchRows.length - rowsWithUnexpectedSurface,
           rowsWithRecognizedHands: matchRows.length - rowsWithUnexpectedHand,
-          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates || dates.length !== matchRows.length ? "review-required" : "clean"
+          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates || invalidDateRows || missingDateRows ? "review-required" : "clean"
         }
       },
       statFiles: files
