@@ -490,6 +490,25 @@
   function normalizePlayer(s){
     return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
+  function playerNamesMatch(left,right){
+    const a=normalizePlayer(left).split(' ').filter(Boolean);
+    const b=normalizePlayer(right).split(' ').filter(Boolean);
+    if(!a.length||a.length!==b.length)return false;
+    function matchAt(index,used,hasFullToken){
+      if(index===a.length)return hasFullToken;
+      for(let j=0;j<b.length;j++){
+        if(used.has(j))continue;
+        const exact=a[index]===b[j];
+        const initial=(a[index].length===1&&b[j].length>1&&b[j][0]===a[index])||
+          (b[j].length===1&&a[index].length>1&&a[index][0]===b[j]);
+        if(!exact&&!initial)continue;
+        const next=new Set(used);next.add(j);
+        if(matchAt(index+1,next,hasFullToken||(exact&&a[index].length>1)))return true;
+      }
+      return false;
+    }
+    return matchAt(0,new Set(),false);
+  }
   function tournamentCompatible(matchName,oddsName){
     const normalizeTournament=value=>{
       let name=normalizePlayer(value);
@@ -544,7 +563,7 @@
       if(!home||!away||home===away)return false;
       const eventParts=String(o.eventName||'').split(/\s+-\s+/);
       if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
-      if(!((home===a&&away===b)||(home===b&&away===a)))return false;
+      if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||eventStart.getTime()<=now||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
@@ -582,8 +601,8 @@
     const a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
     const outcome=String(o.outcome||'').toLowerCase();
-    if(a===home)return outcome==='home'?'1':outcome==='away'?'2':null;
-    if(a===away)return outcome==='away'?'1':outcome==='home'?'2':null;
+    if(playerNamesMatch(a,home))return outcome==='home'?'1':outcome==='away'?'2':null;
+    if(playerNamesMatch(a,away))return outcome==='away'?'1':outcome==='home'?'2':null;
     return null;
   }
   function normalizeTour(value){
