@@ -112,3 +112,8 @@ Grand Slam point-by-point audit results: 49 events, 10,513 match metadata IDs, 1
 ## Slam match-to-results linkage
 
 A separate exact-linkage audit connects Slam match metadata to ATP/WTA main-tour results using normalized full player-name pairs, Slam and year. It accepts only unique links and reports ambiguity, unmatched pairs, missing names and round conflicts. The linked tournament date is the event-week date, not the exact match date; within-event chronology remains unproven. No linked player-level data is retained and no features are production-enabled.
+
+
+## Grand Slam metadata linkage audit
+
+A research-only audit linked the 49 event metadata files (2011–2024) to ATP/WTA main-tour results from the same pinned archive. Initial aggregate result: 10,110 of 10,513 metadata rows linked (96.16%); 8,048 by normalized full names and 2,062 by unique initial-surname aliases; 371 unmatched and 32 missing player-name rows. No pair was ambiguous after unique-only resolution, and 636 available winner cross-checks had zero mismatches. Winner fields are absent in much of the metadata, so this is not a universal winner validation. Event dates in Sackmann results are tournament-week dates, not match-specific dates; they cannot establish within-event match order. Alias-based links are weaker than full-name links and must remain separately tagged. No player-level linked dataset is retained and no feature is enabled.
