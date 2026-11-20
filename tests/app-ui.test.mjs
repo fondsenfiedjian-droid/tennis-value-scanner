@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v125"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v126"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -433,4 +433,21 @@ test("reliability calibration and segment diagnostics use only the active model 
   assert.match(html, /const calibration=archiveProbabilityCalibration\(rows,30,CURRENT_CALIBRATION_MODEL_VERSION\)/);
   assert.match(html, /archiveSegmentCalibration\(rows,group=>archiveProbabilityCalibration\(group,30,CURRENT_CALIBRATION_MODEL_VERSION\)\)/);
   assert.match(html, /снимки других версий модели исключены/);
+});
+
+
+test("calibration rejects a snapshot captured after an earlier scheduled start despite a later reschedule", () => {
+  const start = html.indexOf("const CURRENT_CALIBRATION_MODEL_VERSION='2';");
+  const end = html.indexOf("function archiveSegmentCalibration", start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.calibration = archiveProbabilityCalibration;", sandbox);
+  const rows = [
+    { matchId: 801, side: "A", probability: 70, capturedAt: Date.parse("2026-11-20T11:00:00.000Z"), matchDate: "2026-11-20T10:00:00.000Z", captureStatus: "live", resultOutcome: "completed", resultWinner: 1, resultVersion: 1, modelVersion: "2" },
+    { matchId: 801, side: "A", probability: 80, capturedAt: Date.parse("2026-11-20T11:30:00.000Z"), matchDate: "2026-11-20T13:00:00.000Z", captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1, resultVersion: 1, modelVersion: "2" }
+  ];
+  const calibration = sandbox.calibration(rows, 1, "2");
+  assert.equal(calibration.sampleSize, 0);
+  assert.equal(calibration.postStart, 1);
 });
