@@ -668,13 +668,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - A change is not complete merely because code was edited or a PR was merged; its state record and validation status must also be current.
 
 
-### Historical tennis-results normalization adapter — implementation in review (2026-11-20)
+### Historical tennis-results normalization adapter — merged (2026-11-20)
 - Added `historical-normalizer.js`, a versioned adapter for `poetsc/tennis-results` ATP/WTA singles records. It normalizes schedule date/time, tour, tournament, round, court surface, player attributes, H2H, current/opening odds and match result into a stable schema.
 - Local scheduled time is preserved without inventing a timezone. Missing optional fields remain null. Result eligibility and market eligibility are independent.
 - Result quality gates flag unsupported tours, invalid player identities, unfinished/retired/walkover records, unmatched winners, missing scores and possible incomplete scores. Market gates require valid two-sided opening and current odds. Dataset diagnostics report eligibility, duplicate source IDs, tour and surface counts.
 - Added `tests/historical-normalizer.test.mjs` for valid ATP records, separate eligibility, exclusions, incomplete scores, surface aliases, duplicate IDs and missing-field handling.
 - This is an offline data adapter only. It does not train a model, change probability/EV, make network requests, or include user-provided datasets. No Live Tennis quota, Apify run, paid service or deployment used.
-- Branch: `feat/historical-match-normalizer`. CI and code review are pending; no merge or production integration is claimed. Next: fix any CI findings, then consider a private local archive import and chronological backtest.
-
-
-- Initial regression run `44808728071` exposed two adapter edge cases: explicit null H2H counts were being coerced to zero, and partial set scores were not consistently flagged. Both were corrected on the same branch (commits `5b00b2b990b7f66e05b2cb90bae30e193eaa7ad6` and `bfe57b3634f97185221215555e6b97164662906f`). The initial run had 359 passing and 2 failing tests; the rerun for the corrected head is pending. Documentation guard run `44808727947` passed.
+- Initial regression run `44808728071` exposed two adapter edge cases: explicit null H2H counts were being coerced to zero, and partial set scores were not consistently flagged. Both were corrected on the same branch (commits `5b00b2b990b7f66e05b2cb90bae30e193eaa7ad6` and `bfe57b3634f97185221215555e6b97164662906f`). The initial run had 359 passing and 2 failing tests; the corrected head passed the complete worker test workflow.
+- PR #62 was merged to `main` on 2026-11-20 as `0727c5c5ca6168d49b22c7a2ffcd87e47ce75bce`. On the merged head, all six GitHub checks completed: worker-tests passed, project-state guard passed, Cloudflare Worker build passed, Netlify deploy preview passed; three hosting-rule checks were neutral. GitHub commit status and PR state were successful/merged.
+- The adapter remains offline and is not connected to production predictions. No Live Tennis API calls, Apify runs, paid services, production deployment or user archive upload were used for this merge.
+- Next: research whether pre-match historical ranking and age add repeatable out-of-sample value beyond chronological Elo. Use only ranking/age information available on or before the match date; evaluate ATP/WTA separately with expanding chronological holdouts and paired Brier/LogLoss. Keep the research-only and license restrictions explicit; do not add Sackmann-derived data to the public app or commercial use without separate permission.
