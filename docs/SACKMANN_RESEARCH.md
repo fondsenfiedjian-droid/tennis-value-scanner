@@ -123,3 +123,8 @@ Coverage over the complete imported archive after the 45-day rule:
 - ATP rank+age improved both Brier and LogLoss in all 27 evaluation-year cohorts. WTA retains small year-level regressions: 2017 worsened on both metrics; 2022 Brier improved slightly but LogLoss worsened slightly. The aggregate WTA result remains positive.
 
 Interpretation: the rank and age signal survives a conservative pre-tournament ranking availability rule and a 45-day freshness ceiling. This is stronger evidence than using tournament-date rank fields, but not yet sufficient for production activation. The WTA year-level exceptions, snapshot publication timing, and an independent recent holdout still require review. These are prediction-quality metrics, not betting-profit evidence.
+
+
+## Frozen recent holdout (2023–2026)
+
+The next validation step freezes the Elo/rank/age logistic coefficients once, at the start of 2023, using only matches dated before 2023. The frozen coefficients are then evaluated through 2026-05-25 without refitting. Elo player ratings continue to update chronologically from results available before each match date, and same-day matches share the same pre-date Elo state. Weekly rankings still must be dated before tournament date and no older than 45 days. This provides a cleaner recent holdout than the annual walk-forward study, which refits coefficients each year.
