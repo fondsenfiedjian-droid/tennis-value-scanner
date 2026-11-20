@@ -1,0 +1,66 @@
+name: Match Charting Project linkage audit
+
+on:
+  push:
+    branches: [main, "research/**"]
+    paths:
+      - "scripts/mcp-match-linkage-audit.mjs"
+      - "tests/mcp-match-linkage-audit.test.mjs"
+      - ".github/workflows/mcp-match-linkage-audit.yml"
+      - "docs/MATCH_CHARTING_RESEARCH.md"
+      - "PROJECT_STATE.md"
+  pull_request:
+    paths:
+      - "scripts/mcp-match-linkage-audit.mjs"
+      - "tests/mcp-match-linkage-audit.test.mjs"
+      - ".github/workflows/mcp-match-linkage-audit.yml"
+      - "docs/MATCH_CHARTING_RESEARCH.md"
+      - "PROJECT_STATE.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Download pinned Match Charting metadata and yearly results
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research-data
+          mcp_commit="1813a1309b7ed7ebf1c7e884b32bf675d00e4edf"
+          sackmann_commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            "https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/${mcp_commit}/charting-m-matches.csv" \
+            --output research-data/charting-m-matches.csv
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            "https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/${mcp_commit}/charting-w-matches.csv" \
+            --output research-data/charting-w-matches.csv
+          for year in $(seq 1968 2026); do
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/${sackmann_commit}/atp/atp_matches_${year}.csv" \
+              --output "research-data/atp_matches_${year}.csv"
+          done
+          for year in $(seq 1979 2026); do
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/${sackmann_commit}/wta/wta_matches_${year}.csv" \
+              --output "research-data/wta_matches_${year}.csv"
+          done
+          echo "Downloaded $(find research-data -type f | wc -l) pinned source files."
+      - name: Run aggregate-only linkage audit
+        run: node scripts/mcp-match-linkage-audit.mjs --input-dir research-data --out mcp-match-linkage-audit.json
+      - name: Upload aggregate audit only
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-match-linkage-audit
+          path: mcp-match-linkage-audit.json
+          if-no-files-found: error
+          retention-days: 30
