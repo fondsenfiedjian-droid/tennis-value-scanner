@@ -887,3 +887,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Expanded event aliases for historic Grand Slams and Olympics (year-specific host city, including cross-name variants); added a synthetic Olympics alias test. Exact player-pair, round and date gates remain mandatory.
 
 - Corrected synthetic linkage fixtures to include a later archive boundary row where needed, so tests exercise event matching rather than the global snapshot cutoff; the dedicated out-of-snapshot case keeps the shorter date range.
+
+- Event-name alias usage is now counted from the selected matched result row, not merely from the set of alternative event keys considered; this avoids inflating alias counts when an exact event key also exists.
