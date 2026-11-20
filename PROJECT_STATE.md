@@ -438,3 +438,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added regression tests proving an otherwise identical v1 snapshot does not suppress v2, and a schedule/status revision is retained.
 - PWA shell cache advanced from v124 to v125.
 - No existing archive rows are rewritten or deleted; no API calls or bookmaker configuration changes.
+
+### Archive snapshot identity hardening — merged (2026-11-20)
+- PR #47 merged to main as `fca6e956c7ba5dcba6b1512215db8a5c867d4a6a`.
+- Regression tests passed on the PR and again on main (workflow run 44760469768); project-state guard passed (PR workflow run 44760394483).
+- Cloudflare Worker deployment passed (workflow run 44760515056). Production smoke check is still running; PWA cache v125 publication is not yet confirmed.
