@@ -389,7 +389,7 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /box\.onclick=openDetails/);
   assert.match(html, /box\.onkeydown=/);
   assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const highest=selectHighestEvBet\(evBets\)/);
+  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html, /x\.reliabilityScore>=65/);
   assert.match(html, /x\.valueEligible===true/);
   assert.match(html, /Качество данных:/);
