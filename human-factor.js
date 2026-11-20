@@ -259,7 +259,10 @@ export function calculateArchiveWorkloadProfile(archiveRows, playerId, targetMat
       if (!Number.isSafeInteger(id) || id <= 0 || date === null) continue;
       const signature = JSON.stringify([id, date, row.resultOutcome, row.resultWinner]);
       if (!sides.has(row.side)) sides.set(row.side, { id, date, signature });
-      else if (sides.get(row.side).signature !== signature) sides.set(row.side, null);
+      else {
+        const prior = sides.get(row.side);
+        if (!prior || prior.signature !== signature) sides.set(row.side, null);
+      }
     }
     const a = sides.get("A"), b = sides.get("B");
     if (!a || !b || a.id === b.id || a.date !== b.date) { rejectedGroups++; continue; }
