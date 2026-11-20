@@ -41,7 +41,7 @@ The provider advertises ATP/WTA results since 2007, set and tiebreak scores, tou
 Research page: https://livetennisapi.com/data/academic  
 Public sample: https://doi.org/10.5281/zenodo.23718893
 
-The current Zenodo version (1.0.3, published 28 October 2026) describes an index of 173,571 completed matches from 2023-01-01 to 2026-08-13 across ATP, WTA, Challenger and ITF, with point-by-point score sequences for 98.2%. It lists 32,678 players. The public sample contains all match-index rows, player metadata, and 951,064 live-observed score states for 5,380 completed matches in June 2026 (77% of that month's completed matches).
+The current Zenodo version (1.0.3, published 28 October 2026) describes an index of 173,571 completed matches from 2023-01-01 to 2026-08-13 across ATP, WTA, Challenger and ITF, with point-by-point score sequences for 98.2%. It lists 32,678 players. The public sample contains all match-index rows, player metadata, and 951,064 live-observed score states for 5,380 completed matches in June 2026 (77% of that month's completed matches). Use the corrected version 1.0.3: version 1.0.2 fixed UTC timestamps after an earlier local-time offset error. Version 1.0.3 removed the external player-ID crosswalk from the public `players.csv.gz`; the full research dataset's player file is described as carrying the crosswalk, but the public sample does not.
 
 The provenance split matters:
 - 22,031 matches / 3,184,514 score states were captured live with UTC timestamps; live observation began 12 October 2025 and reached full volume in February 2026.
