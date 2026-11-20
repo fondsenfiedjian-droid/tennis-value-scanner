@@ -83,3 +83,16 @@ Interpretation:
 - ATP rank+age improved both Brier and log loss in all 27 evaluated annual cohorts in these runs. WTA rank+age was not uniformly better: small regressions remain in a few annual cohorts, notably 2017 at K=24/48/64; the aggregate still improves.
 
 This supports further research, not production activation. The rank values are tournament-date snapshots, not guaranteed match-start snapshots; a separate timing/availability audit and a genuinely independent recent holdout are still required. The 2026 cohort is partial through May 25. These are historical model comparisons, not betting-profit estimates.
+
+
+## Strict pre-match weekly ranking study
+
+The workflow downloads the archive's separate weekly ranking files (ATP 1970s–current; WTA 1980s–current). For each historical match, the research join selects the latest ranking snapshot with `ranking_date < tourney_date`. A ranking published on the tournament date is deliberately excluded because the match start time and publication availability are not established. Missing snapshots remain missing; no future or same-day ranking is substituted.
+
+Run after the match importer:
+
+```sh
+node scripts/sackmann-prematch-rank-research.mjs --tour atp --rankings-dir /path/to/atp-rankings --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out atp-prematch-rank-report.json atp-normalized.csv
+```
+
+The report includes the coverage of both players, the number of matches where same-day snapshots were excluded, and average/maximum snapshot age. Its walk-forward rank and rank+age metrics are directly comparable in method to the tournament-date snapshot study, but the eligible match subset may differ. This is a conservative availability test, not proof of exact publication timestamps. No production use is permitted until the results and independent holdout are reviewed.
