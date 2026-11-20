@@ -217,7 +217,8 @@
   <div class="panel" id="archiveCalibrationPanel"><b>Калибровка вероятностей</b><div class="muted">Сравнение предматчевой вероятности модели с фактической победой. Новые снимки учитываются только при статусе upcoming; live/completed/cancelled исключаются. Для старых записей без статуса действует строгая проверка времени. Это точность модели, не доходность ставок.</div><div id="archiveCalibration" class="archive-list"><div class="archive-item">Пока недостаточно проверенных результатов.</div></div><div class="archive-meta"><b>Качество по сегментам</b> · покрытия и категории турниров</div><div id="archiveSegmentCalibration" class="archive-list"><div class="archive-item">Недостаточно данных для сегментного анализа.</div></div></div></div>
 
   <div class="panel"><b>Качество архива по букмекерам</b><div class="muted">Покрытие считается относительно всех уникальных пар «матч + исход», уже встречавшихся в архиве. Это не покрытие всего календаря матчей.</div><div id="archiveOddsQuality" class="archive-list"><div class="panel empty">Нет данных для аудита.</div></div></div>
-  <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
+  <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><button id="humanFactorAudit" type="button">Аудит нагрузки игроков</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
+  <div class="panel" id="humanFactorAuditPanel" hidden><b>Покрытие архива для анализа нагрузки</b><div class="muted">Проверка выполняется только на этом устройстве. Архив не загружается и не передаётся. История прогнозов неполная и не равна полной истории турниров.</div><div id="humanFactorAuditResult" class="archive-list"><div class="archive-item">Нажмите «Аудит нагрузки игроков».</div></div></div>
   <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
@@ -1905,11 +1906,46 @@
   $('#navHome').onclick=showMain;
   $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
+  window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
   archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();});
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+<script type="module">
+  import { analyzeArchiveWorkloadCoverage } from './human-factor.js';
+  const button=document.querySelector('#humanFactorAudit');
+  const panel=document.querySelector('#humanFactorAuditPanel');
+  const output=document.querySelector('#humanFactorAuditResult');
+  const fmt=n=>Number(n||0).toLocaleString('ru-RU');
+  button.addEventListener('click',async()=>{
+    button.disabled=true;button.textContent='АНАЛИЗ…';
+    try{
+      const rows=await window.getPredictionArchiveForLocalAudit();
+      const a=analyzeArchiveWorkloadCoverage(rows);
+      const percent=a.validCompletedMatches?value=>(value/a.validCompletedMatches*100).toFixed(1)+'%':'—';
+      output.innerHTML=[
+        ['Записей в архиве',a.archiveRecords],
+        ['Уникальных матчей',a.uniqueMatches],
+        ['Матчей с завершённым результатом',a.completedMatches],
+        ['Проверенных пар с двумя ID игроков',a.validCompletedMatches+' ('+percent(a.validCompletedMatches)+')'],
+        ['Завершённых матчей без надёжной пары ID/даты',a.invalidCompletedMatches],
+        ['Игроков с историей в архиве',a.uniquePlayersWithCompletedHistory],
+        ['Записей с playerId',a.rowsWithPlayerId],
+        ['Записей с opponentId',a.rowsWithOpponentId],
+        ['Матчей, где хотя бы у одного игрока есть история за 3 дня',a.targetsWithAnyPriorMatch3Days],
+        ['Матчей, где история за 3 дня есть у обоих',a.targetsWithBothPlayersHistory3Days],
+        ['Матчей, где хотя бы у одного игрока есть история за 7 дней',a.targetsWithAnyPriorMatch7Days],
+        ['Матчей, где история за 7 дней есть у обоих',a.targetsWithBothPlayersHistory7Days]
+      ].map(([label,value])=>'<div class="archive-item"><b>'+label+'</b><div class="archive-meta">'+fmt(value)+'</div></div>').join('')+
+      '<div class="archive-item"><b>Вывод</b><div class="archive-meta">Это частичная история прогнозов, а не полная история выступлений. Данные годятся для предварительной диагностики покрытия, но не доказывают усталость и не меняют вероятность матча.</div></div>';
+      panel.hidden=false;
+    }catch(error){
+      output.textContent='Не удалось прочитать локальный архив: '+String(error&&error.message||error);
+      panel.hidden=false;
+    }finally{button.disabled=false;button.textContent='Аудит нагрузки игроков';}
+  });
 </script>
 </body>
                                                                                                                                 </html>
