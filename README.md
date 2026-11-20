@@ -223,3 +223,15 @@ Valuebetennis market benchmark note: the importer separately summarizes Pinnacle
 ### Historical data source policy
 
 Valuebetennis is the selected public historical source for this adapter because its published CSVs are CC BY 4.0, with attribution required. Tennis-Data.co.uk is not an approved automated model-training input for this project: its published notice restricts use to private individuals and explicitly excludes commercial products and automated bots/scrapers/AI data-training use. Do not scrape, import or train on those files without a separate written licence. A second bookmaker source must be selected only after its data-use terms explicitly permit the intended analysis and model validation.
+
+
+## Experimental human-factor measurements
+
+`human-factor.js` currently provides descriptive, non-predictive workload inputs:
+- matches played in the previous 72 hours and 7 days;
+- elapsed time since the latest match;
+- consecutive calendar days with matches;
+- known match-duration minutes, with explicit completeness coverage;
+- descriptive differences between two players.
+
+The module does **not** assign a subjective fatigue/psychology score and does **not** alter win probabilities. It is not connected to live predictions yet: the current live schedule/profile sources do not establish a complete, verified recent-match history and reliable match durations for each player. Integration is gated on a lawful source, strict pre-match data validation and chronological held-out tests demonstrating improvement.
