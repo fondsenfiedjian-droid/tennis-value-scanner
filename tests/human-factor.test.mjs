@@ -123,6 +123,7 @@ test("archive adapter rejects incomplete or contradictory side identities", () =
     { matchId: "bad", matchDate: "2026-11-19T10:00:00Z", playerId: 101, side: "A", resultOutcome: "completed", resultWinner: 1 },
     { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 101, side: "A", resultOutcome: "completed", resultWinner: 1 },
     { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 999, side: "A", resultOutcome: "completed", resultWinner: 1 },
+    { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 998, side: "A", resultOutcome: "completed", resultWinner: 1 },
     { matchId: "conflict", matchDate: "2026-11-18T10:00:00Z", playerId: 202, side: "B", resultOutcome: "completed", resultWinner: 1 }
   ];
   const profile = calculateArchiveWorkloadProfile(rows, 101, "2026-11-20T12:00:00Z");
