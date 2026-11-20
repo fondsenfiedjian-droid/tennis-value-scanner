@@ -788,3 +788,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added full-archive walk-forward sensitivity runs for Elo K=24, 48 and 64 at a 20,000-row annual training cap, plus K=32 at a 5,000-row cap. ATP and WTA remain separate; each candidate retains its same-subset Elo-only baseline.
 - The workflow uploads aggregate JSON reports only; raw and normalized match rows remain on the ephemeral runner. No production prediction changes, API quota use, Apify run, paid service or deployment.
 - Purpose: test whether the initial rank/age improvements persist across alternative Elo update speeds and a smaller training sample. Results must be reviewed before any further model decision.
+
+
+### Rank/age robustness results — completed research (2026-11-20)
+- Full ATP/WTA sensitivity matrix completed across Elo K=24/48/64 (20k annual training cap) and K=32 (5k cap). Rank+age reduced aggregate Brier and log loss in all eight runs; rank alone and age alone also reduced aggregate metrics in all runs. Rank+age was strongest in every aggregate run.
+- ATP rank+age improved both Brier and log loss in all 27 annual cohorts; WTA had a small number of year-level regressions (notably 2017) despite aggregate improvement.
+- Results and exact candidate-minus-baseline deltas are recorded in docs/SACKMANN_RESEARCH.md.
+- Decision: research signal is sufficiently consistent to justify a further timing audit and recent independent holdout, but not production activation. Tournament-date ranking snapshots are not guaranteed to be available before every match. No production model changes or deployment.
