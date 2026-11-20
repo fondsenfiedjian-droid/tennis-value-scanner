@@ -4,7 +4,11 @@ import { parseCsv, runBacktest } from "./backtest.mjs";
 
 const OVERALL=["serveDiff","returnDiff"], SURFACE=["surfaceServeDiff","surfaceReturnDiff"];
 const SPECS=[
+ {name:"overall_serve_only",features:["serveDiff"]},
+ {name:"overall_return_only",features:["returnDiff"]},
  {name:"overall_serve_return",features:OVERALL},
+ {name:"surface_serve_only",features:["surfaceServeDiff"]},
+ {name:"surface_return_only",features:["surfaceReturnDiff"]},
  {name:"surface_serve_return",features:SURFACE},
  {name:"overall_plus_surface",features:[...OVERALL,...SURFACE]}
 ];
