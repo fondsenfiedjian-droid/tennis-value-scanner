@@ -214,21 +214,22 @@ function validDate(value){
   if(m[4]!==undefined&&(Number(m[4])>23||Number(m[5])>59||Number(m[6]??0)>59))return null;
   return m[1]+m[2]+m[3];
 }
-function hasOnlyCompletedSets(score) {
+function validateMatchScore(score) {
   const raw = String(score ?? "").trim();
-  if (!raw) return true;
-  const tokens = raw.split(/\s+/);
+  if (!raw) return "invalid_score_format";
+  const tokens = raw.split(/\\s+/);
+  // Nonstandard outcomes are retained for the downstream RET/W/O exclusion.
+  if (tokens.some(token => /^(?:W\\/O|RET|ABD|DEF|DEFAULT)$/i.test(token))) return "nonstandard";
   const sets = tokens.map(token => {
-    const match = /^(\d{1,2})-(\d{1,2})(?:\((\d{1,2})\))?$/.exec(token);
-    if (!match) return null;
-    return [Number(match[1]), Number(match[2])];
+    const match = /^(\\d{1,2})-(\\d{1,2})(?:\\((\\d{1,2})\\))?$/.exec(token);
+    return match ? [Number(match[1]), Number(match[2])] : null;
   });
-  // Leave retirement / walkover notation to the existing nonstandard-outcome filter.
-  if (sets.length < 2 || sets.some(set => set === null)) return true;
-  return sets.every(([a, b]) => {
+  if (sets.some(set => set === null) || sets.length < 2 || sets.length > 5) return "invalid_score_format";
+  const completed = sets.every(([a, b]) => {
     const high = Math.max(a, b), low = Math.min(a, b);
-    return high >= 6 && (high - low >= 2 || (high === 7 && low === 6));
+    return high >= 6 && high - low >= 2;
   });
+  return completed ? "valid" : "incomplete_set_score";
 }
 export function parseValuebetennisCsv(text){
   const delimiter=detectDelimiter(text),rows=parseCsv(text,{delimiter});
@@ -243,7 +244,9 @@ export function parseValuebetennisCsv(text){
     if(!/^\d+$/.test(p1)||Number(p1)<=0||!/^\d+$/.test(p2)||Number(p2)<=0||p1===p2){reject("invalid_player_ids");continue;}
     if(winner!==p1&&winner!==p2){reject("winner_not_in_match");continue;}
     if(!id){reject("missing_match_id");continue;}
-    if(!hasOnlyCompletedSets(row.score)){reject("incomplete_set_score");continue;}
+    const scoreStatus=validateMatchScore(row.score);
+    if(scoreStatus==="incomplete_set_score"){reject("incomplete_set_score");continue;}
+    if(scoreStatus==="invalid_score_format"){reject("invalid_score_format");continue;}
     if(!["atp","wta"].includes(tour)){reject(tour?"unsupported_tour":"missing_tour");continue;}
     normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
   }
