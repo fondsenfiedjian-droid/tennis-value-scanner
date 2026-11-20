@@ -144,8 +144,8 @@ export function auditMcpMatchLinkage(files){
   if(!Array.isArray(files)||!files.length)throw new Error("No MCP linkage files supplied");
   const metadataFiles=files.filter(file=>META_FILE.test(basename(file.filename)));
   const resultFiles=files.filter(file=>RESULT_FILE.test(basename(file.filename)));
-  if(!resultFiles.length)throw new Error("Main-tour or lower-tier results are required");
   const context=createContext(metadataFiles);
+  if(!resultFiles.length)throw new Error("Main-tour or lower-tier results are required");
   for(const file of resultFiles)addResultsFile(context,file);
   return finishAudit(context);
 }
