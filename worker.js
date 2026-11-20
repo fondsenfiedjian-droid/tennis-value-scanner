@@ -6,7 +6,8 @@ const cors = {
 };
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
-const WORKER_BUILD_ID = "live-tennis-quota-circuit-breaker-2026-11-20-1";
+const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const WORKER_BUILD_ID = "winamax-six-hour-freshness-2026-11-20-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -31,7 +32,7 @@ function diagnoseOddsItems(items, now = Date.now()) {
     away: items.filter(item => String(item?.outcome || "").toLowerCase() === "away").length,
     other: items.filter(item => !["home", "away"].includes(String(item?.outcome || "").toLowerCase())).length
   };
-  const freshTimestamps = timestamps.filter(value => value <= now + 5 * 60 * 1000 && now - value <= 90 * 60 * 1000).length;
+  const freshTimestamps = timestamps.filter(value => value <= now + 5 * 60 * 1000 && now - value <= ODDS_FRESHNESS_MAX_AGE_MS).length;
   return {
     schemaVersion: 1,
     itemCount: items.length,

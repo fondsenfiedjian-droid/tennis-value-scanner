@@ -30,6 +30,7 @@ const oddsMatchingEnd = html.indexOf("function normalizeTour(value)", oddsMatchi
 const oddsMatchingSource = html.slice(oddsMatchingStart, oddsMatchingEnd);
 function getOddsMatching(quotes) {
   const sandbox = {
+    ODDS_FRESHNESS_MAX_AGE_MS: 6 * 60 * 60 * 1000,
     cachedOdds: quotes,
     playerName: value => String(value ?? ""),
     matchDate: match => new Date(match.startTime)
@@ -101,8 +102,10 @@ test("app header reports real API state instead of claiming the schedule is alwa
 test("odds status counts quote freshness from scrapedAt, not local fetch time", () => {
   assert.match(html, /function oddsFreshnessSummary\(now=Date\.now\(\)\)/);
   assert.match(html, /Date\.parse\(item\?\.scrapedAt\)/);
-  assert.match(html, /now-value<=90\*60\*1000/);
-  assert.match(html, /актуальных котировок из/);
+  assert.match(html, /now-value<=ODDS_FRESHNESS_MAX_AGE_MS/);
+  assert.match(html, /const ODDS_FRESHNESS_MAX_AGE_MS=6\*60\*60\*1000/);
+  assert.match(html, /ODDS_FRESHNESS_MAX_AGE_MINUTES=6\*60/);
+  assert.match(html, /котировок не старше 6 ч из/);
   assert.match(html, /Котировки получены, но свежих нет/);
 });
 
@@ -238,11 +241,11 @@ test("odds matching rejects quotes from different event IDs or mismatched compet
   assert.equal(mismatched.oddsForMatch(match).length, 0);
 });
 
-test("odds matching rejects stale quotes and quote pairs more than 30 minutes apart", () => {
+test("odds matching accepts quotes up to six hours old but still rejects older quotes and pairs more than 30 minutes apart", () => {
   const freshHome = makeWinamaxQuote({ outcome: "home" });
   const staleAway = makeWinamaxQuote({
     outcome: "away",
-    scrapedAt: new Date(Date.now() - 95 * 60 * 1000).toISOString()
+    scrapedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
   });
   const match = {
     player1: "Novak Djokovic",
@@ -251,6 +254,10 @@ test("odds matching rejects stale quotes and quote pairs more than 30 minutes ap
     tournament_name: "ATP Finals"
   };
   assert.equal(getOddsMatching([freshHome, staleAway]).oddsForMatch(match).length, 0);
+  const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+  const sixHourHome = makeWinamaxQuote({ outcome: "home", scrapedAt: fiveHoursAgo });
+  const sixHourAway = makeWinamaxQuote({ outcome: "away", scrapedAt: fiveHoursAgo });
+  assert.equal(getOddsMatching([sixHourHome, sixHourAway]).oddsForMatch(match).length, 2);
   const skewedAway = makeWinamaxQuote({
     outcome: "away",
     scrapedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString()
@@ -312,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v117"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v118"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
