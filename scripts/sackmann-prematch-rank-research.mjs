@@ -12,7 +12,12 @@ const validDate = value => {
   return date.getUTCFullYear()===y && date.getUTCMonth()===m-1 && date.getUTCDate()===d ? s : null;
 };
 const validRank = value => Number.isFinite(value) && value>0 && value<=10000;
-function hasOnDate(records, date) {\n  let low=0, high=records.length;\n  while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}\n  return low<records.length && records[low].date===date;\n}\nfunction latestBefore(records, date) {
+function hasOnDate(records, date) {
+  let low=0, high=records.length;
+  while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}
+  return low<records.length && records[low].date===date;
+}
+function latestBefore(records, date) {
   let low=0, high=records.length;
   while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}
   return low ? records[low-1] : null;
