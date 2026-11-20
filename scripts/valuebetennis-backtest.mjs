@@ -248,7 +248,10 @@ export function parseValuebetennisCsv(text){
     if(scoreStatus==="incomplete_set_score"){reject("incomplete_set_score");continue;}
     if(scoreStatus==="invalid_score_format"){reject("invalid_score_format");continue;}
     if(!["atp","wta"].includes(tour)){reject(tour?"unsupported_tour":"missing_tour");continue;}
-    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
+    const rawDuration=String(row.duree_min??"").trim().replace(",", ".");
+    const parsedDuration=rawDuration?Number(rawDuration):null;
+    const durationMinutes=Number.isFinite(parsedDuration)&&parsedDuration>=1&&parsedDuration<=600?parsedDuration:null;
+    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,durationMinutes,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
   }
   return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
 }
@@ -263,7 +266,7 @@ function deduplicateSourceMatches(rows) {
   let duplicateRows = 0, conflictingDuplicateMatches = 0, conflictingDuplicateRows = 0;
   for (const group of groups.values()) {
     const signature = row => JSON.stringify([
-      row.tourney_date, row.winner_id, row.loser_id, row.score, row.surface,
+      row.tourney_date, row.winner_id, row.loser_id, row.score, row.surface, row.durationMinutes,
       row.sourceOdds?.opening1, row.sourceOdds?.opening2,
       row.sourceOdds?.closing1, row.sourceOdds?.closing2,
       row.sourceOdds?.player1Id, row.sourceOdds?.winnerId
