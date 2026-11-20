@@ -204,7 +204,9 @@ export function runBacktest(matches, options = {}) {
     const surface = ["Hard", "Clay", "Grass", "Carpet"].includes(row.surface) ? row.surface : null;
     const player1 = Number(winner) < Number(loser) ? winner : loser;
     const player2 = player1 === winner ? loser : winner;
-    return { date, winner, loser, player1, player2, surface, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
+    const duration = Number(row.durationMinutes);
+    const durationMinutes = Number.isFinite(duration) && duration >= 1 && duration <= 600 ? duration : null;
+    return { date, winner, loser, player1, player2, surface, durationMinutes, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
   }).filter(Boolean).sort((a, b) =>
     a.date.localeCompare(b.date) ||
     a.tourneyId.localeCompare(b.tourneyId) ||
@@ -313,6 +315,7 @@ export function runBacktest(matches, options = {}) {
         date, winnerId: match.winner, loserId: match.loser,
         player1Id: match.player1, player2Id: match.player2, surface: match.surface,
         h2hMeetings: h.a + h.b,
+        durationMinutes: match.durationMinutes,
         sourceOdds: match.sourceOdds, probabilities: modelProbabilities
       });
       updates.push(match);
