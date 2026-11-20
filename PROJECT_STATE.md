@@ -645,6 +645,24 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The panel now retains and displays the match pair and both Winamax odds as a quote-only fallback, clearly labels EV as uncalculated, and provides a working Open match action. It does not label an unmodelled quote as a value bet or infer a probability.
 - Regression test covers fallback markup, quote display and match navigation.
 - Prediction model, selection thresholds, API behavior and automatic betting remain unchanged. No Live Tennis API quota is consumed by this UI fallback.
-- Implementation branch: fix/ev-day-odds-fallback; awaiting CI and production deployment.
+- Implementation branch: `fix/ev-day-odds-fallback`.
+- PR #61 merged to `main` on 2026-11-20 as commit `d35ff4f8ef76757a2ead900a16e1799bd701cf3b`.
+- The stale worker-test assertion was corrected before merge. Regression checks, project-state guard, Netlify preview, Cloudflare Worker deployment and production smoke check completed successfully. The smoke check confirmed PWA HTTP 200, Worker health, and a working Winamax feed with 40 rows, 40 valid decimal odds and 40 fresh scrape timestamps at that check time. Apify task-run metadata returned HTTP 403, but the dataset feed itself returned HTTP 200.
+- Do not describe PR #61 as pending. Deployment/smoke status applies to the time of that run; do not imply the app was manually verified on the user's handset.
 
-- Follow-up CI found one stale worker-test source assertion expecting the old five-argument `renderBestBet` call. Updated the assertion to include the new quote-only `oddsFallback` argument; production logic is unchanged. Regression workflow rerun pending.
+### Winamax matching audit — 2026-11-20
+- Reviewed current `main` code after PR #61. The frontend displays only pre-match singles with a complete two-sided Winamax match-winner pair; it validates bookmaker/country, market, outcome, player names, tournament compatibility, start-time proximity, decimal prices, scrape timestamps and same-event pairing.
+- Two quotes must have scrape timestamps within 30 minutes. A quote may currently be accepted for up to six hours after `scrapedAt` (`ODDS_FRESHNESS_MAX_AGE_MS=6*60*60*1000`). This is a temporary allowance aligned to the Apify schedule, not evidence that the bookmaker still offers the price.
+- Documentation is inconsistent: README currently says quotes older than 90 minutes are rejected, while the current frontend matcher allows six hours. Resolve this discrepancy in a focused follow-up after agreeing the operational freshness policy; do not silently change the threshold.
+- If multiple event groups qualify for one schedule match, `oddsForMatch` can return more than one pair. The current renderer requires exactly two quotes, so ambiguous duplicates are excluded rather than arbitrarily selected. The user-facing diagnostics do not yet explain this exclusion.
+- The current odds-matching workflow performs schedule and prediction requests, including `/predict`; do not run it while Live Tennis API quota is exhausted. Use only `/health`, `/usage` and `/odds` for quota-safe operational checks.
+- A live production coverage audit was not completed in this review; previous smoke figures are historical and must not be represented as current.
+- Next audit task: add explicit match-level exclusion diagnostics (missing pair, stale quote, pair timestamp skew, ambiguous duplicate groups, event/tournament/player mismatch) using already-fetched schedule and odds data, while keeping the diagnostics request quota-neutral and leaving the Winamax scraper unchanged.
+
+### Documentation and handoff protocol — mandatory
+- `PROJECT_STATE.md` is the authoritative handoff record. Every code, test, workflow, configuration, deployment, data-source, model, or product-scope change MUST update this file in the same implementation branch/PR before that change is considered complete.
+- Each implementation PR must include its corresponding `PROJECT_STATE.md` update before review/merge. Record the purpose, files/behavior changed, tests and workflow run IDs/results, commit/PR status, deployment status, quota/cost impact, and next action as applicable.
+- After merge or deployment, immediately reconcile the status in `PROJECT_STATE.md`: replace “pending” with the actual merged commit and verified deployment result. Do not leave stale “in review”, “pending”, or outdated main-commit descriptions.
+- Documentation-only changes also update this file and receive their own commit. Never batch unrelated changes without recording each meaningful milestone.
+- Before every work session, compare this file with the actual `main` head, latest PRs/workflows and deployment evidence. If they disagree, reconcile the file before starting new implementation work.
+- A change is not complete merely because code was edited or a PR was merged; its state record and validation status must also be current.
