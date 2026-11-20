@@ -41,11 +41,12 @@ jobs:
           await writeFile(process.env.RUNNER_TEMP + "/slam-files.txt", files.join("\n") + "\n");
           console.log("Pinned singles Slam files: " + files.length);
           NODE
-          cat "$RUNNER_TEMP/slam-files.txt" | xargs -r -n 1 -P 6 sh -c '
+          cat "$RUNNER_TEMP/slam-files.txt" | xargs -r -n 1 -P 3 sh -c '
             set -eu
             path="$1"
             name="${path##*/}"
-            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            echo "Downloading $path"
+            curl --fail --silent --show-error --location --retry 6 --retry-all-errors --retry-delay 5 --retry-max-time 240 \
               "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/83733587353df8a41f2fd4f516147d5aa83f5a8d/$path" \
               --output "research-data/$name"
             test -s "research-data/$name"
