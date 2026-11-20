@@ -29,6 +29,43 @@ const normalizeRound = value => {
   return rounds.has(round) ? round : null;
 };
 
+function parseMcpMetadataCsv(source) {
+  source = source.replace(/^\\uFEFF/, "");
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  const pushField = () => { row.push(field); field = ""; };
+  const pushRow = () => { pushField(); if (row.some(value => value !== "")) rows.push(row); row = []; };
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (quoted) {
+      if (ch === '"' && source[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"' && [",", "\\n", "\\r", undefined].includes(source[i + 1])) quoted = false;
+      else field += ch;
+      continue;
+    }
+    if (ch === '"' && field.length === 0) quoted = true;
+    else if (ch === ",") pushField();
+    else if (ch === "\\n") pushRow();
+    else if (ch === "\\r" && source[i + 1] === "\\n") { /* CRLF */ }
+    else field += ch;
+  }
+  if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting metadata");
+  if (field !== "" || row.length) pushRow();
+  if (!rows.length) return [];
+  const rawHeaders = rows.shift();
+  const counts = new Map();
+  const headers = rawHeaders.map((header, i) => {
+    const base = header || "__unnamed_" + (i + 1);
+    const count = (counts.get(base) || 0) + 1;
+    counts.set(base, count);
+    return count === 1 ? base : base + "__duplicate_" + count;
+  });
+  return rows.map((values, i) => {
+    if (values.length > headers.length) throw new SyntaxError("Match Charting metadata row " + (i + 2) + " has more fields than its header");
+    return Object.fromEntries(headers.map((key, j) => [key, values[j] ?? ""]));
+  });
+}
+
 function eventKeys(name, year) {
   const base = token(name);
   if (!base) return [];
@@ -271,7 +308,10 @@ async function main() {
     try { return parseCsv(source); }
     catch (error) { throw new Error("CSV parse failed for " + name + ": " + error.message); }
   };
-  const metadata = {ATP:await readCsv("charting-m-matches.csv"),WTA:await readCsv("charting-w-matches.csv")};
+  const metadata = {
+    ATP: parseMcpMetadataCsv(await readFile(join(dir,"charting-m-matches.csv"),"utf8")),
+    WTA: parseMcpMetadataCsv(await readFile(join(dir,"charting-w-matches.csv"),"utf8"))
+  };
   const results = {ATP:[],WTA:[]};
   for (const file of files) {
     const m = /^(atp|wta)_matches_(\d{4})\.csv$/.exec(file);
