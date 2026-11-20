@@ -249,3 +249,10 @@ The optional GitHub Actions workflow `.github/workflows/sackmann-data-audit.yml`
 The source data is compiled by Jeff Sackmann / Tennis Abstract and is licensed CC BY-NC-SA 4.0 (attribution, non-commercial use and share-alike). The research report carries the same license. This workflow is an audit only: it does not alter live predictions, EV, recommendations, API usage or production data. Do not use Sackmann-derived data commercially without separate permission.
 
 Sources: [Jeff Sackmann ATP](https://github.com/JeffSackmann/tennis_atp), [Jeff Sackmann WTA](https://github.com/JeffSackmann/tennis_wta), [archival mirror](https://github.com/Aneeshers/tennis-sackmann-archive).
+
+
+### Sackmann serve/return walk-forward research (research only)
+
+The optional workflow `.github/workflows/sackmann-serve-return-research.yml` tests whether a player's rolling serve-point-win and return-point-win rates add predictive value beyond chronological Elo. Features use only completed matches from the previous 365 days, require at least five statistics-complete prior matches for each player, and exclude all matches played on the same calendar date from the pre-match history. ATP and WTA are evaluated separately with expanding annual walk-forward training from 2016 onward.
+
+The workflow downloads raw CSVs only into an ephemeral runner and publishes aggregate probability metrics only. It does not change production predictions, EV, recommendations, API use or live data. Source data and derived report are CC BY-NC-SA 4.0; non-commercial use only, with Jeff Sackmann / Tennis Abstract attribution and share-alike.

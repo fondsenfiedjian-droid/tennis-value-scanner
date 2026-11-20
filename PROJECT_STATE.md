@@ -599,3 +599,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR regression run `44775779234`: 348 tests passed, 0 failed. Audit run `44775779212` and project-state guard run `44775779294` succeeded.
 - No production probabilities, EV, recommendation logic, Worker, PWA, API quota, Winamax scraper or live data were changed.
 - Next research step: construct strictly pre-match rolling serve-point-win and return-point-win rates from prior completed matches only, with same-day records excluded and minimum-sample/coverage gates. Evaluate ATP and WTA separately, initially on the well-covered 2016–2026 period, using chronological training/evaluation and paired Brier/LogLoss against Elo. Include overall and surface-specific versions only if sample sizes support them. Keep research-only; do not integrate into production based on in-sample or aggregate results.
+
+
+### Sackmann serve/return walk-forward research — in review (2026-11-20)
+- Added a separate research script and GitHub Actions workflow to test whether rolling serve-point-win and return-point-win rates improve on chronological Elo.
+- Features aggregate only completed matches from the previous 365 days; at least five prior statistics-complete matches are required for each player. Overall and same-surface features are tested separately and together.
+- Same-day matches are all scored before any same-day statistics enter player histories. Player IDs remain separated by tour; ATP and WTA are evaluated independently.
+- Expanding annual walk-forward: each evaluation year 2020–2026 is fitted only on eligible earlier seasons beginning in 2016. The Elo baseline uses all earlier results in the downloaded 1991–2026 history as warm-up.
+- Outputs contain aggregate Brier/LogLoss, paired approximate 95% intervals, sample counts and coefficients only; no player-level rows or raw CSVs. Source and report carry CC BY-NC-SA 4.0 attribution/share-alike and non-commercial restrictions.
+- No production probability, EV, recommendation, Worker, PWA, API quota or Winamax scraper changes.
+- Initial walk-forward run completed successfully (run `44776347399`). Preliminary results: overall serve/return alone did not improve Elo; surface-only features were near neutral; the combined overall+surface correction showed only small, mostly statistically uncertain gains. Do not integrate into production.
+- Added individual serve-only and return-only ablations for overall and same-surface rates to distinguish which feature contributes. The expanded workflow rerun is pending. Research results are not betting ROI or proof of profitability.

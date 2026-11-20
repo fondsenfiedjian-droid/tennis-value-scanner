@@ -1,0 +1,46 @@
+name: Sackmann serve-return walk-forward research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/sackmann-serve-return-research.mjs"
+      - "tests/sackmann-serve-return-research.test.mjs"
+      - ".github/workflows/sackmann-serve-return-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download ATP and WTA match CSVs (1991–2026)
+        run: |
+          mkdir -p research-data
+          for tour in atp wta; do
+            for year in $(seq 1991 2026); do
+              url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${tour}_matches_${year}.csv"
+              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" \
+                --output "research-data/${tour}_matches_${year}.csv"
+              test -s "research-data/${tour}_matches_${year}.csv"
+            done
+          done
+      - name: Run pre-match serve and return walk-forward research
+        run: |
+          node scripts/sackmann-serve-return-research.mjs --out sackmann-serve-return-report.json research-data/*_matches_*.csv
+      - name: Upload aggregate research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-serve-return-walkforward
+          path: sackmann-serve-return-report.json
+          if-no-files-found: error
+          retention-days: 30
