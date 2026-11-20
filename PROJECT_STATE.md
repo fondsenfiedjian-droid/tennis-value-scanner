@@ -694,6 +694,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 ### Sackmann importer score-completeness correction — follow-up in review (2026-11-20) — follow-up in review (2026-11-20)
 - A real-file schema inspection of archive ATP/WTA 2025 CSVs confirmed expected columns and exposed a missing quality gate: a score with only one completed set could pass the first importer version.
-- Updated `scripts/sackmann-import.mjs` to require at least two completed sets for best-of-three and three for best-of-five, while continuing to reject explicit RET/W/O/ABD/DEF/DEFAULT/CANC outcomes.
+- Updated `scripts/sackmann-import.mjs` to count only completed set scores (e.g. 6-4, 7-5, 7-6), require at least two for best-of-three and three for best-of-five, and reject explicit RET/W/O/ABD/DEF/DEFAULT/CANC outcomes. A partial set such as 2-1 no longer counts as a completed set.
 - Added tests for partial scores and best-of-five minimum set counts. This is a research-import quality correction only; no production model or deployed behavior is affected.
 - PR #64 remains merged; this follow-up is in branch `fix/sackmann-incomplete-score-filter` and PR/CI are pending. The importer has not yet been run against a complete archive. Next: verify CI, merge only if all checks pass, then test actual source sample rows locally/in an isolated research runner.
