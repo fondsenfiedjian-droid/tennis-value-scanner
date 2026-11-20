@@ -21,6 +21,8 @@ test("links unique exact player pairs by tour, year, event and round",()=>{
  assert.equal(report.byTour.ATP.dateOffsetBuckets.oneToSeven,1);
  assert.equal(report.byTour.WTA.dateOffsetBuckets.over21,1);
  assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].over21,1);
+ assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].minOffset,38);
+ assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].maxOffset,38);
  assert.equal(JSON.stringify(report).includes("Novak Djokovic"),false);
 });
 
@@ -80,4 +82,6 @@ test("classifies Challenger qualifying links and flags impossible date offsets",
  assert.equal(report.byTour.ATP.dateOffsetConsistentLinks,0);
  assert.equal(report.byTour.ATP.dateOffsetBuckets.negative,1);
  assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].negative,1);
+ assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].minOffset,-2);
+ assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].maxOffset,-2);
 });
