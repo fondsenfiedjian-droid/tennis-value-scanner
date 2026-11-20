@@ -316,7 +316,7 @@ test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_tim
   assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
 
-test("settings apply a selected skin immediately, persist it on Save, and restore it on Cancel", () => {
+test("settings preview and immediately persist skin changes", () => {
   const saveStart = html.indexOf("$('#saveSettings').onclick=");
   const saveEnd = html.indexOf("const API=", saveStart);
   const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
@@ -328,7 +328,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v132"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v133"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
