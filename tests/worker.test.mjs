@@ -647,9 +647,11 @@ test("daily best bet prioritizes validated reliability and uses the odds floor o
     { ...qualified("Negative EV", 99, 98, -1) },
     qualified("Low odds", 99, 98, 50, 1.8)
   ];
-  assert.equal(sandbox.select(bets, 0, 1.9).player, "Most reliable");
-  assert.equal(sandbox.select(bets, 0, 2.2), null);
-  assert.equal(sandbox.select(bets.filter(bet => bet.player !== "Most reliable"), 0).player, "High probability");
+  assert.equal(sandbox.select(bets, 3, 1.9).player, "Most reliable");
+  assert.equal(sandbox.select(bets, 10, 1.9).player, "EV leader");
+  assert.equal(sandbox.select(bets, 36, 1.9), null);
+  assert.equal(sandbox.select(bets, 3, 2.2), null);
+  assert.equal(sandbox.select(bets.filter(bet => bet.player !== "Most reliable"), 3).player, "High probability");
 });
 
 test("value signal quality blocks stale inputs, invalid ratings and Elo-market conflicts", () => {
