@@ -61,3 +61,18 @@ test("tolerates embedded quote characters in Match Charting metadata",()=>{
  ]);
  assert.equal(report.byTour.ATP.linkedUnique,1);
 });
+
+test("classifies Challenger qualifying links and flags impossible date offsets",()=>{
+ const row="20240710-M-Nottingham-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Nottingham,QF";
+ const report=auditMcpMatchLinkage([
+  {filename:"charting-m-matches.csv",content:[metaHeader,row].join("\n")},
+  {filename:"charting-w-matches.csv",content:metaHeader},
+  {filename:"atp_matches_qual_chall_2024.csv",content:[resultHeader,"2024-0451,Nottingham,20240712,120,Novak Djokovic,Carlos Alcaraz,QF"].join("\n")},
+  {filename:"wta_matches_2024.csv",content:resultHeader}
+ ]);
+ assert.equal(report.byTour.ATP.linkedChallengerQualifying,1);
+ assert.equal(report.byTour.ATP.linkedMainTour,0);
+ assert.equal(report.byTour.ATP.negativeDateOffsets,1);
+ assert.equal(report.byTour.ATP.dateOffsetAnomalyLinks,1);
+ assert.equal(report.byTour.ATP.dateOffsetConsistentLinks,0);
+});
