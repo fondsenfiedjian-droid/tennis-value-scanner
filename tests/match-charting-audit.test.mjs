@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { auditMatchChartingFiles } from "../scripts/match-charting-audit.mjs";
 
 const names = ["Overview","Rally","ServeBasics","ReturnDepth","ReturnOutcomes","ShotTypes","ShotDirection","ServeDirection","ServeInfluence","NetPoints","KeyPointsReturn","KeyPointsServe","ShotDirOutcomes","SnV","SvBreakSplit","SvBreakTotal"];
@@ -53,4 +57,24 @@ test("rejects impossible calendar dates in metadata", () => {
 
 test("rejects incomplete downloads instead of silently reporting zero coverage", () => {
   assert.throws(() => auditMatchChartingFiles({}), /Missing required file/);
+});
+
+test("CLI writes valid aggregate JSON with real newline termination",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"mcp-audit-"));
+ try{
+  const files={...fixture("m"),...fixture("w")};
+  const paths=[];
+  for(const [name,value] of Object.entries(files)){
+   const path=join(dir,name);
+   await writeFile(path,value);
+   paths.push(path);
+  }
+  const output=join(dir,"report.json");
+  const run=spawnSync(process.execPath,["scripts/match-charting-audit.mjs","--out",output,...paths],{encoding:"utf8"});
+  assert.equal(run.status,0,run.stderr);
+  const report=JSON.parse(await readFile(output,"utf8"));
+  assert.equal(report.tours.ATP.metadata.tournamentCounts["Australian Open, Men"],1);
+ }finally{
+  await rm(dir,{recursive:true,force:true});
+ }
 });
