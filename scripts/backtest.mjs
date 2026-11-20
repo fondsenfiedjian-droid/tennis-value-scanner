@@ -221,8 +221,11 @@ export function runBacktest(matches, options = {}) {
 
   const matchGroups = new Map();
   for (const match of clean) {
+    // Source match numbers can collide in older WTA archive years. Include
+    // date, unordered player pair and round so separate matches are not
+    // discarded as conflicting duplicates merely because their source key repeats.
     const key = match.tourneyId && match.matchNum
-      ? match.tourneyId + ":" + match.matchNum
+      ? [match.tourneyId, match.date, match.matchNum, pairKey(match.winner, match.loser), match.round].join(":")
       : match.date + ":" + pairKey(match.winner, match.loser) + ":" + (match.surface ?? "unknown");
     if (!matchGroups.has(key)) matchGroups.set(key, []);
     matchGroups.get(key).push(match);
