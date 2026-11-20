@@ -51,3 +51,12 @@ A separate aggregate-only workflow links Match Charting metadata to the pinned A
 The audit uses the main-tour yearly result files only. Challenger, Futures, qualifying, ITF, junior and team-event metadata may remain unmatched; that is a source-scope gap, not evidence that the match did not happen. The report contains aggregate counts and event-name coverage only; it never stores match IDs or player names. Raw source CSVs are downloaded to the ephemeral runner and are not uploaded.
 
 This linkage is intended to attach reviewed player IDs and result outcomes to charted matches for research. It does not make the charted sample representative, and it does not enable a production feature. Source licenses remain CC BY-NC-SA 4.0; non-commercial and share-alike restrictions apply.
+
+
+## First linkage result
+
+The first full main-tour linkage run (artifact from run 44834602588) uniquely linked 6,698 of 7,565 ATP metadata IDs (88.54%) and 3,544 of 4,257 WTA IDs (83.25%), 10,242 total. Of these, 10,239 used full player names and 3 used unique initial-surname aliases. The audit found no ambiguous full-name pair or ambiguous alias pair; it excluded one ATP and one WTA alias-identity collision. The workflow also linked 88 matches whose archived tournament start date fell in the prior calendar year (58 ATP, 30 WTA).
+
+The WTA result snapshot ends 25 May 2026 while charting metadata extends to 9 September 2026; 130 WTA records are outside the pinned result-date range and are not treated as linkage failures caused by player identity. ATP charting metadata ends 21 May 2026, inside the result snapshot. The first pass remains main-tour only; many Challenger/ITF/junior/team-event rows are expected to remain unmatched.
+
+These are linkage coverage figures, not proof that every charted stat is complete or that the charted sample is representative. The next audit refinement separates unmatched reasons by event before any further alias mapping.
