@@ -119,7 +119,10 @@ export function auditMatchChartingFiles(filesByName) {
     const matchRows = parseChartingCsv(metadata);
     const ids = matchRows.map(row => text(row.match_id)).filter(Boolean);
     const matchIds = new Set(ids);
-    const dates = matchRows.map(row => text(row.Date)).filter(validDate).sort();
+    const dateValues = matchRows.map(row => text(row.Date));
+    const dates = dateValues.filter(validDate).sort();
+    const missingDateRows = dateValues.filter(value => !value).length;
+    const invalidDateRows = dateValues.filter(value => value && !validDate(value)).length;
     const surfaces = {};
     const hands = { player1: {}, player2: {} };
     const allowedSurfaces = new Set(["Hard", "Clay", "Grass", "Carpet"]);
