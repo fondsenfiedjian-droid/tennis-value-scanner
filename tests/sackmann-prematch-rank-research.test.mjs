@@ -25,3 +25,19 @@ test("does not invent rankings when no earlier snapshot exists",()=>{
  assert.equal(result.rows[0].loser_rank,"");
  assert.equal(result.coverage.neitherRanked,1);
 });
+
+test("excludes stale weekly rankings beyond the configured freshness limit",()=>{
+ const result=buildPrematchRankRows(
+  [{tourney_date:"20260301",winner_id:"1",loser_id:"2"}],
+  [
+   {ranking_date:"20260101",player:"1",rank:"5"},
+   {ranking_date:"20260223",player:"2",rank:"12"}
+  ],
+  {maxSnapshotAgeDays:45}
+ );
+ assert.equal(result.rows[0].winner_rank,"");
+ assert.equal(result.rows[0].loser_rank,12);
+ assert.equal(result.coverage.onePlayerRanked,1);
+ assert.equal(result.coverage.stalePlayerSnapshots,1);
+ assert.equal(result.coverage.matchesWithStaleSnapshot,1);
+});
