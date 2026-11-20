@@ -28,3 +28,15 @@ test("rejects unexpected filenames rather than guessing source type",()=>{
 test("rejects empty lower-tier input",()=>{
  assert.throws(()=>auditLowerTierFiles([]),/groups|No lower-tier/);
 });
+
+test("separates exact duplicate and conflicting natural match identities",()=>{
+ const conflict=row1.replace("6-4 6-3","6-3 6-4");
+ const report=auditLowerTierFiles([{filename:"atp_matches_futures_2024.csv",content:[header,row1,row1,conflict].join("\\n")}]);
+ const g=report.groups[0];
+ assert.equal(g.completedMatches,3);
+ assert.equal(g.uniqueCompletedMatchGroups,1);
+ assert.equal(g.duplicateNaturalMatchGroups,1);
+ assert.equal(g.duplicateExcessRows,2);
+ assert.equal(g.exactDuplicateGroups,0);
+ assert.equal(g.conflictingDuplicateGroups,1);
+});
