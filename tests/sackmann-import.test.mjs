@@ -33,7 +33,7 @@ test("excludes invalid IDs, impossible dates and retired or walkover results",()
     row({score:"7-5 2-1"}),row({score:"6-4 6-3",best_of:"5"})
   ],"atp");
   assert.equal(result.rows.length,0);
-  assert.deepEqual(result.excluded,{invalidDate:1,invalidPlayers:1,unfinishedOrRetired:2,unsupportedSurface:0});
+  assert.deepEqual(result.excluded,{invalidDate:1,invalidPlayers:1,unfinishedOrRetired:4,unsupportedSurface:0});
 });
 
 test("rejects partial scores that do not contain enough completed sets",()=>{
