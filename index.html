@@ -1330,7 +1330,7 @@
     const ids=selectArchiveResultCheckIds(rows,now,10);
     if(!ids.length){alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
     button.disabled=true;button.textContent='ПРОВЕРКА…';
-    let checked=0,errors=0;
+    let checked=0,errors=0,statusesUpdated=0;
     try{
       for(const id of ids){
         try{
@@ -1340,7 +1340,7 @@
           const updated=applyVerifiedMatchResult(current,result,Date.now());
           if(res.ok&&updated.updated){
             persistPredictionArchive(updated.rows);
-            checked++;if(['completed','retired','walkover','default','abandoned','unresolved'].includes(result.outcome)||result.status==='cancelled')settled++;
+            checked++;if(['completed','retired','walkover','default','abandoned','unresolved'].includes(result.outcome)||result.status==='cancelled')statusesUpdated++;
           }else if(res.status===429){
             persistPredictionArchive(stampResultCheck(current,id,Date.now()));
             errors++;break;
@@ -1357,7 +1357,7 @@
       const archiveFlush=await flushArchiveWrites();
       if(!archiveFlush.ok)errors++;
       renderArchive();
-        alert('Проверка завершена. Проверено матчей: '+checked+'. Получены завершённые статусы: '+settled+'. Ставок рассчитано: '+bankrollUpdates.settled+', исправлено после пересмотра: '+bankrollUpdates.corrected+', открыто повторно: '+bankrollUpdates.reopened+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+        alert('Проверка завершена. Проверено матчей: '+checked+'. Получены статусы: '+statusesUpdated+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
   };
   $('#archiveExport').onclick=async()=>{

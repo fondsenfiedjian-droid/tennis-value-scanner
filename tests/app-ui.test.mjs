@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v122"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v123"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -388,4 +388,17 @@ test("bankroll tab and assets are fully removed from the application shell", () 
   }
   assert.match(html, /id="navHome"/);
   assert.match(html, /id="navStats"/);
+});
+
+
+test("archive result checker reports status counts without removed bankroll references", () => {
+  const start = html.indexOf("$('#archiveCheckResults').onclick=async()=>{");
+  const end = html.indexOf("$('#archiveExport').onclick", start);
+  assert.ok(start >= 0 && end > start);
+  const handler = html.slice(start, end);
+  assert.match(handler, /let checked=0,errors=0,statusesUpdated=0/);
+  assert.match(handler, /statusesUpdated\+\+/);
+  assert.match(handler, /Получены статусы:/);
+  assert.doesNotMatch(handler, /\bsettled\+\+/);
+  assert.doesNotMatch(handler, /bankrollUpdates/);
 });

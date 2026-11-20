@@ -407,3 +407,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #43 regression workflow run 44755965832 passed; Cloudflare deployment run 44756011508 passed; Workers Builds production check passed; automatic smoke run 44756011478 passed.
 - Smoke evidence: Netlify PWA HTTP 200; service worker v122; Worker health OK; Winamax feed HTTP 200 with 20 items, all 20 valid decimal odds and all 20 with fresh scrape timestamps at check time. These are point-in-time feed diagnostics, not a guarantee that quotes remain available at bet placement.
 - Live Tennis API quota remains separate; do not call quota-consuming endpoints until quota reset is confirmed via /usage.
+
+
+### Archive result-checker counter fix (2026-11-20)
+- Code review found that the Statistics → Check Results handler still referenced the removed bankroll UI's bankrollUpdates object and an undeclared settled counter. Result rows were persisted before the final alert, but a successful response could then throw a ReferenceError and prevent a clean completion report.
+- Replaced the stale references with a local statusesUpdated counter and removed bankroll settlement text from the alert. Result persistence, identity validation, result-version handling and retry intervals remain unchanged.
+- Added a regression test asserting the handler initializes its counters and contains no references to removed bankroll state.
+- Advanced PWA service-worker shell cache from v122 to v123 because index.html changed. Regression and production verification pending.
