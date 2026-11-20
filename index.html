@@ -569,8 +569,12 @@
       if(!o.eventId||!['home','away'].includes(String(o.outcome||'').toLowerCase()))return false;
       const home=normalizePlayer(o.homeTeam),away=normalizePlayer(o.awayTeam);
       if(!home||!away||home===away)return false;
-      const eventParts=String(o.eventName||'').split(/\s+-\s+/);
-      if(eventParts.length!==2||normalizePlayer(eventParts[0])!==home||normalizePlayer(eventParts[1])!==away)return false;
+      const eventName=String(o.eventName||'').trim();
+      // Scraper feeds may format the same event with vs, v, hyphen or an en/em dash.
+      // Team fields remain authoritative; reject only a parseable, explicitly conflicting label.
+      const eventParts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
+      if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||
+        (playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
       if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);

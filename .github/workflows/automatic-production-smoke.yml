@@ -63,10 +63,10 @@ jobs:
 
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
-          if (!serviceWorker.includes("tennis-value-static-v114")) {
-            throw new Error("Netlify is not serving the expected service-worker cache version v113");
+          if (!serviceWorker.includes("tennis-value-static-v115")) {
+            throw new Error("Netlify is not serving the expected service-worker cache version v115");
           }
-          console.log("PWA service worker: cache v114 is published");
+          console.log("PWA service worker: cache v115 is published");
 
           const healthResponse = await getWithRetry(process.env.API_URL + "/health");
           const health = await healthResponse.json();
