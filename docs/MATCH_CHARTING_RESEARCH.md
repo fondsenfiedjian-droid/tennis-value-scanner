@@ -14,12 +14,12 @@ The source explicitly declares CC BY-NC-SA 4.0. Attribution is required, use is 
 
 The `Match Charting Project data audit` workflow downloads ATP and WTA match metadata plus ten aggregate stat families per tour from the pinned source commit. It reports:
 - metadata row counts, unique match IDs, duplicate IDs and date range;
-- surface and player-handedness counts;
+- surface and player-handedness counts, including quality flags for unexpected categorical values;
 - rows, columns and unique match IDs for each stat family;
 - coverage of each stat family against its tour's match metadata;
 - duplicate IDs, missing IDs and unmatched stat-file IDs.
 
-The workflow intentionally does not retain raw points or raw stat files. The first pass is a coverage/schema audit, not a predictive feature test. A second research stage may inspect selected point-level fields after the data dictionary has been mapped and point-to-match completeness has been assessed.
+The first completed audit found 7,565 ATP and 4,257 WTA unique metadata match IDs. Each of the ten stat families per tour joins to 100% of its own unique match IDs against the corresponding metadata IDs. This is join coverage, not a claim that every match has every statistic. The metadata also contains unexpected surface/hand values and duplicate rows, so those rows are flagged for review and the date/surface/hand fields must not yet be used for feature construction.\n\nThe workflow intentionally does not retain raw points or raw stat files. The first pass is a coverage/schema audit, not a predictive feature test. A second research stage may inspect selected point-level fields after the data dictionary has been mapped and point-to-match completeness has been assessed.
 
 ## Candidate PFE research signals
 
