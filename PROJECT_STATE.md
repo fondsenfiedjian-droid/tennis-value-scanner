@@ -832,12 +832,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 ### Match Charting Project audit — implementation in review (2026-11-20)
 - Added a research-only Match Charting Project audit on branch `research/mcp-dataset-audit`. The source is pinned to Jeff Sackmann repository commit `1813a1309b7ed7ebf1c7e884b32bf675d00e4edf` (2026-09-18) for reproducibility.
-- The workflow downloads ATP/WTA match metadata and ten aggregate stat families per tour (Overview, Rally, ServeBasics, ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints) into an ephemeral GitHub Actions runner.
+- The workflow downloads ATP/WTA match metadata and sixteen aggregate stat families per tour (Overview, Rally, ServeBasics, ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints) into an ephemeral GitHub Actions runner.
 - The audit reports match counts, duplicate IDs, date range, surface and handedness distributions, per-family row/schema coverage and match-ID join coverage. It uploads only aggregate JSON for 30 days; raw source CSVs are not committed.
 - Source README states more than 5,000 contributor-charted matches and declares CC BY-NC-SA 4.0. Data are selective/crowdsourced and non-commercial only; no production PFE feature activation is authorized by this audit.
 - Added unit tests and methodology/license documentation. Pull request CI will run the audit download in parallel with the existing research workflows. This is a source acquisition and coverage audit, not yet a point-level predictive test.
 
-- First completed audit (run 44822681179): 7,565 unique ATP metadata IDs and 4,257 unique WTA metadata IDs; ten stat families per tour each join 100% of their own unique IDs to metadata. Aggregate stat rows: ATP 1,326,748; WTA 736,452. These are charted observations, not representative tour coverage.
+- First completed audit (run 44822681179): 7,565 unique ATP metadata IDs and 4,257 unique WTA metadata IDs; sixteen stat families per tour each join 100% of their own unique IDs to metadata. Aggregate stat rows: ATP 1,326,748; WTA 736,452. These are charted observations, not representative tour coverage.
 - Metadata quality review found unexpected categorical values (including non-surface text in Surface and non-R/L hand values) plus duplicate metadata IDs. Added explicit quality flags; do not use metadata date/surface/hand fields for features until source rows are inspected and repaired. Research-only; no production feature activation.
 
 - Added `docs/PFE_FEATURE_MAP.md`: candidate formulas, denominator/data-dictionary caveats, leakage controls, sample-threshold sweep, and chronological validation protocol. No PFE feature is enabled in production.
+
+- Expanded the Match Charting audit from the initial ten to all 16 available aggregate stat families per tour, including key-point, serve-and-volley, serve/break split, and shot-direction outcome families. The workflow downloads source files to the ephemeral runner only.
