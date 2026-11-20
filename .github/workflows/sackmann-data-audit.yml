@@ -58,6 +58,25 @@ jobs:
             ${{ runner.temp }}/wta-rank-age-report.json
           if-no-files-found: error
           retention-days: 30
+      - name: Run alternative Elo K-factor robustness checks
+        run: |
+          set -euo pipefail
+          for tour in atp wta; do
+            input="$RUNNER_TEMP/$tour-normalized.csv"
+            for k in 24 48 64; do
+              node scripts/sackmann-rank-age-research.mjs --tour "$tour" --from 20000101 --to 20260525 --k "$k" --min-training 1000 --max-training 20000 --out "$RUNNER_TEMP/$tour-rank-age-k$k.json" "$input"
+            done
+            node scripts/sackmann-rank-age-research.mjs --tour "$tour" --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 5000 --out "$RUNNER_TEMP/$tour-rank-age-cap5000.json" "$input"
+          done
+      - name: Upload aggregate robustness reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-rank-age-robustness
+          path: |
+            ${{ runner.temp }}/*-rank-age-k*.json
+            ${{ runner.temp }}/*-rank-age-cap5000.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Validate normalized outputs and classify source-key collisions
         run: |
           node --input-type=module <<'NODE'
