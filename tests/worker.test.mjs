@@ -232,8 +232,9 @@ test("odds diagnostics report schema coverage, bookmaker names, outcomes and quo
     { bookmaker: "Winamax", bookmakerCountry: "FR", sport: "tennis", marketType: "match_winner",
       eventId: "evt-1", outcome: "away", homeTeam: "Player A", awayTeam: "Player B",
       eventName: "Player A - Player B", competition: "ATP", startTime: new Date(now + 3600000).toISOString(),
-      scrapedAt: new Date(now - 30000).toISOString(), oddsDecimal: 2.02 },
-    { bookmaker: "OtherBook", outcome: "draw", scrapedAt: null, oddsDecimal: "0" }
+      scrapedAt: new Date(now - 5 * 60 * 60 * 1000).toISOString(), oddsDecimal: 2.02 },
+    { bookmaker: "OtherBook", outcome: "draw", scrapedAt: null, oddsDecimal: "0" },
+    { bookmaker: "Winamax", outcome: "home", scrapedAt: new Date(now - 7 * 60 * 60 * 1000).toISOString(), oddsDecimal: "0" }
   ];
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.caches.default.put = async () => {};
@@ -242,12 +243,12 @@ test("odds diagnostics report schema coverage, bookmaker names, outcomes and quo
   assert.equal(result.status, 200);
   const payload = await result.json();
   assert.equal(payload.diagnostics.schemaVersion, 1);
-  assert.equal(payload.diagnostics.itemCount, 3);
-  assert.equal(payload.diagnostics.objectItems, 3);
+  assert.equal(payload.diagnostics.itemCount, 4);
+  assert.equal(payload.diagnostics.objectItems, 4);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.diagnostics.bookmakers)), ["Winamax", "OtherBook"]);
-  assert.deepEqual(JSON.parse(JSON.stringify(payload.diagnostics.outcomeCounts)), { home: 1, away: 1, other: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.diagnostics.outcomeCounts)), { home: 2, away: 1, other: 1 });
   assert.equal(payload.diagnostics.validDecimalOdds, 2);
-  assert.equal(payload.diagnostics.parseableScrapedAt, 2);
+  assert.equal(payload.diagnostics.parseableScrapedAt, 3);
   assert.equal(payload.diagnostics.freshScrapedAt, 2);
   assert.equal(payload.diagnostics.fieldCoverage.eventId, 2);
   assert.equal(payload.diagnostics.fieldCoverage.scrapedAt, 2);
