@@ -87,6 +87,20 @@ function summarizeFile(path, rows, matchIds) {
       }
       return [header, Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b)))];
     }));
+  const playerReferenceCounts = Object.fromEntries(["player", "server", "returner"]
+    .filter(header => headers.includes(header))
+    .map(header => {
+      const counts = { player1: 0, player2: 0, nameLike: 0, otherNumeric: 0, missing: 0 };
+      for (const row of rows) {
+        const value = text(row[header]);
+        if (!value) counts.missing++;
+        else if (/^(1|p1|player\\s*1)$/i.test(value)) counts.player1++;
+        else if (/^(2|p2|player\\s*2)$/i.test(value)) counts.player2++;
+        else if (/^\\d+$/.test(value)) counts.otherNumeric++;
+        else counts.nameLike++;
+      }
+      return [header, counts];
+    }));
   const nonEmptyByColumn = Object.fromEntries(headers.map(header => [
     header, rows.reduce((count, row) => count + (text(row[header]) ? 1 : 0), 0)
   ]));
@@ -105,7 +119,8 @@ function summarizeFile(path, rows, matchIds) {
       metadataCoveragePct: idSet.size ? Number((100 * [...idSet].filter(id => matchIds.has(id)).length / idSet.size).toFixed(2)) : null
     } : null,
     nonEmptyByColumn,
-    categoryCounts
+    categoryCounts,
+    playerReferenceCounts
   };
 }
 
