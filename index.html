@@ -1545,7 +1545,7 @@
       ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible===true)
       .sort((a,b)=>b.ev-a.ev||b.reliabilityScore-a.reliabilityScore||b.probability-a.probability)[0]||null;
   }
-  function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets){
+  function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets,oddsFallback=[]){
     const box=$('#bestBet'),evBox=$('#highestEv');
     if(!box||!evBox)return;
     const configuredMinEv=Number($('#minEv').value);
@@ -1571,8 +1571,19 @@
     }
     const evContent=$('#highestEvContent'),evButton=$('#highestEvOpen');
     if(!highest){
-      evContent.textContent=scanned?'Пока нет положительного EV среди ставок с проверенными данными.':'Ожидаю расчёта вероятностей…';
-      evButton.hidden=true;evButton.onclick=null;
+      const quote=oddsFallback[0]||null;
+      if(quote){
+        evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(quote.player)+' — '+escapeHtml(quote.opponent)+'</div><div class="best-bet-meta">Коэффициенты Winamax: <b>'+quote.oddsA.toFixed(2)+'</b> / <b>'+quote.oddsB.toFixed(2)+'</b><br><b>EV не рассчитан:</b> модель не вернула проверенную вероятность. Это не подтверждённая валуйная ставка.</div>';
+        evButton.hidden=false;
+        evButton.textContent='Открыть матч';
+        evButton.onclick=()=>{
+          const card=document.querySelector('.match-card[data-match-index="'+Number(quote.matchIndex)+'"]');
+          if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
+        };
+      }else{
+        evContent.textContent=scanned?'Пока нет положительного EV среди ставок с проверенными данными.':'Ожидаю расчёта вероятностей…';
+        evButton.hidden=true;evButton.onclick=null;
+      }
     }else{
       const d=matchDate(highest.match);
       const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
@@ -1683,9 +1694,16 @@
     }
     const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,5)];
     const totalCandidates=allCandidates.length;
+    // Preserve the verified bookmaker pair if model calculation is unavailable.
+    const oddsFallback=matches.map((m,i)=>{
+      const el=document.getElementById('model-'+i);
+      const oddsA=Number(el?.dataset.oddsA),oddsB=Number(el?.dataset.oddsB);
+      if(!el||!Number.isFinite(oddsA)||!Number.isFinite(oddsB)||oddsA<=1||oddsB<=1)return null;
+      return {matchIndex:i,player:el.dataset.nameA||'Игрок 1',opponent:el.dataset.nameB||'Игрок 2',oddsA,oddsB};
+    }).filter(Boolean);
     const dayBets=[];
     const evDayBets=[];
-    renderBestBet(dayBets,0,totalCandidates,0,evDayBets);
+    renderBestBet(dayBets,0,totalCandidates,0,evDayBets,oddsFallback);
     let positive=0,checked=0,failed=0;
     for(const {m,i} of candidates){
       const el=document.getElementById('model-'+i);if(!el)continue;
@@ -1854,19 +1872,19 @@
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+(valueGateBlocked?'limited':'good')+'">'+escapeHtml(valueGateLabel)+'</div>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br>'+escapeHtml(simulationLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
         checked++;
-        renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets);
+        renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
         if(valueGateA.eligible&&result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
         if(valueGateB.eligible&&result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
       }catch(err){
         if(renderId!==predictionRenderId)return;
         failed++;el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;
-        renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets);
+        renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
       }
     }
     if(renderId!==predictionRenderId)return;
     $('#valueCount').textContent=positive;
     if(!candidates.length)$('#valueCount').textContent='0';
-    renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets);
+    renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   let autoRefreshTimer=null;

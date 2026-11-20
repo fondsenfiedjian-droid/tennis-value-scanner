@@ -490,3 +490,13 @@ test("optional player statistics are not fetched during automatic prediction sca
   assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"));
   assert.ok(html.includes("not_requested:'не запрашивалась автоматически (экономия квоты)'"));
 });
+
+
+test("EV panel preserves bookmaker pair and opens match when prediction calculation fails", () => {
+  assert.match(html, /const oddsFallback=matches\.map\(\(m,i\)=>/);
+  assert.match(html, /Коэффициенты Winamax:/);
+  assert.match(html, /EV не рассчитан:/);
+  assert.match(html, /evButton\.hidden=false;/);
+  assert.match(html, /quote\.matchIndex/);
+  assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
+});
