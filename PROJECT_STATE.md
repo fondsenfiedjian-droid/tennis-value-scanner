@@ -711,3 +711,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Fast4 follow-up tightened: only four-game completed sets (4-0 to 4-2) or 4-3 with a tiebreak marker qualify for Next Gen Finals; ordinary-length 5-3/6-4 sets are rejected even in a Fast4-labelled event. Added regression cases.
 
 - Added a detailed Fast4 rule to `docs/SACKMANN_RESEARCH.md`: 4-0/4-1/4-2 or 4-3 with a tiebreak marker only; ordinary 5-3/6-4 scores are rejected for Next Gen events.
+
+- PR #70 was superseded by PR #88 after tightening Fast4 set validation. A focused isolated Node check passed eight cases (valid Fast4, partial Fast4, ordinary-event rejection, invalid 5-3/6-4 Fast4 sets, standard 6-4/7-6, and partial standard scores). The updated-head full regression workflow has not yet appeared; do not merge until automated regression and documentation checks are confirmed.
