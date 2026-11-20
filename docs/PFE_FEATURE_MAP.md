@@ -49,6 +49,10 @@ These semantics are useful for point-level reconstruction, but they do not by th
 6. Use chronological training and untouched recent holdouts. Keep ATP and WTA separate until evidence supports pooling.
 7. Reject features that help only in-sample, depend on post-match information, or reduce coverage so sharply that the apparent gain is not robust.
 
+## Lower-tier history research
+
+A separate coverage audit now targets ATP Futures, ATP Challenger/qualifying and WTA qualifying/ITF source files. Treat these as separate competitive levels; do not merge into the main-tour Elo stream until tier-aware rating transitions pass chronological holdout tests. Initial audit found more than 1.33 million completed match rows, with repeated natural match identities in WTA ITF/qualifying requiring further inspection.
+
 ## Immediate next work
 
 - Inspect and normalize metadata anomalies before attempting a charted-match join.
