@@ -3,7 +3,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
 import { runBacktest } from "./backtest.mjs";
 
-const FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "minutes7", "durationCoverage7"];
+const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays"];
+const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "minutes7", "durationCoverage7"];
 const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
 const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
@@ -45,7 +46,8 @@ export function buildPreMatchWorkload(rows) {
         playingDays7,
         restDays: latest ? Math.min(30, today - latest.day) : 30,
         minutes7,
-        durationCoverage7: prior.length ? knownDurations.length / prior.length : 0
+        durationCoverage7: prior.length ? knownDurations.length / prior.length : 0,
+        knownDurationMatches7: knownDurations.length
       };
     };
     for (const row of day) {
@@ -53,7 +55,11 @@ export function buildPreMatchWorkload(rows) {
       const p1 = Number(winner) < Number(loser) ? winner : loser;
       const p2 = p1 === winner ? loser : winner;
       const a = get(p1), b = get(p2);
-      features.set(pairKey(date,p1,p2), Object.fromEntries(FEATURE_NAMES.map(name => [name, a[name] - b[name]])));
+      features.set(pairKey(date,p1,p2), {
+        ...Object.fromEntries(FEATURE_NAMES.map(name => [name, a[name] - b[name]])),
+        priorMatchRecords7: a.matches7 + b.matches7,
+        knownDurationRecords7: a.knownDurationMatches7 + b.knownDurationMatches7
+      });
     }
     // Update only after every match on the date has been evaluated. Same-day
     // matches are deliberately excluded because completion order is unknown.
@@ -86,8 +92,8 @@ function solve(matrix, vector) {
   return a.map(row=>row[n]);
 }
 
-function fitStandardization(training) {
-  return FEATURE_NAMES.map(name => {
+function fitStandardization(training, featureNames=FEATURE_NAMES) {
+  return featureNames.map(name => {
     const values=training.map(row=>row.features[name]);
     const mean=values.reduce((a,b)=>a+b,0)/values.length;
     const variance=values.reduce((sum,value)=>sum+(value-mean)**2,0)/values.length;
@@ -96,7 +102,7 @@ function fitStandardization(training) {
 }
 
 function fitCorrection(training, standardization, penalty=0.05) {
-  const width=FEATURE_NAMES.length;
+  const width=standardization.length;
   let beta=Array(width).fill(0);
   for(let iteration=0;iteration<40;iteration++){
     const gradient=Array(width).fill(0), hessian=Array.from({length:width},()=>Array(width).fill(0));
@@ -177,19 +183,32 @@ export function runWorkloadResearch(csvTexts) {
     const evaluation=matched.filter(row=>row.year==="2026");
     const standardization=fitStandardization(training);
     const beta=fitCorrection(training,standardization);
+    const coreStandardization=fitStandardization(training,CORE_FEATURE_NAMES);
+    const coreBeta=fitCorrection(training,coreStandardization);
     const evaluationByMonth=Object.fromEntries([...new Set(evaluation.map(row=>row.month))].sort().map(month=>[
-      month,metrics(evaluation.filter(row=>row.month===month),beta,standardization)
+      month,{
+        fullWorkload:metrics(evaluation.filter(row=>row.month===month),beta,standardization),
+        coreWorkload:metrics(evaluation.filter(row=>row.month===month),coreBeta,coreStandardization)
+      }
     ]));
+    const durationAvailability=sample=>({
+      priorPlayerMatchRecords7:sample.reduce((sum,row)=>sum+row.features.priorMatchRecords7,0),
+      knownDurationRecords7:sample.reduce((sum,row)=>sum+row.features.knownDurationRecords7,0),
+      knownDurationCoveragePct:(()=>{const total=sample.reduce((sum,row)=>sum+row.features.priorMatchRecords7,0);const known=sample.reduce((sum,row)=>sum+row.features.knownDurationRecords7,0);return total?Number((100*known/total).toFixed(2)):null;})()
+    });
     reports[tour]={
       trainingYear:"2025",
       evaluationYear:"2026",
       training:metrics(training,beta,standardization),
       evaluation:metrics(evaluation,beta,standardization),
+      evaluationCoreWorkload:metrics(evaluation,coreBeta,coreStandardization),
+      durationAvailability:{training:durationAvailability(training),evaluation:durationAvailability(evaluation)},
       evaluationByMonth,
       trainingFeatureCoverage:training.length,
       evaluationFeatureCoverage:evaluation.length,
       predictionsWithoutWorkloadFeatures:missingFeature,
       standardizedFeatureCoefficients:Object.fromEntries(FEATURE_NAMES.map((name,i)=>[name,Number(beta[i].toFixed(5))])),
+      standardizedCoreFeatureCoefficients:Object.fromEntries(CORE_FEATURE_NAMES.map((name,i)=>[name,Number(coreBeta[i].toFixed(5))])),
       standardization:Object.fromEntries(standardization.map(item=>[item.name,{mean:Number(item.mean.toFixed(4)),sd:Number(item.sd.toFixed(4))}])),
       durationCoverageNote:"minutes7 sums only observed durations; durationCoverage7 records the share of prior-week matches with known duration. Unknown durations are not fabricated.",
       sameDayLeakageProtection:"All matches on a UTC calendar date are scored from the history available before that date; same-day matches are added only after every prediction for that date is prepared.",
