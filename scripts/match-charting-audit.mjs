@@ -24,7 +24,7 @@ const validDate = value => /^\d{8}$/.test(text(value)) &&
 
 
 function parseChartingCsv(source) {
-  source = source.replace(/^\\uFEFF/, "");
+  source = source.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false;
   const pushField = () => { row.push(field); field = ""; };
@@ -33,15 +33,15 @@ function parseChartingCsv(source) {
     const ch = source[i];
     if (quoted) {
       if (ch === '"' && source[i + 1] === '"') { field += '"'; i++; }
-      else if (ch === '"' && [",", "\\n", "\\r", undefined].includes(source[i + 1])) quoted = false;
+      else if (ch === '"' && [",", "\n", "\r", undefined].includes(source[i + 1])) quoted = false;
       else field += ch;
       continue;
     }
     if (ch === '"' && field.length === 0) quoted = true;
     else if (ch === ",") pushField();
-    else if (ch === "\\n") pushRow();
-    else if (ch === "\\r" && source[i + 1] === "\\n") { /* CRLF */ }
-    else if (ch === "\\r") field += ch;
+    else if (ch === "\n") pushRow();
+    else if (ch === "\r" && source[i + 1] === "\n") { /* CRLF */ }
+    else if (ch === "\r") field += ch;
     else field += ch;
   }
   if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting CSV");
@@ -50,17 +50,16 @@ function parseChartingCsv(source) {
   const rawHeaders = rows.shift();
   const headerCounts = new Map();
   const headers = rawHeaders.map((header, index) => {
-    const base = header || `__unnamed_${index + 1}`;
+    const base = header || "__unnamed_" + (index + 1);
     const count = (headerCounts.get(base) || 0) + 1;
     headerCounts.set(base, count);
-    return count === 1 ? base : `${base}__duplicate_${count}`;
+    return count === 1 ? base : base + "__duplicate_" + count;
   });
   return rows.map((values, index) => {
-    if (values.length > headers.length) throw new SyntaxError(`CSV row ${index + 2} has more fields than the header`);
+    if (values.length > headers.length) throw new SyntaxError("CSV row " + (index + 2) + " has more fields than the header");
     return Object.fromEntries(headers.map((key, i) => [key, values[i] ?? ""]));
   });
 }
-
 function summarizeFile(path, rows, matchIds) {
   const headers = rows.length ? Object.keys(rows[0]) : [];
   const ids = rows.map(row => text(row.match_id)).filter(Boolean);
