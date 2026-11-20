@@ -895,3 +895,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Identified the strict-parser failure in WTA Match Charting metadata (an unquoted embedded quote at source line 2487). The linkage workflow now uses the same tolerant metadata parser as the coverage audit while retaining strict parsing for the Sackmann result files; raw rows remain ephemeral.
 
 - Exported the tolerant Match Charting metadata parser and added a synthetic test for embedded quotes and quoted commas; the strict parser remains in place for the Sackmann yearly results CSVs.
+
+- The first linkage artifact linked 6,698/7,565 ATP metadata IDs (88.54%) and 3,544/4,257 WTA IDs (83.25%), 10,242 total. Added reason-by-event breakdown for unmatched records (event missing, player alias unavailable, date/round conflict, outside snapshot) to guide the next mapping pass; raw rows remain excluded.
