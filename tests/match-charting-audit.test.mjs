@@ -30,9 +30,19 @@ test("audits ATP and WTA metadata and stat-family match coverage", () => {
   assert.equal(report.tours.ATP.metadata.qualityChecks.status, "clean");
   assert.equal(report.tours.ATP.metadata.qualityChecks.rowsWithUnexpectedSurface, 0);
   assert.equal(report.tours.ATP.statFiles[0].rows, 3);
+  assert.equal(report.tours.ATP.statFiles[0].repeatedMatchIdRows, 1);
+  assert.equal(report.tours.ATP.metadata.invalidDateRows, 0);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.matchedUniqueIds, 2);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.unmatchedUniqueIds, 1);
   assert.equal(report.tours.WTA.metadata.uniqueMatchIds, 3);
+});
+
+test("rejects impossible calendar dates in metadata", () => {
+  const files = { ...fixture("m"), ...fixture("w") };
+  files["charting-m-matches.csv"] = files["charting-m-matches.csv"].replace("20240202", "20240231");
+  const report = auditMatchChartingFiles(files);
+  assert.equal(report.tours.ATP.metadata.invalidDateRows, 1);
+  assert.equal(report.tours.ATP.metadata.qualityChecks.status, "review-required");
 });
 
 test("rejects incomplete downloads instead of silently reporting zero coverage", () => {
