@@ -29,7 +29,7 @@ const normalizeRound = value => {
   return rounds.has(round) ? round : null;
 };
 
-function parseMcpMetadataCsv(source) {
+export function parseMcpMetadataCsv(source) {
   source = source.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false;
