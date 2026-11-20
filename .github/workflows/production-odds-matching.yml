@@ -2,8 +2,6 @@ name: Production odds matching check
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   matching:
