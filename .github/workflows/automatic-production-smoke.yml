@@ -63,7 +63,7 @@ jobs:
 
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
-          if (!serviceWorker.includes("tennis-value-static-v113")) {
+          if (!serviceWorker.includes("tennis-value-static-v114")) {
             throw new Error("Netlify is not serving the expected service-worker cache version v113");
           }
           console.log("PWA service worker: cache v113 is published");
