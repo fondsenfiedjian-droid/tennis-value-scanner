@@ -26,7 +26,7 @@ const completedScore = (value, bestOf, tourneyName) => {
     .filter(match=>{
       const a=Number(match[1]),b=Number(match[2]);
       const high=Math.max(a,b),low=Math.min(a,b);
-      if(fast4) return (high>=4 && high-low>=2) || (high===4 && low===3 && match[3]!==undefined);
+      if(fast4) return (high===4 && low<=2) || (high===4 && low===3 && match[3]!==undefined);
       return (high>=6 && high-low>=2) || (high===7 && low===6);
     }).length;
   const format=Number(bestOf);
