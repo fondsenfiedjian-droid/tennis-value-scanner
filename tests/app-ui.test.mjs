@@ -410,7 +410,7 @@ test("calibration for the active model excludes snapshots from other model versi
   assert.ok(start >= 0 && end > start);
   const source = html.slice(start, end);
   const sandbox = {};
-  vm.runInNewContext(source + "\\nglobalThis.calibration = archiveProbabilityCalibration;", sandbox);
+  vm.runInNewContext(source + "\nglobalThis.calibration = archiveProbabilityCalibration;", sandbox);
   const matchDate = Date.parse("2026-11-25T12:00:00.000Z");
   const rows = [
     { matchId: 501, side: "A", probability: 90, capturedAt: Date.parse("2026-11-20T10:00:00.000Z"), matchDate: new Date(matchDate).toISOString(), captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1, resultVersion: 1, modelVersion: "2" },
