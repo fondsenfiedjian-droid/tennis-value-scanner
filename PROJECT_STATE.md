@@ -820,3 +820,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Previously, the min-EV value did not filter EV of the Day, and the configured odds range was only reflected in card text rather than consistently applied to candidate eligibility. This made the controls appear ineffective.
 - Existing visible bookmaker quotes remain visible; configured thresholds filter model-eligible value candidates, not the underlying odds display.
 - No model formula, bookmaker scraper, API quota, automatic betting or deployment changes.
+
+
+### Bet of the Day EV threshold and skin switching correction — implementation in review
+- The minimum EV setting is explicitly for Bet of the Day only. It filters the high-reliability recommendation, without changing the independent EV of the Day candidate selection.
+- EV of the Day remains the highest eligible positive-EV candidate; it is not suppressed by the Bet of the Day threshold.
+- Positive-EV match count and positive/negative EV diagnostics reflect positive EV (>0), not the Bet of the Day threshold.
+- Skin selection now previews and persists immediately when changed, and sets the skin on both body and document root. Cancel no longer unexpectedly reverts a skin already selected.
+- Both black/terracotta and olive skins remain supported. No model, bookmaker, API or deployment logic changed.
