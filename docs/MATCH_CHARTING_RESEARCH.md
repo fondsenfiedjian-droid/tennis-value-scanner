@@ -12,7 +12,7 @@ The source explicitly declares CC BY-NC-SA 4.0. Attribution is required, use is 
 
 ## Automated audit
 
-The `Match Charting Project data audit` workflow downloads ATP and WTA match metadata plus ten aggregate stat families per tour from the pinned source commit. It reports:
+The `Match Charting Project data audit` workflow downloads ATP and WTA match metadata plus sixteen aggregate stat families per tour from the pinned source commit. It reports:
 - metadata row counts, unique match IDs, duplicate IDs and date range;
 - surface and player-handedness counts, including quality flags for unexpected categorical values;
 - rows, columns and unique match IDs for each stat family;
