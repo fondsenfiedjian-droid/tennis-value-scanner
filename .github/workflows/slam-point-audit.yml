@@ -67,7 +67,7 @@ jobs:
             "",
             "| Candidate field | Events with data | Events all numeric zero | Non-empty across all points | Zero among numeric values |",
             "|---|---:|---:|---:|---:|",
-            ...Object.entries(report.fieldAvailability).map(([field,s]) => `| ${field} | ${s.eventsWithData} | ${s.eventsAllNumericZero} | ${s.nonEmptyPct}% | ${s.zeroPctOfNumeric}% |`)
+            ...Object.entries(report.fieldAvailability).map(([field,s]) => `| ${field} | ${s.eventsWithData} | ${s.eventsWithOnlyZeroNumericValues} | ${s.nonEmptyPct}% | ${s.zeroPctOfNumeric}% |`)
           ];
           await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           NODE
