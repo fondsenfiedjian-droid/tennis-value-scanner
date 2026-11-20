@@ -21,21 +21,6 @@ const gameArray = value => {
 
 const sameArray = (a, b) => a.length === b.length && a.every((value, i) => value === b[i]);
 
-function inferCounterWinner(before, after, field, method) {
-  const a = integer(before[field]);
-  const b = integer(after[field]);
-  if (a === null || b === null) return null;
-  const p1 = integer(before[field + "_p1"]);
-  const p2 = integer(before[field + "_p2"]);
-  const q1 = integer(after[field + "_p1"]);
-  const q2 = integer(after[field + "_p2"]);
-  if ([p1, p2, q1, q2].some(value => value === null)) return null;
-  const d1 = q1 - p1, d2 = q2 - p2;
-  if (d1 === 1 && d2 === 0) return { status: "inferred", winner: 1, method };
-  if (d2 === 1 && d1 === 0) return { status: "inferred", winner: 2, method };
-  if (d1 === 0 && d2 === 0) return null;
-  return { status: "ambiguous", reason: "counter-jump-or-conflict", method };
-}
 
 function inferSetOrGameWinner(before, after) {
   const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
@@ -81,10 +66,11 @@ function inferPointScoreWinner(before, after) {
   const q2 = String(after.points_p2 ?? "").trim().toUpperCase();
   if (![p1, p2, q1, q2].every(Boolean)) return { status: "ambiguous", reason: "missing-point-score", method: "point-score" };
 
-  const tiebreak = before.is_tiebreak === true || after.is_tiebreak === true ||
-    (Number.isInteger(Number(p1)) && Number.isInteger(Number(p2)) &&
-     Number.isInteger(Number(q1)) && Number.isInteger(Number(q2)) &&
-     [p1, p2, q1, q2].some(v => Number(v) > 4));
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  const numericScores = [p1, p2, q1, q2].every(v => /^\\d+$/.test(v));
+  const normalScoreValues = new Set(["0", "15", "30", "40"]);
+  const tiebreak = isTrue(before.is_tiebreak) || isTrue(after.is_tiebreak) ||
+    (numericScores && [p1, p2, q1, q2].some(v => !normalScoreValues.has(v)));
   if (tiebreak) {
     const a = Number(p1), b = Number(p2), c = Number(q1), d = Number(q2);
     if (![a, b, c, d].every(Number.isInteger)) return { status: "ambiguous", reason: "invalid-tiebreak-score", method: "tiebreak-score" };
@@ -127,57 +113,67 @@ export function inferPointStateTransition(before, after) {
 export function auditPointStateTransitions(rows) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
+  let rowsWithoutMatchId = 0;
   for (const row of rows) {
     const id = String(row.match_id ?? "").trim();
-    if (!id) continue;
+    if (!id) { rowsWithoutMatchId++; continue; }
     if (!groups.has(id)) groups.set(id, []);
     groups.get(id).push(row);
   }
   const totals = {
-    matches: groups.size, transitions: 0, inferred: 0, ambiguous: 0,
+    matches: groups.size, rowsWithoutMatchId, transitions: 0, inferred: 0, ambiguous: 0,
     byMethod: {}, byReason: {}, transitionsWithServerBefore: 0,
-    transitionsWithServerAfter: 0, serverChangedAcrossTransition: 0
+    transitionsWithServerAfter: 0, serverChangedAcrossTransition: 0,
+    matchesWithZeroStart: 0, matchesWithAtLeastOneTransition: 0,
+    matchesWithAllTransitionsInferred: 0, inferredTransitionCoverageBins: {
+      "0%": 0, "1-49%": 0, "50-79%": 0, "80-99%": 0, "100%": 0
+    }
   };
-  const matches = [];
-  for (const [matchId, states] of groups) {
-    const counts = { transitions: Math.max(0, states.length - 1), inferred: 0, ambiguous: 0, byMethod: {}, byReason: {} };
+  let totalObservedTransitions = 0;
+  let totalInferredTransitions = 0;
+  for (const states of groups.values()) {
+    const transitions = Math.max(0, states.length - 1);
+    let inferred = 0;
+    if (states.length && Number(states[0].sets_p1) === 0 && Number(states[0].sets_p2) === 0 &&
+      JSON.stringify(gameArray(states[0].games_p1)) === "[0]" &&
+      JSON.stringify(gameArray(states[0].games_p2)) === "[0]" &&
+      String(states[0].points_p1) === "0" && String(states[0].points_p2) === "0") {
+      totals.matchesWithZeroStart++;
+    }
+    if (transitions > 0) totals.matchesWithAtLeastOneTransition++;
     for (let i = 0; i + 1 < states.length; i++) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
       totals.transitions++;
       if (result.status === "inferred") {
         totals.inferred++;
-        counts.inferred++;
+        inferred++;
       } else {
         totals.ambiguous++;
-        counts.ambiguous++;
         totals.byReason[result.reason] = (totals.byReason[result.reason] || 0) + 1;
-        counts.byReason[result.reason] = (counts.byReason[result.reason] || 0) + 1;
       }
-      if (result.method) {
-        totals.byMethod[result.method] = (totals.byMethod[result.method] || 0) + 1;
-        counts.byMethod[result.method] = (counts.byMethod[result.method] || 0) + 1;
-      }
+      if (result.method) totals.byMethod[result.method] = (totals.byMethod[result.method] || 0) + 1;
       if (result.serverBefore) totals.transitionsWithServerBefore++;
       if (result.serverAfter) totals.transitionsWithServerAfter++;
-      if (result.serverBefore && result.serverAfter && result.serverBefore !== result.serverAfter) totals.serverChangedAcrossTransition++;
+      if (result.serverBefore && result.serverAfter && result.serverBefore !== result.serverAfter) {
+        totals.serverChangedAcrossTransition++;
+      }
     }
-    matches.push({
-      matchId,
-      stateRows: states.length,
-      ...counts,
-      inferredPct: counts.transitions ? Number((100 * counts.inferred / counts.transitions).toFixed(2)) : null,
-      firstTimestamp: states[0].timestamp_utc || null,
-      lastTimestamp: states.at(-1).timestamp_utc || null,
-      firstStateIsZero: Number(states[0].sets_p1) === 0 && Number(states[0].sets_p2) === 0 &&
-        JSON.stringify(gameArray(states[0].games_p1)) === "[0]" && JSON.stringify(gameArray(states[0].games_p2)) === "[0]" &&
-        String(states[0].points_p1) === "0" && String(states[0].points_p2) === "0"
-    });
+    totalObservedTransitions += transitions;
+    totalInferredTransitions += inferred;
+    if (transitions > 0 && inferred === transitions) totals.matchesWithAllTransitionsInferred++;
+    const pct = transitions ? 100 * inferred / transitions : 0;
+    if (pct === 0) totals.inferredTransitionCoverageBins["0%"]++;
+    else if (pct < 50) totals.inferredTransitionCoverageBins["1-49%"]++;
+    else if (pct < 80) totals.inferredTransitionCoverageBins["50-79%"]++;
+    else if (pct < 100) totals.inferredTransitionCoverageBins["80-99%"]++;
+    else totals.inferredTransitionCoverageBins["100%"]++;
   }
+  totals.meanTransitionsPerMatch = groups.size ? Number((totalObservedTransitions / groups.size).toFixed(2)) : null;
+  totals.inferredTransitionPct = totalObservedTransitions ? Number((100 * totalInferredTransitions / totalObservedTransitions).toFixed(2)) : null;
   return {
     schemaVersion: 1,
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
-    totals,
-    matches
+    totals
   };
 }
