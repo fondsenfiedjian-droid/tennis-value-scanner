@@ -500,3 +500,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The adapter now keeps contradictory sides invalid without dereferencing the marker. A regression case includes three conflicting rows for the same side and verifies the malformed match is rejected without crashing.
 - PWA shell cache advanced from v130 to v131 because the precached workload module changed. No prediction probabilities, EV, recommendation gates, archive records, API calls, or scraper settings are changed.
 - Validation and deployment status: PR validation pending; production deployment not yet confirmed.
+
+
+### Workload archive conflict hardening — merged (2026-11-20)
+- PR #53 merged to main as `f7c6200a82b6a5bd7b2e0d4ad5808498a2af7fff` after both regression tests and the project-state documentation guard passed.
+- The archive adapter safely rejects a match group after repeated contradictory player-side rows, including a third conflicting duplicate, rather than throwing. Regression coverage verifies the malformed group is rejected without crashing.
+- PWA shell cache advanced to v131. The change does not alter prediction probabilities, EV, recommendation gates, archive records, external API calls, or scraper settings.
+- Automatic production smoke run `44769210321` started after merge; deployment verification is pending. Do not claim v131 is live until this run completes successfully.
+- Next Human Factor research task: use Valuebetennis CC BY 4.0 match data to test measurable workload proxies (matches in prior 3/7 days, rest interval, playing days, known match duration) against baseline Elo using chronological training/evaluation. The 2025–2026 CSV files are public source data and must not be committed to the repository. Missing duration remains unknown; no factor enters production probabilities without out-of-sample improvement.
