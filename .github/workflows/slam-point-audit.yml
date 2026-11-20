@@ -65,9 +65,9 @@ jobs:
             "|---:|---:|---:|---:|---:|---:|---:|",
             `| ${report.totals.events} | ${report.totals.matchRows} | ${report.totals.uniqueMatchIds} | ${report.totals.pointRows} | ${report.totals.pointMatchIdsLinkedToMetadata} | ${report.totals.orphanPointMatchIds} | ${report.totals.metadataMatchIdsWithoutPoints} |`,
             "",
-            "| Candidate field | Events present | Non-empty across all points | Zero among numeric values |",
-            "|---|---:|---:|---:|",
-            ...Object.entries(report.fieldAvailability).map(([field,s]) => `| ${field} | ${s.eventsPresent} | ${s.nonEmptyPct}% | ${s.zeroPctOfNumeric}% |`)
+            "| Candidate field | Events with data | Events all numeric zero | Non-empty across all points | Zero among numeric values |",
+            "|---|---:|---:|---:|---:|",
+            ...Object.entries(report.fieldAvailability).map(([field,s]) => `| ${field} | ${s.eventsWithData} | ${s.eventsAllNumericZero} | ${s.nonEmptyPct}% | ${s.zeroPctOfNumeric}% |`)
           ];
           await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           NODE
