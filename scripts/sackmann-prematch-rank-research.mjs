@@ -60,7 +60,7 @@ async function main(){
  const rankingFiles=(await readdir(opts["rankings-dir"])).filter(n=>n.endsWith(".csv")).sort();
  if(!rankingFiles.length)throw new Error("No ranking CSV files found");
  const rankings=[];
- for(const name of rankingFiles){const rows=parseCsv(await readFile(join(opts["rankings-dir"],name),"utf8"));rankings.push(...rows);console.error("Loaded "+rows.length+" weekly ranking rows from "+name);}
+ for(const name of rankingFiles){const rows=parseCsv(await readFile(join(opts["rankings-dir"],name),"utf8"));for(const row of rows)rankings.push(row);console.error("Loaded "+rows.length+" weekly ranking rows from "+name);}
  const matches=[];
  for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));matches.push(...rows);console.error("Loaded "+rows.length+" matches from "+basename(file));}
  const built=buildPrematchRankRows(matches,rankings);
