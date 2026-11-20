@@ -4,7 +4,7 @@ import { auditSackmannFiles } from "../scripts/sackmann-data-audit.mjs";
 
 const header = "tourney_id,tourney_name,surface,tourney_level,tourney_date,match_num,winner_id,winner_age,winner_hand,loser_id,loser_age,loser_hand,score,minutes,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_SvGms,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_SvGms,l_bpSaved,l_bpFaced,winner_rank,loser_rank";
 const full = "2024-001,Test,Hard,A,20240101,1,101,25.0,R,202,27.0,L,6-4 6-4,90,5,2,60,40,30,12,9,3,4,4,1,55,35,25,10,9,2,3,10,20";
-const missing = "2024-001,Test,Clay,A,20240102,2,101,25.0,R,303,22.0,R,6-3 6-3,,,,,,,,,,,,,,,,,,,,,,";
+const missing = ["2024-001","Test","Clay","A","20240102","2","101","25.0","R","303","22.0","R","6-3 6-3",...Array(21).fill("")].join(",");
 const retirement = "2024-001,Test,Grass,A,20240103,3,101,25.0,R,404,26.0,L,6-4 RET,30,5,2,60,40,30,12,9,3,4,4,1,55,35,25,10,9,2,3,10,20";
 
 test("Sackmann audit reports coverage without exposing match-level records",()=>{
