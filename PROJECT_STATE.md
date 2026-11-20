@@ -805,3 +805,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Pre-match ranking join now also applies a 45-day freshness ceiling. Older weekly snapshots are treated as missing; the report includes stale-snapshot counts. This avoids carrying a player's rank across long absences.
+
+
+### Pre-match weekly ranking study — completed research (2026-11-20)
+- Strictly joined weekly ATP/WTA ranking snapshots dated before tournament date; same-day rankings excluded; stale snapshots older than 45 days treated as missing.
+- 2000-01-01 to 2026-05-25 walk-forward results: rank+age delta Brier/LogLoss ATP -0.001971/-0.004326 (74,540 matches); WTA -0.002224/-0.004950 (66,882 matches). Aggregate rank and age candidates also improved both metrics.
+- Coverage across all imported archive matches after freshness filter: ATP both-player ranks 77.05%; WTA 65.27%. Average retained snapshot age ATP 7.8 days; WTA 6.6 days.
+- ATP rank+age improved both metrics in all 27 evaluated years. WTA has small year-level regressions in 2017 and a slight LogLoss regression in 2022.
+- Decision: ranking and age are validated research candidates, not production features yet. Require a separate independent recent holdout and further WTA year-level review. No production prediction changes or deployment.
