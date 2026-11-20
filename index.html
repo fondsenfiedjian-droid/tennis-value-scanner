@@ -1532,7 +1532,8 @@
   function selectBestBet(bets,minEv=3,minOdds=1.9){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
     const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(15,Number(minOdds))):1.9;
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&x.odds<=15&&
+      Number.isFinite(x.probability)&&x.probability>0&&x.probability<=100&&
       x.reliabilityEligible===true&&Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=85&&
       x.freshnessLevel==='good'&&x.valueEligible===true)
       .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev)[0]||null;
