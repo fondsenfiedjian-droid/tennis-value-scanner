@@ -235,3 +235,8 @@ Valuebetennis is the selected public historical source for this adapter because 
 - descriptive differences between two players.
 
 The module does **not** assign a subjective fatigue/psychology score and does **not** alter win probabilities. It is not connected to live predictions yet: the current live schedule/profile sources do not establish a complete, verified recent-match history and reliable match durations for each player. Integration is gated on a lawful source, strict pre-match data validation and chronological held-out tests demonstrating improvement.
+
+
+### Archive-derived workload (experimental)
+
+The app prediction archive can provide a **partial sample** of prior completed matches for a player. The experimental adapter counts only verified A/B player-ID pairs on earlier UTC calendar days, excluding same-day matches and the target match. It deliberately does not estimate rest hours or match duration because the archive stores scheduled dates rather than actual finish times. This sparse, selection-biased archive must not be described as complete workload history or used to adjust probabilities without chronological validation.
