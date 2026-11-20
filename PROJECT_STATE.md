@@ -381,4 +381,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added implied market probability (100 / decimal odds) and the model's probability edge in percentage points, alongside model probability, fair odds, EV, reliability and freshness. Existing candidate filters remain unchanged: positive EV, odds 1.90–15.00, reliability >=65, good/medium freshness and positive value-quality gate.
 - «Ставка дня» remains reliability-first and unchanged. No stake sizing, staking advice or bankroll automation was added.
 - Service-worker shell cache advanced to v121.
-- Validation and deployment status: pending PR regression workflow and production deployment checks.
+- First PR regression attempt: 327/330 passed; three failures were stale test expectations still pinned to cache v120 (one app UI assertion and two Worker assertions), not runtime behavior. Updated all three expectations to v121. Rerun pending.
+- Deployment preview and production deployment status: pending final regression result and merge.
