@@ -320,11 +320,11 @@ test("settings preview and immediately persist skin changes", () => {
   const saveStart = html.indexOf("$('#saveSettings').onclick=");
   const saveEnd = html.indexOf("const API=", saveStart);
   const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
-  assert.match(settingsSource, /document\\.body\\.dataset\\.skin=selected/);
-  assert.match(settingsSource, /document\\.documentElement\\.dataset\\.skin=selected/);
-  assert.match(settingsSource, /settings\\.skin=selected/);
+  assert.match(settingsSource, /document\.body\.dataset\.skin=selected/);
+  assert.match(settingsSource, /document\.documentElement\.dataset\.skin=selected/);
+  assert.match(settingsSource, /settings\.skin=selected/);
   assert.match(settingsSource, /activeSkin=selected/);
-  assert.match(settingsSource, /localStorage\\.setItem\\('tvs-settings',JSON\\.stringify\\(settings\\)\\)/);
+  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
   assert.ok(saveStart >= 0);
 });
 
