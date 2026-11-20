@@ -889,3 +889,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Corrected synthetic linkage fixtures to include a later archive boundary row where needed, so tests exercise event matching rather than the global snapshot cutoff; the dedicated out-of-snapshot case keeps the shorter date range.
 
 - Event-name alias usage is now counted from the selected matched result row, not merely from the set of alternative event keys considered; this avoids inflating alias counts when an exact event key also exists.
+
+- The first full linkage workflow downloaded all 109 pinned files but stopped on a strict CSV parser quote error. Added source-filename context to the parser error so the malformed/edge-case file can be identified before changing parsing behavior; no raw file was uploaded.
