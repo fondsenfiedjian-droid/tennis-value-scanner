@@ -121,7 +121,7 @@ test("odds endpoint validates method and requires the Apify secret", async () =>
 });
 
 test("odds endpoint returns and caches only an array from the Apify dataset", async () => {
-  let requestedUrl = "";
+  const requestedUrls = [];
   let requestedHeaders = null;
   let storedKey = null;
   let storedBody = null;
@@ -134,8 +134,16 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   };
   const dataset = [{ bookmaker: "Winamax", oddsDecimal: 1.91, scrapedAt: "2026-11-19T10:00:00Z" }];
   workerSandbox.fetch = async (url, options) => {
-    requestedUrl = url;
+    requestedUrls.push(url);
     requestedHeaders = options.headers;
+    if (url.includes("/runs/last?status=SUCCEEDED")) {
+      return new Response(JSON.stringify({ data: {
+        status: "SUCCEEDED",
+        startedAt: "2026-11-20T10:00:00.000Z",
+        finishedAt: "2026-11-20T10:00:12.000Z",
+        meta: { origin: "SCHEDULER", scheduleId: "schedule-123" }
+      } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     return new Response(JSON.stringify(dataset), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   const result = await call("/odds");
@@ -146,7 +154,15 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.equal(payload.count, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
   assert.ok(Number.isFinite(Date.parse(payload.retrievedAt)));
-  assert.equal(requestedUrl, "https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000");
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.taskRun)), {
+    status: "SUCCEEDED",
+    startedAt: "2026-11-20T10:00:00.000Z",
+    finishedAt: "2026-11-20T10:00:12.000Z",
+    origin: "SCHEDULER",
+    scheduled: true
+  });
+  assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000"));
+  assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last?status=SUCCEEDED"));
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(storedKey, "https://worker.test/odds");
