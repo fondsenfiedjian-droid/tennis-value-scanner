@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: 22
       - name: Download pinned Slam metadata and ATP/WTA results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
@@ -48,7 +50,9 @@ jobs:
             name="\${path##*/}"
             echo "Downloading $path"
             curl --fail --silent --show-error --location --connect-timeout 15 --max-time 90 --retry 4 --retry-all-errors --retry-delay 5 --retry-max-time 180 \
-              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/83733587353df8a41f2fd4f516147d5aa83f5a8d/$path" \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "Accept: application/vnd.github.raw" \
+              "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/contents/$path?ref=83733587353df8a41f2fd4f516147d5aa83f5a8d" \
               --output "research-data/$name"
             test -s "research-data/$name"
           ' _
