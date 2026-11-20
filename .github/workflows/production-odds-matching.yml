@@ -1,0 +1,21 @@
+name: Production odds matching check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  matching:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify production Winamax-to-match pairing
+        env:
+          APP_URL: https://fascinating-paprenjak-1aa9b3.netlify.app
+          API_URL: https://tennis-value-api.fonds-enfiedjian.workers.dev
+        run: node scripts/production-odds-matching-check.mjs
