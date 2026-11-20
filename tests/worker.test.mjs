@@ -251,7 +251,7 @@ test("odds diagnostics report schema coverage, bookmaker names, outcomes and quo
   assert.equal(payload.diagnostics.parseableScrapedAt, 3);
   assert.equal(payload.diagnostics.freshScrapedAt, 2);
   assert.equal(payload.diagnostics.fieldCoverage.eventId, 2);
-  assert.equal(payload.diagnostics.fieldCoverage.scrapedAt, 2);
+  assert.equal(payload.diagnostics.fieldCoverage.scrapedAt, 3);
 });
 
 test("odds endpoint rejects malformed non-array Apify responses instead of caching them", async () => {
@@ -737,7 +737,7 @@ test("data freshness is labelled conservatively from rating dates and odds age",
   assert.ok(start >= 0 && end > start);
   const validDateStart = frontendSource.indexOf("function validRatingDate(");
   const validDateEnd = frontendSource.indexOf("function isValidPredictionResult(", validDateStart);
-  const sandbox = { Date, Number, Math };
+  const sandbox = { Date, Number, Math, ODDS_FRESHNESS_MAX_AGE_MINUTES: 6 * 60 };
   vm.runInNewContext(frontendSource.slice(validDateStart, validDateEnd) +
     frontendSource.slice(start, end) + "\nglobalThis.assess = assessDataFreshness;", sandbox);
   const now = Date.parse("2026-11-18T12:00:00Z");
@@ -745,7 +745,9 @@ test("data freshness is labelled conservatively from rating dates and odds age",
   assert.equal(sandbox.assess("2026-10-20", "2026-10-21", 60, now).level, "medium");
   assert.equal(sandbox.assess(null, "2026-11-11", 10, now).level, "limited");
   assert.equal(sandbox.assess("2026-10-01", "2026-10-02", 10, now).level, "limited");
-  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 120, now).level, "limited");
+  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 120, now).level, "medium");
+  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 360, now).level, "medium");
+  assert.equal(sandbox.assess("2026-11-10", "2026-11-11", 361, now).level, "limited");
 });
 
 test("frontend inline JavaScript parses without syntax errors", () => {
@@ -1709,7 +1711,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v117/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v118/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2401,7 +2403,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v117/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v118/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -2496,7 +2498,7 @@ test("PFE Monte Carlo is reproducible and labels the limits of its stress simula
 test("live prediction cards connect the Elo estimate to PFE without changing the source probability", () => {
   assert.ok(frontendSource.includes("TVSPFE.fusePredictions(pfeModels)"));
   assert.ok(frontendSource.includes("marketContext.marketProbabilityA/100"));
-  assert.ok(frontendSource.includes("currentOddsAge<=90"));
+  assert.ok(frontendSource.includes("currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES"));
   assert.ok(frontendSource.includes("pfeAssessment.disagreement"));
   assert.ok(frontendSource.includes("pfeSourceLabels"));
   assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
