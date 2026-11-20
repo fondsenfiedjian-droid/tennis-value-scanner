@@ -96,3 +96,7 @@ Next step: map each literal code to the correct workbook formula/category and ve
 
 The aggregate CSV field names are not sufficient to infer row orientation or category codes. A separate CI workflow now downloads the pinned `MatchChart 0.3.2.xlsm` workbook into an ephemeral runner and extracts the Instructions, MatchStats, and Tables sheets plus the first 18 rows of MATCH and Points (column maps and first calculated point row), including formulas and cached values where available, as a seven-day artifact. The raw workbook is not committed or retained. The extracted codebook sheets must be reviewed before any row-code mapping, player-perspective assumption, or denominator is accepted. Source attribution and CC BY-NC-SA 4.0 terms accompany the extraction.
 
+
+## Lower-tier history research
+
+A pinned aggregate-only audit covers 144 ATP Futures, ATP Challenger/qualifying, and WTA ITF/qualifying CSVs. It found 1,336,767 completed source rows and 1,325,071 unique natural match identities. WTA ITF/qualifying contains 11,696 exact duplicate groups and zero conflicting groups. Both-player core serve-stat coverage is 57.52% for ATP Challenger/qualifying, 4.84% for ATP Futures, and 8.99% for WTA ITF/qualifying. These are separate competitive populations; do not merge into the main-tour Elo stream until tier-aware rating transitions pass chronological holdout tests.
