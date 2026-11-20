@@ -58,6 +58,15 @@ function makeWinamaxQuote(overrides = {}) {
   };
 }
 
+const recommendationStart = html.indexOf("function selectBestBet(");
+const recommendationEnd = html.indexOf("function renderBestBet(", recommendationStart);
+const recommendationSource = html.slice(recommendationStart, recommendationEnd);
+function runSelectBestBet(bets, minEv=3, minOdds=1.9) {
+  const sandbox = {};
+  vm.runInNewContext(recommendationSource + "\\nglobalThis.selectBestBet = selectBestBet;", sandbox);
+  return sandbox.selectBestBet(bets, minEv, minOdds);
+}
+
 test("result checks retry pending matches every 30 minutes and settled matches daily", () => {
   const now = Date.parse("2026-11-20T12:00:00.000Z");
   const minutesAgo = minutes => now - minutes * 60 * 1000;
@@ -350,6 +359,20 @@ test("frontend API requests have a bounded timeout and clear their timer", () =>
   }
 });
 
+
+test("Bet of the Day enforces the full odds range and valid model probability", () => {
+  const valid = {
+    ev: 8, odds: 2.2, probability: 72, reliabilityEligible: true,
+    reliabilityScore: 91, freshnessLevel: "good", valueEligible: true
+  };
+  assert.equal(runSelectBestBet([valid], 3, 1.5)?.odds, 2.2);
+  assert.equal(runSelectBestBet([{ ...valid, odds: 15 }], 3, 1.5)?.odds, 15);
+  assert.equal(runSelectBestBet([{ ...valid, odds: 15.01 }], 3, 1.5), null);
+  assert.equal(runSelectBestBet([{ ...valid, odds: 1.49 }], 3, 1.5), null);
+  assert.equal(runSelectBestBet([{ ...valid, probability: 0 }], 3, 1.5), null);
+  assert.equal(runSelectBestBet([{ ...valid, probability: 100.01 }], 3, 1.5), null);
+  assert.equal(runSelectBestBet([{ ...valid, probability: Number.NaN }], 3, 1.5), null);
+});
 
 test("best bet of the day prioritizes validated reliability and opens its match from the whole feature card", () => {
   assert.match(html, /id="bestBet" class="best-bet" role="button" tabindex="0"/);
