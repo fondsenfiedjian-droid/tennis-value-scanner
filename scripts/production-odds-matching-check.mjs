@@ -83,6 +83,7 @@ const predictionCandidates = matched.filter(row =>
 ).slice(0, 9);
 let successfulPredictions = 0;
 let unavailableRatings = 0;
+let profileFetchErrors = 0;
 if (predictionCandidates.length) {
   for (const candidate of predictionCandidates) {
     const predictionResponse = await fetch(API_URL + "/predict", {
@@ -110,6 +111,11 @@ if (predictionCandidates.length) {
           ratingTypes: [prediction.ratingTypeA ?? null, prediction.ratingTypeB ?? null]
         }));
         continue;
+      }
+      if (predictionResponse.status === 502 && String(prediction.error || "").includes("Could not retrieve one or both player profiles")) {
+        profileFetchErrors++;
+        console.log("LIVE ELO PROFILE FETCH ERROR", JSON.stringify({ match: candidate.match, error: prediction.error }));
+        break;
       }
       throw new Error("Live Elo prediction failed for " + candidate.match + ": " + (prediction.error || predictionResponse.status));
     }
@@ -143,7 +149,8 @@ if (predictionCandidates.length) {
       surface: prediction.surface || candidate.surface || null
     }));
   }
-  console.log("Prediction coverage:", successfulPredictions, "calculated;", unavailableRatings, "without usable Elo ratings.");
+  const notChecked = predictionCandidates.length - successfulPredictions - unavailableRatings - profileFetchErrors;
+  console.log("Prediction coverage:", successfulPredictions, "calculated;", unavailableRatings, "without usable Elo ratings;", profileFetchErrors, "profile fetch errors;", notChecked, "not checked after provider error.");
   if (successfulPredictions === 0) {
     throw new Error("No live Elo prediction could be calculated for the selected matched markets");
   }

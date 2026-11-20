@@ -1628,7 +1628,7 @@
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
-    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,8)];
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,5)];
     const totalCandidates=allCandidates.length;
     const dayBets=[];
     renderBestBet(dayBets,0,totalCandidates);
