@@ -413,6 +413,7 @@
   let oddsRetrievedAt = null;
   let oddsLoadError = null;
   let oddsDiagnostics = null;
+  let oddsTaskRun = null;
   function oddsDiagnosticsText(){
     if(!oddsDiagnostics||typeof oddsDiagnostics!=='object')return '';
     const d=oddsDiagnostics,outcomes=d.outcomeCounts||{};
@@ -433,7 +434,10 @@
     const summary=oddsFreshnessSummary();
     const lastSeen=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
     const retrievedTimestamp=Date.parse(oddsRetrievedAt||'');
-    const sourceSeen=Number.isFinite(retrievedTimestamp)?' · источник получен '+new Date(retrievedTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно';
+    const runTimestamp=Date.parse(oddsTaskRun?.finishedAt||oddsTaskRun?.startedAt||'');
+    const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
+    const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
+    const sourceSeen=(Number.isFinite(retrievedTimestamp)?' · источник получен '+new Date(retrievedTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно')+taskRunSeen;
     if(oddsLoadError){
       node.textContent=(cachedOdds.length
         ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
@@ -457,6 +461,7 @@
         cachedOddsSavedAt=item.savedAt;
         oddsRetrievedAt=typeof item.retrievedAt==='string'&&Number.isFinite(Date.parse(item.retrievedAt))?item.retrievedAt:null;
          oddsDiagnostics=item.diagnostics&&typeof item.diagnostics==='object'?item.diagnostics:null;
+        oddsTaskRun=item.taskRun&&typeof item.taskRun==='object'?item.taskRun:null;
       }else localStorage.removeItem('tvs-odds-cache');
     }
   }catch(e){localStorage.removeItem('tvs-odds-cache');}
@@ -473,7 +478,8 @@
       oddsRetrievedAt=Number.isFinite(retrievedTimestamp)&&retrievedTimestamp<=Date.now()+5*60*1000?new Date(retrievedTimestamp).toISOString():null;
       oddsLoadError=null;
       oddsDiagnostics=payload.diagnostics&&typeof payload.diagnostics==='object'?payload.diagnostics:null;
-      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds,diagnostics:oddsDiagnostics}));
+      oddsTaskRun=payload.taskRun&&typeof payload.taskRun==='object'?payload.taskRun:null;
+      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds,diagnostics:oddsDiagnostics,taskRun:oddsTaskRun}));
       renderOddsStatus();
       return true;
     }catch(err){
