@@ -1518,7 +1518,7 @@
       .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev)[0]||null;
   }
   function selectHighestEvBet(bets){
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&Number.isFinite(x.odds)&&x.odds>=1.5&&x.odds<=15&&
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&Number.isFinite(x.odds)&&x.odds>=1.9&&x.odds<=15&&
       Number.isFinite(x.probability)&&x.probability>0&&x.probability<=100&&
       Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=65&&
       ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible===true)
@@ -1643,7 +1643,7 @@
     const allCandidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       const el=document.getElementById('model-'+i);
-      const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.5&&v<=15);
+      const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9&&v<=15);
       return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
     // Reuse every valid local prediction; cap new profile lookups at eight per scan.

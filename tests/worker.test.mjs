@@ -671,7 +671,7 @@ test("maximum EV selection prioritizes expected value but requires verified inpu
     candidate("Stale quote", 55, 90, "limited"),
     candidate("Weak data quality", 52, 64, "good"),
     candidate("Invalid probability", 49, 90, "good", 0),
-    candidate("Odds too low", 48, 90, "good", 60, 1.4),
+    candidate("Odds too low", 48, 90, "good", 60, 1.8),
     candidate("Negative EV", -2, 99, "good")
   ];
   assert.equal(sandbox.select(bets).player, "Highest EV");
@@ -1735,7 +1735,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v119/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v120/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2427,7 +2427,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v119/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v120/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
