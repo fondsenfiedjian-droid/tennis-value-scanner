@@ -342,3 +342,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added pure helper `analyzeArchiveWorkloadCoverage()` in `human-factor.js` and regression coverage for completed pairs, missing IDs and prior-day availability.
 - The diagnostic remains descriptive: the prediction archive is a partial sample, not a complete tour history. Same-day records are excluded.
 - Next: run regression workflow; after deployment is confirmed, ask the user to open Statistics → «Аудит нагрузки игроков» and share only the small numeric report. Then decide whether archive coverage is sufficient for a chronological experiment.
+
+### Production smoke-check version assertion correction (2026-11-20)
+- The first production smoke check after PR #36 reached the Netlify app successfully (HTTP 200) and found the expected title/Bet of the Day UI, but failed because `.github/workflows/automatic-production-smoke.yml` still hard-coded service-worker cache v116.
+- Main now ships cache v117 with `human-factor.js` precached. This is a stale smoke-test assertion, not evidence that the PWA itself failed to load.
+- Follow-up PR replaces the brittle fixed cache-version check with validation that a versioned service worker is present and that `human-factor.js` is precached. The rerun will confirm the live deployed version.
+- No production archive data is accessed; this correction affects CI verification only.
