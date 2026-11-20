@@ -1,0 +1,100 @@
+name: Automatic production smoke check
+
+on:
+  workflow_run:
+    workflows: ["Regression tests"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Allow hosting deployments to start
+        run: sleep 90
+
+      - name: Check deployed PWA and production API
+        env:
+          APP_URL: https://fascinating-paprenjak-1aa9b3.netlify.app
+          API_URL: https://tennis-value-api.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          async function getWithRetry(url, attempts = 6) {
+            let lastError;
+            for (let attempt = 1; attempt <= attempts; attempt++) {
+              try {
+                const response = await fetch(url, {
+                  signal: AbortSignal.timeout(15000),
+                  headers: { accept: "application/json,text/html,*/*" },
+                  cache: "no-store"
+                });
+                if (response.ok) return response;
+                const retryable = response.status === 404 || response.status === 429 || response.status >= 500;
+                if (!retryable || attempt === attempts) {
+                  throw new Error(`${url} returned HTTP ${response.status}`);
+                }
+                const retryAfter = Number(response.headers.get("Retry-After"));
+                await wait(Number.isFinite(retryAfter) && retryAfter > 0
+                  ? Math.min(retryAfter * 1000, 30000)
+                  : 20000);
+              } catch (error) {
+                lastError = error;
+                if (attempt === attempts) break;
+                await wait(20000);
+              }
+            }
+            throw lastError || new Error(`Could not reach ${url}`);
+          }
+
+          const appResponse = await getWithRetry(process.env.APP_URL);
+          const html = await appResponse.text();
+          if (!html.includes("Tennis Value Scanner")) {
+            throw new Error("PWA HTML does not contain the expected app title");
+          }
+          console.log("PWA HTML: HTTP", appResponse.status, "title present");
+
+          const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
+          const serviceWorker = await swResponse.text();
+          if (!serviceWorker.includes("tennis-value-static-v113")) {
+            throw new Error("Netlify is not serving the expected service-worker cache version v113");
+          }
+          console.log("PWA service worker: cache v113 is published");
+
+          const healthResponse = await getWithRetry(process.env.API_URL + "/health");
+          const health = await healthResponse.json();
+          if (health.status !== "ok" || health.service !== "tennis-value-api") {
+            throw new Error("Worker health response is invalid");
+          }
+          if (!health.liveTennisApiConfigured || !health.apifyTokenConfigured || !health.apifyTaskConfigured) {
+            throw new Error("Worker is missing one or more required API configuration flags");
+          }
+          console.log("Worker health: OK; required configuration flags are present");
+
+          const matchesResponse = await getWithRetry(
+            process.env.API_URL + "/matches?status=upcoming&draw=singles&limit=5"
+          );
+          const matchesPayload = await matchesResponse.json();
+          const matches = Array.isArray(matchesPayload) ? matchesPayload
+            : [matchesPayload?.data, matchesPayload?.matches, matchesPayload?.results, matchesPayload?.events]
+              .find(Array.isArray);
+          if (!matches) throw new Error("Matches endpoint returned an unrecognized payload shape");
+          console.log("Matches API: HTTP", matchesResponse.status, "records:", matches.length,
+            "cache:", matchesResponse.headers.get("X-Data-Cache") || "unknown");
+
+          const oddsResponse = await getWithRetry(process.env.API_URL + "/odds");
+          const odds = await oddsResponse.json();
+          if (!Array.isArray(odds.items) || !odds.diagnostics) {
+            throw new Error("Odds endpoint is missing items or diagnostics");
+          }
+          console.log("Winamax feed: HTTP", oddsResponse.status, "items:", odds.items.length,
+            "valid decimal odds:", odds.diagnostics.validDecimalOdds ?? "unknown",
+            "fresh scrape timestamps:", odds.diagnostics.freshScrapedAt ?? "unknown",
+            "cache:", oddsResponse.headers.get("X-Data-Cache") || "unknown");
+          console.log("Production smoke check passed. Empty or stale odds remain visible as a feed-quality issue.");
+          NODE
