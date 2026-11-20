@@ -888,3 +888,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - Initial MCP-to-main-tour linkage run (44834422370): 7,548/11,822 unique charted match IDs linked (63.85%) using exact full-name pair + tour/year/event/round; 0 ambiguous, 36 round conflicts, 400 event mismatches, 3,838 pairs absent from that year's main-tour results. Date diagnostics flagged 162 negative offsets and 5 offsets over 21 days. These figures are superseded by the expanded lower-tier run when available.
 - Expanded the linkage audit to include the 144 pinned Futures, Challenger/qualifying and ITF/qualifying CSVs, classify accepted links by tier, and report date-offset anomalies separately. This is research-only; no player-level records or raw data are retained.
+
+
+- Aggregate family arithmetic checks on pinned ATP CSVs: Overview second_in equals serve_pts minus first_in in 15,090/15,090 player-match totals; ServeBasics first-/second-serve rows sum to Total for pts and pts_won in 15,087/15,087 groups; ShotDirection F/B/S rows sum to Total across all five direction columns in 14,842/14,842 complete groups; SnV first-/second-serve subdivisions sum to SnV/nonSnV across all reported count columns in 3,623/3,623 complete groups.
+- ServeDirection direction counts did not equal ServeBasics point counts in 620/15,087 checked groups; ServeInfluence pts did not consistently match ServeBasics denominators. These families remain blocked from rate construction until denominator differences are explained. No production features activated.
