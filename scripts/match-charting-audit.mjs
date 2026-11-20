@@ -18,7 +18,7 @@ const FILES = [
 ];
 const TOURS = ["m", "w"];
 const text = value => String(value ?? "").trim();
-const validDate = value => /^\\d{8}$/.test(text(value)) &&
+const validDate = value => /^\d{8}$/.test(text(value)) &&
   Number(text(value).slice(0,4)) >= 1900 &&
   Number(text(value).slice(4,6)) >= 1 && Number(text(value).slice(4,6)) <= 12 &&
   Number(text(value).slice(6,8)) >= 1 && Number(text(value).slice(6,8)) <= 31;
