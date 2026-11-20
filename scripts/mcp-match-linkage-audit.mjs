@@ -35,10 +35,14 @@ function eventKeys(name, year) {
   const keys = new Set([base]);
   if (base.endsWith("masters") && base.length > 7) keys.add(base.slice(0, -7));
   if (base === "canadamasters") ["canada", "toronto", "montreal"].forEach(x => keys.add(x));
+  if (base === "australianopen") keys.add("melbourne");
+  if (base === "rolandgarros") ["frenchopen", "paris"].forEach(x => keys.add(x));
+  if (base === "wimbledon") keys.add("london");
+  if (base === "usopen") ["newyork", "foresthills"].forEach(x => keys.add(x));
   if (base === "wtachampionships" || base === "tourchampionships") ["wtatourchampionships", "wtachampionships"].forEach(x => keys.add(x));
   if (base === "olympics") {
     const host = {1988:"seoul",1992:"barcelona",1996:"atlanta",2000:"sydney",2004:"athens",2008:"beijing",2012:"london",2016:"riodejaneiro",2021:"tokyo",2024:"paris"}[year];
-    if (host) keys.add(host);
+    if (host) { keys.add(host); keys.add(host + "olympics"); }
   }
   if (base === "parisolympics") keys.add("paris");
   if (base === "tokyoolympics") keys.add("tokyo");
