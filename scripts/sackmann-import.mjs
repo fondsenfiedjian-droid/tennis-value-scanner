@@ -18,13 +18,15 @@ const finiteOrNull = v => {
   if(v==null || String(v).trim()==="") return null;
   const n=Number(v); return Number.isFinite(n) ? n : null;
 };
-const completedScore = (value, bestOf) => {
+const completedScore = (value, bestOf, tourneyName) => {
   const s=String(value??"").trim();
   if(!s || /\b(?:W\/O|RET|ABD|DEF|DEFAULT|CANC)\b/i.test(s)) return false;
-  const sets=[...s.matchAll(/(\d{1,2})-(\d{1,2})/g)]
+  const fast4=/next\s*gen|fast\s*4/i.test(String(tourneyName??""));
+  const sets=[...s.matchAll(/(\d{1,2})-(\d{1,2})(?:\((\d+)\))?/g)]
     .filter(match=>{
       const a=Number(match[1]),b=Number(match[2]);
       const high=Math.max(a,b),low=Math.min(a,b);
+      if(fast4) return (high>=4 && high-low>=2) || (high===4 && low===3 && match[3]!==undefined);
       return (high>=6 && high-low>=2) || (high===7 && low===6);
     }).length;
   const format=Number(bestOf);
@@ -40,7 +42,7 @@ export function normalizeSackmannRows(rows, tour) {
     if(!positiveId(row.winner_id)||!positiveId(row.loser_id)||String(row.winner_id)===String(row.loser_id)){
       excluded.invalidPlayers++;continue;
     }
-    if(!completedScore(row.score,row.best_of)){excluded.unfinishedOrRetired++;continue;}
+    if(!completedScore(row.score,row.best_of,row.tourney_name)){excluded.unfinishedOrRetired++;continue;}
     const surface=SURFACES.get(String(row.surface??"").trim().toLowerCase())??null;
     if(!surface) excluded.unsupportedSurface++;
     output.push({
