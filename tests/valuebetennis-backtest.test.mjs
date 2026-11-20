@@ -27,6 +27,23 @@ test("Valuebetennis CSV maps source columns into chronological Elo rows", () => 
   assert.equal(parsed.rows[1].tour, "wta");
 });
 
+test("Valuebetennis importer excludes matches ending inside an unfinished set", () => {
+  const csv = [
+    header,
+    "9501,2026-11-19,801,wta,Clay,1,2,1,7-5 2-1,1.8,2.0,1.7,2.1",
+    "9502,2026-11-19,802,atp,Hard,3,4,4,4-6 6-3 0-2,1.8,2.0,1.7,2.1",
+    "9503,2026-11-19,803,atp,Hard,5,6,5,6-3 2-2,1.8,2.0,1.7,2.1",
+    "9504,2026-11-19,804,atp,Hard,7,8,7,6-4 3-6 6-2,1.8,2.0,1.7,2.1",
+    "9505,2026-11-19,805,atp,Hard,9,10,9,6-4 7-6(6),1.8,2.0,1.7,2.1"
+  ].join("\\n");
+  const parsed = parseValuebetennisCsv(csv);
+  assert.equal(parsed.inputRows, 5);
+  assert.equal(parsed.rows.length, 2);
+  assert.equal(parsed.rejectedRows, 3);
+  assert.equal(parsed.rejectedByReason.incomplete_set_score, 3);
+  assert.deepEqual(parsed.rows.map(row => row.match_num), ["9504", "9505"]);
+});
+
 test("Valuebetennis importer detects semicolon delimiter and UTF-8 BOM", () => {
   const csv = "\uFEFF" + header.replaceAll(",", ";") + "\n" +
     "2001;2025-02-01;600;atp;Grass;12;13;13;6-4 6-4;2;1.8;2.1;1.7";
