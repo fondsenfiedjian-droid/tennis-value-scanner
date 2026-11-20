@@ -692,9 +692,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The importer has only passed unit tests so far; it has not yet been run against actual ATP/WTA archive CSVs. Next: validate on small source samples, then run separate chronological ATP/WTA backtests and test rank/age as additional pre-match signals. Do not activate these signals in production unless out-of-sample results show a repeatable improvement.
 
 
-### Sackmann importer score-completeness correction — implementation in review (2026-11-20)
+### Sackmann importer score-completeness correction — merged (2026-11-20)
 - Inspection of actual archive ATP/WTA 2025 CSVs confirmed the source schema and exposed that a score containing a partial second set (e.g. 7-5 2-1) must not be treated as a completed match.
 - Follow-up importer validates completed set scores only, requires at least two completed sets for best-of-three and three for best-of-five, and continues excluding explicit RET/W/O/ABD/DEF/DEFAULT/CANC outcomes.
 - Regression tests cover partial set fragments and best-of-five minimum completed sets.
 - No production model, deployment, Live Tennis API, Apify, paid service or archive data storage is affected.
-- Branch: `fix/sackmann-score-filter-v2`; CI/PR pending. The importer has not yet been run against the full archive.
+- PR #68 merged to `main` on 2026-11-20 as `55985093c3f87a740417cd72f0c9a20835a07b07`. Regression tests `44810204287` and project-state guard `44810204145` passed. A local focused check also passed seven score-completeness cases. No production deployment or API/Apify usage was required.
+- Real ATP/WTA 2025 files were inspected for schema compatibility, but the importer has not yet been run against the full archive. Next: run the importer on a small, representative ATP/WTA CSV sample, then execute separate chronological backtests and evaluate rank/age features without leakage.
