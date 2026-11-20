@@ -56,7 +56,7 @@ export function auditSlamMatchLinkage(files){
   }
   const events=[];
   for(const [eventKey,meta] of [...slamMeta.entries()].sort(([a],[b])=>a.localeCompare(b))){
-    let linked=0,linkedATP=0,linkedWTA=0,linkedByFullName=0,linkedByInitialSurname=0,aliasAmbiguous=0,aliasEligible=0,aliasCandidateFound=0,aliasNoCandidate=0,ambiguous=0,unmatched=0,missingNames=0,roundConflicts=0,winnerChecks=0,winnerMismatches=0;
+    let linked=0,linkedATP=0,linkedWTA=0,linkedByFullName=0,linkedByInitialSurname=0,aliasAmbiguous=0,aliasEligible=0,aliasCandidateFound=0,aliasNoCandidate=0,aliasUnavailable=0,ambiguous=0,unmatched=0,missingNames=0,roundConflicts=0,winnerChecks=0,winnerMismatches=0;
     let firstDate=null,lastDate=null;
     const seenIds=new Set(),metadataRoundCounts={},metadataWinnerCounts={},mainTourRoundCounts={},roundConflictPairs={};
     for(const row of meta.rows){
@@ -80,6 +80,7 @@ export function auditSlamMatchLinkage(files){
           if(candidates.length)aliasCandidateFound++;else aliasNoCandidate++;
           linkMethod="initial-surname";
         } else if(ids1?.size>1||ids2?.size>1) aliasAmbiguous++;
+        else aliasUnavailable++;
       }
       const round=normalizeRound(row.round);
       if(candidates.length>1&&round){
@@ -118,7 +119,7 @@ export function auditSlamMatchLinkage(files){
     const metadataRows=meta.rows.length;
     events.push({
       year:meta.year,slam:meta.slam,metadataRows,uniqueMetadataMatchIds:seenIds.size,
-      linkedUniqueMatches:linked,linkedATP,linkedWTA,linkedByFullName,linkedByInitialSurname,aliasAmbiguous,aliasEligible,aliasCandidateFound,aliasNoCandidate,ambiguous,unmatched,missingPlayerNames:missingNames,roundConflicts,
+      linkedUniqueMatches:linked,linkedATP,linkedWTA,linkedByFullName,linkedByInitialSurname,aliasAmbiguous,aliasEligible,aliasCandidateFound,aliasNoCandidate,aliasUnavailable,ambiguous,unmatched,missingPlayerNames:missingNames,roundConflicts,
       winnerCrossChecks:winnerChecks,winnerMismatches,
       metadataRoundCounts,metadataWinnerCounts,mainTourRoundCounts,roundConflictPairs,
       linkagePct:metadataRows?Number((100*linked/metadataRows).toFixed(2)):null,
@@ -129,10 +130,10 @@ export function auditSlamMatchLinkage(files){
   const totals=events.reduce((s,e)=>({
     events:s.events+1,metadataRows:s.metadataRows+e.metadataRows,uniqueMetadataMatchIds:s.uniqueMetadataMatchIds+e.uniqueMetadataMatchIds,
     linkedUniqueMatches:s.linkedUniqueMatches+e.linkedUniqueMatches,linkedATP:s.linkedATP+e.linkedATP,linkedWTA:s.linkedWTA+e.linkedWTA,
-    linkedByFullName:s.linkedByFullName+e.linkedByFullName,linkedByInitialSurname:s.linkedByInitialSurname+e.linkedByInitialSurname,aliasAmbiguous:s.aliasAmbiguous+e.aliasAmbiguous,aliasEligible:s.aliasEligible+e.aliasEligible,aliasCandidateFound:s.aliasCandidateFound+e.aliasCandidateFound,aliasNoCandidate:s.aliasNoCandidate+e.aliasNoCandidate,
+    linkedByFullName:s.linkedByFullName+e.linkedByFullName,linkedByInitialSurname:s.linkedByInitialSurname+e.linkedByInitialSurname,aliasAmbiguous:s.aliasAmbiguous+e.aliasAmbiguous,aliasEligible:s.aliasEligible+e.aliasEligible,aliasCandidateFound:s.aliasCandidateFound+e.aliasCandidateFound,aliasNoCandidate:s.aliasNoCandidate+e.aliasNoCandidate,aliasUnavailable:s.aliasUnavailable+e.aliasUnavailable,
     ambiguous:s.ambiguous+e.ambiguous,unmatched:s.unmatched+e.unmatched,missingPlayerNames:s.missingPlayerNames+e.missingPlayerNames,
     roundConflicts:s.roundConflicts+e.roundConflicts,winnerCrossChecks:s.winnerCrossChecks+e.winnerCrossChecks,winnerMismatches:s.winnerMismatches+e.winnerMismatches
-  }),{events:0,metadataRows:0,uniqueMetadataMatchIds:0,linkedUniqueMatches:0,linkedATP:0,linkedWTA:0,linkedByFullName:0,linkedByInitialSurname:0,aliasAmbiguous:0,aliasEligible:0,aliasCandidateFound:0,aliasNoCandidate:0,ambiguous:0,unmatched:0,missingPlayerNames:0,roundConflicts:0,winnerCrossChecks:0,winnerMismatches:0});
+  }),{events:0,metadataRows:0,uniqueMetadataMatchIds:0,linkedUniqueMatches:0,linkedATP:0,linkedWTA:0,linkedByFullName:0,linkedByInitialSurname:0,aliasAmbiguous:0,aliasEligible:0,aliasCandidateFound:0,aliasNoCandidate:0,aliasUnavailable:0,ambiguous:0,unmatched:0,missingPlayerNames:0,roundConflicts:0,winnerCrossChecks:0,winnerMismatches:0});
   return {
     schemaVersion:1,source:"Jeff Sackmann Grand Slam point-by-point archive linked to Sackmann ATP/WTA main-tour results",
     sourceCommit:PINNED_COMMIT,license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",
