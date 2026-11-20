@@ -332,6 +332,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 ## Local-only archive workload coverage audit (2026-11-20)
+- Regression follow-up exposed two stale `worker.test.mjs` assertions still expecting v116; both now track v117. The first run failed only on those stale expectations (all other tests passed); rerunning after this correction.
 
 - Local archive workload audit merged in PR #35, merge commit `6b2c465ed54580024c98d9219fc46a8c790ebe8d`; regression run `44747445182`: 329 tests passed, 0 failed; project-state guard run `44747445296` passed.
 - Follow-up cache correction: advance PWA shell cache to v117 and precache `human-factor.js`, the local audit module, so clients update the interface and the module is available offline. Production Netlify deployment is not yet verified.
