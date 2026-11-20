@@ -389,7 +389,7 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /box\.onclick=openDetails/);
   assert.match(html, /box\.onkeydown=/);
   assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const highest=selectHighestEvBet\(evBets\)/);
+  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html, /x\.reliabilityScore>=65/);
   assert.match(html, /x\.valueEligible===true/);
   assert.match(html, /Качество данных:/);
@@ -499,4 +499,15 @@ test("EV panel preserves bookmaker pair and opens match when prediction calculat
   assert.match(html, /evButton\.hidden=false;/);
   assert.match(html, /quote\.matchIndex/);
   assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
+});
+
+
+test("configured minimum EV and odds range gate both recommendation types",()=>{
+  assert.match(html,/function currentValueFilters\(\)/);
+  assert.match(html,/const valueFilters=currentValueFilters\(\)/);
+  assert.match(html,/selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
+  assert.match(html,/selectBestBet\(bets,filters\.minEv,Math\.max\(filters\.minOdds,bestBetMinOdds\),filters\.maxOdds\)/);
+  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.ev>0\)evDayBets\.push\(bet\)/);
+  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.odds>=1\.9&&bet\.ev>0\)dayBets\.push\(bet\)/);
+  assert.match(html,/v>=valueFilters\.minOdds&&v<=valueFilters\.maxOdds/);
 });

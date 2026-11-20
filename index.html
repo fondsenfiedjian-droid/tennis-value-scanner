@@ -298,6 +298,14 @@
     const minutes=Number(value);
     return [0,30,60,180].includes(minutes)?minutes:60;
   }
+  function currentValueFilters(){
+    const settings=readSettings();
+    const finite=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
+    const minEv=Math.max(0,Math.min(100,finite(settings.minEv,3)));
+    const minOdds=Math.max(1.9,Math.min(100,finite(settings.minOdds,1.9)));
+    const maxOdds=Math.max(minOdds,Math.min(100,finite(settings.maxOdds,5)));
+    return {minEv,minOdds,maxOdds};
+  }
   const saved=readSettings();
   let activeSkin=saved.skin==='olive'?'olive':'black';
   function applySkin(skin){
@@ -1529,17 +1537,21 @@
     if(ratingQuality==='invalid')reasons.push('invalid_rating_quality');
     return {eligible:reasons.length===0,reasons};
   }
-  function selectBestBet(bets,minEv=3,minOdds=1.9){
+  function selectBestBet(bets,minEv=3,minOdds=1.9,maxOdds=15){
     const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
-    const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(15,Number(minOdds))):1.9;
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&x.odds<=15&&
+    const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(100,Number(minOdds))):1.9;
+    const oddsCeiling=Number.isFinite(Number(maxOdds))?Math.max(oddsFloor,Math.min(100,Number(maxOdds))):15;
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&x.odds<=oddsCeiling&&x.odds<=15&&
       Number.isFinite(x.probability)&&x.probability>0&&x.probability<=100&&
       x.reliabilityEligible===true&&Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=85&&
       x.freshnessLevel==='good'&&x.valueEligible===true)
       .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev)[0]||null;
   }
-  function selectHighestEvBet(bets){
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&Number.isFinite(x.odds)&&x.odds>=1.9&&x.odds<=15&&
+  function selectHighestEvBet(bets,minEv=0,minOdds=1.9,maxOdds=15){
+    const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):0;
+    const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.9,Number(minOdds)):1.9;
+    const oddsCeiling=Number.isFinite(Number(maxOdds))?Math.max(oddsFloor,Number(maxOdds)):15;
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&x.odds<=oddsCeiling&&x.odds<=15&&
       Number.isFinite(x.probability)&&x.probability>0&&x.probability<=100&&
       Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=65&&
       ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible===true)
@@ -1548,12 +1560,11 @@
   function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets,oddsFallback=[]){
     const box=$('#bestBet'),evBox=$('#highestEv');
     if(!box||!evBox)return;
-    const configuredMinEv=Number($('#minEv').value);
-    const minEv=Number.isFinite(configuredMinEv)?Math.max(0,configuredMinEv):3;
+    const filters=currentValueFilters();
     const configuredBestBetMinOdds=Number(readSettings().bestBetMinOdds);
     const bestBetMinOdds=Number.isFinite(configuredBestBetMinOdds)?Math.max(1.5,Math.min(15,configuredBestBetMinOdds)):1.9;
-    const best=selectBestBet(bets,minEv,bestBetMinOdds);
-    const highest=selectHighestEvBet(evBets);
+    const best=selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
+    const highest=selectHighestEvBet(evBets,filters.minEv,filters.minOdds,filters.maxOdds);
     box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
@@ -1674,10 +1685,11 @@
   }
   async function loadPredictions(matches){
     const renderId=++predictionRenderId;
+    const valueFilters=currentValueFilters();
     const allCandidates=matches.map((m,i)=>({m,i})).filter(({m,i})=>{
       const p=m.players||{};const a=p.p1||m.player1;const b=p.p2||m.player2;
       const el=document.getElementById('model-'+i);
-      const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9&&v<=15);
+      const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=valueFilters.minOdds&&v<=valueFilters.maxOdds&&v<=15);
       return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
     // Reuse every valid local prediction; cap new profile lookups at eight per scan.
@@ -1827,11 +1839,13 @@
           bet.reliabilityTier=reliability.tier;
           bet.reliabilityEligible=calibrationReady&&gate.eligible;
           bet.reliabilityReasons=reliability.reasons;
-          if(Number.isFinite(bet.odds)&&bet.odds>=1.5&&bet.odds<=15&&Number.isFinite(bet.ev)&&bet.ev>0)evDayBets.push(bet);
-          if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
+          const oddsInRange=Number.isFinite(bet.odds)&&bet.odds>=valueFilters.minOdds&&bet.odds<=valueFilters.maxOdds&&bet.odds<=15;
+          const meetsMinEv=Number.isFinite(bet.ev)&&bet.ev>=valueFilters.minEv;
+          if(oddsInRange&&meetsMinEv&&bet.ev>0)evDayBets.push(bet);
+          if(oddsInRange&&meetsMinEv&&bet.odds>=1.9&&bet.ev>0)dayBets.push(bet);
         }
-        const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)&&valueGateA.eligible?'model-positive':'model-negative';
-        const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)&&valueGateB.eligible?'model-positive':'model-negative';
+        const classA=result.evA!==null&&result.evA>=valueFilters.minEv&&valueGateA.eligible?'model-positive':'model-negative';
+        const classB=result.evB!==null&&result.evB>=valueFilters.minEv&&valueGateB.eligible?'model-positive':'model-negative';
         const valueGateReasonText=gate=>gate.eligible?'допущен':gate.reasons.map(reason=>({insufficient_freshness:'недостаточная свежесть',model_market_conflict:'Elo расходится с рынком',invalid_rating_quality:'некорректные данные рейтинга'}[reason]||reason)).join('; ');
         const valueGateBlocked=!valueGateA.eligible||!valueGateB.eligible;
         const valueGateLabel='Проверка value: игрок 1 — '+valueGateReasonText(valueGateA)+' · игрок 2 — '+valueGateReasonText(valueGateB);
@@ -1873,8 +1887,8 @@
         el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+(valueGateBlocked?'limited':'good')+'">'+escapeHtml(valueGateLabel)+'</div>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br>'+escapeHtml(simulationLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div>';
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
-        if(valueGateA.eligible&&result.evA!==null&&result.evA>=Number($('#minEv').value||3))positive++;
-        if(valueGateB.eligible&&result.evB!==null&&result.evB>=Number($('#minEv').value||3))positive++;
+        if(valueGateA.eligible&&result.evA!==null&&result.evA>=valueFilters.minEv)positive++;
+        if(valueGateB.eligible&&result.evB!==null&&result.evB>=valueFilters.minEv)positive++;
       }catch(err){
         if(renderId!==predictionRenderId)return;
         failed++;el.classList.remove('model-muted');el.textContent='Расчёт недоступен: '+err.message;

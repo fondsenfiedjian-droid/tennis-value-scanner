@@ -813,3 +813,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Coverage across all imported archive matches after freshness filter: ATP both-player ranks 77.05%; WTA 65.27%. Average retained snapshot age ATP 7.8 days; WTA 6.6 days.
 - ATP rank+age improved both metrics in all 27 evaluated years. WTA has small year-level regressions in 2017 and a slight LogLoss regression in 2022.
 - Decision: ranking and age are validated research candidates, not production features yet. Require a separate independent recent holdout and further WTA year-level review. No production prediction changes or deployment.
+
+
+### EV threshold settings fix — implementation in review
+- The saved minimum EV percentage, minimum odds and maximum odds now feed the actual candidate scan, positive-EV count, Bet of the Day selection and EV of the Day selection.
+- Previously, the min-EV value did not filter EV of the Day, and the configured odds range was only reflected in card text rather than consistently applied to candidate eligibility. This made the controls appear ineffective.
+- Existing visible bookmaker quotes remain visible; configured thresholds filter model-eligible value candidates, not the underlying odds display.
+- No model formula, bookmaker scraper, API quota, automatic betting or deployment changes.
