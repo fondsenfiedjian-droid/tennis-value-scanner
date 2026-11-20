@@ -139,3 +139,10 @@ Research safeguards:
 7. Keep ATP, WTA, Challenger and ITF populations separate until tier-specific calibration and transitions are validated.
 
 These candidates are not shot-style or serve-speed features: the dataset explicitly has no serve speed, serve direction or shot-level fields. No production PFE feature is enabled.
+
+
+## Match Charting player-ID linkage gate
+
+The new linkage audit attempts to attach charted match metadata to Sackmann ATP/WTA main-tour result rows using tournament/year, player pair, round and an event-date window. Full-name links are preferred. Initial-surname aliases are accepted only when both player aliases are unique in that event/year roster. Date conflicts, round conflicts, duplicate metadata IDs and alias collisions remain excluded.
+
+Only a successful unique link can provide a stable result-archive player ID and a verified match outcome for later research. Unmatched Challenger/ITF/junior/team events are expected while this pass uses main-tour files only. The linked charted sample remains selective and must not be treated as a representative tour sample. No production feature is activated by linkage alone.
