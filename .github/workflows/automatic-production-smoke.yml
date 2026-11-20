@@ -28,26 +28,28 @@ jobs:
           async function getWithRetry(url, attempts = 6) {
             let lastError;
             for (let attempt = 1; attempt <= attempts; attempt++) {
+              let response;
               try {
-                const response = await fetch(url, {
+                response = await fetch(url, {
                   signal: AbortSignal.timeout(15000),
                   headers: { accept: "application/json,text/html,*/*" },
                   cache: "no-store"
                 });
-                if (response.ok) return response;
-                const retryable = response.status === 404 || response.status === 429 || response.status >= 500;
-                if (!retryable || attempt === attempts) {
-                  throw new Error(`${url} returned HTTP ${response.status}`);
-                }
-                const retryAfter = Number(response.headers.get("Retry-After"));
-                await wait(Number.isFinite(retryAfter) && retryAfter > 0
-                  ? Math.min(retryAfter * 1000, 30000)
-                  : 20000);
               } catch (error) {
                 lastError = error;
                 if (attempt === attempts) break;
                 await wait(20000);
+                continue;
               }
+              if (response.ok) return response;
+              const retryable = response.status === 404 || response.status === 429 || response.status >= 500;
+              if (!retryable || attempt === attempts) {
+                throw new Error(`${url} returned HTTP ${response.status}`);
+              }
+              const retryAfter = Number(response.headers.get("Retry-After"));
+              await wait(Number.isFinite(retryAfter) && retryAfter > 0
+                ? Math.min(retryAfter * 1000, 30000)
+                : 20000);
             }
             throw lastError || new Error(`Could not reach ${url}`);
           }
