@@ -139,6 +139,7 @@ export function auditMatchChartingFiles(filesByName) {
     const metadataDuplicates = ids.length - matchIds.size;
     report.tours[tour === "m" ? "ATP" : "WTA"] = {
       metadata: {
+        headers: matchRows.length ? Object.keys(matchRows[0]) : [],
         rows: matchRows.length,
         uniqueMatchIds: matchIds.size,
         duplicateMatchIdRows: metadataDuplicates,
@@ -149,6 +150,8 @@ export function auditMatchChartingFiles(filesByName) {
         qualityChecks: {
           rowsWithUnexpectedSurface,
           rowsWithUnexpectedHand,
+          rowsWithRecognizedSurface: matchRows.length - rowsWithUnexpectedSurface,
+          rowsWithRecognizedHands: matchRows.length - rowsWithUnexpectedHand,
           status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates ? "review-required" : "clean"
         }
       },
