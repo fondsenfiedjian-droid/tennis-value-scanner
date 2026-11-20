@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v129"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v130"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -459,4 +459,11 @@ test("match list shows only pairs with a complete fresh Winamax winner-odds pair
   assert.match(html, /пар с коэффициентами:/);
   assert.match(html, /нет матчей с полной актуальной парой коэффициентов Winamax/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
+});
+
+test("optional player statistics are not fetched during automatic prediction scans", () => {
+  assert.equal(html.split("loadPfePlayerStats(").length - 1, 1,
+    "the player-statistics loader must remain defined but must not be called automatically");
+  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"));
+  assert.ok(html.includes("not_requested:'не запрашивалась автоматически (экономия квоты)'"));
 });

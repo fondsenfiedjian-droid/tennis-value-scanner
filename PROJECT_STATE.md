@@ -486,3 +486,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The smoke run's `/usage` check confirmed Live Tennis API free quota exhausted: 328 calls against 100/day, 227 errors, 0 remaining. Do not call quota-consuming match/result/prediction endpoints until the provider quota resets or the user explicitly authorizes a paid plan.
 - Apify task-run metadata diagnostic remains HTTP 403, but the dataset endpoint returned 20 fresh odds records. Do not alter scraper settings based on this metadata-only 403.
 - Remaining launch acceptance: after quota reset, perform one controlled schedule fetch, refresh the installed PWA, confirm only upcoming matches with complete fresh Winamax pairs appear, then manually compare a small sample against Winamax and verify prediction/archive/result workflow. No feature expansion before acceptance.
+
+### Live Tennis API quota protection — defer optional player statistics (2026-11-20)
+- Code audit found that every automatic prediction scan fetched two optional player-statistics profiles for each eligible match, even though those PRO/ULTRA diagnostics do not affect the active Elo probability, EV, or bet-selection calculation.
+- With five eligible matches and the default hourly refresh, this could generate up to 10 avoidable Live Tennis API requests per hour (up to 240 per day), in addition to schedule and any uncached Elo profile requests.
+- Automatic scans now mark player statistics as not requested; the loader remains available for a future explicit on-demand feature. Elo ratings, Winamax odds, EV, reliability gates, archive snapshots, and the two bet recommendations are unchanged.
+- Regression test ensures the optional player-statistics loader is not called automatically. PWA shell cache advances from v129 to v130.
+- This reduces a clear source of quota consumption but does not prove it was the only cause of the 328-call day. Do not resume quota-consuming API checks until the provider's daily counter resets.
