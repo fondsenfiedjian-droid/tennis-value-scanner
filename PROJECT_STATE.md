@@ -907,3 +907,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Added aggregate date-offset diagnostics by year and bins (negative, same-day, 1–7, 8–14, 15–21, >21 days) to localize MCP/Sackmann date anomalies without storing match IDs or player-level records. Added tests for date buckets and year aggregation.
+
+
+- Linkage chronology refinement: for December/January charted matches, the audit now checks the adjacent calendar year's results and selects only a unique exact event/pair/round candidate with a plausible event-week offset (-7 to +21 days). This prevents a same-year false match when a tournament crosses New Year. Small negative offsets are not automatically anomalies; offsets below -7 or above +21 remain quarantined.
