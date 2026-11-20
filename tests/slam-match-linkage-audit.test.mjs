@@ -38,8 +38,8 @@ test("links unique initial-surname aliases and normalizes historical round label
  const abbreviated="2024-wimbledon-1102,2024,wimbledon,1102,N. Djokovic,C. Alcaraz,1,Round 1";
  const result="2,Wimbledon,20240701,Novak Djokovic,Carlos Alcaraz,R128";
  const report=auditSlamMatchLinkage([
-  {filename:"2024-wimbledon-matches.csv",content:[metaHeader,abbreviated].join("\\n")},
-  {filename:"atp_matches_2024.csv",content:[resultHeader,result].join("\\n")}
+  {filename:"2024-wimbledon-matches.csv",content:[metaHeader,abbreviated].join("\n")},
+  {filename:"atp_matches_2024.csv",content:[resultHeader,result].join("\n")}
  ]);
  assert.equal(report.totals.linkedUniqueMatches,1);
  assert.equal(report.totals.linkedByInitialSurname,1);
