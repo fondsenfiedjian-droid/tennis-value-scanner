@@ -885,3 +885,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added an explicit synthetic cross-year case with the results snapshot extending beyond the event's December start date, ensuring January United Cup matches can link without being misclassified as outside the overall archive window.
 
 - Expanded event aliases for historic Grand Slams and Olympics (year-specific host city, including cross-name variants); added a synthetic Olympics alias test. Exact player-pair, round and date gates remain mandatory.
+
+- Corrected synthetic linkage fixtures to include a later archive boundary row where needed, so tests exercise event matching rather than the global snapshot cutoff; the dedicated out-of-snapshot case keeps the shorter date range.
