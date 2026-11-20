@@ -756,3 +756,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added unit tests for logistic fitting, tour separation, feature eligibility subsets, future-season invariance, natural match-key collisions, true conflicting duplicates and invalid date windows. Added methodology and CLI instructions to `docs/SACKMANN_RESEARCH.md`.
 - Research branch: `research/walk-forward-rank-age-model`. CI results and actual walk-forward metrics are pending. No production model changes, Live Tennis API usage, Apify runs, paid services or production deployment.
 - License and timing cautions remain: CC BY-NC-SA 4.0 non-commercial only; tournament-date ranking snapshots are not guaranteed to be exact match-start snapshots. Production activation is prohibited until timing is checked and independent out-of-sample improvement is demonstrated.
+
+
+### Rank/age research execution correction (2026-11-20)
+- First full-archive attempt reached the research CLI but failed before fitting because spreading the full 192k-row ATP array into `Array.push(...rows)` exceeded the JavaScript argument limit. The loader now appends rows iteratively.
+- The annual walk-forward workflow now caps each training fit at 20,000 deterministic sampled rows (rather than 50,000) to bound runtime; evaluation still uses all eligible matches. Candidate and baseline use the same sampled training rows.
+- Regression tests on the initial research implementation passed 374/374. The full archive research run is being repeated after the loader and runtime corrections; no metrics have yet been accepted.
