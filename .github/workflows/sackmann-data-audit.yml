@@ -7,9 +7,11 @@ on:
       - "scripts/sackmann-data-audit.mjs"
       - "scripts/sackmann-import.mjs"
       - "scripts/sackmann-rank-age-research.mjs"
+      - "scripts/sackmann-prematch-rank-research.mjs"
       - "tests/sackmann-data-audit.test.mjs"
       - "tests/sackmann-import.test.mjs"
       - "tests/sackmann-rank-age-research.test.mjs"
+      - "tests/sackmann-prematch-rank-research.test.mjs"
       - ".github/workflows/sackmann-data-audit.yml"
   workflow_dispatch:
 
@@ -75,6 +77,32 @@ jobs:
           path: |
             ${{ runner.temp }}/*-rank-age-k*.json
             ${{ runner.temp }}/*-rank-age-cap5000.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Download weekly ATP and WTA ranking snapshots
+        run: |
+          set -euo pipefail
+          mkdir -p research-rankings/atp research-rankings/wta
+          for decade in 70s 80s 90s 00s 10s 20s current; do
+            url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/atp/atp_rankings_${decade}.csv"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" --output "research-rankings/atp/atp_rankings_${decade}.csv"
+          done
+          for decade in 80s 90s 00s 10s 20s current; do
+            url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/wta/wta_rankings_${decade}.csv"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" --output "research-rankings/wta/wta_rankings_${decade}.csv"
+          done
+      - name: Run strict pre-match weekly ranking walk-forward
+        run: |
+          set -euo pipefail
+          node scripts/sackmann-prematch-rank-research.mjs --tour atp --rankings-dir research-rankings/atp --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --max-rank-age-days 45 --out "$RUNNER_TEMP/atp-prematch-rank-report.json" "$RUNNER_TEMP/atp-normalized.csv"
+          node scripts/sackmann-prematch-rank-research.mjs --tour wta --rankings-dir research-rankings/wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --max-rank-age-days 45 --out "$RUNNER_TEMP/wta-prematch-rank-report.json" "$RUNNER_TEMP/wta-normalized.csv"
+      - name: Upload pre-match ranking research reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-prematch-ranking-research
+          path: |
+            ${{ runner.temp }}/atp-prematch-rank-report.json
+            ${{ runner.temp }}/wta-prematch-rank-report.json
           if-no-files-found: error
           retention-days: 30
       - name: Validate normalized outputs and classify source-key collisions

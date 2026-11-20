@@ -795,3 +795,21 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - ATP rank+age improved both Brier and log loss in all 27 annual cohorts; WTA had a small number of year-level regressions (notably 2017) despite aggregate improvement.
 - Results and exact candidate-minus-baseline deltas are recorded in docs/SACKMANN_RESEARCH.md.
 - Decision: research signal is sufficiently consistent to justify a further timing audit and recent independent holdout, but not production activation. Tournament-date ranking snapshots are not guaranteed to be available before every match. No production model changes or deployment.
+
+
+### Strict pre-match weekly ranking audit — in progress (2026-11-20)
+- Added a research-only join that selects each player's latest official weekly ranking strictly before the tournament date; same-day ranking snapshots are excluded conservatively.
+- Added coverage and snapshot-age diagnostics and a walk-forward comparison using the existing Elo/rank/age research framework.
+- GitHub Actions downloads ranking history separately for ATP and WTA, runs the study, and uploads aggregate-only reports. No raw archive data is committed.
+- This is a research check only; production prediction logic remains unchanged.
+
+
+- Pre-match ranking join now also applies a 45-day freshness ceiling. Older weekly snapshots are treated as missing; the report includes stale-snapshot counts. This avoids carrying a player's rank across long absences.
+
+
+### Pre-match weekly ranking study — completed research (2026-11-20)
+- Strictly joined weekly ATP/WTA ranking snapshots dated before tournament date; same-day rankings excluded; stale snapshots older than 45 days treated as missing.
+- 2000-01-01 to 2026-05-25 walk-forward results: rank+age delta Brier/LogLoss ATP -0.001971/-0.004326 (74,540 matches); WTA -0.002224/-0.004950 (66,882 matches). Aggregate rank and age candidates also improved both metrics.
+- Coverage across all imported archive matches after freshness filter: ATP both-player ranks 77.05%; WTA 65.27%. Average retained snapshot age ATP 7.8 days; WTA 6.6 days.
+- ATP rank+age improved both metrics in all 27 evaluated years. WTA has small year-level regressions in 2017 and a slight LogLoss regression in 2022.
+- Decision: ranking and age are validated research candidates, not production features yet. Require a separate independent recent holdout and further WTA year-level review. No production prediction changes or deployment.

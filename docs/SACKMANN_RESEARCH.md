@@ -83,3 +83,43 @@ Interpretation:
 - ATP rank+age improved both Brier and log loss in all 27 evaluated annual cohorts in these runs. WTA rank+age was not uniformly better: small regressions remain in a few annual cohorts, notably 2017 at K=24/48/64; the aggregate still improves.
 
 This supports further research, not production activation. The rank values are tournament-date snapshots, not guaranteed match-start snapshots; a separate timing/availability audit and a genuinely independent recent holdout are still required. The 2026 cohort is partial through May 25. These are historical model comparisons, not betting-profit estimates.
+
+
+## Strict pre-match weekly ranking study
+
+The workflow downloads the archive's separate weekly ranking files (ATP 1970s–current; WTA 1980s–current). For each historical match, the research join selects the latest ranking snapshot with `ranking_date < tourney_date`. A ranking published on the tournament date is deliberately excluded because the match start time and publication availability are not established. Missing snapshots remain missing; no future or same-day ranking is substituted.
+
+Run after the match importer:
+
+```sh
+node scripts/sackmann-prematch-rank-research.mjs --tour atp --rankings-dir /path/to/atp-rankings --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out atp-prematch-rank-report.json atp-normalized.csv
+```
+
+The report includes the coverage of both players, the number of matches where same-day snapshots were excluded, and average/maximum snapshot age. Its walk-forward rank and rank+age metrics are directly comparable in method to the tournament-date snapshot study, but the eligible match subset may differ. This is a conservative availability test, not proof of exact publication timestamps. No production use is permitted until the results and independent holdout are reviewed.
+
+
+### Ranking freshness rule
+
+The pre-match study applies a 45-day maximum age to the latest prior weekly snapshot. If a player's last published ranking is older than 45 days, that ranking is treated as unavailable rather than carried forward. The report records stale snapshot counts, match counts affected by stale snapshots, and the age of retained snapshots. This guards against long gaps and returning players inheriting obsolete ranks.
+
+
+## Strict pre-match weekly ranking results (45-day freshness cap, 2026-11-20)
+
+The completed workflow used only the latest weekly ranking dated strictly before each tournament date and discarded snapshots older than 45 days. Same-day ranking snapshots were excluded. Evaluation was annual walk-forward from 2000-01-01 through 2026-05-25, with a 20,000-row training cap and K=32. Negative candidate-minus-baseline deltas are better.
+
+| Tour | Feature | Matches | Brier delta | LogLoss delta | Accuracy delta |
+|---|---|---:|---:|---:|---:|
+| ATP | Rank | 74,544 | -0.001634 | -0.003584 | +0.55 pp |
+| ATP | Age | 76,324 | -0.000454 | -0.000986 | +0.27 pp |
+| ATP | Rank + age | 74,540 | -0.001971 | -0.004326 | +0.61 pp |
+| WTA | Rank | 66,886 | -0.001237 | -0.002498 | +0.60 pp |
+| WTA | Age | 70,265 | -0.001482 | -0.003593 | +0.25 pp |
+| WTA | Rank + age | 66,882 | -0.002224 | -0.004950 | +0.76 pp |
+
+Coverage over the complete imported archive after the 45-day rule:
+- ATP: both players ranked in 148,448 / 192,654 matches (77.05%); average retained snapshot age 7.8 days; 26,602 stale player snapshots discarded.
+- WTA: both players ranked in 102,805 / 157,508 matches (65.27%); average retained snapshot age 6.6 days; 4,056 stale player snapshots discarded.
+- Same-day ranking records were excluded in 124,053 ATP and 91,536 WTA matches where at least one player had a same-day snapshot.
+- ATP rank+age improved both Brier and LogLoss in all 27 evaluation-year cohorts. WTA retains small year-level regressions: 2017 worsened on both metrics; 2022 Brier improved slightly but LogLoss worsened slightly. The aggregate WTA result remains positive.
+
+Interpretation: the rank and age signal survives a conservative pre-tournament ranking availability rule and a 45-day freshness ceiling. This is stronger evidence than using tournament-date rank fields, but not yet sufficient for production activation. The WTA year-level exceptions, snapshot publication timing, and an independent recent holdout still require review. These are prediction-quality metrics, not betting-profit evidence.
