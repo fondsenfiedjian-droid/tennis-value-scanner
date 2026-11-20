@@ -196,12 +196,47 @@ export function runWorkloadResearch(csvTexts) {
       knownDurationRecords7:sample.reduce((sum,row)=>sum+row.features.knownDurationRecords7,0),
       knownDurationCoveragePct:(()=>{const total=sample.reduce((sum,row)=>sum+row.features.priorMatchRecords7,0);const known=sample.reduce((sum,row)=>sum+row.features.knownDurationRecords7,0);return total?Number((100*known/total).toFixed(2)):null;})()
     });
+    // Pre-declared ablations test whether the apparent gain depends on one
+    // particular workload proxy. Every specification is trained on 2025 and
+    // evaluated on the same untouched 2026 matches.
+    const featureSpecifications = [
+      { name:"matches3_only", features:["matches3"] },
+      { name:"matches7_only", features:["matches7"] },
+      { name:"playingDays7_and_restDays", features:["playingDays7","restDays"] },
+      { name:"all_core_features", features:CORE_FEATURE_NAMES }
+    ];
+    const specificationTests = Object.fromEntries(featureSpecifications.map(spec => {
+      const standardization = fitStandardization(training,spec.features);
+      const beta = fitCorrection(training,standardization);
+      return [spec.name,{
+        features:spec.features,
+        trainingMatches:training.length,
+        evaluation:metrics(evaluation,beta,standardization),
+        standardizedCoefficients:Object.fromEntries(spec.features.map((name,i)=>[name,Number(beta[i].toFixed(5))]))
+      }];
+    }));
+    // A second chronological holdout within 2026: fit only on Jan-Jun and
+    // score Jul-Nov. Elo probabilities are still generated chronologically
+    // from prior results; no same-day workload records enter the features.
+    const firstHalf2026=evaluation.filter(row=>row.month<="202606");
+    const secondHalf2026=evaluation.filter(row=>row.month>"202606");
+    const halfYearStandardization=fitStandardization(firstHalf2026,CORE_FEATURE_NAMES);
+    const halfYearBeta=fitCorrection(firstHalf2026,halfYearStandardization);
+    const within2026TemporalSplit={
+      trainingPeriod:"2026-01 through 2026-06",
+      evaluationPeriod:"2026-07 through 2026-11",
+      trainingMatches:firstHalf2026.length,
+      evaluation:metrics(secondHalf2026,halfYearBeta,halfYearStandardization),
+      standardizedCoefficients:Object.fromEntries(CORE_FEATURE_NAMES.map((name,i)=>[name,Number(halfYearBeta[i].toFixed(5))]))
+    };
     reports[tour]={
       trainingYear:"2025",
       evaluationYear:"2026",
       training:metrics(training,beta,standardization),
       evaluation:metrics(evaluation,beta,standardization),
       evaluationCoreWorkload:metrics(evaluation,coreBeta,coreStandardization),
+      specificationTests,
+      within2026TemporalSplit,
       durationAvailability:{training:durationAvailability(training),evaluation:durationAvailability(evaluation)},
       evaluationByMonth,
       trainingFeatureCoverage:training.length,

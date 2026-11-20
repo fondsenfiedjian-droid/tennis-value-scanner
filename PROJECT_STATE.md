@@ -535,3 +535,23 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The learned rest-days coefficient is negative after controlling for other schedule features. Do not interpret this as proof that rest harms performance: it may reflect match sharpness, long layoff/selection effects, or collinearity among workload variables. This is a predictive association, not a causal finding.
 - Decision: promising out-of-sample signal, but not production-ready. Keep Human Factor diagnostic/research-only. Next priority is robustness testing of simpler feature specifications and temporal splits; do not alter live Elo probabilities, EV, recommendations, Worker, PWA, or API behavior based on this single 2026 holdout.
 - Research report artifact: GitHub Actions run `44772527928`, artifact `human-factor-workload-report`, expires 2026-12-20. Source attribution: `Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm` (CC BY 4.0).
+
+
+### Human Factor workload robustness validation — passed (2026-11-20)
+- Added pre-declared feature ablations to the research-only workflow: matches in prior 3 days alone; matches in prior 7 days alone; playing days plus rest interval; and the full four-feature core specification. All are trained on 2025 and evaluated on the same 2026 out-of-sample matches.
+- Added a second chronological holdout within 2026: fit the core workload correction on January–June 2026 and evaluate on July–November 2026. Elo probabilities remain chronological; same-day workload leakage remains excluded.
+- These checks are diagnostic only. No production probability, EV, recommendation, Worker, PWA, API, or quota behavior changes.
+- Next: inspect ATP/WTA ablation and second-half results. Treat a signal as fragile if it depends on one narrow feature specification or fails the later temporal holdout. No production integration based on this research alone.
+
+
+#### Robustness results
+- PR #56 research workflow completed successfully on run `44774131371`; regression tests run `44774131208` passed; project-state guard run `44774131415` passed. The JSON report is in artifact `human-factor-workload-report` (30-day retention); raw CSVs remain ephemeral.
+- All four pre-declared feature specifications improved paired Brier and LogLoss versus baseline Elo on the same 2026 evaluation sample for both tours:
+  - ATP, 45,335 matches: matches3 only ΔBrier −0.001047 / ΔLogLoss −0.002292; matches7 only −0.000461 / −0.001047; playingDays7 + restDays −0.001160 / −0.002498; full core −0.004537 / −0.009914.
+  - WTA, 31,514 matches: matches3 only ΔBrier −0.000866 / ΔLogLoss −0.001909; matches7 only −0.000678 / −0.001650; playingDays7 + restDays −0.001035 / −0.002421; full core −0.004344 / −0.009797.
+- The second chronological holdout also improved both metrics:
+  - ATP, train Jan–Jun 2026 (20,581 matches), test Jul–Nov 2026 (24,754): Brier 0.222965 → 0.218430; LogLoss 0.636100 → 0.626088.
+  - WTA, train Jan–Jun 2026 (15,114 matches), test Jul–Nov 2026 (16,400): Brier 0.217189 → 0.212765; LogLoss 0.623184 → 0.613270.
+- Paired approximate 95% intervals for the second-half test excluded zero for both metrics and both tours. They are per-match normal intervals, not corrected for the multiple specifications tested.
+- Interpretation: the direction of the workload signal is not dependent on one feature or only on the original 2025→2026 split. The full four-feature combination has the largest observed improvement, but this is still one historical season with related temporal folds, correlated predictors and a research correction fitted to Elo. It is not independent multi-season confirmation, causal evidence, betting ROI, CLV or proof of profitability.
+- Decision: retain the workload module as research/diagnostics only. Do not integrate into production probabilities, EV or either recommendation until it passes additional season-by-season holdouts, surface/tournament segment stability, calibration and market-comparison checks.
