@@ -112,6 +112,32 @@ async function call(path, method = "GET", body = undefined) {
   return worker.fetch(request, env);
 }
 
+test("Live Tennis daily quota guard blocks repeated upstream calls after a 429", async () => {
+  const stored = new Map();
+  let upstreamCalls = 0;
+  const sandbox = {
+    Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date,
+    caches: { default: {
+      match: async key => stored.get(key.url)?.clone() || null,
+      put: async (key, value) => { stored.set(key.url, value.clone()); }
+    }},
+    fetch: async () => {
+      upstreamCalls++;
+      return new Response(JSON.stringify({
+        error: "rate_limited", scope: "day",
+        resets_at: new Date(Date.now() + 3600000).toISOString()
+      }), { status: 429 });
+    }
+  };
+  vm.runInNewContext(helperSource + "\nglobalThis.guardedFetch = fetchLiveTennis;", sandbox);
+  const first = await sandbox.guardedFetch("https://api.livetennisapi.com/api/public/v1/players/123");
+  const second = await sandbox.guardedFetch("https://api.livetennisapi.com/api/public/v1/players/456");
+  assert.equal(first.status, 429);
+  assert.equal(second.status, 429);
+  assert.equal(second.headers.get("X-Live-Tennis-Quota-Guard"), "HIT");
+  assert.equal(upstreamCalls, 1, "second request must be blocked by the shared quota guard");
+});
+
 test("odds endpoint validates method and requires the Apify secret", async () => {
   const methodResponse = await call("/odds", "POST");
   assert.equal(methodResponse.status, 405);
