@@ -96,3 +96,8 @@ node scripts/sackmann-prematch-rank-research.mjs --tour atp --rankings-dir /path
 ```
 
 The report includes the coverage of both players, the number of matches where same-day snapshots were excluded, and average/maximum snapshot age. Its walk-forward rank and rank+age metrics are directly comparable in method to the tournament-date snapshot study, but the eligible match subset may differ. This is a conservative availability test, not proof of exact publication timestamps. No production use is permitted until the results and independent holdout are reviewed.
+
+
+### Ranking freshness rule
+
+The pre-match study applies a 45-day maximum age to the latest prior weekly snapshot. If a player's last published ranking is older than 45 days, that ranking is treated as unavailable rather than carried forward. The report records stale snapshot counts, match counts affected by stale snapshots, and the age of retained snapshots. This guards against long gaps and returning players inheriting obsolete ranks.
