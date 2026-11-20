@@ -121,3 +121,25 @@ test("tolerant metadata parser preserves embedded quotes and quoted commas",()=>
  assert.equal(rows[0].Tournament,'Club "A" Open');
  assert.equal(rows[1].Tournament,"Australian Open, Men");
 });
+
+test("maps Paris Masters and Tour Finals historical event aliases",()=>{
+ const paris=audit(
+  [meta({Tournament:"Paris",Date:"20241102"})],
+  [result({tourney_date:"20241028",tourney_name:"Paris Masters",round:"R32"})]
+ );
+ const finals=audit(
+  [meta({Tournament:"Tour Finals",Date:"20241110",Round:"RR"})],
+  [result({tourney_date:"20241108",tourney_name:"Masters Cup",round:"RR"})]
+ );
+ assert.equal(paris.linked,1);
+ assert.equal(finals.linked,1);
+ assert.equal(finals.linkedByEventAlias,1);
+});
+
+test("maps Davis Cup World Group final rounds to the archived Davis Cup Finals event",()=>{
+ const report=audit(
+  [meta({Tournament:"Davis Cup World Group F",Date:"20241124",Round:"F"})],
+  [result({tourney_date:"20241119",tourney_name:"Davis Cup Finals F: Italy vs Spain",round:"F"})]
+ );
+ assert.equal(report.linked,1);
+});
