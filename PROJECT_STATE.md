@@ -443,3 +443,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #47 merged to main as `fca6e956c7ba5dcba6b1512215db8a5c867d4a6a`.
 - Regression tests passed on the PR and again on main (workflow run 44760469768); project-state guard passed (PR workflow run 44760394483).
 - Cloudflare Worker deployment passed (workflow run 44760515056). Production smoke check is still running; PWA cache v125 publication is not yet confirmed.
+
+- Production smoke check for the v125 release passed (workflow run 44760515033): deployed PWA and production API checks succeeded. Cloudflare Worker deploy action also passed; the separate Workers Builds status check was still in progress at the time of verification.
