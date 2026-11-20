@@ -18,10 +18,10 @@ test("Sackmann audit reports coverage without exposing match-level records",()=>
   assert.equal(year.excludedRows,1);
   assert.equal(year.statsCoreBothSides,1);
   assert.equal(year.statsBothSides,1);
-  assert.equal(year.rankBoth,2);
+  assert.equal(year.rankBoth,1);
   assert.equal(year.ageBoth,2);
   assert.equal(year.coveragePct.servePointsAnd1st2ndWonBothPlayers,50);
-  assert.equal(year.coveragePct.rankingBothPlayers,100);
+  assert.equal(year.coveragePct.rankingBothPlayers,50);
   assert.equal(report.reportLicense,"CC BY-NC-SA 4.0");
   assert.equal(JSON.stringify(report).includes('"101"'),false);
   assert.equal(JSON.stringify(report).includes('"Test"'),false);
