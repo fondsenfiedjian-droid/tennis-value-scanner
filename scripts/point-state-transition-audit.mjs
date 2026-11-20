@@ -1,5 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseCsv } from "./backtest.mjs";
 
 const integer = value => {
@@ -200,6 +202,6 @@ async function main() {
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only point-state audit: " + out);
 }
-if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch(error => { console.error(error.message); process.exitCode = 1; });
 }
