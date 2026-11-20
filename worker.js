@@ -348,8 +348,12 @@ export default {
 
       try {
         // This is a separate, fixed historical dataset; it does not affect the live Winamax /odds feed.
+        const datasetId = url.searchParams.get("datasetId") || "1UFINeSkMhdbaTfPa";
+        if (!/^[a-zA-Z0-9]{10,30}$/.test(datasetId)) {
+          return response({ error: "Invalid Apify datasetId" }, 400);
+        }
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v3/tennis-results-history-2026-11-19");
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v4/" + encodeURIComponent(datasetId));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -357,7 +361,6 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        const datasetId = "1UFINeSkMhdbaTfPa";
         const upstream = await fetch(
           "https://api.apify.com/v2/datasets/" + datasetId + "/items?clean=true&format=json&limit=1000",
           {
@@ -390,7 +393,7 @@ export default {
         const payload = {
           source: "Apify tennis-results historical dataset",
           datasetId,
-          datasetName: "tennis-results-history-2026-11-19",
+          datasetName: datasetId === "1UFINeSkMhdbaTfPa" ? "tennis-results-history-2026-11-19" : null,
           retrievedAt: new Date().toISOString(),
           count: items.length,
           diagnostics: diagnoseHistoricalItems(items),
