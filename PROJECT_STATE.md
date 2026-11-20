@@ -508,3 +508,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PWA shell cache advanced to v131. The change does not alter prediction probabilities, EV, recommendation gates, archive records, external API calls, or scraper settings.
 - Automatic production smoke run `44769210321` started after merge; deployment verification is pending. Do not claim v131 is live until this run completes successfully.
 - Next Human Factor research task: use Valuebetennis CC BY 4.0 match data to test measurable workload proxies (matches in prior 3/7 days, rest interval, playing days, known match duration) against baseline Elo using chronological training/evaluation. The 2025–2026 CSV files are public source data and must not be committed to the repository. Missing duration remains unknown; no factor enters production probabilities without out-of-sample improvement.
+
+
+### Human Factor research preparation — duration provenance (2026-11-20)
+- Valuebetennis CSV includes `duree_min` (completed match duration in minutes; blank when unknown). The historical importer previously discarded this field, preventing workload research from testing cumulative court time.
+- The importer now preserves only plausible duration values (1–600 minutes); missing, malformed, zero, negative, or implausible values remain null. Duration is included in duplicate identity so conflicting source records are not silently merged.
+- Backtest prediction diagnostics expose the completed match duration as a separate observed field. It is not used to predict that same match and does not modify Elo, probabilities, EV, or production recommendations.
+- Regression coverage checks valid and unknown duration handling. Next step: calculate strictly pre-match rolling workload features from prior calendar days, with same-day matches excluded because their actual completion order is unknown, then evaluate chronologically.
