@@ -67,10 +67,11 @@ jobs:
 
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
-          if (!serviceWorker.includes("tennis-value-static-v116")) {
-            throw new Error("Netlify is not serving the expected service-worker cache version v116");
+          const cacheVersion = serviceWorker.match(/tennis-value-static-v(\\d+)/)?.[1];
+          if (!cacheVersion || !serviceWorker.includes('"./human-factor.js"')) {
+            throw new Error("Netlify service worker is missing a valid cache version or the local workload audit module");
           }
-          console.log("PWA service worker: cache v116 is published");
+          console.log("PWA service worker: cache v" + cacheVersion + " is published and human-factor.js is precached");
 
           const healthResponse = await getWithRetry(process.env.API_URL + "/health");
           const health = await healthResponse.json();
