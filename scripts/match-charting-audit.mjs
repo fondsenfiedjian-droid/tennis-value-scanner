@@ -77,6 +77,16 @@ function summarizeFile(path, rows, matchIds) {
   const ids = rows.map(row => text(row.match_id)).filter(Boolean);
   const idSet = new Set(ids);
   const repeatedMatchIdRows = ids.length - idSet.size;
+  const categoryCounts = Object.fromEntries(["row", "set"]
+    .filter(header => headers.includes(header))
+    .map(header => {
+      const counts = new Map();
+      for (const row of rows) {
+        const value = text(row[header]);
+        if (value) counts.set(value, (counts.get(value) || 0) + 1);
+      }
+      return [header, Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b)))];
+    }));
   const nonEmptyByColumn = Object.fromEntries(headers.map(header => [
     header, rows.reduce((count, row) => count + (text(row[header]) ? 1 : 0), 0)
   ]));
@@ -94,7 +104,8 @@ function summarizeFile(path, rows, matchIds) {
       unmatchedUniqueIds: [...idSet].filter(id => !matchIds.has(id)).length,
       metadataCoveragePct: idSet.size ? Number((100 * [...idSet].filter(id => matchIds.has(id)).length / idSet.size).toFixed(2)) : null
     } : null,
-    nonEmptyByColumn
+    nonEmptyByColumn,
+    categoryCounts
   };
 }
 
