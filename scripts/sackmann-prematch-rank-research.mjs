@@ -6,7 +6,7 @@ import { runRankAgeWalkForward } from "./sackmann-rank-age-research.mjs";
 
 const validDate = value => {
   const s = String(value ?? "");
-  if (!/^\\d{8}$/.test(s)) return null;
+  if (!/^\d{8}$/.test(s)) return null;
   const y=Number(s.slice(0,4)),m=Number(s.slice(4,6)),d=Number(s.slice(6,8));
   const date=new Date(Date.UTC(y,m-1,d));
   return date.getUTCFullYear()===y && date.getUTCMonth()===m-1 && date.getUTCDate()===d ? s : null;
@@ -21,7 +21,7 @@ export function buildPrematchRankRows(matches, rankingRows) {
   const byPlayer=new Map();
   for(const row of rankingRows){
     const date=validDate(row.ranking_date), id=String(row.player??"").trim(), rank=Number(row.rank);
-    if(!date || !/^\\d+$/.test(id) || !validRank(rank)) continue;
+    if(!date || !/^\d+$/.test(id) || !validRank(rank)) continue;
     if(!byPlayer.has(id)) byPlayer.set(id,new Map());
     const dates=byPlayer.get(id);
     const prior=dates.get(date);
@@ -68,7 +68,7 @@ async function main(){
  report.rankSource="latest official weekly ranking snapshot strictly earlier than tournament date";
  report.rankCoverage=built.coverage;
  report.rankTimingRule="ranking_date < tourney_date; same-day ranking snapshots are excluded conservatively";
- const json=JSON.stringify(report,null,2)+"\\n";
+ const json=JSON.stringify(report,null,2)+"\n";
  if(opts.out)await writeFile(opts.out,json,"utf8");
  console.log(json);
 }
