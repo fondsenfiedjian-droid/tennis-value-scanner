@@ -47,8 +47,8 @@ jobs:
       - name: Run annual walk-forward rank and age comparisons
         run: |
           set -euo pipefail
-          node scripts/sackmann-rank-age-research.mjs --tour atp --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 50000 --out "$RUNNER_TEMP/atp-rank-age-report.json" "$RUNNER_TEMP/atp-normalized.csv"
-          node scripts/sackmann-rank-age-research.mjs --tour wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 50000 --out "$RUNNER_TEMP/wta-rank-age-report.json" "$RUNNER_TEMP/wta-normalized.csv"
+          node scripts/sackmann-rank-age-research.mjs --tour atp --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out "$RUNNER_TEMP/atp-rank-age-report.json" "$RUNNER_TEMP/atp-normalized.csv"
+          node scripts/sackmann-rank-age-research.mjs --tour wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out "$RUNNER_TEMP/wta-rank-age-report.json" "$RUNNER_TEMP/wta-normalized.csv"
       - name: Upload aggregate rank and age research reports
         uses: actions/upload-artifact@v4
         with:
