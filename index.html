@@ -1727,9 +1727,11 @@
           bookmakerKnown:!!(el.dataset.bookmakerA&&el.dataset.bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
           calibration:archiveProbabilityCalibration(readPredictionArchive(),30,CURRENT_CALIBRATION_MODEL_VERSION)
         });
-        const [pfePlayerA,pfePlayerB]=await Promise.all([
-          loadPfePlayerStats(idA),loadPfePlayerStats(idB)
-        ]);
+        // Player statistics are optional diagnostics, not inputs to the active Elo/EV calculation.
+        // Fetching both players for every candidate on every hourly scan can consume the daily API quota.
+        // Keep the loader for a future explicit, on-demand action; automatic scans do not request these profiles.
+        const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null};
+        const pfePlayerA=deferredPlayerStats,pfePlayerB=deferredPlayerStats;
         if(renderId!==predictionRenderId)return;
         const pfeServeInputs=pfePlayerA.serve&&pfePlayerB.serve
           ?TVSPFE.deriveServeReturnMatchInputs(pfePlayerA.serve,pfePlayerB.serve)
@@ -1824,7 +1826,7 @@
           ?' · расхождение '+(pfeAssessment.disagreement*100).toFixed(2)+' п.п.':'';
         const profileStatusLabel=profile=>profile?.status==='ready_for_modeling'?'готов':profile?.status==='insufficient_sample'?'мало матчей':profile?.status==='partial'?'частичные данные':profile?.status==='invalid'?'ошибка данных':'нет данных';
         const accessStatusLabel=(status,profile)=>({
-          available:'доступен',forbidden_or_plan_restricted:'отказ API / возможное ограничение тарифа',
+          available:'доступен',not_requested:'не запрашивалась автоматически (экономия квоты)',forbidden_or_plan_restricted:'отказ API / возможное ограничение тарифа',
           unauthorized:'ошибка авторизации',stats_not_found:'статистика не найдена',
           player_merged:'ID игрока объединён с другой записью',rate_limited:profile?.rateLimitScope==='day'?'дневная квота исчерпана':profile?.rateLimitError==='abuse_throttled'?'временная блокировка API':'лимит запросов API',
           invalid_player_or_doubles:'ID отклонён API или относится к парной команде',
