@@ -35,3 +35,10 @@ These features are not approved for production. The sample is player- and tourna
 ## Reproduction
 
 The workflow is triggered by a pull request touching the audit files or can be manually dispatched from GitHub Actions. It uploads only `match-charting-audit.json` as a 30-day artifact.
+
+
+## Match metadata field coverage and linkage preparation
+
+The audit now reports non-empty coverage for Tournament, Round, Time, Court, Surface, Umpire, Best of, Final TB? and Charted by, plus aggregate tournament/round distributions. This is necessary before attempting a natural-identity linkage to the historical results archive. The planned join is tour + year + tournament mapping + unordered player pair + round, with exact unique-only resolution and date as a consistency check. The metadata's invalid/missing dates and unexpected surface/hand values remain quarantined; no date/surface/hand feature is enabled from these rows.
+
+The audit artifact writer was corrected to end JSON with a real newline; a CLI integration test parses the generated report as JSON.
