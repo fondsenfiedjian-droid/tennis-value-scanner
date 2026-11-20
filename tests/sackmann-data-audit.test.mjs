@@ -37,6 +37,13 @@ test("Sackmann audit keeps ATP and WTA player ID namespaces separate",()=>{
   assert.equal(report.totals.WTA.validMatches,1);
 });
 
+test("Sackmann audit safely excludes impossible calendar dates",()=>{
+  const invalid=full.replace("20240101","20240230");
+  const report=auditSackmannFiles([{filename:"atp_matches_2024.csv",content:header+"\\n"+invalid+"\\n"}]);
+  assert.equal(report.byTourYear[0].validMatches,0);
+  assert.equal(report.byTourYear[0].excludedRows,1);
+});
+
 test("Sackmann audit rejects unexpected input filenames",()=>{
   assert.throws(()=>auditSackmannFiles([{filename:"players.csv",content:header+"\n"}]),/Unrecognized Sackmann match filename/);
 });
