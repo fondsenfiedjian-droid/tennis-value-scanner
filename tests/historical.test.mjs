@@ -30,7 +30,13 @@ test("historical endpoint reads the fixed dataset without changing the Winamax f
     return new Response(JSON.stringify([{
       date: "2026-11-19", tour: "wta-single", player1: "Lazaro Garcia A.",
       player2: "Labrana F.", winner: "Lazaro Garcia A.", score: "6-2 3-6 6-0",
-      oddsPlayer1: 1.05, oddsPlayer2: 8.94, surface: "clay", finished: true,\n      openingOddsPlayer1Avg: 1.1, currentOddsPlayer1Avg: 1.05,\n      openingOddsPlayer2Avg: 7, currentOddsPlayer2Avg: 8,\n      bookmakerOdds: [\n        { player1: { opening: 1.03 }, player2: { opening: 1.1 } },\n        { player1: { opening: 1.5 }, player2: { opening: 2.5 } }\n      ]
+      oddsPlayer1: 1.05, oddsPlayer2: 8.94, surface: "clay", finished: true,
+      openingOddsPlayer1Avg: 1.1, currentOddsPlayer1Avg: 1.05,
+      openingOddsPlayer2Avg: 7, currentOddsPlayer2Avg: 8,
+      bookmakerOdds: [
+        { player1: { opening: 1.03 }, player2: { opening: 1.1 } },
+        { player1: { opening: 1.5 }, player2: { opening: 2.5 } }
+      ]
     }]), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   const result = await worker.fetch(new Request("https://worker.test/historical"), { APIFY_TOKEN: "test-token" });
@@ -43,7 +49,12 @@ test("historical endpoint reads the fixed dataset without changing the Winamax f
   assert.equal(payload.diagnostics.finished, 1);
   assert.equal(payload.diagnostics.bothOddsValid, 1);
   assert.equal(payload.diagnostics.surfaceCounts.clay, 1);
-  assert.equal(payload.diagnostics.missingWinner, 0);\n  assert.equal(payload.diagnostics.openingOddsPairsChecked, 2);\n  assert.equal(payload.diagnostics.suspiciousOpeningOddsPairs, 1);\n  assert.equal(payload.diagnostics.reliableOpeningOddsPairs, 1);\n  assert.equal(payload.diagnostics.movementBeyond2Percent.player1Shortened, 1);\n  assert.equal(payload.diagnostics.movementBeyond2Percent.player2Lengthened, 1);
+  assert.equal(payload.diagnostics.missingWinner, 0);
+  assert.equal(payload.diagnostics.openingOddsPairsChecked, 2);
+  assert.equal(payload.diagnostics.suspiciousOpeningOddsPairs, 1);
+  assert.equal(payload.diagnostics.reliableOpeningOddsPairs, 1);
+  assert.equal(payload.diagnostics.movementBeyond2Percent.player1Shortened, 1);
+  assert.equal(payload.diagnostics.movementBeyond2Percent.player2Lengthened, 1);
   assert.equal(payload.items[0].surface, "clay");
   assert.match(payload.retrievedAt, /^2026-\d{2}-\d{2}T/);
   assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/1UFINeSkMhdbaTfPa/items?clean=true&format=json&limit=1000");
