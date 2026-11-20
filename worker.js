@@ -506,11 +506,43 @@ export default {
         if (!Array.isArray(items)) {
           return response({ error: "Apify task dataset response was not an array", taskId: APIFY_TASK_ID }, 502);
         }
+        // Best-effort metadata lookup: identify whether the latest successful
+        // task run was started manually, by API, or by an Apify schedule.
+        // A metadata failure must never take down an otherwise healthy odds feed.
+        let taskRun = null;
+        try {
+          const runResponse = await fetch(
+            `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last?status=SUCCEEDED`,
+            {
+              headers: {
+                "Authorization": `Bearer ${env.APIFY_TOKEN}`,
+                "Accept": "application/json"
+              }
+            }
+          );
+          if (runResponse.ok) {
+            const runPayload = await runResponse.json();
+            const run = runPayload?.data || runPayload;
+            if (run && typeof run === "object" && !Array.isArray(run)) {
+              const origin = typeof run.meta?.origin === "string" ? run.meta.origin : null;
+              taskRun = {
+                status: typeof run.status === "string" ? run.status : "SUCCEEDED",
+                startedAt: run.startedAt || null,
+                finishedAt: run.finishedAt || null,
+                origin,
+                scheduled: Boolean(run.meta?.scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER")
+              };
+            }
+          }
+        } catch {
+          // Keep feed availability independent from optional run metadata.
+        }
         const payload = {
           source: "Apify Winamax task",
           taskId: APIFY_TASK_ID,
           retrievedAt: new Date().toISOString(),
           count: items.length,
+          taskRun,
           diagnostics: diagnoseOddsItems(items),
           items
         };
