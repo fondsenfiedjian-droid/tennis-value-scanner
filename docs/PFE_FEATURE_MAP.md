@@ -93,6 +93,14 @@ The following mappings were checked against the pinned source CSVs and the extra
 - `pts` and `pts_won` provide the natural denominator/numerator for serve-point win rate within each row. `aces`, `unret`, `forced_err` and `pts_won_lte_3_shots` are counts, not percentages.
 - `wide`, `body`, and `t` are directional serve counts. Treat them as descriptive counts only until the source's direction denominator and treatment of first-serve faults are tested across the full file.
 
+### Additional aggregate families — source-level arithmetic checks
+
+- **ShotDirection:** the literal rows are `Total`, `F`, `B`, and `S`. Across 14,842 ATP player-match groups containing all four rows, each of the five direction columns in F+B+S summed exactly to Total (zero mismatches). This validates the row partition arithmetic, but the exact interpretation of `S` and the mapping from each aggregate direction bucket to an opponent-specific tactical pattern still require codebook review. Treat the categories as descriptive only.
+- **SnV:** rows `SnV` and `nonSnV` have first-/second-serve subdivisions `SnV1st`, `SnV2nd`, `nonSnV1st`, `nonSnV2nd`. In 3,623 ATP player-match groups with all six rows, every reported count column in the first/second subdivisions summed exactly to its corresponding SnV/nonSnV row. This confirms the internal split, not the denominator for a whole-match frequency; missing/uncategorized points remain possible. A candidate within-category win rate is `pts_won / snv_pts`, with a sample-size gate.
+- **ServeDirection:** row labels `1` and `2` correspond to first-/second-serve point categories. Direction columns are deuce/ad-court wide/middle/T. Across 15,087 ATP player-match groups, direction counts did not always equal ServeBasics point counts (620 mismatches), so direction shares must not use ServeBasics `pts` as an assumed denominator. Error columns are separate fault counts and are not added to in-play direction totals.
+- **ServeInfluence:** row labels `1` and `2` are first-/second-serve categories, but its `pts` denominator did not consistently match ServeBasics point counts. The `won_1+` … `won_10+` percentage thresholds remain unmapped; do not treat them as simple point-win rates.
+- **SvBreakSplit/SvBreakTotal:** workbook notation verifies serve direction codes 4=wide, 5=body, 6=T; the CSV row inventory also includes `d`/`a` and intersections such as `4d`/`4a`. These rows are overlapping slices, not additive partitions. Their first-/second-serve denominators and court-side intersection must be tested before feature calculation.
+
 ### Rally — explicit Player1/Player2 orientation verified; subrows partly decoded
 
 - The file identifies `server` and `returner` by name. `pl1_*` and `pl2_*` are match Player1/Player2 fields; in the workbook Player1 is the player who served first in the match. Do not reinterpret pl1/pl2 as current server/returner.
