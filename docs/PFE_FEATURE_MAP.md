@@ -75,6 +75,48 @@ The latest ephemeral audit found these categorical values in the 16 family files
 
 Next step: map each literal code to the correct workbook formula/category and verify player perspective and denominator. Do not convert these strings into features by guesswork.
 
+
+## Aggregate-family codebook: verified mappings
+
+The following mappings were checked against the pinned source CSVs and the extracted MatchChart 0.3.2 workbook. “Verified” here means the row orientation/category and arithmetic are supported by source examples/formulas; it does not establish predictive value or population representativeness.
+
+### Overview — player and set orientation verified
+
+- Each row belongs to the named `player`; `set=Total` is the whole-match aggregate and numeric set values are per-set rows.
+- Verified fields: `serve_pts`, `aces`, `dfs`, `first_in`, `first_won`, `second_in`, `second_won`, `bk_pts`, `bp_saved`, `return_pts`, `return_pts_won`, winners and unforced-error splits.
+- Safe candidate rates, when denominators are positive: first-serve-in = `first_in / serve_pts`; first-serve points won = `first_won / first_in`; second-serve points won = `second_won / second_in`; service points won = `(first_won + second_won) / serve_pts`; break points saved = `bp_saved / bk_pts`; return points won = `return_pts_won / return_pts`.
+- The workbook MatchStats formulas independently confirm the service-point and first/second-serve denominators. Do not calculate second-serve rate with `second_in` as the denominator for second serves played; `second_in` is the number of second serves in, whereas the workbook's second-serve-points denominator is second-serve points played (service points minus first serves in).
+
+### ServeBasics — player perspective and first/second serve rows verified
+
+- `player` identifies the player; `row=1` is first-serve points, `row=2` is second-serve points, and `row=Total` is all service points. This is consistent with the workbook's first/second-serve definitions and the source arithmetic (the 1 and 2 point counts sum to Total in checked examples).
+- `pts` and `pts_won` provide the natural denominator/numerator for serve-point win rate within each row. `aces`, `unret`, `forced_err` and `pts_won_lte_3_shots` are counts, not percentages.
+- `wide`, `body`, and `t` are directional serve counts. Treat them as descriptive counts only until the source's direction denominator and treatment of first-serve faults are tested across the full file.
+
+### Additional aggregate families — source-level arithmetic checks
+
+- **ShotDirection:** the literal rows are `Total`, `F`, `B`, and `S`. Across 14,842 ATP player-match groups containing all four rows, each of the five direction columns in F+B+S summed exactly to Total (zero mismatches). This validates the row partition arithmetic, but the exact interpretation of `S` and the mapping from each aggregate direction bucket to an opponent-specific tactical pattern still require codebook review. Treat the categories as descriptive only.
+- **SnV:** rows `SnV` and `nonSnV` have first-/second-serve subdivisions `SnV1st`, `SnV2nd`, `nonSnV1st`, `nonSnV2nd`. In 3,623 ATP player-match groups with all six rows, every reported count column in the first/second subdivisions summed exactly to its corresponding SnV/nonSnV row. This confirms the internal split, not the denominator for a whole-match frequency; missing/uncategorized points remain possible. A candidate within-category win rate is `pts_won / snv_pts`, with a sample-size gate.
+- **ServeDirection:** row labels `1` and `2` correspond to first-/second-serve point categories. Direction columns are deuce/ad-court wide/middle/T. Across 15,087 ATP player-match groups, direction counts did not always equal ServeBasics point counts (620 mismatches), so direction shares must not use ServeBasics `pts` as an assumed denominator. Error columns are separate fault counts and are not added to in-play direction totals.
+- **ServeInfluence:** row labels `1` and `2` are first-/second-serve categories, but its `pts` denominator did not consistently match ServeBasics point counts. The `won_1+` … `won_10+` percentage thresholds remain unmapped; do not treat them as simple point-win rates.
+- **SvBreakSplit/SvBreakTotal:** workbook notation verifies serve direction codes 4=wide, 5=body, 6=T; the CSV row inventory also includes `d`/`a` and intersections such as `4d`/`4a`. These rows are overlapping slices, not additive partitions. Their first-/second-serve denominators and court-side intersection must be tested before feature calculation.
+
+### Rally — explicit Player1/Player2 orientation verified; subrows partly decoded
+
+- The file identifies `server` and `returner` by name. `pl1_*` and `pl2_*` are match Player1/Player2 fields; in the workbook Player1 is the player who served first in the match. Do not reinterpret pl1/pl2 as current server/returner.
+- `row=Total` is the whole-match rally aggregate; `1-3`, `4-6`, `7-9`, and `10` are rally-length buckets. The workbook counts shots including the serve and excludes errors, so do not equate these bins with number of post-serve groundstrokes.
+- Suffix rows such as `1-3-1`, `1-3-2` remain unmapped until their additional dimension is independently verified. Exclude them from features rather than guessing.
+
+### Still blocked pending family-specific verification
+
+ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints, KeyPointsReturn, KeyPointsServe, ShotDirOutcomes, SnV, SvBreakSplit and SvBreakTotal have been inspected for schema and literal category values, but their row orientation, category intersections and/or denominators are not yet sufficiently verified for player features. In particular:
+- Return-depth codes 7/8/9 in the point notation describe return landing depth (service boxes / mid-court / near baseline); that does not automatically decode every aggregate `row` label such as `89`, `4D` or `v1st`.
+- Key-point labels and serve/break split labels must not be treated as mutually exclusive or additive without formula-level checks.
+- Serve-direction counts need a validated attempt denominator; serve-in and error columns may represent different populations.
+- Shot-direction and shot-type counts may overlap at point-ending shots and serve returns; do not sum them as if they partition all strokes.
+
+No aggregate-family feature is production-enabled. The next implementation stage is a row-code/denominator audit using source match reports and workbook formulas, followed by exact prior-match linkage and chronological testing.
+
 ## Research protocol
 
 1. Decode all row/category codes and denominators from the source workbook/instructions before computing features.
@@ -139,3 +181,17 @@ Research safeguards:
 7. Keep ATP, WTA, Challenger and ITF populations separate until tier-specific calibration and transitions are validated.
 
 These candidates are not shot-style or serve-speed features: the dataset explicitly has no serve speed, serve direction or shot-level fields. No production PFE feature is enabled.
+
+
+## Match Charting linkage to historical results
+
+A new research-only audit links MCP ATP/WTA metadata to the pinned Sackmann result archive: all 118 ATP/WTA main-tour annual files (1968–2026) plus 144 ATP/WTA Futures, Challenger/qualifying and ITF/qualifying files. It accepts only a unique exact normalized full-name pair, tour, year, event (with a small explicit alias table) and round. Each accepted link is classified by source tier. Initials, fuzzy names and ambiguous candidates are never accepted. The result file's `tourney_date` is treated only as a tournament-week date; the MCP metadata `Date` is the charted match date. Their offset is a diagnostic, not proof of match order within an event.
+
+The audit emits aggregate counts only: unique metadata IDs, exact unique links by source tier, ambiguous candidates, round conflicts, event-name mismatches, pairs absent from that year, and date-quality/offset diagnostics. Negative match-date offsets and offsets over 21 days are flagged separately; an exact name/event/round match with a date anomaly is not automatically considered chronology-safe.
+
+The completed full-history audit (all 118 main-tour annual files, 1968–2026, plus 144 lower-tier files) linked 10,671 of 11,822 unique MCP metadata IDs (90.26%): ATP 7,045/7,565 (93.13%) and WTA 3,626/4,257 (85.18%). By source tier, 10,193 links were main-tour, 401 ATP Challenger/qualifying, 5 ATP Futures, and 72 WTA ITF/qualifying. There were zero ambiguous exact candidates, 50 round conflicts, 830 event mismatches and 271 pairs with no candidate in the archive. There were zero ambiguous exact candidates, 44 round conflicts and 627 event-name mismatches. A further 3,125 player pairs had no candidate in that year's supplied archive. These figures show the benefit of adding lower-tier databases, but the unmatched pool is not automatically evidence of missing records.
+
+Date diagnostics flagged 282 links where the MCP match date precedes the Sackmann event-week date, plus 11 offsets greater than 21 days. The remaining 10,378 linked records have offsets from 0 to 21 days, but this is only a chronology plausibility check, not proof of exact within-event order. Large outliers remain (minimum -261 days for WTA; maximum +361 days for ATP) and require separate source review. Do not use these links for rolling pre-match features until date anomalies are resolved and match chronology is proven.
+ It does not write player names, match IDs or player-level linked data. Raw files exist only on the ephemeral CI runner. The MCP and archive sources declare CC BY-NC-SA 4.0; use remains non-commercial and attribution/share-alike obligations apply.
+
+Even a successful match link does not make the charted match representative or authorize a model feature. Before rolling PFE features are calculated, the linked sample must be assessed for charting date, event/tour coverage, metadata anomalies, duplicate match IDs, and match chronology. Same-event prior-match ordering is not inferred from Sackmann tournament-week dates.

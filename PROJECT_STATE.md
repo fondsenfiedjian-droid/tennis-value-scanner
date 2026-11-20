@@ -879,3 +879,28 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Corrected escaped template literals in the new Match Charting audit fixtures after the first CI run reported a test-file syntax error; rerunning the regression workflow on the corrected commit.
 
 - Match Charting metadata field audit completed (run 44833318668): Tournament coverage ATP 100% / WTA 99.60%; Round 99.99% / 99.72%; Best-of 99.56% / 99.58%; other fields Time 54.11% / 41.49%, Court 74.13% / 66.98%, Umpire 60.30% / 53.59%. Most round labels align with results archive codes. JSON artifact newline is valid; regression and documentation guard passed.
+
+
+- PFE aggregate-family codebook: verified Overview player/set orientation and serve/return denominators against MatchChart 0.3.2 MatchStats formulas; verified ServeBasics player perspective and first-/second-serve rows against source rows; verified Rally Player1/Player2 orientation and core rally-length buckets. Other families remain explicitly blocked until row-code intersections and denominators are independently verified.
+- Added strict aggregate-only Match Charting linkage audit against the pinned Sackmann main-tour archive (2013–2026). It requires exact normalized full-name pair, tour, year, explicit event alias and round; ambiguous, event-mismatched and unmatched records remain excluded. Only aggregate counts and date-offset diagnostics are retained; no player names, match IDs or linked player-level dataset are emitted.
+- Sources remain CC BY-NC-SA 4.0, non-commercial only. New linkage workflow uses ephemeral runner storage and uploads only an aggregate JSON artifact. No production features or rating inputs changed.
+
+
+- Initial MCP-to-main-tour linkage run (44834422370): 7,548/11,822 unique charted match IDs linked (63.85%) using exact full-name pair + tour/year/event/round; 0 ambiguous, 36 round conflicts, 400 event mismatches, 3,838 pairs absent from that year's main-tour results. Date diagnostics flagged 162 negative offsets and 5 offsets over 21 days. These figures are superseded by the expanded lower-tier run when available.
+- Expanded the linkage audit to include the 144 pinned Futures, Challenger/qualifying and ITF/qualifying CSVs, classify accepted links by tier, and report date-offset anomalies separately. This is research-only; no player-level records or raw data are retained.
+
+
+- Aggregate family arithmetic checks on pinned ATP CSVs: Overview second_in equals serve_pts minus first_in in 15,090/15,090 player-match totals; ServeBasics first-/second-serve rows sum to Total for pts and pts_won in 15,087/15,087 groups; ShotDirection F/B/S rows sum to Total across all five direction columns in 14,842/14,842 complete groups; SnV first-/second-serve subdivisions sum to SnV/nonSnV across all reported count columns in 3,623/3,623 complete groups.
+- ServeDirection direction counts did not equal ServeBasics point counts in 620/15,087 checked groups; ServeInfluence pts did not consistently match ServeBasics denominators. These families remain blocked from rate construction until denominator differences are explained. No production features activated.
+
+
+- Expanded MCP linkage audit completed successfully (run 44834947028): 8,026/11,822 unique charted IDs linked (67.89%): ATP 4,915/7,565; WTA 3,111/4,257. Tier split: 7,548 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous exact candidates; 44 round conflicts; 627 event mismatches; 3,125 pairs absent from the supplied year's archive.
+- Date diagnostics on accepted links: 261 MCP dates precede the archive event-week date and 5 offsets exceed 21 days; 7,760 offsets are within 0–21 days. Outliers include WTA -261 days and ATP +361 days. The within-21-day group is only a plausibility subset, not proof of within-event order; all MCP linkage remains blocked from rolling pre-match features until chronology/date anomalies are resolved.
+- Linkage audit was rewritten to process annual/lower-tier files sequentially and retain only compact natural-key candidates, avoiding the prior Node heap exhaustion. Regression test checks lower-tier links and quote-tolerant metadata parsing.
+
+
+- Linkage data acquisition widened after the first expanded run: the workflow now downloads all 118 pinned ATP/WTA main-tour annual result files (1968–2026), not only 2013–2026, alongside the 144 lower-tier files. This targets historical MCP chartings whose match dates predate 2013. Updated linkage totals are pending the new CI audit.
+
+
+- Full-history MCP linkage audit completed successfully (run 44835316124): 10,671/11,822 unique charted IDs linked (90.26%): ATP 7,045/7,565 (93.13%), WTA 3,626/4,257 (85.18%). Source-tier split: 10,193 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous exact candidates; 50 round conflicts; 830 event mismatches; 271 pairs had no candidate in the supplied archive.
+- Full-history date diagnostics: 282 links have MCP dates earlier than Sackmann event-week dates; 11 links exceed 21 days; 10,378 offsets are 0–21 days. Extreme offsets remain (-261 WTA, +361 ATP). These are not chronology-safe until individually explained; all linked MCP features remain blocked from rolling pre-match PFE use.
