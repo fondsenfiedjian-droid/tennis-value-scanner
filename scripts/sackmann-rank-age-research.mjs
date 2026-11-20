@@ -244,6 +244,10 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   }
   const minTrainingMatches = Number.isInteger(options.minTrainingMatches) ? options.minTrainingMatches : 1000;
   const maxTrainingRows = Number.isInteger(options.maxTrainingRows) ? options.maxTrainingRows : 50000;
+  const freezeModelYear = options.freezeModelYear == null ? null : String(options.freezeModelYear);
+  if (freezeModelYear && (!/^\d{4}$/.test(freezeModelYear) || freezeModelYear !== evaluationStart.slice(0, 4))) {
+    throw new RangeError("freezeModelYear must be the same calendar year as evaluationStart");
+  }
   const prepared = prepareRows(inputRows);
   const matches = prepared.rows;
   const overall = new Map();
@@ -252,6 +256,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   const byYear = {};
   let index = 0, evaluatedMatches = 0, yearsWithModels = 0;
   let currentYear = null, yearModels = null, yearReport = null;
+  let frozenModels = null, frozenModelFitYear = null;
 
   const buildModels = year => {
     const models = {};
@@ -273,7 +278,20 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     const year = date.slice(0, 4);
     if (year !== currentYear) {
       currentYear = year;
-      yearModels = year >= evaluationStart.slice(0, 4) && year <= evaluationEnd.slice(0, 4) ? buildModels(year) : {};
+      let modelsFittedThisYear = false;
+      if (year >= evaluationStart.slice(0, 4) && year <= evaluationEnd.slice(0, 4)) {
+        if (freezeModelYear && year >= freezeModelYear) {
+          if (!frozenModels) {
+            frozenModels = buildModels(year);
+            frozenModelFitYear = year;
+            modelsFittedThisYear = true;
+          }
+          yearModels = frozenModels;
+        } else {
+          yearModels = buildModels(year);
+          modelsFittedThisYear = true;
+        }
+      } else yearModels = {};
       yearReport = {
         models: Object.fromEntries(Object.entries(yearModels).map(([name, model]) => [
           name, comparisonBucket(model.trainingMatches,
@@ -282,9 +300,11 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
       };
       byYear[year] = yearReport;
       if (Object.keys(yearModels).length) yearsWithModels++;
-      for (const [name, model] of Object.entries(yearModels)) {
-        aggregate[name].trainingMatches += model.trainingMatches;
-        aggregate[name].trainingSample += Math.min(model.baseline.trainingSample, model.candidate.trainingSample);
+      if (modelsFittedThisYear) {
+        for (const [name, model] of Object.entries(yearModels)) {
+          aggregate[name].trainingMatches += model.trainingMatches;
+          aggregate[name].trainingSample += Math.min(model.baseline.trainingSample, model.candidate.trainingSample);
+        }
       }
     }
     const day = [];
@@ -360,6 +380,9 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     conflictingDuplicateRows: prepared.conflictingDuplicateRows,
     evaluatedMatches,
     yearsWithModels,
+    modelPolicy: freezeModelYear
+      ? { type: "frozen-coefficients", frozenFromYear: freezeModelYear, fitYear: frozenModelFitYear }
+      : { type: "annual-walk-forward", refitEachEvaluationYear: true },
     featureDefinitions: {
       rank: "log(rank of player 2 / rank of player 1), positive means player 1 has the better ranking",
       age: "age difference and average age, both measured at the tournament date",
@@ -368,7 +391,9 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     summary,
     byYear: yearly,
     limitations: [
-      "Each evaluation year is predicted using coefficients fitted only on earlier calendar years.",
+      freezeModelYear
+        ? "One coefficient set is fitted on matches before " + freezeModelYear + " and remains frozen through the full evaluation period; Elo ratings still update chronologically from prior results."
+        : "Each evaluation year is predicted using coefficients fitted only on earlier calendar years.",
       "All matches on the same date use the same pre-date Elo state; same-day results do not leak into other same-day predictions.",
       "Each candidate is compared with an Elo-only logistic baseline on the exact same eligible matches.",
       "Training is deterministically capped per model/year for runtime; evaluation uses all eligible matches.",
@@ -381,7 +406,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
 async function main() {
   const args = process.argv.slice(2), options = {}, files = [];
   for (let i = 0; i < args.length; i++) {
-    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--out"].includes(args[i])) {
+    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--freeze-model-year", "--out"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
       const key = args[i].slice(2), value = args[++i];
       if (key === "tour") options.tour = value;
@@ -390,6 +415,7 @@ async function main() {
       else if (key === "k") options.kFactor = Number(value);
       else if (key === "min-training") options.minTrainingMatches = Number(value);
       else if (key === "max-training") options.maxTrainingRows = Number(value);
+      else if (key === "freeze-model-year") options.freezeModelYear = value;
       else if (key === "out") options.output = value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
