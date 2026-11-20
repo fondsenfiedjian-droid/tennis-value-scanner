@@ -44,8 +44,8 @@ export function normalizeHistoricalMatch(raw){
  if(badScore)resultExclusions.push("possible_incomplete_score");
  if(openingA===null||openingB===null)marketExclusions.push("invalid_opening_odds_pair");
  if(currentA===null||currentB===null)marketExclusions.push("invalid_current_odds_pair");
- const h2hA=Number.isInteger(Number(r.h2hPlayer1Wins))&&Number(r.h2hPlayer1Wins)>=0?Number(r.h2hPlayer1Wins):null;
- const h2hB=Number.isInteger(Number(r.h2hPlayer2Wins))&&Number(r.h2hPlayer2Wins)>=0?Number(r.h2hPlayer2Wins):null;
+ const h2hA=r.h2hPlayer1Wins!=null&&r.h2hPlayer1Wins!==""&&Number.isInteger(Number(r.h2hPlayer1Wins))&&Number(r.h2hPlayer1Wins)>=0?Number(r.h2hPlayer1Wins):null;
+ const h2hB=r.h2hPlayer2Wins!=null&&r.h2hPlayer2Wins!==""&&Number.isInteger(Number(r.h2hPlayer2Wins))&&Number(r.h2hPlayer2Wins)>=0?Number(r.h2hPlayer2Wins):null;
  const court=surface(r.surface),date=/^\d{4}-\d{2}-\d{2}$/.test(text(r.date)??"")?r.date:null;
  const time=/^\d{1,2}:\d{2}$/.test(text(r.time)??"")?r.time:null;
  const pair=(a,b)=>({A:a,B:b,validPair:a!==null&&b!==null});
@@ -58,7 +58,7 @@ export function normalizeHistoricalMatch(raw){
    A:{name:pA,rank:rankA,birthDate:text(r.player1Info?.birthDate),heightCm:positive(r.player1Info?.heightCm),weightKg:positive(r.player1Info?.weightKg),plays:text(r.player1Info?.plays)},
    B:{name:pB,rank:rankB,birthDate:text(r.player2Info?.birthDate),heightCm:positive(r.player2Info?.heightCm),weightKg:positive(r.player2Info?.weightKg),plays:text(r.player2Info?.plays)}
   },
-  headToHead:{playerAWins:h2hA,playerBWins:h2hB,matches:Number.isInteger(Number(r.h2hMatches))&&Number(r.h2hMatches)>=0?Number(r.h2hMatches):null,available:h2hA!==null&&h2hB!==null},
+  headToHead:{playerAWins:h2hA,playerBWins:h2hB,matches:r.h2hMatches!=null&&r.h2hMatches!==""&&Number.isInteger(Number(r.h2hMatches))&&Number(r.h2hMatches)>=0?Number(r.h2hMatches):null,available:h2hA!==null&&h2hB!==null},
   market:{currentOdds:pair(currentA,currentB),openingAverageOdds:pair(openingA,openingB),currentAverageOdds:pair(averageA,averageB),bookmakerCount:Array.isArray(r.bookmakerOdds)?r.bookmakerOdds.length:0},
   result:{status:finished?"finished":text(r.status)?.toLowerCase()??"unknown",finished,retired,walkover,winnerSide:winner,score:text(r.score),sets:Array.isArray(r.sets)?r.sets:[],possibleIncompleteScore:badScore},
   quality:{
