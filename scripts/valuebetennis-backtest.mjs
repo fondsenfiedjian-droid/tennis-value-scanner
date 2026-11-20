@@ -227,7 +227,7 @@ function validateMatchScore(score) {
   if (sets.some(set => set === null) || sets.length < 2 || sets.length > 5) return "invalid_score_format";
   const completed = sets.every(([a, b]) => {
     const high = Math.max(a, b), low = Math.min(a, b);
-    return high >= 6 && high - low >= 2;
+    return high >= 6 && (high - low >= 2 || (high === 7 && low === 6));
   });
   return completed ? "valid" : "incomplete_set_score";
 }
