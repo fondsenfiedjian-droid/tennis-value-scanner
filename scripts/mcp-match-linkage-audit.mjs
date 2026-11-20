@@ -30,12 +30,41 @@ const validDate=value=>{
 };
 const dayNumber=value=>validDate(value)?Date.UTC(+value.slice(0,4),+value.slice(4,6)-1,+value.slice(6,8))/86400000:null;
 
+
+function parseMcpCsv(source){
+  source=source.replace(/^\uFEFF/,"");
+  const rows=[];let row=[],field="",quoted=false;
+  const pushField=()=>{row.push(field);field="";};
+  const pushRow=()=>{pushField();if(row.some(value=>value!==""))rows.push(row);row=[];};
+  for(let i=0;i<source.length;i++){
+    const ch=source[i];
+    if(quoted){
+      if(ch==='"'&&source[i+1]==='"'){field+='"';i++;}
+      else if(ch==='"'&&[",","\n","\r",undefined].includes(source[i+1]))quoted=false;
+      else field+=ch;
+      continue;
+    }
+    if(ch==='"'&&field.length===0)quoted=true;
+    else if(ch===",")pushField();
+    else if(ch==="\n")pushRow();
+    else if(ch==="\r"&&source[i+1]==="\n"){}
+    else if(ch==="\r")field+=ch;
+    else field+=ch;
+  }
+  if(field!==""||row.length)pushRow();
+  if(!rows.length)return[];
+  const headers=rows.shift().map(value=>value.trim());
+  const seen=new Map();
+  const unique=headers.map(header=>{const n=(seen.get(header)||0)+1;seen.set(header,n);return n===1?header:header+"_"+n;});
+  return rows.map(values=>Object.fromEntries(unique.map((header,index)=>[header,values[index]??""])));
+}
+
 export function auditMcpMatchLinkage(files){
   if(!Array.isArray(files)||!files.length)throw new Error("No MCP linkage files supplied");
   const metadata=new Map(),results=[];
   for(const file of files){
     const name=basename(file.filename),mm=name.match(META_FILE),rm=name.match(RESULT_FILE);
-    if(mm)metadata.set(mm[1].toLowerCase(),parseCsv(file.content));
+    if(mm)metadata.set(mm[1].toLowerCase(),parseMcpCsv(file.content));
     else if(rm)results.push({tour:rm[1].toUpperCase(),year:rm[2],rows:parseCsv(file.content)});
     else throw new Error("Unexpected MCP linkage filename: "+name);
   }
