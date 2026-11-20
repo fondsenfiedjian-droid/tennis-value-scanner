@@ -1839,8 +1839,10 @@
           bet.reliabilityTier=reliability.tier;
           bet.reliabilityEligible=calibrationReady&&gate.eligible;
           bet.reliabilityReasons=reliability.reasons;
-          if(Number.isFinite(bet.odds)&&bet.odds>=1.5&&bet.odds<=15&&Number.isFinite(bet.ev)&&bet.ev>0)evDayBets.push(bet);
-          if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
+          const oddsInRange=Number.isFinite(bet.odds)&&bet.odds>=valueFilters.minOdds&&bet.odds<=valueFilters.maxOdds&&bet.odds<=15;
+          const meetsMinEv=Number.isFinite(bet.ev)&&bet.ev>=valueFilters.minEv;
+          if(oddsInRange&&meetsMinEv&&bet.ev>0)evDayBets.push(bet);
+          if(oddsInRange&&meetsMinEv&&bet.odds>=1.9&&bet.ev>0)dayBets.push(bet);
         }
         const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)&&valueGateA.eligible?'model-positive':'model-negative';
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)&&valueGateB.eligible?'model-positive':'model-negative';
