@@ -15,6 +15,16 @@ function runExtractMatches(payload) {
   return sandbox.scheduleFns;
 }
 
+const archiveCheckStart = html.indexOf("function selectArchiveResultCheckIds(rows,now=Date.now(),limit=10)");
+const archiveCheckEnd = html.indexOf("function stampResultCheck", archiveCheckStart);
+const archiveCheckSource = html.slice(archiveCheckStart, archiveCheckEnd);
+function runSelectArchiveResultCheckIds(rows, now, limit=10) {
+  const sandbox = {};
+  vm.runInNewContext(archiveCheckSource + "\nglobalThis.selectArchiveResultCheckIds = selectArchiveResultCheckIds;", sandbox);
+  return Array.from(sandbox.selectArchiveResultCheckIds(rows, now, limit));
+}
+
+
 const oddsMatchingStart = html.indexOf("function normalizePlayer(s)");
 const oddsMatchingEnd = html.indexOf("function normalizeTour(value)", oddsMatchingStart);
 const oddsMatchingSource = html.slice(oddsMatchingStart, oddsMatchingEnd);
@@ -46,6 +56,20 @@ function makeWinamaxQuote(overrides = {}) {
     ...overrides
   };
 }
+
+test("result checks retry pending matches every 30 minutes and settled matches daily", () => {
+  const now = Date.parse("2026-11-20T12:00:00.000Z");
+  const minutesAgo = minutes => now - minutes * 60 * 1000;
+  const hoursAgo = hours => now - hours * 60 * 60 * 1000;
+  const rows = [
+    { matchId: "101", matchDate: new Date(hoursAgo(5)).toISOString(), resultCheckedAt: minutesAgo(31), resultOutcome: null },
+    { matchId: "102", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(23), resultOutcome: "completed" },
+    { matchId: "103", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "completed" },
+    { matchId: "104", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "cancelled" },
+    { matchId: "105", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "unresolved" }
+  ];
+  assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
+});
 
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
@@ -223,7 +247,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v112"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v113"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
