@@ -8,20 +8,20 @@ const SURFACES = new Map([
 ]);
 const validDate = value => {
   const s=String(value??"");
-  if(!/^\\d{8}$/.test(s)) return false;
+  if(!/^\d{8}$/.test(s)) return false;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8);
   const dt=new Date(Date.UTC(y,m-1,d));
   return dt.getUTCFullYear()===y && dt.getUTCMonth()===m-1 && dt.getUTCDate()===d;
 };
-const positiveId = v => /^\\d+$/.test(String(v??"")) && Number(v)>0;
+const positiveId = v => /^\d+$/.test(String(v??"")) && Number(v)>0;
 const finiteOrNull = v => {
   if(v==null || String(v).trim()==="") return null;
   const n=Number(v); return Number.isFinite(n) ? n : null;
 };
 const completedScore = value => {
   const s=String(value??"").trim();
-  if(!s || /\\b(?:W\\/O|RET|ABD|DEF|DEFAULT|CANC)\\b/i.test(s)) return false;
-  return /\\d+-\\d+/.test(s);
+  if(!s || /\b(?:W\/O|RET|ABD|DEF|DEFAULT|CANC)\b/i.test(s)) return false;
+  return /\d+-\d+/.test(s);
 };
 
 export function normalizeSackmannRows(rows, tour) {
@@ -70,10 +70,10 @@ const columns=["tourney_date","tourney_id","tourney_name","tour","tourney_level"
   "loser_rank_points","winner_age","loser_age","score","best_of","durationMinutes","source"];
 const csvCell=v=>{
   const s=v==null?"":String(v);
-  return /[",\\r\\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 };
 export function toCsv(rows){
-  return [columns.join(","),...rows.map(row=>columns.map(key=>csvCell(row[key])).join(","))].join("\\n")+"\\n";
+  return [columns.join(","),...rows.map(row=>columns.map(key=>csvCell(row[key])).join(","))].join("\n")+"\n";
 }
 
 async function main(){
@@ -85,7 +85,7 @@ async function main(){
   }
   if(!opts.tour||!opts["input-dir"]||!opts.output) throw new Error("Usage: node scripts/sackmann-import.mjs --tour atp|wta --input-dir PATH --output PATH");
   const prefix=opts.tour+"_matches_";
-  const files=(await readdir(opts["input-dir"])).filter(name=>new RegExp("^"+prefix+"\\\\d{4}\\\\.csv$","i").test(name)).sort();
+  const files=(await readdir(opts["input-dir"])).filter(name=>new RegExp("^"+prefix+"\\d{4}\\.csv$","i").test(name)).sort();
   if(!files.length) throw new Error("No yearly "+opts.tour.toUpperCase()+" match CSV files found in "+opts["input-dir"]);
   const all=[];
   for(const file of files){
