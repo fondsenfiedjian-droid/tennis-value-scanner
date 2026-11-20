@@ -680,7 +680,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Next: research whether pre-match historical ranking and age add repeatable out-of-sample value beyond chronological Elo. Use only ranking/age information available on or before the match date; evaluate ATP/WTA separately with expanding chronological holdouts and paired Brier/LogLoss. Keep the research-only and license restrictions explicit; do not add Sackmann-derived data to the public app or commercial use without separate permission.
 
 
-### Sackmann private historical import preparation — implementation in review (2026-11-20)
+### Sackmann private historical import preparation — merged (2026-11-20)
 - Added `scripts/sackmann-import.mjs`: offline CLI reads yearly main-tour `atp_matches_YYYY.csv` or `wta_matches_YYYY.csv` files from a user-supplied local folder and writes a compact normalized CSV outside the repository.
 - Retains tournament date/ID, tour, round, surface, winner/loser IDs and names, rank/ranking points, age, score, best-of and match duration. ATP and WTA are explicitly separate.
 - Excludes impossible dates, invalid/equal player IDs, and walkover/retirement/unfinished outcomes. Unknown surfaces are retained with blank surface and counted. No raw or generated Sackmann data is committed.
@@ -688,4 +688,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Source rows already carry winner/loser rank and age snapshots associated with tournament date; these are candidates for research, not production features. Do not assume they are exact match-start snapshots; validate tournament date alignment and availability before any modelling.
 - No data download, Live Tennis API request, Apify run, paid service, production change or deployment was performed. Importer has not yet been run against the full archive; it requires the user/source CSVs to be available in a local folder.
 - License: Sackmann source archive is CC BY-NC-SA 4.0. No commercial use or public redistribution of raw/derived data without appropriate permission/licence review.
-- Branch: `feat/sackmann-private-import`; PR/CI pending. Next: run CI, fix findings, then test on a small local ATP/WTA source sample before attempting a full archive import and chronological feature evaluation.
+- PR #64 was merged to `main` on 2026-11-20 as `46e7e37ceede54bbf0a7a8225acb6329959f8781`. Regression workflow `44809660323` passed; project-state documentation guard `44809660520` passed. Production code was not changed and no data download or deployment was required.
+- The importer has only passed unit tests so far; it has not yet been run against actual ATP/WTA archive CSVs. Next: validate on small source samples, then run separate chronological ATP/WTA backtests and test rank/age as additional pre-match signals. Do not activate these signals in production unless out-of-sample results show a repeatable improvement.
