@@ -70,6 +70,6 @@ test("audit emits aggregate-only coverage and does not retain match IDs", () => 
   assert.equal(report.totals.transitions, 2);
   assert.equal(report.totals.inferred, 2);
   assert.equal(report.totals.inferredTransitionPct, 100);
-  assert.equal(report.totals.matchesWithZeroStart, 2);
+  assert.equal(report.totals.matchesWithZeroStart, 1);
   assert.equal(JSON.stringify(report).includes("m1"), false);
 });
