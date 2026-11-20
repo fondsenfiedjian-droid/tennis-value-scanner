@@ -1,0 +1,76 @@
+name: Sackmann lower-tier database coverage audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/sackmann-lower-tier-audit.mjs"
+      - "tests/sackmann-lower-tier-audit.test.mjs"
+      - ".github/workflows/sackmann-lower-tier-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned lower-tier ATP/WTA datasets
+        run: |
+          set -euo pipefail
+          commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
+          mkdir -p research-data
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$commit?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const files = tree.tree.filter(item =>
+            /^(atp|wta)\\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\\d{4}\\.csv$/i.test(item.path)
+          ).map(item => item.path).sort();
+          if (files.length !== 144) throw new Error("Expected 144 pinned lower-tier files, found " + files.length);
+          await writeFile(process.env.RUNNER_TEMP + "/lower-tier-files.txt", files.join("\\n") + "\\n");
+          console.log("Pinned lower-tier source files: " + files.length);
+          NODE
+          cat "$RUNNER_TEMP/lower-tier-files.txt" | xargs -r -n 1 -P 8 sh -c '
+            set -eu
+            path="$1"
+            name="${path##*/}"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/83733587353df8a41f2fd4f516147d5aa83f5a8d/$path" \
+              --output "research-data/$name"
+            test -s "research-data/$name"
+          ' _
+          test "$(find research-data -type f | wc -l)" -eq 144
+      - name: Audit lower-tier and qualifying data
+        run: |
+          set -euo pipefail
+          node scripts/sackmann-lower-tier-audit.mjs --input-dir research-data --out "$RUNNER_TEMP/sackmann-lower-tier-audit.json"
+      - name: Publish aggregate coverage summary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/sackmann-lower-tier-audit.json", "utf8"));
+          const rows = [
+            "| Tour | Dataset | Files | Years | Source rows | Completed matches | Players | Both ranks | Both ages | Surface | Serve stats |",
+            "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|",
+            ...report.groups.map(g => `| ${g.tour} | ${g.sourceType} | ${g.files} | ${g.years[0]}–${g.years.at(-1)} | ${g.rows} | ${g.completedMatches} | ${g.uniquePlayers} | ${g.rankBothPct}% | ${g.ageBothPct}% | ${g.knownSurfacePct}% | ${g.coreServeStatsBothPct}% |`)
+          ];
+          await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\\n") + "\\n"));
+          NODE
+      - name: Upload aggregate-only audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-lower-tier-coverage-audit
+          path: ${{ runner.temp }}/sackmann-lower-tier-audit.json
+          if-no-files-found: error
+          retention-days: 30
