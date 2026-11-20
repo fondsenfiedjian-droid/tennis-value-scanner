@@ -457,3 +457,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - This prevents an import from collapsing distinct model versions or schedule/status revisions into one historical snapshot.
 - Added regression coverage for importing a new model version and a rescheduled/live revision of the same match.
 - PWA shell cache advanced from v126 to v127. Existing local archive data is not rewritten; no API calls or bookmaker changes.
+
+- Archive import identity hardening merged as PR #49 (`6b3bccfb89e98cbc2db2370a0c45d9420c30095b`); regression tests and project-state guard passed on the PR. Import deduplication now preserves model-version and schedule/status revisions while retaining the legacy `imported` default.
