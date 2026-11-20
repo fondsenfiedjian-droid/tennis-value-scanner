@@ -217,9 +217,9 @@ function validDate(value){
 function hasOnlyCompletedSets(score) {
   const raw = String(score ?? "").trim();
   if (!raw) return true;
-  const tokens = raw.split(/\\s+/);
+  const tokens = raw.split(/\s+/);
   const sets = tokens.map(token => {
-    const match = /^(\\d{1,2})-(\\d{1,2})(?:\\((\\d{1,2})\\))?$/.exec(token);
+    const match = /^(\d{1,2})-(\d{1,2})(?:\((\d{1,2})\))?$/.exec(token);
     if (!match) return null;
     return [Number(match[1]), Number(match[2])];
   });
