@@ -873,3 +873,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added research-only point-state PFE candidates to `docs/PFE_FEATURE_MAP.md`: transition-derived serve/return outcomes, hold/break, tiebreak and score-pressure features, plus a separate in-play model path. The server-to-transition alignment, partial-tape coverage, same-event chronology and tier calibration are explicit validation gates; no feature is active.
 
 - Added `scripts/point-state-transition-audit.mjs` and synthetic tests for score-state transitions (normal games, advantage, tiebreak, game/set boundaries and ambiguous jumps). The CLI accepts CSV/gzip and emits aggregate diagnostics only; no IDs or player-level data. Server-to-transition alignment and tape completeness remain unverified; no sample data imported and no production feature enabled. See `docs/POINT_STATE_TRANSITION_RESEARCH.md`.
+
+- Fixed the point-state audit CLI entrypoint to resolve relative script paths correctly and added an end-to-end CLI test that writes only aggregate output from a synthetic CSV.
