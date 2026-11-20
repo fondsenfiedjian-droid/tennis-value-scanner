@@ -11,13 +11,13 @@ function fixture(tour) {
     "m1,A,B,R,L,20240101,Hard",
     "m2,C,D,L,R,20240202,Clay",
     "m3,E,F,R,R,20240303,Grass"
-  ].join("\\n");
+  ].join("\n");
   for (const name of names) files[prefix+`stats-${name}.csv`] = [
     "match_id,stat_a,stat_b",
     "m1,10,20",
     "m2,11,",
     "outside,12,13"
-  ].join("\\n");
+  ].join("\n");
   return files;
 }
 
