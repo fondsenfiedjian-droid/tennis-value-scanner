@@ -35,6 +35,25 @@ The provider advertises ATP/WTA results since 2007, set and tiebreak scores, tou
 
 **Role:** possible independent cross-check or small recent-results supplement, not a bulk historical database replacement. No API key has been connected, no calls have been made and no paid plan is authorized. Before use, inspect its terms, field provenance, correction policy, player-ID mapping, credit costs and response pagination. A 500-credit monthly tier is not assumed sufficient for full backfill.
 
+
+## Candidate C — Live Tennis API academic point-by-point dataset
+
+Research page: https://livetennisapi.com/data/academic  
+Public sample: https://doi.org/10.5281/zenodo.23718893
+
+The current Zenodo version (1.0.3, published 28 October 2026) describes an index of 173,571 completed matches from 2023-01-01 to 2026-08-13 across ATP, WTA, Challenger and ITF, with point-by-point score sequences for 98.2%. It lists 32,678 players. The public sample contains all match-index rows, player metadata, and 951,064 live-observed score states for 5,380 completed matches in June 2026 (77% of that month's completed matches).
+
+The provenance split matters:
+- 22,031 matches / 3,184,514 score states were captured live with UTC timestamps; live observation began 12 October 2025 and reached full volume in February 2026.
+- Earlier 2023–2025 sequences are reconstructed after the match and have no capture timestamps; they are not in the public sample and are granted only case by case.
+- An observed tape may begin after the match starts or stop before the final point. Every match has coverage information; never assume a complete 0-0-to-finish record.
+- The point rows are scoreboard states, not strokes. Serve speed, serve direction and shot-level data are absent.
+- The dataset license is CC BY-NC 4.0. Full access is limited to non-commercial academic research/teaching by application from an institutional address; raw redistribution is prohibited and citation is required.
+
+**PFE role:** strongest candidate for research on point-state transitions, serve/return point outcomes, score pressure and in-play state modelling across lower tiers. It is not a shot-level or serve-speed source. A pre-match player feature would need rolling history built strictly from matches completed before the target match, with minimum-history and coverage gates. Observed data is selective and may be truncated; reconstructed history must not be treated as live-observed or timestamped.
+
+**Access status:** public sample identified, but no file was downloaded or imported in this pass. Full academic access not requested. Do not use the full dataset or redistribute raw data without an approved application and licence review.
+
 ## Source-selection rules
 
 - Keep the pinned historical archive as the reproducible baseline.
@@ -53,4 +72,5 @@ The provider advertises ATP/WTA results since 2007, set and tiebreak scores, tou
 | Pinned Sackmann archive | Through 25 May 2026 for main tour | Long historical baseline, rankings, lower tiers, Slam PBP | Snapshot ends before late 2026; CC BY-NC-SA | Keep as reproducible research baseline |
 | TennisMyLife website | Advertises daily/live updates through 2026 | Recent ATP/WTA, ATP Challenger/qualifying, match stats | Non-commercial terms; raw redistribution barred; WTA quality caveat | Audit candidate only; rights gate |
 | AcesAPI | Daily refresh; results since 2007 | Independent result/ranking/H2H cross-check | Credit-limited API; no point-by-point feed; key required | Optional supplement only; no connection or spend |
+| Live Tennis API academic dataset | Match index to 13 Aug 2026; observed point states from Oct 2025 | 173,571 matches, all tiers, 3.18M live-observed score states | CC BY-NC; institutional application for full data; tapes may be partial; no shot/serve-speed data | Public sample identified; no download/import; full access application not made |
 | Match Charting Project | Pinned 18 Sep 2026 | Shot-level style and tactical aggregates | Selective charted sample; CC BY-NC-SA; metadata anomalies | Research only; no production feature activation |
