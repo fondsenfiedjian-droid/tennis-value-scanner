@@ -29,3 +29,8 @@ The source is Jeff Sackmann's tennis datasets:
 - Archive mirror: https://github.com/Aneeshers/tennis-sackmann-archive
 
 The archive states CC BY-NC-SA 4.0. Attribute Jeff Sackmann, preserve the same license for redistribution, and do not use commercially without separate permission. Do not commit raw or generated Sackmann data to this public application repository. This tool is for non-commercial research pending legal clearance for any broader use.
+
+
+## Next Gen Fast4 score validation
+
+The historical importer has a separate Fast4 rule only for tournaments whose name identifies the Next Gen format. A completed Fast4 set is accepted as 4-0, 4-1 or 4-2, or 4-3 when a tiebreak marker is present. Ordinary-length sets such as 5-3 or 6-4 are rejected even when the tournament name is Next Gen. The normal-tour completed-set rule remains unchanged. This prevents the special format from widening the accepted score range for standard events.
