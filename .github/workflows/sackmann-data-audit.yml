@@ -6,10 +6,12 @@ on:
     paths:
       - "scripts/sackmann-data-audit.mjs"
       - "scripts/sackmann-import.mjs"
-      - "scripts/sackmann-rank-age-research.mjs"\n      - "scripts/sackmann-prematch-rank-research.mjs"
+      - "scripts/sackmann-rank-age-research.mjs"
+      - "scripts/sackmann-prematch-rank-research.mjs"
       - "tests/sackmann-data-audit.test.mjs"
       - "tests/sackmann-import.test.mjs"
-      - "tests/sackmann-rank-age-research.test.mjs"\n      - "tests/sackmann-prematch-rank-research.test.mjs"
+      - "tests/sackmann-rank-age-research.test.mjs"
+      - "tests/sackmann-prematch-rank-research.test.mjs"
       - ".github/workflows/sackmann-data-audit.yml"
   workflow_dispatch:
 
