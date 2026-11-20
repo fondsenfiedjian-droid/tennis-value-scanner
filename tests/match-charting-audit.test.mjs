@@ -8,7 +8,7 @@ import { auditMatchChartingFiles } from "../scripts/match-charting-audit.mjs";
 
 const names = ["Overview","Rally","ServeBasics","ReturnDepth","ReturnOutcomes","ShotTypes","ShotDirection","ServeDirection","ServeInfluence","NetPoints","KeyPointsReturn","KeyPointsServe","ShotDirOutcomes","SnV","SvBreakSplit","SvBreakTotal"];
 function fixture(tour) {
-  const prefix = \`charting-\${tour}-\`;
+  const prefix = "charting-" + tour + "-";
   const files = {};
   files[prefix+"matches.csv"] = [
     "match_id,Player 1,Player 2,Pl 1 hand,Pl 2 hand,Date,Tournament,Round,Time,Court,Surface,Umpire,Best of,Final TB?,Charted by",
@@ -16,7 +16,7 @@ function fixture(tour) {
     "m2,C,D,L,R,20240202,French Open,R128,13:00,Court 1,Clay,Umpire,5,No,Chartist",
     "m3,E,F,R,R,20240303,Wimbledon,R128,14:00,Centre,Grass,Umpire,5,No,Chartist"
   ].join("\n");
-  for (const name of names) files[prefix+\`stats-\${name}.csv\`] = [
+  for (const name of names) files[prefix+"stats-"+name+".csv"] = [
     "match_id,row,set,stat_a",
     "m1,A,1,10",
     "m2,B,1,11",
