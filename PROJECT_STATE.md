@@ -707,3 +707,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added tests for valid Next Gen completed scores, partial Fast4 scores and rejection of Fast4-looking scores at ordinary tournaments.
 - No production behavior, external API calls, Apify runs, paid services or raw archive storage.
 - Branch: `fix/sackmann-nextgen-score-format`; CI/PR pending. Next: run CI and repeat the 2025 ATP/WTA data-quality audit.
+
+- Fast4 follow-up tightened: only four-game completed sets (4-0 to 4-2) or 4-3 with a tiebreak marker qualify for Next Gen Finals; ordinary-length 5-3/6-4 sets are rejected even in a Fast4-labelled event. Added regression cases.
