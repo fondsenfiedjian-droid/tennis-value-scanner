@@ -839,3 +839,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - First completed audit (run 44822681179): 7,565 unique ATP metadata IDs and 4,257 unique WTA metadata IDs; ten stat families per tour each join 100% of their own unique IDs to metadata. Aggregate stat rows: ATP 1,326,748; WTA 736,452. These are charted observations, not representative tour coverage.
 - Metadata quality review found unexpected categorical values (including non-surface text in Surface and non-R/L hand values) plus duplicate metadata IDs. Added explicit quality flags; do not use metadata date/surface/hand fields for features until source rows are inspected and repaired. Research-only; no production feature activation.
+
+- Added `docs/PFE_FEATURE_MAP.md`: candidate formulas, denominator/data-dictionary caveats, leakage controls, sample-threshold sweep, and chronological validation protocol. No PFE feature is enabled in production.
