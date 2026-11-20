@@ -459,3 +459,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PWA shell cache advanced from v126 to v127. Existing local archive data is not rewritten; no API calls or bookmaker changes.
 
 - Archive import identity hardening merged as PR #49 (`6b3bccfb89e98cbc2db2370a0c45d9420c30095b`); regression tests and project-state guard passed on the PR. Import deduplication now preserves model-version and schedule/status revisions while retaining the legacy `imported` default.
+
+### Result provenance in prediction archive (2026-11-20)
+- Verified match results now explicitly record `resultSource: live_tennis_api` alongside result version, status and provider restatement timestamp.
+- Import normalization preserves only the recognized provider identifier; result revisions update provenance consistently across every snapshot for the match.
+- CSV archive export includes the result source. Regression coverage verifies provenance and revision metadata survive result application and archive import.
+- PWA shell cache advanced from v127 to v128. No historical archive rows are rewritten and no external API calls are made.

@@ -1735,7 +1735,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v127/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v128/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2434,7 +2434,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v127/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v128/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -3245,4 +3245,23 @@ test("archive import preserves model-version and schedule-revision snapshots", (
   assert.equal(merged.rows.filter(row => row.modelVersion === "1").length, 1);
   assert.equal(merged.rows.filter(row => row.modelVersion === "2").length, 2);
   assert.ok(merged.rows.some(row => row.matchDate === "2026-11-25T13:00:00.000Z" && row.captureStatus === "live"));
+});
+
+
+test("verified result provenance survives archive export/import normalization and revisions", () => {
+  const { applyVerifiedMatchResult, mergePredictionArchive } = makeArchiveStore();
+  const rows = [
+    { matchId: 991, matchKey: "991", side: "A", player: "Player One", opponent: "Player Two", odds: 2, probability: 60, ev: 20, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" },
+    { matchId: 991, matchKey: "991", side: "B", player: "Player Two", opponent: "Player One", odds: 2, probability: 40, ev: -20, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" }
+  ];
+  const result = { id: 991, players: { p1: { name: "Player One" }, p2: { name: "Player Two" } }, status: "completed", outcome: "completed", winner: 1, result_version: 4, result_restated_at: "2026-11-20T14:00:00Z" };
+  const applied = applyVerifiedMatchResult(rows, result, 200);
+  assert.equal(applied.updated, 2);
+  assert.ok(applied.rows.every(row => row.resultSource === "live_tennis_api"));
+  assert.ok(applied.rows.every(row => row.resultVersion === 4));
+  assert.ok(applied.rows.every(row => row.resultRestatedAt === result.result_restated_at));
+  const imported = mergePredictionArchive([], applied.rows);
+  assert.equal(imported.rows.length, 2);
+  assert.ok(imported.rows.every(row => row.resultSource === "live_tennis_api"));
+  assert.ok(imported.rows.every(row => row.resultVersion === 4));
 });
