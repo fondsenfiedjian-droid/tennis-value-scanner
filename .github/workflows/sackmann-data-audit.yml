@@ -6,8 +6,10 @@ on:
     paths:
       - "scripts/sackmann-data-audit.mjs"
       - "scripts/sackmann-import.mjs"
+      - "scripts/sackmann-rank-age-research.mjs"
       - "tests/sackmann-data-audit.test.mjs"
       - "tests/sackmann-import.test.mjs"
+      - "tests/sackmann-rank-age-research.test.mjs"
       - ".github/workflows/sackmann-data-audit.yml"
   workflow_dispatch:
 
@@ -42,6 +44,20 @@ jobs:
           set -euo pipefail
           node scripts/sackmann-import.mjs --tour atp --input-dir research-data --output "$RUNNER_TEMP/atp-normalized.csv"
           node scripts/sackmann-import.mjs --tour wta --input-dir research-data --output "$RUNNER_TEMP/wta-normalized.csv"
+      - name: Run annual walk-forward rank and age comparisons
+        run: |
+          set -euo pipefail
+          node scripts/sackmann-rank-age-research.mjs --tour atp --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out "$RUNNER_TEMP/atp-rank-age-report.json" "$RUNNER_TEMP/atp-normalized.csv"
+          node scripts/sackmann-rank-age-research.mjs --tour wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out "$RUNNER_TEMP/wta-rank-age-report.json" "$RUNNER_TEMP/wta-normalized.csv"
+      - name: Upload aggregate rank and age research reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-rank-age-walkforward
+          path: |
+            ${{ runner.temp }}/atp-rank-age-report.json
+            ${{ runner.temp }}/wta-rank-age-report.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Validate normalized outputs and classify source-key collisions
         run: |
           node --input-type=module <<'NODE'
