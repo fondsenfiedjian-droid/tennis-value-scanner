@@ -91,6 +91,13 @@
     .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
     .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
     .best-bet{background:linear-gradient(145deg,#211018,#090909 68%);border-color:transparent}
+    #bestBet{cursor:pointer;text-align:center;min-height:178px;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+    #bestBet:focus-visible{outline:2px solid #d58a8e;outline-offset:3px}
+    .best-bet-odds{font-size:clamp(48px,12vw,68px);line-height:1;font-weight:900;letter-spacing:-2px;color:#fff1f2;text-shadow:0 0 10px #d58a8e99,0 0 26px #a51f456b;animation:oddsPulse 2.2s ease-in-out infinite}
+    .best-bet-pair{font-size:17px;font-weight:850;color:#fff1f2}
+    .best-bet-sub{font-size:11px;color:#c9b8ba;letter-spacing:.08em}
+    @keyframes oddsPulse{0%,100%{text-shadow:0 0 8px #d58a8e66,0 0 18px #a51f4544}50%{text-shadow:0 0 14px #ffd2d866,0 0 34px #a51f45aa}}
+    @media(prefers-reduced-motion:reduce){.best-bet-odds{animation:none}}
     .best-bet.has-pick{animation:bestBetGlow 2.8s ease-in-out infinite}
     .best-bet:before{background:linear-gradient(120deg,#d9a0a7,#77716d 12%,#d58a8e 35%,#a51f45 58%,#d58a8e 78%,#e2dcd7)}
     .best-bet-title,.best-bet-value{color:#d58a8e}
@@ -181,7 +188,7 @@
   </div>
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
-  <div id="bestBet" class="best-bet" aria-live="polite"><div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
+  <div id="bestBet" class="best-bet" role="button" tabindex="0" aria-label="Открыть подробности ставки дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
   <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">МАКСИМАЛЬНЫЙ EV ДНЯ</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
@@ -1497,12 +1504,11 @@
     return {eligible:reasons.length===0,reasons};
   }
   function selectBestBet(bets,minEv=3,minOdds=1.9){
-    const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
     const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(15,Number(minOdds))):1.9;
-    const freshnessRank={good:2,medium:1};
-    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&
-      ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible!==false)
-      .sort((a,b)=>b.ev-a.ev||freshnessRank[b.freshnessLevel]-freshnessRank[a.freshnessLevel]||b.odds-a.odds)[0]||null;
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>0&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&
+      x.reliabilityEligible===true&&Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=85&&
+      x.freshnessLevel==='good'&&x.valueEligible===true)
+      .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev)[0]||null;
   }
   function renderBestBet(bets,scanned,totalCandidates,failed=0){
     const box=$('#bestBet'),evBox=$('#highestEv');
@@ -1518,12 +1524,17 @@
     box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
-      box.innerHTML='<div class="best-bet-title">Самая интересная ставка дня</div><div class="best-bet-empty">'+(scanned?'Пока нет ставки с коэффициентом от '+bestBetMinOdds.toFixed(2)+' и EV не ниже '+minEv.toFixed(1)+'%.':'Нет подходящих матчей с коэффициентом от '+bestBetMinOdds.toFixed(2)+'.')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.innerHTML='<div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Нет кандидата, прошедшего строгий фильтр надёжности для крупной суммы.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.onclick=null;box.onkeydown=null;box.removeAttribute('aria-label');
     }else{
-      const d=matchDate(best.match);
-      const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
-      const tournament=best.match.tournament_name||best.match.tournament||best.match.event_name||best.match.competition||'Турнир не указан';
-      box.innerHTML='<div class="best-bet-title">★ САМАЯ ИНТЕРЕСНАЯ СТАВКА ДНЯ</div><div class="best-bet-main">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Победа: <b>'+escapeHtml(best.player)+'</b> · '+escapeHtml(best.bookmaker||'Winamax')+' <b>'+best.odds.toFixed(2)+'</b><br>Вероятность модели: '+best.probability.toFixed(2)+'% · <span class="best-bet-value">EV +'+best.ev.toFixed(2)+'%</span><br>'+coverage+' Выбрана по максимальному EV среди проверенных матчей.</div>';
+      box.innerHTML='<div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-odds">'+best.odds.toFixed(2)+'</div><div class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-sub">WINAMAX · НАДЁЖНОСТЬ '+best.reliabilityScore+'/100 · '+best.probability.toFixed(1)+'% · EV +'+best.ev.toFixed(2)+'%</div>';
+      box.setAttribute('aria-label','Ставка дня: '+best.player+' против '+best.opponent+', коэффициент '+best.odds.toFixed(2)+'. Открыть подробности.');
+      const openDetails=()=>{
+        const card=document.querySelector('.match-card[data-match-index="'+Number(best.matchIndex)+'"]');
+        if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
+      };
+      box.onclick=openDetails;
+      box.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetails();}};
     }
     const evContent=$('#highestEvContent'),evButton=$('#highestEvOpen');
     if(!highest){
@@ -1747,7 +1758,14 @@
         const valueGateA=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityA?.status});
         const valueGateB=assessValueSignalQuality({freshnessLevel:freshness.level,pfeStatus:pfeAssessment.status,ratingQuality:result.ratingQualityB?.status});
         betA.valueEligible=valueGateA.eligible;betB.valueEligible=valueGateB.eligible;
-        for(const bet of [betA,betB])if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
+        const calibrationReady=reliability.calibrationIncluded===true&&reliability.normalized>=85&&freshness.level==='good'&&pfeAssessment.status!=='conflict'&&pfeAssessment.independentGroups>=2;
+        for(const [bet,gate] of [[betA,valueGateA],[betB,valueGateB]]){
+          bet.reliabilityScore=reliability.normalized;
+          bet.reliabilityTier=reliability.tier;
+          bet.reliabilityEligible=calibrationReady&&gate.eligible;
+          bet.reliabilityReasons=reliability.reasons;
+          if(Number.isFinite(bet.odds)&&bet.odds>=1.9&&Number.isFinite(bet.ev)&&bet.ev>0)dayBets.push(bet);
+        }
         const classA=result.evA!==null&&result.evA>=Number($('#minEv').value||3)&&valueGateA.eligible?'model-positive':'model-negative';
         const classB=result.evB!==null&&result.evB>=Number($('#minEv').value||3)&&valueGateB.eligible?'model-positive':'model-negative';
         const valueGateReasonText=gate=>gate.eligible?'допущен':gate.reasons.map(reason=>({insufficient_freshness:'недостаточная свежесть',model_market_conflict:'Elo расходится с рынком',invalid_rating_quality:'некорректные данные рейтинга'}[reason]||reason)).join('; ');
