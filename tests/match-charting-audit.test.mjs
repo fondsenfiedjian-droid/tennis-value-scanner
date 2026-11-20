@@ -13,11 +13,11 @@ function fixture(tour) {
     "m3,E,F,R,R,20240303,Grass"
   ].join("\n");
   for (const name of names) files[prefix+`stats-${name}.csv`] = [
-    "match_id,stat_a,stat_b",
-    "m1,10,20",
-    "m2,11,",
-    "m1,14,22",
-    "outside,12,13"
+    "match_id,row,set,stat_a",
+    "m1,A,1,10",
+    "m2,B,1,11",
+    "m1,A,2,14",
+    "outside,C,2,12"
   ].join("\n");
   return files;
 }
@@ -32,6 +32,8 @@ test("audits ATP and WTA metadata and stat-family match coverage", () => {
   assert.equal(report.tours.ATP.metadata.qualityChecks.rowsWithUnexpectedSurface, 0);
   assert.equal(report.tours.ATP.statFiles[0].rows, 4);
   assert.equal(report.tours.ATP.statFiles[0].repeatedMatchIdRows, 1);
+  assert.deepEqual(report.tours.ATP.statFiles[0].categoryCounts.row, { A: 2, B: 1, C: 1 });
+  assert.deepEqual(report.tours.ATP.statFiles[0].categoryCounts.set, { "1": 2, "2": 2 });
   assert.equal(report.tours.ATP.metadata.invalidDateRows, 0);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.matchedUniqueIds, 2);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.unmatchedUniqueIds, 1);
