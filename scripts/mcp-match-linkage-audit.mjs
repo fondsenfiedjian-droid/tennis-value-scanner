@@ -95,7 +95,7 @@ function buildIndex(rows, tour) {
     const fullPair = pair(p1, p2), a1 = alias(row.winner_name), a2 = alias(row.loser_name);
     const aliasPair = a1 && a2 ? pair(a1, a2) : "";
     const rowKey = [tour,year,date,text(row.tourney_id),text(row.match_num),fullPair,round || ""].join("|");
-    const record = { rowKey, date, fullPair, aliasPair };
+    const record = { rowKey, date, year, event, fullPair, aliasPair };
     add(fullEvent, [year,event,fullPair].join("|"), record);
     if (round) add(fullRound, [year,event,round,fullPair].join("|"), record);
     if (aliasPair) {
@@ -132,7 +132,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     missingPlayerNameRows: 0, missingTournamentRows: 0, missingRoundRows: 0, invalidRoundRows: 0,
     eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
     ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
-    linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0,
+    linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0, linkedFromAdjacentYear: 0,
     unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, byYear: {}
   };
   for (const row of uniqueRows) {
@@ -176,7 +176,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     const fullExact = round ? collect(index.fullRound, available, round, fullPair) : [];
     const fullAny = collect(index.fullEvent, available, null, fullPair);
     let candidate = null, method = "", reason = "";
-    const eventAlias = available.some(item => item.event !== token(tournament) || item.year !== year);
+    const eventAlias = available.some(item => item.event !== token(tournament));
     if (fullExact.length) {
       const filtered = withinDateWindow(fullExact, date, windowDays).eligible;
       if (filtered.length === 1) { candidate = filtered[0]; method = "full"; }
@@ -229,6 +229,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
       else { stats.linkedByInitialSurname++; ys.alias++; }
       if (method.endsWith("no-round")) stats.linkedWithoutUsableRound++;
       if (eventAlias) stats.linkedByEventAlias++;
+      if (candidate.year !== year) stats.linkedFromAdjacentYear++;
     } else {
       stats.unmatched++; ys.unmatched++;
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
