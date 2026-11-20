@@ -579,3 +579,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
   - WTA Carpet n=321 / 241: larger apparent improvements (full year −0.010218 / −0.021577; second half −0.010505 / −0.022276), but the sample is too small to trust this magnitude without replication.
 - Interpretation: the signal is most stable on Hard and Clay, the dominant surfaces in this sample. Grass and Carpet evidence is sparse and heterogeneous; do not generalize the aggregate workload benefit to those surfaces. These are paired probability metrics, not ROI, causal effects or profitability.
 - Decision: keep Human Factor workload research-only. Any future production experiment should be limited initially to Hard/Clay validation and must still pass independent multi-season holdouts, calibration and market comparison. Do not add surface-specific adjustments based on these small 2026 segments.
+
+
+### Sackmann historical dataset coverage audit — in review (2026-11-20)
+- Added a research-only audit for Jeff Sackmann's ATP/WTA yearly match CSVs, 1991–2026. It measures valid completed-match counts and coverage for serve/return inputs, ace/double-fault/break-point stats, rankings, age, handedness, surface and duration, broken down by tour, year, surface and tournament level.
+- The archive mirror's README and original upstream READMEs identify Jeff Sackmann / Tennis Abstract as the data compiler and CC BY-NC-SA 4.0 as the license. Use is non-commercial; derived/redistributed material must preserve the same license and attribution. No commercial use is authorized by this change.
+- The workflow downloads source CSVs only into ephemeral GitHub Actions storage. The report contains aggregate coverage only, no raw rows or player-level records, and is marked CC BY-NC-SA 4.0. No source CSVs or derived match-level data are committed.
+- No production model, probabilities, EV, recommendation logic, Worker, PWA, API quota or Winamax scraper behavior changes.
+- Pending: run regression tests and the isolated coverage workflow, inspect ATP/WTA results, then decide whether rolling pre-match serve/return research is feasible. Any such feature must use only matches completed before the target date and remain research-only until independent chronological validation.
