@@ -7,65 +7,44 @@ const PINNED_COMMIT="83733587353df8a41f2fd4f516147d5aa83f5a8d";
 const SLAMS=["ausopen","frenchopen","wimbledon","usopen"];
 const SLAM_META=/^(\d{4})-(ausopen|frenchopen|wimbledon|usopen)-matches\.csv$/i;
 const RESULT_FILE=/^(atp|wta)_matches_(\d{4})\.csv$/i;
-const EVENT_ALIASES={
-  ausopen:["australianopen"],
-  frenchopen:["frenchopen","rolandgarros"],
-  wimbledon:["wimbledon"],
-  usopen:["usopen"]
-};
+const EVENT_ALIASES={ausopen:["australianopen"],frenchopen:["frenchopen","rolandgarros"],wimbledon:["wimbledon"],usopen:["usopen"]};
 const normalizeName=value=>String(value??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
 const normalizeRound=value=>String(value??"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
 const pairKey=(a,b)=>[normalizeName(a),normalizeName(b)].sort().join("|");
-const eventMatches=(name,slam)=>{
-  const n=normalizeName(name);
-  return EVENT_ALIASES[slam].some(alias=>n.includes(alias));
-};
+const eventMatches=(name,slam)=>EVENT_ALIASES[slam].some(alias=>normalizeName(name).includes(alias));
 
 export function auditSlamMatchLinkage(files){
   if(!Array.isArray(files)||!files.length)throw new Error("No Slam linkage files supplied");
   const slamMeta=new Map(),resultFiles=[];
   for(const file of files){
-    const name=basename(file.filename);
-    const sm=name.match(SLAM_META),rm=name.match(RESULT_FILE);
+    const name=basename(file.filename),sm=name.match(SLAM_META),rm=name.match(RESULT_FILE);
     if(sm)slamMeta.set(sm[1]+"-"+sm[2].toLowerCase(),{year:sm[1],slam:sm[2].toLowerCase(),rows:parseCsv(file.content)});
     else if(rm)resultFiles.push({tour:rm[1].toUpperCase(),year:rm[2],rows:parseCsv(file.content)});
     else throw new Error("Unexpected Slam linkage filename: "+name);
   }
   if(!slamMeta.size||!resultFiles.length)throw new Error("Both Slam metadata and main-tour result files are required");
-  const index=new Map();
-  const resultEventCounts={};
-  for(const file of resultFiles){
-    for(const row of file.rows){
-      const year=String(row.tourney_date??"").slice(0,4);
-      if(year!==file.year)continue;
-      for(const slam of SLAMS){
-        if(!eventMatches(row.tourney_name,slam))continue;
-        const key=[file.tour,year,slam,pairKey(row.winner_name,row.loser_name)].join(":");
-        if(!index.has(key))index.set(key,[]);
-        index.get(key).push(row);
-        const group=file.tour+":"+year+":"+slam;
-        resultEventCounts[group]=(resultEventCounts[group]||0)+1;
-      }
+  const index=new Map(),resultEventCounts={};
+  for(const file of resultFiles)for(const row of file.rows){
+    const year=String(row.tourney_date??"").slice(0,4);
+    if(year!==file.year)continue;
+    for(const slam of SLAMS)if(eventMatches(row.tourney_name,slam)){
+      const key=[year,slam,pairKey(row.winner_name,row.loser_name)].join(":");
+      if(!index.has(key))index.set(key,[]);
+      index.get(key).push({...row,__tour:file.tour});
+      const group=file.tour+":"+year+":"+slam;
+      resultEventCounts[group]=(resultEventCounts[group]||0)+1;
     }
   }
   const events=[];
   for(const [eventKey,meta] of [...slamMeta.entries()].sort(([a],[b])=>a.localeCompare(b))){
-    const tour=eventKey.includes("ausopen")||eventKey.includes("frenchopen")||eventKey.includes("wimbledon")||eventKey.includes("usopen")?null:null;
-    const sourceTour=meta.rows.length && meta.rows[0].tour ? String(meta.rows[0].tour).toUpperCase() : null;
-    const prefix=meta.rows.length?null:null;
-    // Metadata filename has no tour marker; caller must pass one in filename as atp-/wta- prefix.
-    const declared=meta.tour;
-    const effectiveTour=declared||sourceTour;
-    if(!effectiveTour)throw new Error("Tour prefix missing from Slam metadata filename: "+eventKey);
-    let linked=0,ambiguous=0,unmatched=0,missingNames=0,roundConflicts=0,winnerChecks=0,winnerMismatches=0;
+    let linked=0,linkedATP=0,linkedWTA=0,ambiguous=0,unmatched=0,missingNames=0,roundConflicts=0,winnerChecks=0,winnerMismatches=0;
     let firstDate=null,lastDate=null;
     const seenIds=new Set();
     for(const row of meta.rows){
-      const id=String(row.match_id??"").trim();
-      if(id)seenIds.add(id);
+      const id=String(row.match_id??"").trim();if(id)seenIds.add(id);
       const p1=String(row.player1??"").trim(),p2=String(row.player2??"").trim();
       if(!p1||!p2){missingNames++;continue;}
-      const key=[effectiveTour,meta.year,meta.slam,pairKey(p1,p2)].join(":");
+      const key=[meta.year,meta.slam,pairKey(p1,p2)].join(":");
       let candidates=index.get(key)||[];
       const round=normalizeRound(row.round);
       if(candidates.length>1&&round){
@@ -77,6 +56,7 @@ export function auditSlamMatchLinkage(files){
       const candidate=candidates[0];
       if(round&&normalizeRound(candidate.round)!==round){roundConflicts++;continue;}
       linked++;
+      if(candidate.__tour==="ATP")linkedATP++;else if(candidate.__tour==="WTA")linkedWTA++;
       const date=String(candidate.tourney_date??"");
       if(date&&(!firstDate||date<firstDate))firstDate=date;
       if(date&&(!lastDate||date>lastDate))lastDate=date;
@@ -95,22 +75,20 @@ export function auditSlamMatchLinkage(files){
     }
     const metadataRows=meta.rows.length;
     events.push({
-      tour:effectiveTour,year:meta.year,slam:meta.slam,metadataRows,uniqueMetadataMatchIds:seenIds.size,
-      rowsWithBothPlayerNames:metadataRows-missingNames,linkedUniqueMatches:linked,ambiguous:ambiguous,
-      unmatched:unmatched,missingPlayerNames:missingNames,roundConflicts,
+      year:meta.year,slam:meta.slam,metadataRows,uniqueMetadataMatchIds:seenIds.size,
+      linkedUniqueMatches:linked,linkedATP,linkedWTA,ambiguous,unmatched,missingPlayerNames:missingNames,roundConflicts,
       winnerCrossChecks:winnerChecks,winnerMismatches,
       linkagePct:metadataRows?Number((100*linked/metadataRows).toFixed(2)):null,
       linkedResultDateRange:firstDate&&lastDate?{from:firstDate,to:lastDate}:null,
-      mainTourResultRows:resultEventCounts[effectiveTour+":"+meta.year+":"+meta.slam]||0
+      mainTourResultRows:(resultEventCounts["ATP:"+meta.year+":"+meta.slam]||0)+(resultEventCounts["WTA:"+meta.year+":"+meta.slam]||0)
     });
   }
   const totals=events.reduce((s,e)=>({
     events:s.events+1,metadataRows:s.metadataRows+e.metadataRows,uniqueMetadataMatchIds:s.uniqueMetadataMatchIds+e.uniqueMetadataMatchIds,
-    linkedUniqueMatches:s.linkedUniqueMatches+e.linkedUniqueMatches,ambiguous:s.ambiguous+e.ambiguous,
-    unmatched:s.unmatched+e.unmatched,missingPlayerNames:s.missingPlayerNames+e.missingPlayerNames,
-    roundConflicts:s.roundConflicts+e.roundConflicts,winnerCrossChecks:s.winnerCrossChecks+e.winnerCrossChecks,
-    winnerMismatches:s.winnerMismatches+e.winnerMismatches
-  }),{events:0,metadataRows:0,uniqueMetadataMatchIds:0,linkedUniqueMatches:0,ambiguous:0,unmatched:0,missingPlayerNames:0,roundConflicts:0,winnerCrossChecks:0,winnerMismatches:0});
+    linkedUniqueMatches:s.linkedUniqueMatches+e.linkedUniqueMatches,linkedATP:s.linkedATP+e.linkedATP,linkedWTA:s.linkedWTA+e.linkedWTA,
+    ambiguous:s.ambiguous+e.ambiguous,unmatched:s.unmatched+e.unmatched,missingPlayerNames:s.missingPlayerNames+e.missingPlayerNames,
+    roundConflicts:s.roundConflicts+e.roundConflicts,winnerCrossChecks:s.winnerCrossChecks+e.winnerCrossChecks,winnerMismatches:s.winnerMismatches+e.winnerMismatches
+  }),{events:0,metadataRows:0,uniqueMetadataMatchIds:0,linkedUniqueMatches:0,linkedATP:0,linkedWTA:0,ambiguous:0,unmatched:0,missingPlayerNames:0,roundConflicts:0,winnerCrossChecks:0,winnerMismatches:0});
   return {
     schemaVersion:1,source:"Jeff Sackmann Grand Slam point-by-point archive linked to Sackmann ATP/WTA main-tour results",
     sourceCommit:PINNED_COMMIT,license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",
@@ -126,15 +104,10 @@ export function auditSlamMatchLinkage(files){
 
 async function main(){
   const args=process.argv.slice(2);let dir="",out="slam-linkage-audit.json";
-  for(let i=0;i<args.length;i++){if(args[i]==="--input-dir")dir=args[++i];else if(args[i]==="--out")out=args[++i];else throw new Error("Usage: node scripts/slam-linkage-audit.mjs --input-dir DIR --out report.json");}
+  for(let i=0;i<args.length;i++){if(args[i]==="--input-dir")dir=args[++i];else if(args[i]==="--out")out=args[++i];else throw new Error("Usage: node scripts/slam-match-linkage-audit.mjs --input-dir DIR --out report.json");}
   if(!dir)throw new Error("Missing --input-dir");
   const names=(await readdir(dir)).filter(n=>SLAM_META.test(n)||RESULT_FILE.test(n)).sort();
-  const files=[];
-  for(const name of names){
-    const meta=name.match(SLAM_META),result=name.match(RESULT_FILE);
-    if(meta)files.push({filename:(meta[2].toLowerCase()==="m"?"":"")+name,content:await readFile(join(dir,name),"utf8")});
-    else if(result)files.push({filename:name,content:await readFile(join(dir,name),"utf8")});
-  }
+  const files=[];for(const name of names)files.push({filename:name,content:await readFile(join(dir,name),"utf8")});
   const report=auditSlamMatchLinkage(files);
   await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report.totals));
