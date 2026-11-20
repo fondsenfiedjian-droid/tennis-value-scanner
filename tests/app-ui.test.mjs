@@ -368,6 +368,12 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /x\.valueEligible===true/);
   assert.match(html, /Качество данных:/);
   assert.match(html, /EV — оценка модели, а не гарантия прибыли/);
+  assert.match(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
+  assert.match(html, /const impliedProbability=100\/highest\.odds/);
+  assert.match(html, /const modelEdge=highest\.probability-impliedProbability/);
+  assert.match(html, /Вероятность по коэффициенту:/);
+  assert.match(html, /преимущество модели:/);
+  assert.match(html, /небольшая ставка ради возможного крупного выигрыша; не рекомендация для крупной суммы/);
   assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\)/);
   assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
 });
