@@ -398,7 +398,7 @@ async function main() {
   const all = [];
   for (const file of files) {
     const rows = parseCsv(await readFile(file, "utf8"));
-    all.push(...rows);
+    for (const row of rows) all.push(row);
     console.error("Loaded " + rows.length + " normalized rows from " + basename(file));
   }
   const report = runRankAgeWalkForward(all, options);
