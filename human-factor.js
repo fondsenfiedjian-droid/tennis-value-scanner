@@ -125,3 +125,64 @@ export function compareWorkloadProfiles(playerA, playerB) {
     interpretation: "descriptive_only_no_probability_adjustment"
   };
 }
+
+
+/**
+ * Conservative adapter for the app's prediction archive.
+ * Archive rows are a partial sample, not a complete tour feed. Only completed
+ * matches with both player IDs are accepted. Same-day matches are excluded
+ * because scheduled dates do not reveal actual finish order or time.
+ */
+export function calculateArchiveWorkloadProfile(archiveRows, playerId, targetMatchDate, targetMatchId = null) {
+  const targetId = Number(playerId);
+  const targetTime = parseTime(targetMatchDate);
+  if (!Number.isSafeInteger(targetId) || targetId <= 0 || targetTime === null) {
+    return { status: "invalid_target", matchesPrevious3CalendarDays: null,
+      matchesPrevious7CalendarDays: null, playingDaysPrevious7CalendarDays: null };
+  }
+  const targetDay = Date.UTC(new Date(targetTime).getUTCFullYear(), new Date(targetTime).getUTCMonth(), new Date(targetTime).getUTCDate());
+  const excludedId = targetMatchId == null ? null : String(targetMatchId);
+  const groups = new Map();
+  for (const row of Array.isArray(archiveRows) ? archiveRows : []) {
+    if (!row || typeof row !== "object" || row.resultOutcome !== "completed") continue;
+    const matchId = String(row.matchId ?? "");
+    if (!matchId || matchId === excludedId) continue;
+    if (!groups.has(matchId)) groups.set(matchId, []);
+    groups.get(matchId).push(row);
+  }
+  const seen = new Set();
+  const priorDates = [];
+  let rejectedGroups = 0;
+  for (const [matchId, group] of groups) {
+    const sides = new Map();
+    for (const row of group) {
+      if (!["A", "B"].includes(row.side)) continue;
+      const id = Number(row.playerId), date = parseTime(row.matchDate);
+      if (!Number.isSafeInteger(id) || id <= 0 || date === null) continue;
+      const signature = JSON.stringify([id, date, row.resultOutcome, row.resultWinner]);
+      if (!sides.has(row.side)) sides.set(row.side, { id, date, signature });
+      else if (sides.get(row.side).signature !== signature) sides.set(row.side, null);
+    }
+    const a = sides.get("A"), b = sides.get("B");
+    if (!a || !b || a.id === b.id || a.date !== b.date) { rejectedGroups++; continue; }
+    const day = Date.UTC(new Date(a.date).getUTCFullYear(), new Date(a.date).getUTCMonth(), new Date(a.date).getUTCDate());
+    const ageDays = Math.floor((targetDay - day) / DAY);
+    if (ageDays < 1 || ageDays > 7 || (a.id !== targetId && b.id !== targetId)) continue;
+    if (seen.has(matchId)) continue;
+    seen.add(matchId);
+    priorDates.push(ageDays);
+  }
+  return {
+    status: "archive_sample_only",
+    matchesPrevious3CalendarDays: priorDates.filter(days => days <= 3).length,
+    matchesPrevious7CalendarDays: priorDates.length,
+    playingDaysPrevious7CalendarDays: new Set(priorDates).size,
+    archivedMatchesAvailable: priorDates.length,
+    rejectedArchiveGroups: rejectedGroups,
+    restHours: null,
+    matchDurationMinutes: null,
+    coverage: "partial_prediction_archive_not_complete_tour_history",
+    timing: "earlier_utc_calendar_days_only_same_day_excluded",
+    interpretation: "descriptive_only_no_probability_adjustment"
+  };
+}
