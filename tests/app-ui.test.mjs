@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v123"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v124"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -401,4 +401,36 @@ test("archive result checker reports status counts without removed bankroll refe
   assert.match(handler, /Получены статусы:/);
   assert.doesNotMatch(handler, /\bsettled\+\+/);
   assert.doesNotMatch(handler, /bankrollUpdates/);
+});
+
+
+test("calibration for the active model excludes snapshots from other model versions", () => {
+  const start = html.indexOf("const CURRENT_CALIBRATION_MODEL_VERSION='2';");
+  const end = html.indexOf("function archiveSegmentCalibration", start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const sandbox = {};
+  vm.runInNewContext(source + "\nglobalThis.calibration = archiveProbabilityCalibration;", sandbox);
+  const matchDate = Date.parse("2026-11-25T12:00:00.000Z");
+  const rows = [
+    { matchId: 501, side: "A", probability: 90, capturedAt: Date.parse("2026-11-20T10:00:00.000Z"), matchDate: new Date(matchDate).toISOString(), captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1, resultVersion: 1, modelVersion: "2" },
+    { matchId: 502, side: "A", probability: 10, capturedAt: Date.parse("2026-11-20T10:00:00.000Z"), matchDate: new Date(matchDate).toISOString(), captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1, resultVersion: 1, modelVersion: "1" },
+    { matchId: 503, side: "A", probability: 95, capturedAt: Date.parse("2026-11-20T10:00:00.000Z"), matchDate: new Date(matchDate).toISOString(), captureStatus: "upcoming", resultOutcome: "completed", resultWinner: 1, resultVersion: 1 }
+  ];
+  const current = sandbox.calibration(rows, 30, "2");
+  assert.equal(current.sampleSize, 1);
+  assert.equal(current.modelVersion, "2");
+  assert.equal(current.excludedOtherVersions, 2);
+  assert.ok(Math.abs(current.brierScore - 0.01) < 1e-12);
+  const historical = sandbox.calibration(rows);
+  assert.equal(historical.sampleSize, 3);
+  assert.equal(historical.modelVersion, null);
+});
+
+test("reliability calibration and segment diagnostics use only the active model version", () => {
+  assert.match(html, /const CURRENT_CALIBRATION_MODEL_VERSION='2'/);
+  assert.match(html, /calibration:archiveProbabilityCalibration\(readPredictionArchive\(\),30,CURRENT_CALIBRATION_MODEL_VERSION\)/);
+  assert.match(html, /const calibration=archiveProbabilityCalibration\(rows,30,CURRENT_CALIBRATION_MODEL_VERSION\)/);
+  assert.match(html, /archiveSegmentCalibration\(rows,group=>archiveProbabilityCalibration\(group,30,CURRENT_CALIBRATION_MODEL_VERSION\)\)/);
+  assert.match(html, /снимки других версий модели исключены/);
 });

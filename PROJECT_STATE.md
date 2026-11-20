@@ -421,3 +421,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Regression run 44757420389 passed; Worker deploy run 44757455851 passed; Workers Builds production check passed; automatic smoke run 44757455675 passed.
 - Production smoke confirmed PWA HTTP 200 and service-worker cache v123, Worker health OK, and Winamax feed HTTP 200 with 20 valid odds and 20 fresh scrape timestamps.
 - Result-check handler now uses a defined statusesUpdated counter and no longer refers to removed bankrollUpdates state. The result checker still verifies player identities and result versions, retries unresolved/pending matches on the existing schedule, and checks at most 10 match IDs per manual run. No API polling was added, so this fix does not increase Live Tennis API usage.
+
+
+### Model-version-isolated calibration (2026-11-20)
+- Calibration used by the reliability gate and segment diagnostics is now restricted to the active prediction model version (modelVersion "2"). Older or unversioned archive rows remain preserved and exportable but cannot inflate the current model's sample size or improve its Brier score.
+- The calibration function retains its unfiltered default for explicit historical/diagnostic use; the active PWA paths pass the current version explicitly.
+- The Statistics calibration panel identifies the active model version and reports how many archived rows from other versions were excluded. Segment calibration uses the same version filter.
+- Added regression coverage for version filtering, legacy/unversioned exclusions, Brier calculation and active-version wiring.
+- PWA shell cache advanced from v123 to v124 so installed clients can receive the changed calibration logic and labels.
+- PR #46: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/46. Regression workflow run 44759547826 passed (333 tests, 0 failed); project-state guard run 44759547883 passed. The first test attempts exposed stale cache-version and segment-call assertions; those test expectations were corrected, with no production logic rollback required. No archive records are migrated or deleted, and no API calls or bookmaker settings are changed.

@@ -214,7 +214,7 @@
     <div class="panel"><div class="muted">Конфликтные снимки</div><div class="stat-num" id="archiveOddsConflicts">0</div></div>
   </div>
   <div id="archiveOddsByBookmaker" class="archive-meta"></div>
-  <div class="panel" id="archiveCalibrationPanel"><b>Калибровка вероятностей</b><div class="muted">Сравнение предматчевой вероятности модели с фактической победой. Новые снимки учитываются только при статусе upcoming; live/completed/cancelled исключаются. Для старых записей без статуса действует строгая проверка времени. Это точность модели, не доходность ставок.</div><div id="archiveCalibration" class="archive-list"><div class="archive-item">Пока недостаточно проверенных результатов.</div></div><div class="archive-meta"><b>Качество по сегментам</b> · покрытия и категории турниров</div><div id="archiveSegmentCalibration" class="archive-list"><div class="archive-item">Недостаточно данных для сегментного анализа.</div></div></div></div>
+  <div class="panel" id="archiveCalibrationPanel"><b>Калибровка текущей модели v2</b><div class="muted">Сравнение предматчевой вероятности текущей версии модели с фактической победой. Снимки других версий модели исключены из общей и сегментной оценки. Новые снимки учитываются только при статусе upcoming; live/completed/cancelled исключаются. Для старых записей без статуса действует строгая проверка времени. Это точность модели, не доходность ставок.</div><div id="archiveCalibration" class="archive-list"><div class="archive-item">Пока недостаточно проверенных результатов.</div></div><div class="archive-meta"><b>Качество по сегментам</b> · покрытия и категории турниров</div><div id="archiveSegmentCalibration" class="archive-list"><div class="archive-item">Недостаточно данных для сегментного анализа.</div></div></div></div>
 
   <div class="panel"><b>Качество архива по букмекерам</b><div class="muted">Покрытие считается относительно всех уникальных пар «матч + исход», уже встречавшихся в архиве. Это не покрытие всего календаря матчей.</div><div id="archiveOddsQuality" class="archive-list"><div class="panel empty">Нет данных для аудита.</div></div></div>
   <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><button id="humanFactorAudit" type="button">Аудит нагрузки игроков</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
@@ -1162,10 +1162,12 @@
     return {totalRows:source.length,validRows,invalidRows,missingMatchIdRows,missingMatchDateRows,missingBookmakerRows,
       universeMatchSides:universe.size,byBookmaker};
   }
-  function archiveProbabilityCalibration(rows,minSample=30){
+  const CURRENT_CALIBRATION_MODEL_VERSION='2';
+  function archiveProbabilityCalibration(rows,minSample=30,modelVersion=null){
     const groups=new Map();
-    let excluded=0,ambiguous=0,postStart=0,missingStart=0,invalid=0;
+    let excluded=0,ambiguous=0,postStart=0,missingStart=0,invalid=0,excludedOtherVersions=0;
     for(const row of Array.isArray(rows)?rows:[]){
+      if(modelVersion!==null&&String(row?.modelVersion??'')!==String(modelVersion)){excludedOtherVersions++;continue;}
       const key=String(Number(row?.matchId)>0?Number(row.matchId):row?.matchKey||'');
       if(!key)continue;
       if(!groups.has(key))groups.set(key,[]);
@@ -1228,7 +1230,7 @@
     }));
     const sampleSize=samples.length;
     return {sampleSize,brierScore:sampleSize?brier/sampleSize:null,logLoss:sampleSize?logLoss/sampleSize:null,
-      preliminary:sampleSize<minSample,buckets:populated,excluded,ambiguous,postStart,missingStart,invalid};
+      preliminary:sampleSize<minSample,buckets:populated,excluded,ambiguous,postStart,missingStart,invalid,modelVersion:modelVersion===null?null:String(modelVersion),excludedOtherVersions};
   }
   function archiveSegmentCalibration(rows,calibrator=archiveProbabilityCalibration){
     const dimensions=[
@@ -1278,13 +1280,13 @@
     $('#archivePositive').textContent=rows.filter(row=>Number(row.ev)>0).length;
     $('#archiveAvgEv').textContent=avg('ev')===null?'—':avg('ev').toFixed(2)+'%';
     $('#archiveAvgOdds').textContent=avg('odds')===null?'—':avg('odds').toFixed(2);
-    const calibration=archiveProbabilityCalibration(rows);
+    const calibration=archiveProbabilityCalibration(rows,30,CURRENT_CALIBRATION_MODEL_VERSION);
     const calibrationNode=$('#archiveCalibration');
     calibrationNode.innerHTML=calibration.sampleSize
-      ?'<div class="archive-item"><b>Проверенных матчей: '+calibration.sampleSize+'</b> · '+(calibration.preliminary?'предварительная выборка — нужно не менее 30 матчей':'выборка достигла минимального порога')+'<div class="archive-meta">Brier score: '+calibration.brierScore.toFixed(4)+' · Log loss: '+calibration.logLoss.toFixed(4)+' · чем ниже, тем лучше</div><div class="archive-meta">Исключено: незавершённые/снятия '+calibration.excluded+' · неоднозначные '+calibration.ambiguous+' · снимки после начала '+calibration.postStart+' · без даты начала '+calibration.missingStart+' · некорректные '+calibration.invalid+'</div></div>'+calibration.buckets.map(bucket=>'<div class="archive-item"><b>'+bucket.lower+'–'+bucket.upper+'%</b> · матчей '+bucket.count+'<div class="archive-meta">Средний прогноз '+bucket.averagePredicted.toFixed(1)+'% · фактическая доля побед '+bucket.observedRate.toFixed(1)+'% · отклонение '+(bucket.calibrationGap>0?'+':'')+bucket.calibrationGap.toFixed(1)+' п.п.</div></div>').join('')
+      ?'<div class="archive-item"><b>Проверенных матчей: '+calibration.sampleSize+'</b> · '+(calibration.preliminary?'предварительная выборка — нужно не менее 30 матчей':'выборка достигла минимального порога')+'<div class="archive-meta">Brier score: '+calibration.brierScore.toFixed(4)+' · Log loss: '+calibration.logLoss.toFixed(4)+' · чем ниже, тем лучше</div><div class="archive-meta">Исключено: незавершённые/снятия '+calibration.excluded+' · неоднозначные '+calibration.ambiguous+' · снимки после начала '+calibration.postStart+' · без даты начала '+calibration.missingStart+' · некорректные '+calibration.invalid+' · снимки других версий модели исключены '+calibration.excludedOtherVersions+'</div></div>'+calibration.buckets.map(bucket=>'<div class="archive-item"><b>'+bucket.lower+'–'+bucket.upper+'%</b> · матчей '+bucket.count+'<div class="archive-meta">Средний прогноз '+bucket.averagePredicted.toFixed(1)+'% · фактическая доля побед '+bucket.observedRate.toFixed(1)+'% · отклонение '+(bucket.calibrationGap>0?'+':'')+bucket.calibrationGap.toFixed(1)+' п.п.</div></div>').join('')
       :'<div class="archive-item">Нет достаточных проверенных предматчевых прогнозов. Для расчёта нужны подтверждённые завершённые матчи, корректная дата начала и снимок вероятности до начала матча.</div>';
 
-    const segmentCalibration=archiveSegmentCalibration(rows);
+    const segmentCalibration=archiveSegmentCalibration(rows,group=>archiveProbabilityCalibration(group,30,CURRENT_CALIBRATION_MODEL_VERSION));
     const segmentNode=$('#archiveSegmentCalibration');
     segmentNode.innerHTML=segmentCalibration.map(group=>'<div class="archive-item"><b>'+group.label+'</b>'+(
       group.items.length?group.items.map(item=>'<div class="archive-meta">'+escapeHtml(item.name)+' · матчей '+item.sampleSize+' · Brier '+item.brierScore.toFixed(4)+' · Log loss '+item.logLoss.toFixed(4)+' · '+(item.preliminary?'предварительно (<30)':'порог ≥30')+'</div>'+
@@ -1712,7 +1714,7 @@
           freshness,ratingQualityA:result.ratingQualityA,ratingQualityB:result.ratingQualityB,ratingQualityGap:result.ratingQualityGap,
           oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES,matchDateKnown:!!matchDate(m),
           bookmakerKnown:!!(el.dataset.bookmakerA&&el.dataset.bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
-          calibration:archiveProbabilityCalibration(readPredictionArchive())
+          calibration:archiveProbabilityCalibration(readPredictionArchive(),30,CURRENT_CALIBRATION_MODEL_VERSION)
         });
         const [pfePlayerA,pfePlayerB]=await Promise.all([
           loadPfePlayerStats(idA),loadPfePlayerStats(idB)
