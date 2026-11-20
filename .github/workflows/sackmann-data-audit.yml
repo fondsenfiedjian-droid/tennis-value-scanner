@@ -1,11 +1,13 @@
-name: Sackmann historical data coverage audit
+name: Sackmann historical data coverage and import audit
 
 on:
   pull_request:
     branches: [main]
     paths:
       - "scripts/sackmann-data-audit.mjs"
+      - "scripts/sackmann-import.mjs"
       - "tests/sackmann-data-audit.test.mjs"
+      - "tests/sackmann-import.test.mjs"
       - ".github/workflows/sackmann-data-audit.yml"
   workflow_dispatch:
 
@@ -15,7 +17,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -23,24 +25,69 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Download ATP and WTA match CSVs (1991–2026)
+      - name: Download ATP and WTA main-tour match CSVs (1968–2026)
         run: |
+          set -euo pipefail
           mkdir -p research-data
           for tour in atp wta; do
-            for year in $(seq 1991 2026); do
+            for year in $(seq 1968 2026); do
               url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${tour}_matches_${year}.csv"
               curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" \
                 --output "research-data/${tour}_matches_${year}.csv"
               test -s "research-data/${tour}_matches_${year}.csv"
             done
           done
-      - name: Audit field coverage and missingness
+      - name: Run the actual ATP and WTA normalizers
         run: |
-          node scripts/sackmann-data-audit.mjs --out sackmann-data-audit.json research-data/*_matches_*.csv
-      - name: Upload aggregate audit report
+          set -euo pipefail
+          node scripts/sackmann-import.mjs --tour atp --input-dir research-data --output "$RUNNER_TEMP/atp-normalized.csv"
+          node scripts/sackmann-import.mjs --tour wta --input-dir research-data --output "$RUNNER_TEMP/wta-normalized.csv"
+      - name: Validate normalized outputs and publish aggregate diagnostics only
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+          import { parseCsv } from "./scripts/backtest.mjs";
+
+          const reports = [];
+          for (const tour of ["atp", "wta"]) {
+            const rows = parseCsv(await readFile(`${process.env.RUNNER_TEMP}/${tour}-normalized.csv`, "utf8"));
+            if (!rows.length) throw new Error(`${tour.toUpperCase()} importer produced no completed matches`);
+            const dates = rows.map(row => row.tourney_date).filter(Boolean).sort();
+            const keyCounts = new Map();
+            for (const row of rows) {
+              const key = row.tourney_id && row.match_num
+                ? `${row.tourney_id}:${row.match_num}`
+                : `${row.tourney_date}:${[row.winner_id,row.loser_id].sort((a,b)=>Number(a)-Number(b)).join(":")}`;
+              keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+            }
+            const duplicateKeys = [...keyCounts.values()].filter(count => count > 1).length;
+            const summary = {
+              tour: tour.toUpperCase(),
+              importedMatches: rows.length,
+              firstDate: dates[0] ?? null,
+              lastDate: dates.at(-1) ?? null,
+              rankBothPct: Number((100 * rows.filter(r => r.winner_rank && r.loser_rank).length / rows.length).toFixed(2)),
+              ageBothPct: Number((100 * rows.filter(r => r.winner_age && r.loser_age).length / rows.length).toFixed(2)),
+              knownSurfacePct: Number((100 * rows.filter(r => r.surface).length / rows.length).toFixed(2)),
+              duplicateMatchKeys: duplicateKeys
+            };
+            reports.push(summary);
+            console.log(JSON.stringify(summary));
+          }
+          const fs = await import("node:fs/promises");
+          const lines = [
+            "| Tour | Imported matches | First date | Last date | Both ranks | Both ages | Known surface | Duplicate keys |",
+            "|---|---:|---|---|---:|---:|---:|---:|",
+            ...reports.map(r => `| ${r.tour} | ${r.importedMatches} | ${r.firstDate} | ${r.lastDate} | ${r.rankBothPct}% | ${r.ageBothPct}% | ${r.knownSurfacePct}% | ${r.duplicateMatchKeys} |`)
+          ];
+          await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          NODE
+      - name: Audit source field coverage and missingness
+        run: node scripts/sackmann-data-audit.mjs --out "$RUNNER_TEMP/sackmann-data-audit.json" research-data/*_matches_*.csv
+      - name: Upload aggregate-only audit report
         uses: actions/upload-artifact@v4
         with:
           name: sackmann-data-coverage-audit
-          path: sackmann-data-audit.json
+          path: ${{ runner.temp }}/sackmann-data-audit.json
           if-no-files-found: error
           retention-days: 30
