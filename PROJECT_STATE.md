@@ -637,3 +637,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Updated the deployment runbook's service-worker version and recorded the latest verified production smoke status (2026-11-20 16:49 UTC).
 - Implementation is on branch `fix/bet-of-day-odds-guard`; regression CI and production deployment remain pending until this change is merged.
 - This is an eligibility/data-validation correction only. It does not alter the Elo model, probability estimates, Winamax scraper, or API usage.
+- CI also exposed three pre-existing CLV tests with hard-coded 2026-11-20 evening timestamps. Their match starts and quote snapshots are now generated relative to the test clock, preserving the intended pre-match/closing-quote relationships at any execution hour. This removes wall-clock-dependent failures without changing CLV production logic.
