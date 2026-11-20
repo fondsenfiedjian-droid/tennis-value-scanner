@@ -237,8 +237,11 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   const tour = options.tour ?? "atp";
   if (!["atp", "wta"].includes(tour)) throw new RangeError("tour must be atp or wta");
   const kFactor = Number.isFinite(options.kFactor) ? options.kFactor : 32;
-  const evaluationStart = options.evaluationStart ?? "20000101";
-  const evaluationEnd = options.evaluationEnd ?? "20261231";
+  const evaluationStart = validDate(options.evaluationStart ?? "20000101");
+  const evaluationEnd = validDate(options.evaluationEnd ?? "20261231");
+  if (!evaluationStart || !evaluationEnd || evaluationStart > evaluationEnd) {
+    throw new RangeError("evaluationStart/evaluationEnd must be valid ordered YYYYMMDD dates");
+  }
   const minTrainingMatches = Number.isInteger(options.minTrainingMatches) ? options.minTrainingMatches : 1000;
   const maxTrainingRows = Number.isInteger(options.maxTrainingRows) ? options.maxTrainingRows : 50000;
   const prepared = prepareRows(inputRows);
@@ -270,7 +273,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     const year = date.slice(0, 4);
     if (year !== currentYear) {
       currentYear = year;
-      yearModels = buildModels(year);
+      yearModels = date >= evaluationStart && date <= evaluationEnd ? buildModels(year) : {};
       yearReport = {
         models: Object.fromEntries(Object.entries(yearModels).map(([name, model]) => [
           name, comparisonBucket(model.trainingMatches,
@@ -279,6 +282,10 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
       };
       byYear[year] = yearReport;
       if (Object.keys(yearModels).length) yearsWithModels++;
+      for (const [name, model] of Object.entries(yearModels)) {
+        aggregate[name].trainingMatches += model.trainingMatches;
+        aggregate[name].trainingSample += Math.min(model.baseline.trainingSample, model.candidate.trainingSample);
+      }
     }
     const day = [];
     while (index < matches.length && matches[index].date === date) day.push(matches[index++]);
@@ -306,8 +313,6 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
           const total = aggregate[name];
           addMetric(total.baseline, baselineProbability, observation.outcome);
           addMetric(total.candidate, candidateProbability, observation.outcome);
-          total.trainingMatches += models.trainingMatches;
-          total.trainingSample += Math.min(models.baseline.trainingSample, models.candidate.trainingSample);
         }
       }
       updates.push(match);
