@@ -65,24 +65,8 @@ function summarizeEvent(matchRows, pointRows, year, slam) {
   };
 }
 
-export function auditSlamPointFiles(files) {
-  if (!Array.isArray(files) || !files.length) throw new Error("No Slam point-by-point files supplied");
-  const grouped = new Map();
-  for (const file of files) {
-    const name = basename(file.filename);
-    const match = name.match(MATCH_FILE);
-    const point = name.match(POINT_FILE);
-    if (!match && !point) throw new Error("Unexpected Slam point-by-point filename: " + name);
-    const parsed = match || point;
-    const key = parsed[1] + "-" + parsed[2].toLowerCase();
-    if (!grouped.has(key)) grouped.set(key, { year: parsed[1], slam: parsed[2].toLowerCase(), matches: null, points: null });
-    grouped.get(key)[match ? "matches" : "points"] = file.content;
-  }
-  const events = [];
-  for (const [key, group] of [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b))) {
-    if (typeof group.matches !== "string" || typeof group.points !== "string") throw new Error("Missing match or point file for event " + key);
-    events.push(summarizeEvent(parseCsv(group.matches), parseCsv(group.points), group.year, group.slam));
-  }
+
+function combineSlamEvents(events) {
   const totals = events.reduce((sum,e)=>({
     events:sum.events+1, matchRows:sum.matchRows+e.matchRows, uniqueMatchIds:sum.uniqueMatchIds+e.uniqueMatchIds,
     pointRows:sum.pointRows+e.pointRows, pointMatchIdsLinkedToMetadata:sum.pointMatchIdsLinkedToMetadata+e.pointMatchIdsLinkedToMetadata,
@@ -90,11 +74,11 @@ export function auditSlamPointFiles(files) {
   }),{events:0,matchRows:0,uniqueMatchIds:0,pointRows:0,pointMatchIdsLinkedToMetadata:0,orphanPointMatchIds:0,metadataMatchIdsWithoutPoints:0});
   const fields = {};
   for (const event of events) for (const [field, stat] of Object.entries(event.candidateFields)) {
-    if (!fields[field]) fields[field] = { eventsPresent:0, totalNonEmpty:0, totalPointRows:0, totalNumeric:0, totalZeros:0 };
-    const f=fields[field]; f.eventsPresent++; f.totalNonEmpty+=stat.nonEmpty; f.totalPointRows+=event.pointRows; f.totalNumeric+=stat.numericValues; f.totalZeros+=stat.zeroValues;
+    if (!fields[field]) fields[field] = { eventsPresent:0, totalNonEmpty:0, totalNumeric:0, totalZeros:0 };
+    const f=fields[field]; f.eventsPresent++; f.totalNonEmpty+=stat.nonEmpty; f.totalNumeric+=stat.numericValues; f.totalZeros+=stat.zeroValues;
   }
   for (const f of Object.values(fields)) {
-    f.nonEmptyPct = f.totalPointRows ? Number((100*f.totalNonEmpty/f.totalPointRows).toFixed(2)) : null;
+    f.nonEmptyPct = totals.pointRows ? Number((100*f.totalNonEmpty/totals.pointRows).toFixed(2)) : null;
     f.zeroPctOfNumeric = f.totalNumeric ? Number((100*f.totalZeros/f.totalNumeric).toFixed(2)) : null;
   }
   return {
@@ -113,14 +97,50 @@ export function auditSlamPointFiles(files) {
   };
 }
 
+export function auditSlamPointFiles(files) {
+  if (!Array.isArray(files) || !files.length) throw new Error("No Slam point-by-point files supplied");
+  const grouped = new Map();
+  for (const file of files) {
+    const name = basename(file.filename);
+    const match = name.match(MATCH_FILE);
+    const point = name.match(POINT_FILE);
+    if (!match && !point) throw new Error("Unexpected Slam point-by-point filename: " + name);
+    const parsed = match || point;
+    const key = parsed[1] + "-" + parsed[2].toLowerCase();
+    if (!grouped.has(key)) grouped.set(key, { year: parsed[1], slam: parsed[2].toLowerCase(), matches: null, points: null });
+    grouped.get(key)[match ? "matches" : "points"] = file.content;
+  }
+  const events = [];
+  for (const [key, group] of [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b))) {
+    if (typeof group.matches !== "string" || typeof group.points !== "string") throw new Error("Missing match or point file for event " + key);
+    events.push(summarizeEvent(parseCsv(group.matches), parseCsv(group.points), group.year, group.slam));
+  }
+  return combineSlamEvents(events);
+}
+
 async function main() {
   const args=process.argv.slice(2); let dir="",out="slam-point-audit.json";
   for(let i=0;i<args.length;i++){if(args[i]==="--input-dir")dir=args[++i];else if(args[i]==="--out")out=args[++i];else throw new Error("Usage: node scripts/slam-point-audit.mjs --input-dir DIR --out report.json");}
   if(!dir)throw new Error("Missing --input-dir");
   const names=(await readdir(dir)).filter(n=>MATCH_FILE.test(n)||POINT_FILE.test(n)).sort();
-  const files=[];
-  for(const name of names) files.push({filename:name,content:await readFile(join(dir,name),"utf8")});
-  const report=auditSlamPointFiles(files);
+  const groups=new Map();
+  for(const name of names){
+    const m=name.match(MATCH_FILE)||name.match(POINT_FILE);
+    const key=m[1]+"-"+m[2].toLowerCase();
+    if(!groups.has(key))groups.set(key,{year:m[1],slam:m[2].toLowerCase(),matches:null,points:null});
+    groups.get(key)[MATCH_FILE.test(name)?"matches":"points"]=name;
+  }
+  if(groups.size!==49)throw new Error("Expected 49 singles Slam events, found "+groups.size);
+  const events=[];
+  for(const [key,g] of groups){
+    if(!g.matches||!g.points)throw new Error("Missing match/point file for "+key);
+    const eventReport=auditSlamPointFiles([
+      {filename:g.matches,content:await readFile(join(dir,g.matches),"utf8")},
+      {filename:g.points,content:await readFile(join(dir,g.points),"utf8")}
+    ]);
+    events.push(...eventReport.events);
+  }
+  const report=combineSlamEvents(events);
   await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only Slam point audit: "+out);
