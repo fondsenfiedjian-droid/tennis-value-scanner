@@ -494,21 +494,20 @@
     const a=normalizePlayer(left).split(' ').filter(Boolean);
     const b=normalizePlayer(right).split(' ').filter(Boolean);
     if(!a.length||a.length!==b.length)return false;
-    const used=new Set();
-    let exactFullToken=false;
-    for(const token of a){
-      const index=b.findIndex((candidate,i)=>!used.has(i)&&candidate===token);
-      if(index>=0){
-        used.add(index);
-        if(token.length>1)exactFullToken=true;
+    function matchAt(index,used,hasFullToken){
+      if(index===a.length)return hasFullToken;
+      for(let j=0;j<b.length;j++){
+        if(used.has(j))continue;
+        const exact=a[index]===b[j];
+        const initial=(a[index].length===1&&b[j].length>1&&b[j][0]===a[index])||
+          (b[j].length===1&&a[index].length>1&&a[index][0]===b[j]);
+        if(!exact&&!initial)continue;
+        const next=new Set(used);next.add(j);
+        if(matchAt(index+1,next,hasFullToken||(exact&&a[index].length>1)))return true;
       }
+      return false;
     }
-    const remainingA=a.filter((_,i)=>!used.has(i));
-    const remainingB=b.filter((_,i)=>!used.has(i));
-    if(remainingA.length!==remainingB.length)return false;
-    const initials=remainingA.every(token=>token.length===1)&&remainingB.every(token=>token.length>1&&remainingA.some(initial=>initial===token[0]));
-    const reverseInitials=remainingB.every(token=>token.length===1)&&remainingA.every(token=>token.length>1&&remainingB.some(initial=>initial===token[0]));
-    return exactFullToken&&(initials||reverseInitials);
+    return matchAt(0,new Set(),false);
   }
   function tournamentCompatible(matchName,oddsName){
     const normalizeTournament=value=>{
