@@ -795,3 +795,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - ATP rank+age improved both Brier and log loss in all 27 annual cohorts; WTA had a small number of year-level regressions (notably 2017) despite aggregate improvement.
 - Results and exact candidate-minus-baseline deltas are recorded in docs/SACKMANN_RESEARCH.md.
 - Decision: research signal is sufficiently consistent to justify a further timing audit and recent independent holdout, but not production activation. Tournament-date ranking snapshots are not guaranteed to be available before every match. No production model changes or deployment.
+
+
+### Strict pre-match weekly ranking audit — in progress (2026-11-20)
+- Added a research-only join that selects each player's latest official weekly ranking strictly before the tournament date; same-day ranking snapshots are excluded conservatively.
+- Added coverage and snapshot-age diagnostics and a walk-forward comparison using the existing Elo/rank/age research framework.
+- GitHub Actions downloads ranking history separately for ATP and WTA, runs the study, and uploads aggregate-only reports. No raw archive data is committed.
+- This is a research check only; production prediction logic remains unchanged.
