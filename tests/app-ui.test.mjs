@@ -63,7 +63,7 @@ const recommendationEnd = html.indexOf("function renderBestBet(", recommendation
 const recommendationSource = html.slice(recommendationStart, recommendationEnd);
 function runSelectBestBet(bets, minEv=3, minOdds=1.9) {
   const sandbox = {};
-  vm.runInNewContext(recommendationSource + "\\nglobalThis.selectBestBet = selectBestBet;", sandbox);
+  vm.runInNewContext(recommendationSource + "\nglobalThis.selectBestBet = selectBestBet;", sandbox);
   return sandbox.selectBestBet(bets, minEv, minOdds);
 }
 
