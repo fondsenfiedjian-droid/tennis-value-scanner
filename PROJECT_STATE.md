@@ -666,3 +666,15 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Documentation-only changes also update this file and receive their own commit. Never batch unrelated changes without recording each meaningful milestone.
 - Before every work session, compare this file with the actual `main` head, latest PRs/workflows and deployment evidence. If they disagree, reconcile the file before starting new implementation work.
 - A change is not complete merely because code was edited or a PR was merged; its state record and validation status must also be current.
+
+
+### Historical tennis-results normalization adapter — implementation in review (2026-11-20)
+- Added `historical-normalizer.js`, a versioned adapter for `poetsc/tennis-results` ATP/WTA singles records. It normalizes schedule date/time, tour, tournament, round, court surface, player attributes, H2H, current/opening odds and match result into a stable schema.
+- Local scheduled time is preserved without inventing a timezone. Missing optional fields remain null. Result eligibility and market eligibility are independent.
+- Result quality gates flag unsupported tours, invalid player identities, unfinished/retired/walkover records, unmatched winners, missing scores and possible incomplete scores. Market gates require valid two-sided opening and current odds. Dataset diagnostics report eligibility, duplicate source IDs, tour and surface counts.
+- Added `tests/historical-normalizer.test.mjs` for valid ATP records, separate eligibility, exclusions, incomplete scores, surface aliases, duplicate IDs and missing-field handling.
+- This is an offline data adapter only. It does not train a model, change probability/EV, make network requests, or include user-provided datasets. No Live Tennis quota, Apify run, paid service or deployment used.
+- Branch: `feat/historical-match-normalizer`. CI and code review are pending; no merge or production integration is claimed. Next: fix any CI findings, then consider a private local archive import and chronological backtest.
+
+
+- Initial regression run `44808728071` exposed two adapter edge cases: explicit null H2H counts were being coerced to zero, and partial set scores were not consistently flagged. Both were corrected on the same branch (commits `5b00b2b990b7f66e05b2cb90bae30e193eaa7ad6` and `bfe57b3634f97185221215555e6b97164662906f`). The initial run had 359 passing and 2 failing tests; the rerun for the corrected head is pending. Documentation guard run `44808727947` passed.
