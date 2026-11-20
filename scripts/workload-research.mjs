@@ -174,6 +174,7 @@ export function runWorkloadResearch(csvTexts) {
       matched.push({
         year:prediction.date.slice(0,4),
         month:prediction.date.slice(0,6),
+        surface:prediction.surface??"Unknown",
         baseProbability:prediction.probabilities.elo,
         outcome:prediction.winnerId===prediction.player1Id?1:0,
         features
@@ -229,6 +230,14 @@ export function runWorkloadResearch(csvTexts) {
       evaluation:metrics(secondHalf2026,halfYearBeta,halfYearStandardization),
       standardizedCoefficients:Object.fromEntries(CORE_FEATURE_NAMES.map((name,i)=>[name,Number(halfYearBeta[i].toFixed(5))]))
     };
+    const evaluationBySurface=Object.fromEntries([...new Set(evaluation.map(row=>row.surface))].sort().map(surface=>{
+      const sample=evaluation.filter(row=>row.surface===surface);
+      return [surface,{
+        matches:sample.length,
+        fullYear:metrics(sample,coreBeta,coreStandardization),
+        secondHalf:metrics(sample.filter(row=>row.month>"202606"),halfYearBeta,halfYearStandardization)
+      }];
+    }));
     reports[tour]={
       trainingYear:"2025",
       evaluationYear:"2026",
@@ -237,6 +246,7 @@ export function runWorkloadResearch(csvTexts) {
       evaluationCoreWorkload:metrics(evaluation,coreBeta,coreStandardization),
       specificationTests,
       within2026TemporalSplit,
+      evaluationBySurface,
       durationAvailability:{training:durationAvailability(training),evaluation:durationAvailability(evaluation)},
       evaluationByMonth,
       trainingFeatureCoverage:training.length,
