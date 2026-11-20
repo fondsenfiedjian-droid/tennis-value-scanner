@@ -554,7 +554,7 @@
   function oddsEventParticipants(o){
     let home=String(o?.homeTeam||'').trim(),away=String(o?.awayTeam||'').trim();
     if(!home||!away){
-      const parts=String(o?.eventName||'').trim().split(/\\s+(?:-|–|—|vs\\.?|v)\\s+/i).map(part=>part.trim()).filter(Boolean);
+      const parts=String(o?.eventName||'').trim().split(/\s+(?:-|–|—|vs\\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(parts.length===2){home=home||parts[0];away=away||parts[1];}
     }
     return {home:normalizePlayer(home),away:normalizePlayer(away)};
@@ -584,7 +584,7 @@
       const {home,away}=oddsEventParticipants(o);
       if(!home||!away||home===away)return false;
       const eventName=String(o.eventName||'').trim();
-      const eventParts=eventName.split(/\\s+(?:-|–|—|vs\\.?|v)\\s+/i).map(part=>part.trim()).filter(Boolean);
+      const eventParts=eventName.split(/\s+(?:-|–|—|vs\\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||(playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
       if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
@@ -1353,7 +1353,7 @@
     const columns=['capturedAt','modelCalculatedAt','quoteCapturedAt','quoteObservedAt','captureStatus','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
-      if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))cell="'"+cell;
+      if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
       return '"'+cell.replace(/"/g,'""')+'"';
     };
     const csv='\\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\\n');
