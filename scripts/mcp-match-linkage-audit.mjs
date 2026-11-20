@@ -180,7 +180,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     const fullExact = round ? collect(index.fullRound, available, round, fullPair) : [];
     const fullAny = collect(index.fullEvent, available, null, fullPair);
     let candidate = null, method = "", reason = "";
-    const eventAlias = available.some(item => item.event !== token(tournament));
+
     if (fullExact.length) {
       const filtered = withinDateWindow(fullExact, date, windowDays).eligible;
       if (filtered.length === 1) { candidate = filtered[0]; method = "full"; }
@@ -232,7 +232,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
       if (method.startsWith("full")) { stats.linkedByFullName++; ys.fullName++; }
       else { stats.linkedByInitialSurname++; ys.alias++; }
       if (method.endsWith("no-round")) stats.linkedWithoutUsableRound++;
-      if (eventAlias) stats.linkedByEventAlias++;
+      if (candidate.event !== token(tournament)) stats.linkedByEventAlias++;
       if (candidate.year !== year) stats.linkedFromAdjacentYear++;
     } else {
       stats.unmatched++; ys.unmatched++;
