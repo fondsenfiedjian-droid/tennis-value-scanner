@@ -382,4 +382,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - «Ставка дня» remains reliability-first and unchanged. No stake sizing, staking advice or bankroll automation was added.
 - Service-worker shell cache advanced to v121.
 - First PR regression attempt: 327/330 passed; three failures were stale test expectations still pinned to cache v120 (one app UI assertion and two Worker assertions), not runtime behavior. Updated all three expectations to v121. Rerun pending.
-- Deployment preview and production deployment status: pending final regression result and merge.
+- PR #41 merged: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/41; merge commit `50a42b3bd615a4ae7d87f5f6f3ba065f63c97385`.
+- Regression workflow after merge: run `44753964348`, passed. PR-head regression rerun before merge also passed (run `44753719394`).
+- Cloudflare Worker deploy completed successfully (run `44754021840`); Workers Builds production check passed.
+- Production smoke check passed (run `44754019633`): Netlify PWA HTTP 200, service-worker cache v121 confirmed live; Worker health OK; Winamax `/odds` HTTP 200 with 20 items, 20 valid decimal odds and 20 fresh scrape timestamps at check time. Apify task-run metadata diagnostic still reports HTTP 403; dataset feed itself returned the 20 fresh rows. This is a successful technical smoke check, not a guarantee that every quote remains available at the bookmaker.
