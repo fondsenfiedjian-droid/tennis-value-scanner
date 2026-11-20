@@ -167,6 +167,7 @@ export function runWorkloadResearch(csvTexts) {
       if(!features){missingFeature++;continue;}
       matched.push({
         year:prediction.date.slice(0,4),
+        month:prediction.date.slice(0,6),
         baseProbability:prediction.probabilities.elo,
         outcome:prediction.winnerId===prediction.player1Id?1:0,
         features
@@ -176,11 +177,15 @@ export function runWorkloadResearch(csvTexts) {
     const evaluation=matched.filter(row=>row.year==="2026");
     const standardization=fitStandardization(training);
     const beta=fitCorrection(training,standardization);
+    const evaluationByMonth=Object.fromEntries([...new Set(evaluation.map(row=>row.month))].sort().map(month=>[
+      month,metrics(evaluation.filter(row=>row.month===month),beta,standardization)
+    ]));
     reports[tour]={
       trainingYear:"2025",
       evaluationYear:"2026",
       training:metrics(training,beta,standardization),
       evaluation:metrics(evaluation,beta,standardization),
+      evaluationByMonth,
       trainingFeatureCoverage:training.length,
       evaluationFeatureCoverage:evaluation.length,
       predictionsWithoutWorkloadFeatures:missingFeature,
