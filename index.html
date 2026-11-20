@@ -1527,7 +1527,7 @@
       box.innerHTML='<div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Нет кандидата, прошедшего строгий фильтр надёжности для крупной суммы.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
       box.onclick=null;box.onkeydown=null;box.removeAttribute('aria-label');
     }else{
-      box.innerHTML='<div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-odds">'+best.odds.toFixed(2)+'</div><div class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-sub">WINAMAX · НАДЁЖНОСТЬ '+best.reliabilityScore+'/100 · '+best.probability.toFixed(1)+'% · EV +'+best.ev.toFixed(2)+'%</div>';
+      box.innerHTML='<div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-odds">'+best.odds.toFixed(2)+'</div><div class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</div><div class="best-bet-sub">'+escapeHtml(best.bookmaker||'Winamax')+' · НАДЁЖНОСТЬ '+best.reliabilityScore+'/100 · '+best.probability.toFixed(1)+'% · EV +'+best.ev.toFixed(2)+'%</div>';
       box.setAttribute('aria-label','Ставка дня: '+best.player+' против '+best.opponent+', коэффициент '+best.odds.toFixed(2)+'. Открыть подробности.');
       const openDetails=()=>{
         const card=document.querySelector('.match-card[data-match-index="'+Number(best.matchIndex)+'"]');
