@@ -646,3 +646,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Regression test covers fallback markup, quote display and match navigation.
 - Prediction model, selection thresholds, API behavior and automatic betting remain unchanged. No Live Tennis API quota is consumed by this UI fallback.
 - Implementation branch: fix/ev-day-odds-fallback; awaiting CI and production deployment.
+
+- Follow-up CI found one stale worker-test source assertion expecting the old five-argument `renderBestBet` call. Updated the assertion to include the new quote-only `oddsFallback` argument; production logic is unchanged. Regression workflow rerun pending.
