@@ -78,16 +78,9 @@ jobs:
           }
           console.log("Worker health: OK; required configuration flags are present");
 
-          const matchesResponse = await getWithRetry(
-            process.env.API_URL + "/matches?status=upcoming&draw=singles&limit=200"
-          );
-          const matchesPayload = await matchesResponse.json();
-          const matches = Array.isArray(matchesPayload) ? matchesPayload
-            : [matchesPayload?.data, matchesPayload?.matches, matchesPayload?.results, matchesPayload?.events]
-              .find(Array.isArray);
-          if (!matches) throw new Error("Matches endpoint returned an unrecognized payload shape");
-          console.log("Matches API (same cached request as app): HTTP", matchesResponse.status, "records:", matches.length,
-            "cache:", matchesResponse.headers.get("X-Data-Cache") || "unknown");
+          const usageResponse = await getWithRetry(process.env.API_URL + "/usage");
+          const usage = await usageResponse.json();
+          console.log("Live Tennis API quota status (provider usage endpoint):", JSON.stringify(usage));
 
           const oddsResponse = await getWithRetry(process.env.API_URL + "/odds");
           const odds = await oddsResponse.json();
