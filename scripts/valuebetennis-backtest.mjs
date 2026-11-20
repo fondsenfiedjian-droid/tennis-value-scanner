@@ -217,11 +217,11 @@ function validDate(value){
 function validateMatchScore(score) {
   const raw = String(score ?? "").trim();
   if (!raw) return "invalid_score_format";
-  const tokens = raw.split(/\\s+/);
+  const tokens = raw.split(/\s+/);
   // Nonstandard outcomes are retained for the downstream RET/W/O exclusion.
-  if (tokens.some(token => /^(?:W\\/O|RET|ABD|DEF|DEFAULT)$/i.test(token))) return "nonstandard";
+  if (tokens.some(token => /^(?:W\/O|RET|ABD|DEF|DEFAULT)$/i.test(token))) return "nonstandard";
   const sets = tokens.map(token => {
-    const match = /^(\\d{1,2})-(\\d{1,2})(?:\\((\\d{1,2})\\))?$/.exec(token);
+    const match = /^(\d{1,2})-(\d{1,2})(?:\((\d{1,2})\))?$/.exec(token);
     return match ? [Number(match[1]), Number(match[2])] : null;
   });
   if (sets.some(set => set === null) || sets.length < 2 || sets.length > 5) return "invalid_score_format";
