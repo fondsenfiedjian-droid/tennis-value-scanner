@@ -358,7 +358,10 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /best-bet-pair/);
   assert.match(html, /reliabilityEligible===true/);
   assert.match(html, /reliabilityScore>=85/);
-  assert.match(html, /calibrationReady=reliability\.calibrationIncluded===true/);
+  assert.match(html, /calibrationEligible=calibrationSampleSize>=50&&brier<=0\.22/);
+  assert.match(html, /calibrationReady=reliability\.calibrationEligible===true/);
+  assert.match(html, /не менее 50 проверенных матчей калибровки/);
+  assert.match(html, /Brier score выше 0\.22/);
   assert.match(html, /\.sort\(\(a,b\)=>b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\|\|b\.ev-a\.ev\)/);
   assert.match(html, /box\.onclick=openDetails/);
   assert.match(html, /box\.onkeydown=/);
