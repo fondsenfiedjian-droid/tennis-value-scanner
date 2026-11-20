@@ -1,0 +1,53 @@
+name: Human Factor workload research
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/workload-research.mjs"
+      - "scripts/valuebetennis-backtest.mjs"
+      - ".github/workflows/workload-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workload-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download public Valuebetennis datasets
+        run: |
+          mkdir -p research-data
+          curl --fail --location --retry 3 --retry-delay 2 \
+            https://www.valuebetennis.com/datasets/valuebetennis-matchs-2024.csv \
+            --output research-data/valuebetennis-matchs-2024.csv
+          curl --fail --location --retry 3 --retry-delay 2 \
+            https://www.valuebetennis.com/datasets/valuebetennis-matchs-2025.csv \
+            --output research-data/valuebetennis-matchs-2025.csv
+          curl --fail --location --retry 3 --retry-delay 2 \
+            https://www.valuebetennis.com/datasets/valuebetennis-matchs-2026.csv \
+            --output research-data/valuebetennis-matchs-2026.csv
+          test -s research-data/valuebetennis-matchs-2024.csv
+          test -s research-data/valuebetennis-matchs-2025.csv
+          test -s research-data/valuebetennis-matchs-2026.csv
+      - name: Run chronological workload research
+        run: |
+          node scripts/workload-research.mjs --out workload-research-report.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Upload research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: human-factor-workload-report
+          path: workload-research-report.json
+          if-no-files-found: error
+          retention-days: 30
