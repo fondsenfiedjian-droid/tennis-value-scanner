@@ -8,6 +8,17 @@ The Match Charting Project is a selectively charted, contributor-created sample,
 
 The first audit found 7,565 ATP and 4,257 WTA unique metadata IDs. The initial ten audited stat families each had 100% unique-ID join coverage against the metadata IDs represented in the same snapshot. The expanded workflow now audits all sixteen available families. The full audit contains 3,088,549 aggregate-stat rows across 11,822 unique charted match IDs. SnV is sparse (6,327 ATP and 1,078 WTA unique matches), so any SnV feature needs a separate coverage gate. This means IDs join; it does not mean every field is complete or every tour match is represented. Metadata quality flags are review-required: 1 repeated ATP metadata ID and 7 repeated WTA IDs; unexpected surface values in 2 ATP/9 WTA rows; unexpected handedness values in 2 ATP/8 WTA rows; 1 invalid ATP date, 8 invalid WTA dates and 10 missing WTA dates. The valid ATP date range begins 1960-05-29 and needs source verification. Do not use metadata surface, handedness or date fields as modelling features until source anomalies are resolved.
 
+## Source field semantics verified from the pinned data dictionary
+
+The point-level dictionary defines the orientation needed for safe player-level aggregation:
+- Player1 is always the player who served first in the match; Player2 is the opponent.
+- `Svr` and `Ret` identify Player1 or Player2 for the serving/returning role on each point.
+- `PtWinner` identifies the point winner as Player1 or Player2; `isSvrWinner` records whether the server won.
+- `rallyCount` counts shots including the serve and excluding errors.
+- `1st` and `2nd` hold coded serve/shot sequences; convenience columns such as `isAce`, `isForced`, `isUnforced`, and `1stSV` are derived from those codes.
+
+These semantics are useful for point-level reconstruction, but they do not by themselves define the row orientation or denominator of every aggregate-stat CSV. The MatchChart workbook's Instructions tab must be decoded before turning aggregate row codes into player-specific rates. Never assume that “player 1” in a stats row means the match metadata's first-listed player; verify the key and direction for each family.
+
 ## Candidate features and denominators
 
 | Signal family | Available fields | Candidate normalized feature | Caveat |
