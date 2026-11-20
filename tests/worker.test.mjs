@@ -508,6 +508,7 @@ test("matches fresh=true bypasses Worker cache and refreshes the canonical cache
   let storedHeaders = null;
   let storedKey = null;
   workerSandbox.caches.default.match = async key => {
+    if (key.url.includes("__live-tennis-quota-guard")) return null;
     cacheReads++;
     assert.equal(key.url, "https://worker.test/matches?status=upcoming&draw=singles&limit=200");
     return storedBody === null ? null : new Response(storedBody, { status: 200, headers: storedHeaders });
