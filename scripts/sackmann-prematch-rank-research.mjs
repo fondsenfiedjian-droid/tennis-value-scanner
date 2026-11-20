@@ -82,7 +82,7 @@ export function buildPrematchRankRows(matches, rankingRows, options = {}) {
 async function main(){
  const args=process.argv.slice(2),opts={},files=[];
  for(let i=0;i<args.length;i++){
-  if(["--tour","--rankings-dir","--from","--to","--k","--min-training","--max-training","--max-rank-age-days","--out"].includes(args[i])){
+  if(["--tour","--rankings-dir","--from","--to","--k","--min-training","--max-training","--max-rank-age-days","--freeze-model-year","--out"].includes(args[i])){
    const key=args[i].slice(2),value=args[++i];if(!value)throw new Error("Missing value for --"+key);
    opts[key]=value;
   } else if(args[i].startsWith("--"))throw new Error("Unknown option "+args[i]); else files.push(args[i]);
@@ -105,7 +105,7 @@ async function main(){
  const maxRankAgeDays=Number(opts["max-rank-age-days"]??45);
  if(!Number.isInteger(maxRankAgeDays)||maxRankAgeDays<0)throw new Error("--max-rank-age-days must be a non-negative integer");
  const built=buildPrematchRankRows(matches,rankings,{maxSnapshotAgeDays:maxRankAgeDays});
- const report=runRankAgeWalkForward(built.rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000)});
+ const report=runRankAgeWalkForward(built.rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000),freezeModelYear:opts["freeze-model-year"]??null});
  report.rankSource="latest official weekly ranking snapshot strictly earlier than tournament date";
  report.rankMaxAgeDays=maxRankAgeDays;
  report.rankCoverage=built.coverage;
