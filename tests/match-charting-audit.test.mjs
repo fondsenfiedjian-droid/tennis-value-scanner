@@ -8,7 +8,7 @@ function fixture(tour) {
   const files = {};
   files[prefix+"matches.csv"] = [
     "match_id,Player 1,Player 2,Pl 1 hand,Pl 2 hand,Date,Surface,Notes",
-    "m1,A,B,R,L,20240101,Hard,Player said "wide"",
+    "m1,A,B,R,L,20240101,Hard,Player said \\"wide\\"",
     "m2,C,D,L,R,20240202,Clay",
     "m3,E,F,R,R,20240303,Grass"
   ].join("\n");
