@@ -451,3 +451,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - This prevents a later schedule revision from reclassifying a snapshot taken after the original start as a valid pre-match forecast.
 - Added regression coverage for a match rescheduled after its original start; the later snapshot must not enter calibration. Post-start exclusions are counted once per match, not double-counted.
 - PWA shell cache advanced from v125 to v126. Existing archive data remains unchanged; no external API calls.
+
+### Archive import snapshot identity (2026-11-20)
+- Archive import/merge identity now includes match ID, model name/version, scheduled match date and capture status in addition to quote and prediction fields.
+- This prevents an import from collapsing distinct model versions or schedule/status revisions into one historical snapshot.
+- Added regression coverage for importing a new model version and a rescheduled/live revision of the same match.
+- PWA shell cache advanced from v126 to v127. Existing local archive data is not rewritten; no API calls or bookmaker changes.
