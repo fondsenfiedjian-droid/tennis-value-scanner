@@ -502,14 +502,14 @@ test("EV panel preserves bookmaker pair and opens match when prediction calculat
 });
 
 
-test("configured minimum EV and odds range gate both recommendation types",()=>{
-  assert.match(html,/function currentValueFilters\(\)/);
-  assert.match(html,/const valueFilters=currentValueFilters\(\)/);
-  assert.match(html,/selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
-  assert.match(html,/selectBestBet\(bets,filters\.minEv,Math\.max\(filters\.minOdds,bestBetMinOdds\),filters\.maxOdds\)/);
-  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.ev>0\)evDayBets\.push\(bet\)/);
-  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.odds>=1\.9&&bet\.ev>0\)dayBets\.push\(bet\)/);
-  assert.match(html,/v>=valueFilters\.minOdds&&v<=valueFilters\.maxOdds/);
+test("configured minimum EV is exclusive to Bet of the Day while odds range gates both recommendations",()=>{
+  assert.match(html,/function currentValueFilters\\(\\)/);
+  assert.match(html,/const valueFilters=currentValueFilters\\(\\)/);
+  assert.match(html,/selectHighestEvBet\\(evBets,filters\\.minOdds,filters\\.maxOdds\\)/);
+  assert.match(html,/selectBestBet\\(bets,filters\\.minEv,Math\\.max\\(filters\\.minOdds,bestBetMinOdds\\),filters\\.maxOdds\\)/);
+  assert.match(html,/oddsInRange&&Number\\.isFinite\\(bet\\.ev\\)&&bet\\.ev>0\\)evDayBets\\.push\\(bet\\)/);
+  assert.match(html,/oddsInRange&&bet\\.odds>=1\\.9&&Number\\.isFinite\\(bet\\.ev\\)&&bet\\.ev>0\\)dayBets\\.push\\(bet\\)/);
+  assert.match(html,/v>=valueFilters\\.minOdds&&v<=valueFilters\\.maxOdds/);
 });
 
 
