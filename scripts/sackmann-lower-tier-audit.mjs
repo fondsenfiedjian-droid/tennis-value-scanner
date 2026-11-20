@@ -36,7 +36,7 @@ export function auditLowerTierFiles(files){
     const rows=parseCsv(file.content);
     const key=tour+":"+type;
     if(!groups.has(key)) groups.set(key,{tour,sourceType:type,files:0,rows:0,validDates:0,validPlayerPairs:0,completedMatches:0,rankBoth:0,ageBoth:0,knownSurface:0,coreServeStatsBoth:0,missingIds:0,invalidDates:0,invalidScores:0,players:new Set(),naturalKeys:new Map(),years:new Set(),columns:new Map()});
-    const g=groups.get(key); g.files++; g.rows++; g.years.add(year);
+    const g=groups.get(key); g.files++; g.rows+=rows.length; g.years.add(year);
     for(const row of rows){
       const date=String(row.tourney_date??"");
       const winner=String(row.winner_id??""),loser=String(row.loser_id??"");
