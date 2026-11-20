@@ -901,3 +901,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added aggregate date-gap bins for candidate links excluded by the 21-day window (before event, 22–28 days, 29–35 days, over 35 days). This will distinguish a slightly narrow window from likely event/date mismatches before changing the linkage threshold.
 
 - Refined event-date conflict diagnostics to distinguish 1–3, 4–7, 8–14 and 15+ days before the archive tournament start date, as most first-pass date conflicts were negative rather than late. The 21-day matching rule remains unchanged pending this distribution.
+
+- Expanded known event aliases for Paris/Masters series, ATP Finals/Masters Cup, WTA Championships host cities and Davis/Fed/BJK Cup rounds; added synthetic Paris, Tour Finals and Davis Cup linkage tests. The 21-day date gate remains unchanged until negative date-gap distribution is reviewed.
