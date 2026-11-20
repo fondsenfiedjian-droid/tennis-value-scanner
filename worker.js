@@ -49,7 +49,7 @@ function diagnoseOddsItems(items, now = Date.now()) {
 
 function inspectHistoricalScore(score) {
   if (typeof score !== "string" || !score.trim()) return { parseable: false, incomplete: false };
-  const sets = [...score.matchAll(/(?:^|\\s)(\\d{1,2})\\s*[-:]\\s*(\\d{1,2})(?:\\(\\d{1,2}\\))?(?=\\s|$)/g)]
+  const sets = [...score.matchAll(/(?:^|\s)(\d{1,2})\s*[-:]\s*(\d{1,2})(?:\(\d{1,2}\))?(?=\s|$)/g)]
     .map(match => [Number(match[1]), Number(match[2])]);
   if (!sets.length) return { parseable: false, incomplete: false };
   const completed = sets.map(([a, b]) =>
