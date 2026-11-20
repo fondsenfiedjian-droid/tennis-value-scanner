@@ -429,4 +429,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The Statistics calibration panel identifies the active model version and reports how many archived rows from other versions were excluded. Segment calibration uses the same version filter.
 - Added regression coverage for version filtering, legacy/unversioned exclusions, Brier calculation and active-version wiring.
 - PWA shell cache advanced from v123 to v124 so installed clients can receive the changed calibration logic and labels.
-- Pending PR validation; no archive records are migrated or deleted, and no API calls or bookmaker settings are changed.
+- PR #46: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/46. Regression workflow run 44759547826 passed (333 tests, 0 failed); project-state guard run 44759547883 passed. The first test attempts exposed stale cache-version and segment-call assertions; those test expectations were corrected, with no production logic rollback required. No archive records are migrated or deleted, and no API calls or bookmaker settings are changed.
