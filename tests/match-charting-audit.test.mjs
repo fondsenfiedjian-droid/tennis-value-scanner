@@ -26,6 +26,8 @@ test("audits ATP and WTA metadata and stat-family match coverage", () => {
   assert.equal(report.tours.ATP.metadata.uniqueMatchIds, 3);
   assert.deepEqual(report.tours.ATP.metadata.dateRange, { from: "20240101", to: "20240303" });
   assert.equal(report.tours.ATP.metadata.surfaceCounts.Hard, 1);
+  assert.equal(report.tours.ATP.metadata.qualityChecks.status, "clean");
+  assert.equal(report.tours.ATP.metadata.qualityChecks.rowsWithUnexpectedSurface, 0);
   assert.equal(report.tours.ATP.statFiles[0].rows, 3);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.matchedUniqueIds, 2);
   assert.equal(report.tours.ATP.statFiles[0].metadataMatchCoverage.unmatchedUniqueIds, 1);
