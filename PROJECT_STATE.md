@@ -813,3 +813,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Coverage across all imported archive matches after freshness filter: ATP both-player ranks 77.05%; WTA 65.27%. Average retained snapshot age ATP 7.8 days; WTA 6.6 days.
 - ATP rank+age improved both metrics in all 27 evaluated years. WTA has small year-level regressions in 2017 and a slight LogLoss regression in 2022.
 - Decision: ranking and age are validated research candidates, not production features yet. Require a separate independent recent holdout and further WTA year-level review. No production prediction changes or deployment.
+
+
+### Independent recent holdout — next validation
+- Added frozen-coefficient holdout mode: fit Elo-only and candidate logistic models once on data before 2023, then keep coefficients unchanged for evaluation from 2023-01-01 through 2026-05-25.
+- Elo player ratings still update chronologically from earlier match results; weekly rankings remain strictly pre-tournament and capped at 45 days.
+- This is the next gate before considering any rank/age production integration. No production model changes.
