@@ -444,7 +444,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Regression tests passed on the PR and again on main (workflow run 44760469768); project-state guard passed (PR workflow run 44760394483).
 - Cloudflare Worker deployment passed (workflow run 44760515056). Production smoke check is still running; PWA cache v125 publication is not yet confirmed.
 
-- Production smoke check for the v125 release passed (workflow run 44760515033): deployed PWA and production API checks succeeded. Cloudflare Worker deploy action also passed; the separate Workers Builds status check was still in progress at the time of verification.
+- Production smoke check for v125 passed (workflow run 44760515033). The later v127 release was also deployed successfully: Worker deploy and automatic production smoke checks passed (runs 44761992642 and 44761992349); the deployed PWA and production API were reachable.
 
 ### Calibration leakage guard — earliest scheduled start (2026-11-20)
 - Calibration now compares every candidate snapshot against the earliest known scheduled match start across all archived snapshots for that match, not the first date among only `upcoming` rows.
@@ -465,3 +465,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Import normalization preserves only the recognized provider identifier; result revisions update provenance consistently across every snapshot for the match.
 - CSV archive export includes the result source. Regression coverage verifies provenance and revision metadata survive result application and archive import.
 - PWA shell cache advanced from v127 to v128. No historical archive rows are rewritten and no external API calls are made.
+
+- Result provenance hardening merged as PR #50 (`e17f3d0e1faee640c284c29285da27fc7f385afe`): regression tests and project-state guard passed. Verified result records now retain `live_tennis_api` provenance through archive import and CSV export; PWA cache is v128.
