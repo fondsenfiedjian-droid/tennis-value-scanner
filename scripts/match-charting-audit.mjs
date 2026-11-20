@@ -25,7 +25,7 @@ const TOURS = ["m", "w"];
 const text = value => String(value ?? "").trim();
 const validDate = value => {
   const valueText = text(value);
-  if (!/^\\d{8}$/.test(valueText)) return false;
+  if (!/^\d{8}$/.test(valueText)) return false;
   const year = Number(valueText.slice(0, 4));
   const month = Number(valueText.slice(4, 6));
   const day = Number(valueText.slice(6, 8));
