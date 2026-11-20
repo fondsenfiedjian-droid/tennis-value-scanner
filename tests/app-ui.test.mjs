@@ -113,6 +113,10 @@ test("odds status distinguishes quote scrape time from upstream dataset retrieva
   assert.match(html, /источник получен/);
   assert.match(html, /время ответа источника неизвестно/);
   assert.equal((html.match(/\+sourceSeen/g)||[]).length, 4);
+  assert.match(html, /let oddsTaskRun = null/);
+  assert.match(html, /taskRun:oddsTaskRun/);
+  assert.match(html, /запуск Apify/);
+  assert.match(html, /oddsTaskRun\?\.scheduled\?'по расписанию'/);
 });
 
 test("manual and scheduled refresh bypass the recent schedule cache", () => {
