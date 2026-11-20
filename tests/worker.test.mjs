@@ -94,6 +94,7 @@ const { findElo, findEloForSurface, normalizeSurface, eloProbability, response }
 const workerSandbox = {
   Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date, Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
   caches: { default: { match: async () => null, put: async () => {} } },
+  console: { log: () => {}, error: () => {} },
   fetch: async () => { throw new Error("Unexpected upstream network call in validation test"); }
 };
 vm.runInNewContext(
@@ -111,6 +112,29 @@ async function call(path, method = "GET", body = undefined) {
   });
   return worker.fetch(request, env);
 }
+
+test("daily Worker cron starts the saved Apify task without overriding its input", async () => {
+  let requestedUrl = "";
+  let requestedOptions = null;
+  let scheduledPromise = null;
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = url;
+    requestedOptions = options;
+    return new Response(JSON.stringify({ data: { id: "scheduled-run-1", status: "READY" } }), {
+      status: 201,
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+  await worker.scheduled({ cron: "0 6 * * *" }, env, {
+    waitUntil(promise) { scheduledPromise = promise; }
+  });
+  assert.ok(scheduledPromise);
+  await scheduledPromise;
+  assert.equal(requestedUrl, "https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs");
+  assert.equal(requestedOptions.method, "POST");
+  assert.equal(requestedOptions.headers.Authorization, "Bearer test-token");
+  assert.equal(requestedOptions.body, undefined);
+});
 
 test("odds endpoint validates method and requires the Apify secret", async () => {
   const methodResponse = await call("/odds", "POST");
