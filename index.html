@@ -420,6 +420,9 @@
     return Number.isFinite(savedAt)&&savedAt>0&&savedAt<=now+5*60*1000&&now-savedAt<=maxAge;
   }
   const ODDS_CACHE_TTL=10*60*1000;
+  // Temporary allowance aligned with the existing six-hour Apify schedule.
+  const ODDS_FRESHNESS_MAX_AGE_MS=6*60*60*1000;
+  const ODDS_FRESHNESS_MAX_AGE_MINUTES=6*60;
   let cachedOdds = [];
   let cachedOddsSavedAt = 0;
   let oddsRetrievedAt = null;
@@ -436,7 +439,7 @@
   }
   function oddsFreshnessSummary(now=Date.now()){
     const timestamps=cachedOdds.map(item=>Date.parse(item?.scrapedAt)).filter(value=>Number.isFinite(value)&&value<=now+5*60*1000);
-    const fresh=timestamps.filter(value=>now-value<=90*60*1000).length;
+    const fresh=timestamps.filter(value=>now-value<=ODDS_FRESHNESS_MAX_AGE_MS).length;
     const latest=timestamps.length?Math.max(...timestamps):null;
     return {fresh,stale:timestamps.length-fresh,unknown:cachedOdds.length-timestamps.length,latest};
   }
@@ -458,7 +461,7 @@
     }
     if(cachedOdds.length){
       node.textContent=summary.fresh
-        ?'Winamax: '+summary.fresh+' актуальных котировок из '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen
+        ?'Winamax: '+summary.fresh+' котировок не старше 6 ч из '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen
         :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen;
       return;
     }
@@ -601,7 +604,7 @@
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||eventStart.getTime()<=now||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
       const scrapedAt=new Date(o.scrapedAt);
-      if(!o.scrapedAt||Number.isNaN(scrapedAt.getTime())||now-scrapedAt.getTime()>90*60*1000||scrapedAt.getTime()-now>5*60*1000)return false;
+      if(!o.scrapedAt||Number.isNaN(scrapedAt.getTime())||now-scrapedAt.getTime()>ODDS_FRESHNESS_MAX_AGE_MS||scrapedAt.getTime()-now>5*60*1000)return false;
       const value=Number(o.oddsDecimal);
       return Number.isFinite(value)&&value>1;
     });
@@ -1453,15 +1456,15 @@
     const ratingsKnown=ratingAges.every(age=>Number.isFinite(age)&&age>=0);
     const maxRatingAge=ratingsKnown?Math.max(...ratingAges):null;
     const oddsAge=Number(oddsAgeMinutes);
-    const oddsKnown=Number.isFinite(oddsAge)&&oddsAge>=0&&oddsAge<=90;
+    const oddsKnown=Number.isFinite(oddsAge)&&oddsAge>=0&&oddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES;
     let level='limited',label='ограниченная';
     if(ratingsKnown&&oddsKnown&&maxRatingAge<=14&&oddsAge<=30){level='good';label='высокая';}
-    else if(ratingsKnown&&oddsKnown&&maxRatingAge<=30&&oddsAge<=90){level='medium';label='средняя';}
+    else if(ratingsKnown&&oddsKnown&&maxRatingAge<=30&&oddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES){level='medium';label='средняя';}
     const reasons=[];
     if(!ratingsKnown)reasons.push('дата одного или обоих рейтингов неизвестна');
     else if(maxRatingAge>30)reasons.push('рейтинги старше 30 дней');
     else if(maxRatingAge>14)reasons.push('рейтинги старше 14 дней');
-    if(!oddsKnown)reasons.push('возраст коэффициента неизвестен или превышает 90 минут');
+    if(!oddsKnown)reasons.push('возраст коэффициента неизвестен или превышает 6 часов');
     else if(oddsAge>30)reasons.push('коэффициент старше 30 минут');
     if(!reasons.length)reasons.push('рейтинги не старше 14 дней, коэффициент не старше 30 минут');
     return {level,label,details:reasons.join('; '),maxRatingAge,oddsAge:oddsKnown?oddsAge:null};
@@ -1685,7 +1688,7 @@
         const freshness=assessDataFreshness(result.ratingsAsOfA,result.ratingsAsOfB,currentOddsAge);
         const reliability=assessPredictionReliability({
           freshness,ratingQualityA:result.ratingQualityA,ratingQualityB:result.ratingQualityB,ratingQualityGap:result.ratingQualityGap,
-          oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=90,matchDateKnown:!!matchDate(m),
+          oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES,matchDateKnown:!!matchDate(m),
           bookmakerKnown:!!(el.dataset.bookmakerA&&el.dataset.bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
           calibration:archiveProbabilityCalibration(readPredictionArchive())
         });
@@ -1754,7 +1757,7 @@
           probability:Number(result.probabilityExactA??result.probabilityA/100),
           quality:result.ratingQualityA?.status==='invalid'?0.1:result.ratingQualityA?.status==='review'?0.6:1
         }];
-        if(marketContext&&Number.isFinite(currentOddsAge)&&currentOddsAge<=90)pfeModels.push({
+        if(marketContext&&Number.isFinite(currentOddsAge)&&currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES)pfeModels.push({
           id:'market-consensus',dependencyGroup:'bookmaker-market',
           probability:marketContext.marketProbabilityA/100,quality:1
         });
