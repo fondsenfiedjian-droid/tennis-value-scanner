@@ -70,7 +70,7 @@ function summarizeFile(path, rows, matchIds) {
   const headers = rows.length ? Object.keys(rows[0]) : [];
   const ids = rows.map(row => text(row.match_id)).filter(Boolean);
   const idSet = new Set(ids);
-  const duplicates = ids.length - idSet.size;
+  const repeatedMatchIdRows = ids.length - idSet.size;
   const nonEmptyByColumn = Object.fromEntries(headers.map(header => [
     header, rows.reduce((count, row) => count + (text(row[header]) ? 1 : 0), 0)
   ]));
@@ -81,7 +81,7 @@ function summarizeFile(path, rows, matchIds) {
     headers,
     matchIdRows: ids.length,
     uniqueMatchIds: idSet.size,
-    duplicateMatchIdRows: duplicates,
+    repeatedMatchIdRows,
     rowsWithoutMatchId: rows.length - ids.length,
     metadataMatchCoverage: matchIds ? {
       matchedUniqueIds: [...idSet].filter(id => matchIds.has(id)).length,
@@ -94,7 +94,7 @@ function summarizeFile(path, rows, matchIds) {
 
 export function auditMatchChartingFiles(filesByName) {
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: "Jeff Sackmann Tennis Abstract Match Charting Project",
     sourceCommit: "1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",
     license: "CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",
@@ -144,15 +144,17 @@ export function auditMatchChartingFiles(filesByName) {
         uniqueMatchIds: matchIds.size,
         duplicateMatchIdRows: metadataDuplicates,
         validDateRows: dates.length,
+        invalidDateRows: matchRows.length - dates.length,
         dateRange: dates.length ? { from: dates[0], to: dates.at(-1) } : null,
         surfaceCounts: surfaces,
         playerHandCounts: hands,
         qualityChecks: {
           rowsWithUnexpectedSurface,
           rowsWithUnexpectedHand,
+          invalidDateRows: matchRows.length - dates.length,
           rowsWithRecognizedSurface: matchRows.length - rowsWithUnexpectedSurface,
           rowsWithRecognizedHands: matchRows.length - rowsWithUnexpectedHand,
-          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates ? "review-required" : "clean"
+          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates || dates.length !== matchRows.length ? "review-required" : "clean"
         }
       },
       statFiles: files
