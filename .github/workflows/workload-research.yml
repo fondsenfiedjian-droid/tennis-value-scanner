@@ -27,16 +27,21 @@ jobs:
         run: |
           mkdir -p research-data
           curl --fail --location --retry 3 --retry-delay 2 \
+            https://www.valuebetennis.com/datasets/valuebetennis-matchs-2024.csv \
+            --output research-data/valuebetennis-matchs-2024.csv
+          curl --fail --location --retry 3 --retry-delay 2 \
             https://www.valuebetennis.com/datasets/valuebetennis-matchs-2025.csv \
             --output research-data/valuebetennis-matchs-2025.csv
           curl --fail --location --retry 3 --retry-delay 2 \
             https://www.valuebetennis.com/datasets/valuebetennis-matchs-2026.csv \
             --output research-data/valuebetennis-matchs-2026.csv
+          test -s research-data/valuebetennis-matchs-2024.csv
           test -s research-data/valuebetennis-matchs-2025.csv
           test -s research-data/valuebetennis-matchs-2026.csv
       - name: Run chronological workload research
         run: |
           node scripts/workload-research.mjs --out workload-research-report.json \
+            research-data/valuebetennis-matchs-2024.csv \
             research-data/valuebetennis-matchs-2025.csv \
             research-data/valuebetennis-matchs-2026.csv
       - name: Upload research report
