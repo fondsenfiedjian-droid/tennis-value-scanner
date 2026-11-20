@@ -316,19 +316,20 @@ test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_tim
   assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
 
-test("settings apply a selected skin immediately, persist it on Save, and restore it on Cancel", () => {
+test("settings preview and immediately persist skin changes", () => {
   const saveStart = html.indexOf("$('#saveSettings').onclick=");
   const saveEnd = html.indexOf("const API=", saveStart);
   const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
-  assert.match(settingsSource, /\$\('#skinSelect'\)\.addEventListener\('change',\(\)=>applySkin\(\$\('#skinSelect'\)\.value\)\)/);
-  assert.match(settingsSource, /activeSkin=data\.skin;\s*applySkin\(activeSkin\);/);
-  assert.match(settingsSource, /const cancelSettings=\(\)=>\{applySkin\(activeSkin\);\$\('#skinSelect'\)\.value=activeSkin;close\(\);\}/);
-  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
+  assert.match(settingsSource, /document\.body\.dataset\.skin=selected/);
+  assert.match(settingsSource, /document\.documentElement\.dataset\.skin=selected/);
+  assert.match(settingsSource, /settings\.skin=selected/);
+  assert.match(settingsSource, /activeSkin=selected/);
+  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
   assert.ok(saveStart >= 0);
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v132"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v133"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -389,7 +390,7 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /box\.onclick=openDetails/);
   assert.match(html, /box\.onkeydown=/);
   assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
+  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html, /x\.reliabilityScore>=65/);
   assert.match(html, /x\.valueEligible===true/);
   assert.match(html, /Качество данных:/);
@@ -502,12 +503,22 @@ test("EV panel preserves bookmaker pair and opens match when prediction calculat
 });
 
 
-test("configured minimum EV and odds range gate both recommendation types",()=>{
-  assert.match(html,/function currentValueFilters\(\)/);
-  assert.match(html,/const valueFilters=currentValueFilters\(\)/);
-  assert.match(html,/selectHighestEvBet\(evBets,filters\.minEv,filters\.minOdds,filters\.maxOdds\)/);
-  assert.match(html,/selectBestBet\(bets,filters\.minEv,Math\.max\(filters\.minOdds,bestBetMinOdds\),filters\.maxOdds\)/);
-  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.ev>0\)evDayBets\.push\(bet\)/);
-  assert.match(html,/oddsInRange&&meetsMinEv&&bet\.odds>=1\.9&&bet\.ev>0\)dayBets\.push\(bet\)/);
-  assert.match(html,/v>=valueFilters\.minOdds&&v<=valueFilters\.maxOdds/);
+
+
+
+test("minimum EV setting is exclusive to Bet of the Day",()=>{
+  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/selectBestBet\(bets,filters\.minEv,/);
+  assert.match(html,/selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
+  assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
+  assert.match(html,/if\(oddsInRange&&bet\.odds>=1\.9&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)dayBets\.push\(bet\)/);
+  assert.match(html,/result\.evA!==null&&result\.evA>0&&valueGateA\.eligible\?'model-positive'/);
+  assert.match(html,/if\(valueGateA\.eligible&&result\.evA!==null&&result\.evA>0\)positive\+\+/);
+});
+
+test("skin selection applies and persists immediately",()=>{
+  assert.match(html,/document\.body\.dataset\.skin=selected/);
+  assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
+  assert.match(html,/settings\.skin=selected/);
+  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
