@@ -897,3 +897,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Exported the tolerant Match Charting metadata parser and added a synthetic test for embedded quotes and quoted commas; the strict parser remains in place for the Sackmann yearly results CSVs.
 
 - The first linkage artifact linked 6,698/7,565 ATP metadata IDs (88.54%) and 3,544/4,257 WTA IDs (83.25%), 10,242 total. Added reason-by-event breakdown for unmatched records (event missing, player alias unavailable, date/round conflict, outside snapshot) to guide the next mapping pass; raw rows remain excluded.
+
+- Added aggregate date-gap bins for candidate links excluded by the 21-day window (before event, 22–28 days, 29–35 days, over 35 days). This will distinguish a slightly narrow window from likely event/date mismatches before changing the linkage threshold.
