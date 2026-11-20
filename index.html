@@ -916,7 +916,7 @@
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,modelCalculatedAt:Number.isFinite(Number(row.modelCalculatedAt))&&Number(row.modelCalculatedAt)>0?Number(row.modelCalculatedAt):null,quoteCapturedAt:Number.isFinite(Number(row.quoteCapturedAt))&&Number(row.quoteCapturedAt)>0?Number(row.quoteCapturedAt):null,quoteObservedAt:Number.isFinite(Number(row.quoteObservedAt))&&Number(row.quoteObservedAt)>0?Number(row.quoteObservedAt):null,capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
-    const keyOf=row=>[row.matchKey,row.matchId||'',row.side,String(row.bookmaker||''),row.capturedAt,row.odds,row.probability,String(row.model||''),String(row.modelVersion||''),row.matchDate||'',row.captureStatus||''].join('|');
+    const keyOf=row=>[row.matchKey,row.matchId||'',row.side,String(row.bookmaker||''),row.capturedAt,row.odds,row.probability,String(row.model||'imported'),String(row.modelVersion||''),row.matchDate||'',row.captureStatus||''].join('|');
     const indexByKey=new Map(merged.map((row,index)=>[keyOf(row),index]));
     let added=0,updated=0;
     for(const row of clean){
