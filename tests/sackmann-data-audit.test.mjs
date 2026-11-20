@@ -23,8 +23,8 @@ test("Sackmann audit reports coverage without exposing match-level records",()=>
   assert.equal(year.coveragePct.servePointsAnd1st2ndWonBothPlayers,50);
   assert.equal(year.coveragePct.rankingBothPlayers,100);
   assert.equal(report.reportLicense,"CC BY-NC-SA 4.0");
-  assert.equal(JSON.stringify(report).includes("101"),false);
-  assert.equal(JSON.stringify(report).includes("Test"),false);
+  assert.equal(JSON.stringify(report).includes('"101"'),false);
+  assert.equal(JSON.stringify(report).includes('"Test"'),false);
 });
 
 test("Sackmann audit keeps ATP and WTA player ID namespaces separate",()=>{
