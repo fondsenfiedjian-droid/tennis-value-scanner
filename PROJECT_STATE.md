@@ -398,4 +398,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PWA cache refresh for strict reliability gate (2026-11-20)
 - PR #42 changed the precached index.html, but code review after production smoke found the service-worker cache name was still v121. Since the worker caches the app shell and updates on a cache-name change, existing installed PWAs could retain the previous shell until a navigation fetch refreshed it.
 - Follow-up PR advances the service-worker cache to v122 and updates the corresponding regression expectations. No application logic changes in this follow-up.
-- First regression attempt exposed one stale cache-version assertion in tests/app-ui.test.mjs still pinned to v121; updated it to v122. Worker test expectations were already updated. Rerun and Netlify publication pending.
+- First regression attempt exposed one stale cache-version assertion in tests/app-ui.test.mjs still pinned to v121; updated it to v122. PR-head regression run 44755686832 failed only on that stale expectation; rerun 447557... passed. PR #43 merged as b6a9fb79ab0ed9294b3e942f972bf20957ad3c67. Main regression run 44755965832 passed; Cloudflare Worker deploy run 44756011508 and Workers Builds production check passed; production smoke run 44756011478 passed. Smoke confirmed Netlify PWA HTTP 200, service-worker cache v122 live, Worker health OK, and Winamax /odds HTTP 200 with 20 items, 20 valid decimal odds and 20 fresh scrape timestamps.
+
+
+### Archive result-checker counter fix (2026-11-20)
+- Code review found that the Statistics → Check Results handler still referenced the removed bankroll UI's bankrollUpdates object and an undeclared settled counter. Result rows were persisted before the final alert, but a successful response could then throw a ReferenceError and prevent a clean completion report.
+- Replaced the stale references with a local statusesUpdated counter and removed bankroll settlement text from the alert. Result persistence, identity validation, result-version handling and retry intervals remain unchanged.
+- Added a regression test asserting the handler initializes its counters and contains no references to removed bankroll state.
+- Advanced PWA service-worker shell cache from v122 to v123 because index.html changed. Regression and production verification pending.
