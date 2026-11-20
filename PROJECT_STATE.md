@@ -718,3 +718,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Regression tests, project-state guard and full archive audit workflow passed on the initial PR head. Aggregate audit artifact ID `14667800013` retained for 30 days.
 - Follow-up in this same PR adds a privacy-preserving classification of the 13 WTA duplicate-key groups (identical rows versus conflicting outcomes, with year-level counts) before deciding whether importer deduplication or key correction is appropriate.
 - No Live Tennis API, Apify, paid services, production model changes or production deployment used. Source remains CC BY-NC-SA 4.0 and research-only/non-commercial.
+
+
+### WTA source match-number collisions and backtest identity correction (2026-11-20)
+- The full-archive audit found 13 WTA groups sharing the legacy `tourney_id:match_num` key (7 in 1973, 1 in 1982, 3 in 1990, 2 in 2009). All 13 groups had differing match signatures; these are source-key collisions, not confirmed exact duplicate rows.
+- Existing `runBacktest` previously grouped only by `tourney_id:match_num` and would have excluded every row in such a collision group. Updated grouping to use the natural match identity: tournament ID + date + source match number + unordered player pair + round. Exact duplicate rows remain deduplicated, while conflicting rows for the same natural match remain excluded.
+- Added a regression test for two distinct matches reusing the same source tournament match number. Existing exact-duplicate and true-conflict tests remain in place.
+- The full archive workflow now distinguishes source-key collisions from actual duplicate natural-match groups and reports collision years, date/pair variation, and natural duplicate counts without logging player-level data. Awaiting the new CI run before treating the correction as validated.
