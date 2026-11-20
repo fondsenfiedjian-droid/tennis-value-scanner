@@ -837,7 +837,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Source README states more than 5,000 contributor-charted matches and declares CC BY-NC-SA 4.0. Data are selective/crowdsourced and non-commercial only; no production PFE feature activation is authorized by this audit.
 - Added unit tests and methodology/license documentation. Pull request CI will run the audit download in parallel with the existing research workflows. This is a source acquisition and coverage audit, not yet a point-level predictive test.
 
-- Superseded initial ten-family audit totals; use the expanded 16-family audit figures below.
+- Strict calendar validation (run 44824215512): ATP has 1 invalid date and no missing dates; WTA has 8 invalid dates and 10 missing dates. The valid ATP range begins 1960-05-29 and requires source-level verification. Keep all Match Charting features research-only; exclude unverified metadata dates/surface/hand fields.
 - Metadata quality review found unexpected categorical values (including non-surface text in Surface and non-R/L hand values) plus duplicate metadata IDs. Added explicit quality flags; do not use metadata date/surface/hand fields for features until source rows are inspected and repaired. Research-only; no production feature activation.
 
 - Added `docs/PFE_FEATURE_MAP.md`: candidate formulas, denominator/data-dictionary caveats, leakage controls, sample-threshold sweep, and chronological validation protocol. No PFE feature is enabled in production.
