@@ -62,7 +62,7 @@ jobs:
           const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/sackmann-lower-tier-audit.json", "utf8"));
           const rows = [
             "| Tour | Dataset | Files | Years | Source rows | Completed matches | Players | Both ranks | Both ages | Surface | Unique matches | Duplicate groups | Serve stats |",
-            "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|",
+            "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             ...report.groups.map(g => `| ${g.tour} | ${g.sourceType} | ${g.files} | ${g.years[0]}–${g.years.at(-1)} | ${g.rows} | ${g.completedMatches} | ${g.uniquePlayers} | ${g.rankBothPct}% | ${g.ageBothPct}% | ${g.knownSurfacePct}% | ${g.uniqueCompletedMatchGroups} | ${g.duplicateNaturalMatchGroups} (exact ${g.exactDuplicateGroups}, conflicts ${g.conflictingDuplicateGroups}) | ${g.coreServeStatsBothPct}% |`)
           ];
           await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n"));
