@@ -913,6 +913,7 @@
         resultCheckedAt:Number.isFinite(Number(row.resultCheckedAt))?Number(row.resultCheckedAt):null,
         resultStatus:typeof row.resultStatus==='string'?row.resultStatus.slice(0,80):null,
         resultRestatedAt:typeof row.resultRestatedAt==='string'?row.resultRestatedAt:null,
+        resultSource:row.resultSource==='live_tennis_api'?'live_tennis_api':null,
         model:typeof row.model==='string'?row.model.slice(0,80):'imported',modelVersion:typeof row.modelVersion==='string'?row.modelVersion.slice(0,40):null,modelCalculatedAt:Number.isFinite(Number(row.modelCalculatedAt))&&Number(row.modelCalculatedAt)>0?Number(row.modelCalculatedAt):null,quoteCapturedAt:Number.isFinite(Number(row.quoteCapturedAt))&&Number(row.quoteCapturedAt)>0?Number(row.quoteCapturedAt):null,quoteObservedAt:Number.isFinite(Number(row.quoteObservedAt))&&Number(row.quoteObservedAt)>0?Number(row.quoteObservedAt):null,capturedAt};
     }).filter(Boolean);
     const merged=current.slice();
@@ -934,7 +935,7 @@
         (newVersion===null&&oldVersion===null&&sameResult&&Number(row.resultCheckedAt||0)>Number(existing.resultCheckedAt||0)));
       if(acceptResult){
         merged[existingIndex]={...existing,resultOutcome:row.resultOutcome,resultWinner:row.resultWinner,resultVersion:row.resultVersion,
-          resultCheckedAt:row.resultCheckedAt,resultStatus:row.resultStatus,resultRestatedAt:row.resultRestatedAt};
+          resultCheckedAt:row.resultCheckedAt,resultStatus:row.resultStatus,resultRestatedAt:row.resultRestatedAt,resultSource:row.resultSource};
         updated++;
       }
     }
@@ -998,6 +999,7 @@
         nextRow.resultVersion=version;
         nextRow.resultStatus=result.status||null;
         nextRow.resultRestatedAt=result.result_restated_at||null;
+        nextRow.resultSource='live_tennis_api';
       }
       updated++;
       return nextRow;
@@ -1370,7 +1372,7 @@
     await archiveStorageReady;
     const rows=readPredictionArchive();
     if(!rows.length){alert('Архив пока пуст.');return;}
-    const columns=['capturedAt','modelCalculatedAt','quoteCapturedAt','quoteObservedAt','captureStatus','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
+    const columns=['capturedAt','modelCalculatedAt','quoteCapturedAt','quoteObservedAt','captureStatus','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt','resultSource'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
       if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
