@@ -67,7 +67,7 @@ jobs:
 
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
-          const cacheVersion = serviceWorker.match(/tennis-value-static-v(\\d+)/)?.[1];
+          const cacheVersion = serviceWorker.match(/tennis-value-static-v(\d+)/)?.[1];
           if (!cacheVersion || !serviceWorker.includes('"./human-factor.js"')) {
             throw new Error("Netlify service worker is missing a valid cache version or the local workload audit module");
           }
