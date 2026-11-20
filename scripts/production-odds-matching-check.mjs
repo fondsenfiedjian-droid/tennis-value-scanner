@@ -56,7 +56,6 @@ for (const match of matches) {
       playerIdA: sandbox.checkFns.getPlayerId(players.p1 || match.player1),
       playerIdB: sandbox.checkFns.getPlayerId(players.p2 || match.player2),
       surface: match.surface || match.court || match.court_name || (/finals/i.test(match.tournament_name || match.tournament || "") && /turin/i.test(match.tournament_name || match.tournament || "") ? "hard" : ""),
-      matchData: match,
       playerA,
       playerB
     });
@@ -78,49 +77,51 @@ if (matched.length === 0 && odds.length > 0) {
 if (matched.some(row => row.side1 === null || row.side2 === null)) {
   throw new Error("A matched event did not map both prices to the correct player sides");
 }
-const predictionCandidate = matched.find(row =>
+const predictionCandidates = matched.filter(row =>
   row.playerIdA && row.playerIdB &&
   [Number(row.side1), Number(row.side2)].some(value => Number.isFinite(value) && value >= 1.9)
-);
-if (predictionCandidate) {
-  const predictionResponse = await fetch(API_URL + "/predict", {
-    method: "POST",
-    signal: timeout,
-    headers: { "Content-Type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      playerIdA: predictionCandidate.playerIdA,
-      playerIdB: predictionCandidate.playerIdB,
-      playerA: predictionCandidate.playerA,
-      playerB: predictionCandidate.playerB,
-      surface: predictionCandidate.surface,
-      oddsA: Number(predictionCandidate.side1),
-      oddsB: Number(predictionCandidate.side2)
-    })
-  });
-  const prediction = await predictionResponse.json();
-  if (!predictionResponse.ok) {
-    throw new Error("Live Elo prediction failed: " + (prediction.error || predictionResponse.status));
+).slice(0, 3);
+if (predictionCandidates.length) {
+  for (const candidate of predictionCandidates) {
+    const predictionResponse = await fetch(API_URL + "/predict", {
+      method: "POST",
+      signal: timeout,
+      headers: { "Content-Type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        playerIdA: candidate.playerIdA,
+        playerIdB: candidate.playerIdB,
+        playerA: candidate.playerA,
+        playerB: candidate.playerB,
+        surface: candidate.surface,
+        oddsA: Number(candidate.side1),
+        oddsB: Number(candidate.side2)
+      })
+    });
+    const prediction = await predictionResponse.json();
+    if (!predictionResponse.ok) {
+      throw new Error("Live Elo prediction failed for " + candidate.match + ": " + (prediction.error || predictionResponse.status));
+    }
+    const pA = Number(prediction.probabilityExactA);
+    const pB = Number(prediction.probabilityExactB);
+    if (!Number.isFinite(pA) || !Number.isFinite(pB) || Math.abs(pA + pB - 1) > 1e-10) {
+      throw new Error("Live Elo prediction returned invalid complementary probabilities for " + candidate.match);
+    }
+    const expectedEvA = (pA * Number(candidate.side1) - 1) * 100;
+    const expectedEvB = (pB * Number(candidate.side2) - 1) * 100;
+    if (Math.abs(expectedEvA - Number(prediction.evA)) > 0.02 ||
+        Math.abs(expectedEvB - Number(prediction.evB)) > 0.02) {
+      throw new Error("Live EV does not match the probability × odds formula for " + candidate.match);
+    }
+    console.log("LIVE ELO + EV", JSON.stringify({
+      match: candidate.match,
+      source: prediction.source,
+      ratings: [prediction.ratingA, prediction.ratingB],
+      probabilities: [prediction.probabilityA, prediction.probabilityB],
+      odds: [candidate.side1, candidate.side2],
+      ev: [prediction.evA, prediction.evB],
+      surface: prediction.surface || candidate.surface || null
+    }));
   }
-  const pA = Number(prediction.probabilityExactA);
-  const pB = Number(prediction.probabilityExactB);
-  if (!Number.isFinite(pA) || !Number.isFinite(pB) || Math.abs(pA + pB - 1) > 1e-10) {
-    throw new Error("Live Elo prediction returned invalid complementary probabilities");
-  }
-  const expectedEvA = (pA * Number(predictionCandidate.side1) - 1) * 100;
-  const expectedEvB = (pB * Number(predictionCandidate.side2) - 1) * 100;
-  if (Math.abs(expectedEvA - Number(prediction.evA)) > 0.02 ||
-      Math.abs(expectedEvB - Number(prediction.evB)) > 0.02) {
-    throw new Error("Live EV does not match the probability × odds formula");
-  }
-  console.log("LIVE ELO + EV", JSON.stringify({
-    match: predictionCandidate.match,
-    source: prediction.source,
-    ratings: [prediction.ratingA, prediction.ratingB],
-    probabilities: [prediction.probabilityA, prediction.probabilityB],
-    odds: [predictionCandidate.side1, predictionCandidate.side2],
-    ev: [prediction.evA, prediction.evB],
-    surface: prediction.surface || predictionCandidate.surface || null
-  }));
 } else {
   console.log("Live Elo/EV not requested: no matched event had two player IDs and an odds candidate at or above 1.90.");
 }
