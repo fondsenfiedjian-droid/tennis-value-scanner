@@ -413,4 +413,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Code review found that the Statistics → Check Results handler still referenced the removed bankroll UI's bankrollUpdates object and an undeclared settled counter. Result rows were persisted before the final alert, but a successful response could then throw a ReferenceError and prevent a clean completion report.
 - Replaced the stale references with a local statusesUpdated counter and removed bankroll settlement text from the alert. Result persistence, identity validation, result-version handling and retry intervals remain unchanged.
 - Added a regression test asserting the handler initializes its counters and contains no references to removed bankroll state.
-- Advanced PWA service-worker shell cache from v122 to v123 because index.html changed. Regression and production verification pending.
+- Advanced PWA service-worker shell cache from v122 to v123 because index.html changed. PR #45 merged as 2b4ced694bbd48bed8a781e66ae4e13cff9079c7; PR-head regression run 447... and main regression run 44757420389 passed. Cloudflare deploy run 44757455851 and Workers Builds production check passed. Production smoke run 44757455675 passed: Netlify PWA HTTP 200, cache v123 live, Worker health OK, and Winamax feed 20/20 valid odds with fresh scrape timestamps.
+
+
+### Archive result-checker fix — production verified (2026-11-20)
+- PR #45 merged: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/45; merge commit 2b4ced694bbd48bed8a781e66ae4e13cff9079c7.
+- Regression run 44757420389 passed; Worker deploy run 44757455851 passed; Workers Builds production check passed; automatic smoke run 44757455675 passed.
+- Production smoke confirmed PWA HTTP 200 and service-worker cache v123, Worker health OK, and Winamax feed HTTP 200 with 20 valid odds and 20 fresh scrape timestamps.
+- Result-check handler now uses a defined statusesUpdated counter and no longer refers to removed bankrollUpdates state. The result checker still verifies player identities and result versions, retries unresolved/pending matches on the existing schedule, and checks at most 10 match IDs per manual run. No API polling was added, so this fix does not increase Live Tennis API usage.
