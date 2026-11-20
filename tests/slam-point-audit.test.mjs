@@ -17,7 +17,8 @@ test("audits point coverage, orphan IDs and candidate field availability",()=>{
  assert.equal(report.events[0].metadataMatchIdsWithoutPoints,0);
  assert.equal(report.events[0].candidateFields.serve_speed.nonEmptyPct,66.67);
  assert.equal(report.events[0].candidateFields.rally_length.zeroPctOfNumeric,33.33);
- assert.equal(report.fieldAvailability.serve_speed.eventsPresent,1);
+ assert.equal(report.fieldAvailability.serve_speed.eventsWithData,1);
+ assert.deepEqual(report.events[0].candidateFields.return_depth.categoryCounts,{D:2,ND:1});
 });
 test("requires both match and point files for each Slam event",()=>{
  assert.throws(()=>auditSlamPointFiles([{filename:"2024-wimbledon-matches.csv",content:matches}]),/Missing match or point file/);
