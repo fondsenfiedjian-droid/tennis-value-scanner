@@ -173,3 +173,12 @@ Research safeguards:
 7. Keep ATP, WTA, Challenger and ITF populations separate until tier-specific calibration and transitions are validated.
 
 These candidates are not shot-style or serve-speed features: the dataset explicitly has no serve speed, serve direction or shot-level fields. No production PFE feature is enabled.
+
+
+## Match Charting linkage to historical results
+
+A new research-only audit links MCP ATP/WTA metadata to the pinned Sackmann main-tour result archive (2013–2026). It accepts only a unique exact normalized full-name pair, tour, year, event (with a small explicit alias table) and round. Initials, fuzzy names and ambiguous candidates are never accepted. The result file's `tourney_date` is treated only as a tournament-week date; the MCP metadata `Date` is the charted match date. Their offset is a diagnostic, not proof of match order within an event.
+
+The audit emits aggregate counts only: unique metadata IDs, exact unique links, ambiguous candidates, round conflicts, event-name mismatches, pairs absent from that year, and date-quality/offset diagnostics. It does not write player names, match IDs or player-level linked data. Raw files exist only on the ephemeral CI runner. The MCP and archive sources declare CC BY-NC-SA 4.0; use remains non-commercial and attribution/share-alike obligations apply.
+
+Even a successful match link does not make the charted match representative or authorize a model feature. Before rolling PFE features are calculated, the linked sample must be assessed for charting date, event/tour coverage, metadata anomalies, duplicate match IDs, and match chronology. Same-event prior-match ordering is not inferred from Sackmann tournament-week dates.
