@@ -891,3 +891,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Event-name alias usage is now counted from the selected matched result row, not merely from the set of alternative event keys considered; this avoids inflating alias counts when an exact event key also exists.
 
 - The first full linkage workflow downloaded all 109 pinned files but stopped on a strict CSV parser quote error. Added source-filename context to the parser error so the malformed/edge-case file can be identified before changing parsing behavior; no raw file was uploaded.
+
+- Identified the strict-parser failure in WTA Match Charting metadata (an unquoted embedded quote at source line 2487). The linkage workflow now uses the same tolerant metadata parser as the coverage audit while retaining strict parsing for the Sackmann result files; raw rows remain ephemeral.
