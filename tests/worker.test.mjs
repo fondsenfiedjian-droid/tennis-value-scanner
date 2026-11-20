@@ -1832,11 +1832,12 @@ test("archive odds movement exposes provider-level comparison counts", () => {
 
 
 test("CLV uses the latest same-bookmaker pre-match quote and never substitutes another provider", () => {
+  const matchStart = Date.now() + 60 * 60 * 1000;
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const placed = api.placeBet(api.createInitialState(100), {
-    matchKey: "clv-match-1", matchId: 501, side: "A", matchDate: "2026-11-20T18:00:00.000Z",
+    matchKey: "clv-match-1", matchId: 501, side: "A", matchDate: new Date(matchStart).toISOString(),
     match: "Player A — Player B", player: "Player A", opponent: "Player B",
     bookmaker: "Winamax", probability: 0.62, odds: 2.1, stake: 2
   });
@@ -1844,8 +1845,8 @@ test("CLV uses the latest same-bookmaker pre-match quote and never substitutes a
   const archive = [
     { matchId: 501, side: "A", bookmaker: "Betclic", odds: 1.7, capturedAt: placedAt + 60000 },
     { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.95, capturedAt: placedAt + 120000 },
-    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.9, capturedAt: Date.parse("2026-11-20T17:30:00.000Z") },
-    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.5, capturedAt: Date.parse("2026-11-20T18:01:00.000Z") }
+    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.9, capturedAt: matchStart - 30 * 60 * 1000 },
+    { matchId: 501, side: "A", bookmaker: "Winamax", odds: 1.5, capturedAt: matchStart + 60 * 1000 }
   ];
   const summary = api.getClvSummary(placed.state, archive);
   assert.equal(summary.sampleSize, 1);
@@ -1856,15 +1857,16 @@ test("CLV uses the latest same-bookmaker pre-match quote and never substitutes a
 });
 
 test("CLV excludes live/post-start snapshots and treats same-time conflicting prices as ambiguous", () => {
+  const matchStart = Date.now() + 60 * 60 * 1000;
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const placed = api.placeBet(api.createInitialState(100), {
-    matchKey: "clv-live-guard", matchId: 503, side: "A", matchDate: "2026-11-20T18:00:00.000Z",
+    matchKey: "clv-live-guard", matchId: 503, side: "A", matchDate: new Date(matchStart).toISOString(),
     match: "Player E — Player F", bookmaker: "Winamax", probability: 0.6, odds: 2.2, stake: 2
   });
   const placedAt = Date.parse(placed.bet.placedAt);
-  const start = Date.parse("2026-11-20T18:00:00.000Z");
+  const start = matchStart;
   const liveOnly = api.getClvSummary(placed.state, [
     {matchId:503,side:"A",bookmaker:"Winamax",odds:1.8,capturedAt:start-60000,captureStatus:"live"},
     {matchId:503,side:"A",bookmaker:"Winamax",odds:1.7,capturedAt:start,captureStatus:"upcoming"}
@@ -1881,17 +1883,18 @@ test("CLV excludes live/post-start snapshots and treats same-time conflicting pr
 });
 
 test("CLV bookmaker matching is case-insensitive but remains provider-specific", () => {
+  const matchStart = Date.now() + 60 * 60 * 1000;
   const sandbox = {};
   vm.runInNewContext(bankrollSource + "\nglobalThis.bankrollApi = TVSBankroll;", sandbox);
   const api = sandbox.bankrollApi;
   const placed = api.placeBet(api.createInitialState(100), {
-    matchKey:"clv-case",matchId:504,side:"B",matchDate:"2026-11-20T18:00:00.000Z",
+    matchKey:"clv-case",matchId:504,side:"B",matchDate:new Date(matchStart).toISOString(),
     match:"Player G — Player H",bookmaker:"Winamax",probability:0.55,odds:2.1,stake:2
   });
   const placedAt=Date.parse(placed.bet.placedAt);
   const summary=api.getClvSummary(placed.state,[
-    {matchId:504,side:"B",bookmaker:"winamax",odds:1.9,capturedAt:Date.parse("2026-11-20T17:59:00.000Z"),captureStatus:"upcoming"},
-    {matchId:504,side:"B",bookmaker:"Betclic",odds:1.5,capturedAt:Date.parse("2026-11-20T17:58:00.000Z"),captureStatus:"upcoming"}
+    {matchId:504,side:"B",bookmaker:"winamax",odds:1.9,capturedAt:matchStart-60*1000,captureStatus:"upcoming"},
+    {matchId:504,side:"B",bookmaker:"Betclic",odds:1.5,capturedAt:matchStart-120*1000,captureStatus:"upcoming"}
   ]);
   assert.equal(summary.sampleSize,1);
   assert.equal(summary.matched[0].closingOdds,1.9);
