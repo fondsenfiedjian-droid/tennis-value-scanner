@@ -675,3 +675,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `tests/historical-normalizer.test.mjs` for valid ATP records, separate eligibility, exclusions, incomplete scores, surface aliases, duplicate IDs and missing-field handling.
 - This is an offline data adapter only. It does not train a model, change probability/EV, make network requests, or include user-provided datasets. No Live Tennis quota, Apify run, paid service or deployment used.
 - Branch: `feat/historical-match-normalizer`. CI and code review are pending; no merge or production integration is claimed. Next: fix any CI findings, then consider a private local archive import and chronological backtest.
+
+
+- Initial regression run `44808728071` exposed two adapter edge cases: explicit null H2H counts were being coerced to zero, and partial set scores were not consistently flagged. Both were corrected on the same branch (commits `5b00b2b990b7f66e05b2cb90bae30e193eaa7ad6` and `bfe57b3634f97185221215555e6b97164662906f`). The initial run had 359 passing and 2 failing tests; the rerun for the corrected head is pending. Documentation guard run `44808727947` passed.
