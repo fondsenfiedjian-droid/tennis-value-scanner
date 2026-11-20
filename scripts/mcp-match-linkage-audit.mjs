@@ -30,7 +30,7 @@ const normalizeRound = value => {
 };
 
 function parseMcpMetadataCsv(source) {
-  source = source.replace(/^\\uFEFF/, "");
+  source = source.replace(/^\uFEFF/, "");
   const rows = [];
   let row = [], field = "", quoted = false;
   const pushField = () => { row.push(field); field = ""; };
@@ -39,14 +39,14 @@ function parseMcpMetadataCsv(source) {
     const ch = source[i];
     if (quoted) {
       if (ch === '"' && source[i + 1] === '"') { field += '"'; i++; }
-      else if (ch === '"' && [",", "\\n", "\\r", undefined].includes(source[i + 1])) quoted = false;
+      else if (ch === '"' && [",", "\n", "\r", undefined].includes(source[i + 1])) quoted = false;
       else field += ch;
       continue;
     }
     if (ch === '"' && field.length === 0) quoted = true;
     else if (ch === ",") pushField();
-    else if (ch === "\\n") pushRow();
-    else if (ch === "\\r" && source[i + 1] === "\\n") { /* CRLF */ }
+    else if (ch === "\n") pushRow();
+    else if (ch === "\r" && source[i + 1] === "\n") { /* CRLF */ }
     else field += ch;
   }
   if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting metadata");
