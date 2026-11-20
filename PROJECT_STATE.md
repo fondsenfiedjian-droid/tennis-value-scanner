@@ -875,3 +875,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `scripts/point-state-transition-audit.mjs` and synthetic tests for score-state transitions (normal games, advantage, tiebreak, game/set boundaries and ambiguous jumps). The CLI accepts CSV/gzip and emits aggregate diagnostics only; no IDs or player-level data. Server-to-transition alignment and tape completeness remain unverified; no sample data imported and no production feature enabled. See `docs/POINT_STATE_TRANSITION_RESEARCH.md`.
 
 - Fixed the point-state audit CLI entrypoint to resolve relative script paths correctly and added an end-to-end CLI test that writes only aggregate output from a synthetic CSV.
+
+- CLI report newline and synthetic CSV line endings are encoded as actual newline characters; the integration test verifies the generated JSON can be parsed successfully.
