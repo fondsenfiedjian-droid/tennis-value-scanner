@@ -398,4 +398,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PWA cache refresh for strict reliability gate (2026-11-20)
 - PR #42 changed the precached index.html, but code review after production smoke found the service-worker cache name was still v121. Since the worker caches the app shell and updates on a cache-name change, existing installed PWAs could retain the previous shell until a navigation fetch refreshed it.
 - Follow-up PR advances the service-worker cache to v122 and updates the corresponding regression expectations. No application logic changes in this follow-up.
-- Validation and Netlify publication pending.
+- First regression attempt exposed one stale cache-version assertion in tests/app-ui.test.mjs still pinned to v121; updated it to v122. Worker test expectations were already updated. Rerun and Netlify publication pending.
