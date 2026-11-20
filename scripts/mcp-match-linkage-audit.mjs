@@ -202,7 +202,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
         else if (!aliasEvents.length) { stats.aliasUnavailable++; reason = "alias-unavailable"; }
         else {
           const aliasPair = pair(a1,a2);
-          const eventOptions = available.filter(item => aliasEvents.includes(item.event));
+          const eventOptions = aliasEvents;
           const aliasExact = round ? collect(index.aliasRound,eventOptions,round,aliasPair) : [];
           const aliasAny = collect(index.aliasEvent,eventOptions,null,aliasPair);
           const candidates = round ? aliasExact : aliasAny;
