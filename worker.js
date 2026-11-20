@@ -46,6 +46,27 @@ function diagnoseOddsItems(items, now = Date.now()) {
   };
 }
 
+function inspectHistoricalScore(score) {
+  if (typeof score !== "string" || !score.trim()) return { parseable: false, incomplete: false };
+  const sets = [...score.matchAll(/(?:^|\\s)(\\d{1,2})\\s*[-:]\\s*(\\d{1,2})(?:\\(\\d{1,2}\\))?(?=\\s|$)/g)]
+    .map(match => [Number(match[1]), Number(match[2])]);
+  if (!sets.length) return { parseable: false, incomplete: false };
+  const completed = sets.map(([a, b]) =>
+    (Math.max(a, b) >= 6 && Math.abs(a - b) >= 2) ||
+    (Math.max(a, b) === 7 && Math.min(a, b) === 6) ||
+    (Math.max(a, b) >= 10 && Math.abs(a - b) >= 2)
+  );
+  const lastSetIncomplete = !completed[completed.length - 1];
+  const setsWon = [0, 1].map(player =>
+    sets.filter(([a, b], index) => completed[index] && (player === 0 ? a > b : b > a)).length
+  );
+  return {
+    parseable: true,
+    incomplete: lastSetIncomplete && Math.max(...setsWon) < 2,
+    setsParsed: sets.length
+  };
+}
+
 function diagnoseHistoricalItems(items) {
   const countBy = (field) => Object.fromEntries([...new Set(items.map(x => String(x?.[field] ?? "missing")))].sort().map(v => [v, items.filter(x => String(x?.[field] ?? "missing") === v).length]));
   const validOdds = (v) => Number.isFinite(Number(v)) && Number(v) > 1 && Number(v) <= 1000;
@@ -75,6 +96,10 @@ function diagnoseHistoricalItems(items) {
       if (Number(match.currentOddsPlayer2Avg) > Number(match.openingOddsPlayer2Avg) * 1.02) player2Lengthened++;
     }
   }
+  const scoreAnomalies = items
+    .filter(x => x?.finished === true && x?.retired !== true && x?.walkover !== true)
+    .map(x => ({ match: x, scoreCheck: inspectHistoricalScore(x?.score) }))
+    .filter(x => x.scoreCheck.incomplete);
   return {
     tourCounts: countBy("tour"),
     statusCounts: countBy("status"),
@@ -95,6 +120,14 @@ function diagnoseHistoricalItems(items) {
     missingPlayer2Rank: items.filter(x => x?.player2Rank == null).length,
     missingWinner: items.filter(x => !x?.winner).length,
     missingScore: items.filter(x => !x?.score).length,
+    possibleIncompleteScore: scoreAnomalies.length,
+    possibleIncompleteScoreExamples: scoreAnomalies.slice(0, 10).map(({ match, scoreCheck }) => ({
+      player1: match?.player1 ?? null,
+      player2: match?.player2 ?? null,
+      score: match?.score ?? null,
+      date: match?.date ?? null,
+      setsParsed: scoreCheck.setsParsed
+    })),
     duplicateMatches: duplicates
   };
 }
