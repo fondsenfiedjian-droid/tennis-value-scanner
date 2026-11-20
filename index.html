@@ -551,30 +551,41 @@
     const status=String(match?.status||match?.event_status||'').trim().toLowerCase();
     return !['live','in_progress','in progress','completed','finished','cancelled','canceled','retired','walkover','abandoned'].includes(status);
   }
+  function oddsEventParticipants(o){
+    let home=String(o?.homeTeam||'').trim(),away=String(o?.awayTeam||'').trim();
+    if(!home||!away){
+      const parts=String(o?.eventName||'').trim().split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
+      if(parts.length===2){home=home||parts[0];away=away||parts[1];}
+    }
+    return {home:normalizePlayer(home),away:normalizePlayer(away)};
+  }
+  function oddsEventGroupKey(o){
+    const eventId=String(o?.eventId||'').trim();
+    if(eventId)return String(o?.bookmaker||'').trim().toLowerCase()+'|'+eventId;
+    const {home,away}=oddsEventParticipants(o),start=String(o?.startTime||'').trim();
+    if(!start||!home||!away)return null;
+    return [String(o?.bookmaker||'').trim().toLowerCase(),start,[home,away].sort().join('|'),String(o?.competition||'').trim().toLowerCase()].join('|');
+  }
   function oddsForMatch(m){
-    const p=m.players||{};
-    const a=normalizePlayer(playerName(p.p1||m.player1));
-    const b=normalizePlayer(playerName(p.p2||m.player2));
+    const p=m.players||{},a=normalizePlayer(playerName(p.p1||m.player1)),b=normalizePlayer(playerName(p.p2||m.player2));
     if(!a||!b||a===b)return [];
     const matchStart=matchDate(m),now=Date.now();
     if(!isPreMatchMatch(m,matchStart,now))return [];
     const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
     const candidates=cachedOdds.filter(o=>{
-      const provider=String(o?.bookmaker||'').trim().toLowerCase();
-      const config=ODDS_PROVIDER_REGISTRY[provider];
-      if(!config||!config.enabled||String(o.bookmakerCountry||'').toUpperCase()!==config.country)return false;
-      if(String(o.sport||'').toLowerCase()!=='tennis')return false;
-      if(String(o.marketType||'').toLowerCase()!=='match_winner')return false;
+      const provider=String(o?.bookmaker||'').trim().toLowerCase(),config=ODDS_PROVIDER_REGISTRY[provider];
+      if(!config||!config.enabled)return false;
+      const country=String(o.bookmakerCountry||'').trim().toUpperCase();
+      if(country&&country!==config.country)return false;
+      if(!country&&provider!=='winamax')return false;
+      if(String(o.sport||'').toLowerCase()!=='tennis'||String(o.marketType||'').toLowerCase()!=='match_winner')return false;
       if(o.line!==null&&o.line!==undefined&&o.line!=='')return false;
-      if(!o.eventId||!['home','away'].includes(String(o.outcome||'').toLowerCase()))return false;
-      const home=normalizePlayer(o.homeTeam),away=normalizePlayer(o.awayTeam);
+      if(!['home','away'].includes(String(o.outcome||'').toLowerCase()))return false;
+      const {home,away}=oddsEventParticipants(o);
       if(!home||!away||home===away)return false;
       const eventName=String(o.eventName||'').trim();
-      // Scraper feeds may format the same event with vs, v, hyphen or an en/em dash.
-      // Team fields remain authoritative; reject only a parseable, explicitly conflicting label.
       const eventParts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
-      if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||
-        (playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
+      if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||(playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
       if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
@@ -586,19 +597,11 @@
     });
     // Event IDs are bookmaker-specific: never require two providers to share one.
     const groups=new Map();
-    for(const quote of candidates){
-      const key=String(quote.bookmaker).trim().toLowerCase()+'|'+String(quote.eventId);
-      if(!groups.has(key))groups.set(key,[]);
-      groups.get(key).push(quote);
-    }
+    for(const quote of candidates){const key=oddsEventGroupKey(quote);if(!key)continue;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(quote);}
     const selected=[];
     for(const quotes of groups.values()){
       const latestByOutcome={};
-      for(const quote of quotes){
-        const side=String(quote.outcome).toLowerCase();
-        const current=latestByOutcome[side];
-        if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=quote;
-      }
+      for(const quote of quotes){const side=String(quote.outcome).toLowerCase(),current=latestByOutcome[side];if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=quote;}
       if(latestByOutcome.home&&latestByOutcome.away){
         const homeScrapedAt=Date.parse(latestByOutcome.home.scrapedAt),awayScrapedAt=Date.parse(latestByOutcome.away.scrapedAt);
         if(!Number.isFinite(homeScrapedAt)||!Number.isFinite(awayScrapedAt)||Math.abs(homeScrapedAt-awayScrapedAt)>30*60*1000)continue;
@@ -608,9 +611,7 @@
     return selected;
   }
   function oddsSideForPlayer(o,playerA){
-    const home=normalizePlayer(o?.homeTeam);
-    const away=normalizePlayer(o?.awayTeam);
-    const a=normalizePlayer(playerA);
+    const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
     const outcome=String(o.outcome||'').toLowerCase();
     if(playerNamesMatch(a,home))return outcome==='home'?'1':outcome==='away'?'2':null;
@@ -1353,7 +1354,7 @@
     const columns=['capturedAt','modelCalculatedAt','quoteCapturedAt','quoteObservedAt','captureStatus','matchDate','matchId','tournament','tour','surface','bookmaker','player','opponent','side','odds','probability','ev','rating','ratingAsOf','model','resultOutcome','resultWinner','resultVersion','resultCheckedAt','resultStatus','resultRestatedAt'];
     const quote=value=>{
       let cell=value&&typeof value==='object'?JSON.stringify(value):String(value??'');
-      if(typeof value==='string'&&/^\\s*[=+@-]/.test(cell))cell="'"+cell;
+      if(typeof value==='string'&&/^\s*[=+@-]/.test(cell))cell="'"+cell;
       return '"'+cell.replace(/"/g,'""')+'"';
     };
     const csv='\\uFEFF'+[columns.join(';'),...rows.map(row=>columns.map(key=>quote(row[key])).join(';'))].join('\\n');
