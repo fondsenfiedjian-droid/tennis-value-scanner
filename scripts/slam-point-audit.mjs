@@ -29,7 +29,7 @@ function summarizeEvent(matchRows, pointRows, year, slam) {
     else pointMatchCounts.set(id, (pointMatchCounts.get(id) || 0) + 1);
     for (const [field, value] of Object.entries(row)) {
       if (!CANDIDATE_FIELD.test(field)) continue;
-      if (!fieldStats.has(field)) fieldStats.set(field, { nonEmpty: 0, numeric: 0, zeros: 0 });
+      if (!fieldStats.has(field)) fieldStats.set(field, { nonEmpty: 0, numeric: 0, zeros: 0, categories: new Map() });
       const stat = fieldStats.get(field);
       const v = String(value ?? "").trim();
       if (!v) continue;
@@ -38,6 +38,8 @@ function summarizeEvent(matchRows, pointRows, year, slam) {
       if (Number.isFinite(n)) {
         stat.numeric++;
         if (n === 0) stat.zeros++;
+      } else {
+        stat.categories.set(v, (stat.categories.get(v) || 0) + 1);
       }
     }
   }
@@ -51,7 +53,8 @@ function summarizeEvent(matchRows, pointRows, year, slam) {
       nonEmptyPct: pointRows.length ? Number((100*s.nonEmpty/pointRows.length).toFixed(2)) : null,
       numericValues: s.numeric,
       zeroValues: s.zeros,
-      zeroPctOfNumeric: s.numeric ? Number((100*s.zeros/s.numeric).toFixed(2)) : null
+      zeroPctOfNumeric: s.numeric ? Number((100*s.zeros/s.numeric).toFixed(2)) : null,
+      categoryCounts: Object.fromEntries([...s.categories.entries()].sort((a,b)=>b[1]-a[1]).slice(0,20))
     }
   ]));
   return {
@@ -74,12 +77,17 @@ function combineSlamEvents(events) {
   }),{events:0,matchRows:0,uniqueMatchIds:0,pointRows:0,pointMatchIdsLinkedToMetadata:0,orphanPointMatchIds:0,metadataMatchIdsWithoutPoints:0});
   const fields = {};
   for (const event of events) for (const [field, stat] of Object.entries(event.candidateFields)) {
-    if (!fields[field]) fields[field] = { eventsPresent:0, totalNonEmpty:0, totalNumeric:0, totalZeros:0 };
+    if (!fields[field]) fields[field] = { eventsPresent:0, eventsWithData:0, eventsWithNumeric:0, eventsAllNumericZero:0, totalNonEmpty:0, totalNumeric:0, totalZeros:0, categoryCounts:{} };
     const f=fields[field]; f.eventsPresent++; f.totalNonEmpty+=stat.nonEmpty; f.totalNumeric+=stat.numericValues; f.totalZeros+=stat.zeroValues;
+    if (stat.nonEmpty > 0) f.eventsWithData++;
+    if (stat.numericValues > 0) f.eventsWithNumeric++;
+    if (stat.numericValues > 0 && stat.zeroValues === stat.numericValues) f.eventsAllNumericZero++;
+    for (const [category,count] of Object.entries(stat.categoryCounts || {})) f.categoryCounts[category]=(f.categoryCounts[category]||0)+count;
   }
   for (const f of Object.values(fields)) {
     f.nonEmptyPct = totals.pointRows ? Number((100*f.totalNonEmpty/totals.pointRows).toFixed(2)) : null;
     f.zeroPctOfNumeric = f.totalNumeric ? Number((100*f.totalZeros/f.totalNumeric).toFixed(2)) : null;
+    f.categoryCounts = Object.fromEntries(Object.entries(f.categoryCounts).sort((a,b)=>b[1]-a[1]).slice(0,20));
   }
   return {
     schemaVersion:1,
