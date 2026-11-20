@@ -50,3 +50,8 @@ For each candidate, an Elo-only logistic baseline is fitted on exactly the same 
 Training samples are deterministically capped at 20,000 rows per annual fit to control runtime; evaluation uses every eligible match. The JSON report contains aggregate metrics only, not player-level predictions. Negative candidate-minus-baseline Brier or LogLoss deltas indicate improvement; positive deltas indicate deterioration. Missing ranks/ages are not imputed: each comparison uses its own eligible subset, and the combined model uses only matches with both signals.
 
 This is an exploratory diagnostic, not a production model. Ranking values are tournament-date snapshots and are not guaranteed to be exact match-start snapshots. Do not activate rank or age in production without checking snapshot timing and confirming repeatable out-of-sample improvement across independent periods. All Sackmann-derived research remains non-commercial under CC BY-NC-SA 4.0.
+
+
+## Rank/age robustness checks
+
+The full-archive workflow also runs the same annual expanding walk-forward comparison at Elo K=24, 48 and 64 (with a 20,000-row annual training cap), plus K=32 with a 5,000-row cap. These checks test whether the initial rank/age signal depends on one Elo update speed or one training sample size. Compare each candidate with its same-subset Elo-only baseline; do not compare raw scores across different K values as if they used identical predictions. Reports are aggregate-only artifacts. This remains research-only and does not alter production predictions.
