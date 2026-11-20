@@ -25,6 +25,18 @@ test("Valuebetennis CSV maps source columns into chronological Elo rows", () => 
   });
   assert.equal(parsed.rows[1].surface, "Clay");
   assert.equal(parsed.rows[1].tour, "wta");
+  assert.equal(parsed.rows[0].durationMinutes, null);
+});
+
+test("Valuebetennis importer retains valid match duration and treats missing or invalid duration as unknown", () => {
+  const csv = [header.replace("score,cote1_ouverture", "score,duree_min,cote1_ouverture"),
+    "9701,2025-05-01T12:00:00Z,901,atp,Hard,101,102,101,6-4 6-4,128,1.7,2.2,1.65,2.3",
+    "9702,2025-05-02T12:00:00Z,902,atp,Hard,103,104,104,6-4 6-4,,1.8,2.1,1.75,2.2",
+    "9703,2025-05-03T12:00:00Z,903,atp,Hard,105,106,105,6-4 6-4,999,1.8,2.1,1.75,2.2"
+  ].join("\\n");
+  const parsed = parseValuebetennisCsv(csv);
+  assert.deepEqual(parsed.rows.map(row => row.durationMinutes), [128, null, null]);
+});
 });
 
 test("Valuebetennis importer excludes matches ending inside an unfinished set", () => {
