@@ -37,29 +37,25 @@ jobs:
               --output "research-data/charting-$tour-matches.csv"
             test -s "research-data/charting-$tour-matches.csv"
           done
-          for year in {2013..2026}; do
-            for tour in atp wta; do
-              file="${tour}_matches_${year}.csv"
-              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
-                "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$RESULTS_COMMIT/$tour/$file" \
-                --output "research-data/$file"
-              test -s "research-data/$file"
-            done
-          done
           curl --fail --silent --show-error --location --retry 3 \
             "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$RESULTS_COMMIT?recursive=1" \
             --output "$RUNNER_TEMP/archive-tree.json"
           node --input-type=module <<'NODE'
           import { readFile, writeFile } from "node:fs/promises";
           const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
-          const files = tree.tree.filter(item =>
+          const main = tree.tree.filter(item =>
+            /^(atp|wta)\/(atp|wta)_matches_\d{4}\.csv$/i.test(item.path)
+          ).map(item => item.path);
+          const lower = tree.tree.filter(item =>
             /^(atp|wta)\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(item.path)
-          ).map(item => item.path).sort();
-          if (files.length !== 144) throw new Error("Expected 144 lower-tier files, found " + files.length);
-          await writeFile(process.env.RUNNER_TEMP + "/lower-tier-files.txt", files.join("\n") + "\n");
-          console.log("Pinned lower-tier files: " + files.length);
+          ).map(item => item.path);
+          if (main.length !== 118) throw new Error("Expected 118 main-tour files, found " + main.length);
+          if (lower.length !== 144) throw new Error("Expected 144 lower-tier files, found " + lower.length);
+          const files = [...main, ...lower].sort();
+          await writeFile(process.env.RUNNER_TEMP + "/result-files.txt", files.join("\n") + "\n");
+          console.log("Pinned result files: " + main.length + " main-tour + " + lower.length + " lower-tier");
           NODE
-          cat "$RUNNER_TEMP/lower-tier-files.txt" | xargs -r -n 1 -P 8 sh -c '
+          cat "$RUNNER_TEMP/result-files.txt" | xargs -r -n 1 -P 8 sh -c '
             set -eu
             path="$1"
             name="${path##*/}"
