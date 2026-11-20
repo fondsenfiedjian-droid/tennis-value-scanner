@@ -782,3 +782,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Initial full-archive results are recorded above. Rank and combined rank+age showed consistent out-of-sample improvements across annual periods; age alone was smaller on ATP and more useful on WTA. These are model-accuracy results, not ROI or betting-profit evidence.
 - No rank/age factor was added to production predictions. The research code uses a 20,000-row deterministic cap per annual training fit, all eligible evaluation matches, earlier-calendar-year-only fitting, and same-day Elo batching. Tournament-date ranking snapshot timing remains to be verified.
 - Next research step: robustness checks with alternative Elo K values and training-sample sizes, split early/recent holdouts, and then test whether rank/age improve the existing surface/form/H2H combination. Production changes remain blocked until repeatable independent improvement and ranking-timestamp validity are established.
+
+
+### Rank/age robustness study — in review (2026-11-20)
+- Added full-archive walk-forward sensitivity runs for Elo K=24, 48 and 64 at a 20,000-row annual training cap, plus K=32 at a 5,000-row cap. ATP and WTA remain separate; each candidate retains its same-subset Elo-only baseline.
+- The workflow uploads aggregate JSON reports only; raw and normalized match rows remain on the ephemeral runner. No production prediction changes, API quota use, Apify run, paid service or deployment.
+- Purpose: test whether the initial rank/age improvements persist across alternative Elo update speeds and a smaller training sample. Results must be reviewed before any further model decision.
