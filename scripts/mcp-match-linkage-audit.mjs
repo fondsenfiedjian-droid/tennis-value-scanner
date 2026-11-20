@@ -3,7 +3,7 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const RESULT_FILE=/^(atp|wta)_matches_(201[3-9]|202[0-6])\.csv$/i;
+const RESULT_FILE=/^(atp|wta)_matches_(?:(futures|qual_chall|qual_itf)_)?(\\d{4})\\.csv$/i;
 const META_FILE=/^charting-([mw])-matches\.csv$/i;
 const normalize=value=>String(value??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
 const normalizeRound=value=>{
