@@ -78,9 +78,9 @@ jobs:
           const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/mcp-match-linkage-audit.json", "utf8"));
           const t = report.totals;
           const lines = [
-            "| Tour | Metadata IDs | Unique exact links | Link rate | Ambiguous | Round conflicts | Event mismatches | No player pair in year |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|",
-            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.uniqueMatchIds + " | " + x.linkedUnique + " | " + x.linkagePct + "% | " + x.ambiguous + " | " + x.roundConflicts + " | " + x.eventMismatches + " | " + x.noPlayerPairInYear + " |"),
+            "| Tour | Metadata IDs | Exact links | Main tour | Challenger/qualifying | Futures | ITF qualifying | Link rate | Date anomalies | Round conflicts | Event mismatches | No player pair in year |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.uniqueMatchIds + " | " + x.linkedUnique + " | " + x.linkedMainTour + " | " + x.linkedChallengerQualifying + " | " + x.linkedFutures + " | " + x.linkedITFQualifying + " | " + x.linkagePct + "% | " + x.dateOffsetAnomalyLinks + " | " + x.roundConflicts + " | " + x.eventMismatches + " | " + x.noPlayerPairInYear + " |"),
             "",
             "Total unique metadata IDs: " + t.uniqueMatchIds + "; exact unique links: " + t.linkedUnique + " (" + t.linkagePct + "%).",
             "No player-level linkage records or identifiers are retained."
