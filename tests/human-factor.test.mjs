@@ -135,3 +135,26 @@ test("archive adapter returns unknown for invalid player or target date", () => 
   assert.equal(profile.status, "invalid_target");
   assert.equal(profile.matchesPrevious7CalendarDays, null);
 });
+
+
+test("archive coverage audit counts only verified completed match pairs", async () => {
+  const { analyzeArchiveWorkloadCoverage } = await import("../human-factor.js");
+  const rows = [
+    { matchId: "m1", matchDate: "2026-11-19T10:00:00Z", playerId: 101, opponentId: 202, side: "A", resultOutcome: "completed" },
+    { matchId: "m1", matchDate: "2026-11-19T10:00:00Z", playerId: 202, opponentId: 101, side: "B", resultOutcome: "completed" },
+    { matchId: "m2", matchDate: "2026-11-20T10:00:00Z", playerId: 101, opponentId: 303, side: "A", resultOutcome: "completed" },
+    { matchId: "m2", matchDate: "2026-11-20T10:00:00Z", playerId: 303, opponentId: 101, side: "B", resultOutcome: "completed" },
+    { matchId: "bad", matchDate: "2026-11-18T10:00:00Z", playerId: 101, side: "A", resultOutcome: "completed" },
+    { matchId: "pending", matchDate: "2026-11-18T10:00:00Z", playerId: 101, side: "A", resultOutcome: "upcoming" }
+  ];
+  const audit = analyzeArchiveWorkloadCoverage(rows);
+  assert.equal(audit.archiveRecords, 6);
+  assert.equal(audit.uniqueMatches, 4);
+  assert.equal(audit.completedMatches, 3);
+  assert.equal(audit.validCompletedMatches, 2);
+  assert.equal(audit.invalidCompletedMatches, 1);
+  assert.equal(audit.uniquePlayersWithCompletedHistory, 3);
+  assert.equal(audit.targetsWithAnyPriorMatch3Days, 1);
+  assert.equal(audit.targetsWithBothPlayersHistory3Days, 0);
+  assert.equal(audit.historyCoverage, "partial_prediction_archive_not_complete_tour_history");
+});

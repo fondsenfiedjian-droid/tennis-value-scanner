@@ -127,6 +127,104 @@ export function compareWorkloadProfiles(playerA, playerB) {
 }
 
 
+
+/**
+ * Summarize whether the private prediction archive can support a conservative
+ * workload analysis. Counts unique completed matches, requires two distinct
+ * player IDs and a shared match date, and measures prior-day history without
+ * treating the prediction archive as a complete tour schedule.
+ */
+export function analyzeArchiveWorkloadCoverage(archiveRows) {
+  const rows = Array.isArray(archiveRows) ? archiveRows : [];
+  const groups = new Map();
+  let rowsWithPlayerId = 0;
+  let rowsWithOpponentId = 0;
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    if (Number.isSafeInteger(Number(row.playerId)) && Number(row.playerId) > 0) rowsWithPlayerId++;
+    if (Number.isSafeInteger(Number(row.opponentId)) && Number(row.opponentId) > 0) rowsWithOpponentId++;
+    const id = String(row.matchId ?? "").trim();
+    if (!id) continue;
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(row);
+  }
+
+  const validMatches = [];
+  let completedMatches = 0;
+  let invalidCompletedMatches = 0;
+  for (const [matchId, group] of groups) {
+    const completed = group.filter(row => row.resultOutcome === "completed");
+    if (!completed.length) continue;
+    completedMatches++;
+    const sides = new Map();
+    let conflict = false;
+    for (const row of completed) {
+      if (!["A", "B"].includes(row.side)) continue;
+      const playerId = Number(row.playerId);
+      const date = parseTime(row.matchDate);
+      if (!Number.isSafeInteger(playerId) || playerId <= 0 || date === null) continue;
+      const value = { playerId, date, day: Date.UTC(new Date(date).getUTCFullYear(), new Date(date).getUTCMonth(), new Date(date).getUTCDate()) };
+      const prior = sides.get(row.side);
+      if (!prior) sides.set(row.side, value);
+      else if (prior.playerId !== value.playerId || prior.date !== value.date) conflict = true;
+    }
+    const a = sides.get("A"), b = sides.get("B");
+    if (conflict || !a || !b || a.playerId === b.playerId || a.date !== b.date) {
+      invalidCompletedMatches++;
+      continue;
+    }
+    validMatches.push({ matchId, a, b, day: a.day });
+  }
+
+  const history = new Map();
+  for (const match of validMatches) {
+    for (const side of [match.a, match.b]) {
+      if (!history.has(side.playerId)) history.set(side.playerId, []);
+      history.get(side.playerId).push(match.day);
+    }
+  }
+  for (const dates of history.values()) dates.sort((a, b) => a - b);
+  const countPrior = (playerId, targetDay, windowDays) => {
+    const dates = history.get(playerId) || [];
+    let count = 0;
+    for (const day of dates) {
+      const age = Math.floor((targetDay - day) / DAY);
+      if (age >= 1 && age <= windowDays) count++;
+    }
+    return count;
+  };
+
+  let targetsWithAny3 = 0, targetsWithBoth3 = 0;
+  let targetsWithAny7 = 0, targetsWithBoth7 = 0;
+  for (const match of validMatches) {
+    const a3 = countPrior(match.a.playerId, match.day, 3);
+    const b3 = countPrior(match.b.playerId, match.day, 3);
+    const a7 = countPrior(match.a.playerId, match.day, 7);
+    const b7 = countPrior(match.b.playerId, match.day, 7);
+    if (a3 || b3) targetsWithAny3++;
+    if (a3 && b3) targetsWithBoth3++;
+    if (a7 || b7) targetsWithAny7++;
+    if (a7 && b7) targetsWithBoth7++;
+  }
+
+  return {
+    archiveRecords: rows.length,
+    uniqueMatches: groups.size,
+    completedMatches,
+    validCompletedMatches: validMatches.length,
+    invalidCompletedMatches,
+    uniquePlayersWithCompletedHistory: history.size,
+    rowsWithPlayerId,
+    rowsWithOpponentId,
+    targetsWithAnyPriorMatch3Days: targetsWithAny3,
+    targetsWithBothPlayersHistory3Days: targetsWithBoth3,
+    targetsWithAnyPriorMatch7Days: targetsWithAny7,
+    targetsWithBothPlayersHistory7Days: targetsWithBoth7,
+    historyCoverage: "partial_prediction_archive_not_complete_tour_history",
+    interpretation: "coverage_diagnostic_only_no_probability_adjustment"
+  };
+}
+
 /**
  * Conservative adapter for the app's prediction archive.
  * Archive rows are a partial sample, not a complete tour feed. Only completed
