@@ -467,3 +467,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PWA shell cache advanced from v127 to v128. No historical archive rows are rewritten and no external API calls are made.
 
 - Result provenance hardening merged as PR #50 (`e17f3d0e1faee640c284c29285da27fc7f385afe`): regression tests and project-state guard passed. Verified result records now retain `live_tennis_api` provenance through archive import and CSV export; PWA cache is v128.
+
+
+### Match list filtered to available Winamax pairs (2026-11-20)
+- The main match list now displays only upcoming matches with a complete, fresh Winamax match-winner quote pair (both player outcomes).
+- Matches without odds, with only one side quoted, or with stale/mismatched quotes are hidden instead of occupying the list with a “odds not found” label.
+- The visible match counter and filter summary now count only qualifying pairs. Empty states distinguish no scheduled matches from no complete Winamax quote pairs.
+- The filter does not use the EV odds-range setting: all complete matched pairs remain visible, while the existing range continues to affect value-bet eligibility only.
+- Prediction loading receives only the displayed matches. No scraper settings, API polling, or Live Tennis API quota usage changed.
+- PWA shell cache advanced from v128 to v129.

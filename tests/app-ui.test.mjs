@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v128"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v129"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -450,4 +450,13 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   const calibration = sandbox.calibration(rows, 1, "2");
   assert.equal(calibration.sampleSize, 0);
   assert.equal(calibration.postStart, 1);
+});
+
+test("match list shows only pairs with a complete fresh Winamax winner-odds pair", () => {
+  assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
+  assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
+  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length===2\):\[\]/);
+  assert.match(html, /пар с коэффициентами:/);
+  assert.match(html, /нет матчей с полной актуальной парой коэффициентов Winamax/);
+  assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
