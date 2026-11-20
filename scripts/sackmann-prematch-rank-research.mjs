@@ -22,7 +22,7 @@ function latestBefore(records, date) {
   while(low<high){const mid=(low+high)>>>1;if(records[mid].date<date)low=mid+1;else high=mid;}
   return low ? records[low-1] : null;
 }
-export function buildPrematchRankRows(matches, rankingRows) {
+export function buildPrematchRankRows(matches, rankingRows, options = {}) {\n  const maxSnapshotAgeDays = Number.isInteger(options.maxSnapshotAgeDays) && options.maxSnapshotAgeDays >= 0 ? options.maxSnapshotAgeDays : 45;
   const byPlayer=new Map();
   for(const row of rankingRows){
     const date=validDate(row.ranking_date), id=String(row.player??"").trim(), rank=Number(row.rank);
@@ -34,7 +34,7 @@ export function buildPrematchRankRows(matches, rankingRows) {
   }
   const indexes=new Map();
   for(const [id,dates] of byPlayer) indexes.set(id,[...dates].map(([date,rank])=>({date,rank})).sort((a,b)=>a.date.localeCompare(b.date)));
-  let both=0, one=0, none=0, exactSameDayExcluded=0, maxAge=0, ageTotal=0, ageCount=0;
+  let both=0, one=0, none=0, exactSameDayExcluded=0, maxAge=0, ageTotal=0, ageCount=0, stalePlayerSnapshots=0, matchesWithStaleSnapshot=0;
   const enriched=matches.map(row=>{
     const date=validDate(row.tourney_date);
     const w=String(row.winner_id??"").trim(), l=String(row.loser_id??"").trim();
@@ -51,12 +51,12 @@ export function buildPrematchRankRows(matches, rankingRows) {
     if(date && (hasOnDate(indexes.get(w)??[],date)||hasOnDate(indexes.get(l)??[],date))) exactSameDayExcluded++;
     return {...row,winner_rank,loser_rank,rank_snapshot_winner_date:wr?.date??"",rank_snapshot_loser_date:lr?.date??""};
   });
-  return {rows:enriched,coverage:{matches:matches.length,bothPlayersRanked:both,onePlayerRanked:one,neitherRanked:none,bothCoveragePct:Number((100*both/Math.max(1,matches.length)).toFixed(2)),sameDayRankingRowsExcluded:exactSameDayExcluded,averageSnapshotAgeDays:ageCount?Number((ageTotal/ageCount).toFixed(1)):null,maxSnapshotAgeDays:maxAge}};
+  return {rows:enriched,coverage:{matches:matches.length,bothPlayersRanked:both,onePlayerRanked:one,neitherRanked:none,bothCoveragePct:Number((100*both/Math.max(1,matches.length)).toFixed(2)),sameDayRankingRowsExcluded:exactSameDayExcluded,stalePlayerSnapshots,matchesWithStaleSnapshot,averageSnapshotAgeDays:ageCount?Number((ageTotal/ageCount).toFixed(1)):null,maxSnapshotAgeDays:maxAge,maximumAllowedSnapshotAgeDays:maxSnapshotAgeDays}};
 }
 async function main(){
  const args=process.argv.slice(2),opts={},files=[];
  for(let i=0;i<args.length;i++){
-  if(["--tour","--rankings-dir","--from","--to","--k","--min-training","--max-training","--out"].includes(args[i])){
+  if(["--tour","--rankings-dir","--from","--to","--k","--min-training","--max-training","--max-rank-age-days","--out"].includes(args[i])){
    const key=args[i].slice(2),value=args[++i];if(!value)throw new Error("Missing value for --"+key);
    opts[key]=value;
   } else if(args[i].startsWith("--"))throw new Error("Unknown option "+args[i]); else files.push(args[i]);
@@ -68,9 +68,9 @@ async function main(){
  for(const name of rankingFiles){const rows=parseCsv(await readFile(join(opts["rankings-dir"],name),"utf8"));for(const row of rows)rankings.push(row);console.error("Loaded "+rows.length+" weekly ranking rows from "+name);}
  const matches=[];
  for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));for(const row of rows)matches.push(row);console.error("Loaded "+rows.length+" matches from "+basename(file));}
- const built=buildPrematchRankRows(matches,rankings);
+ const maxRankAgeDays=Number(opts["max-rank-age-days"]??45);\n const built=buildPrematchRankRows(matches,rankings,{maxSnapshotAgeDays:maxRankAgeDays});
  const report=runRankAgeWalkForward(built.rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000)});
- report.rankSource="latest official weekly ranking snapshot strictly earlier than tournament date";
+ report.rankSource="latest official weekly ranking snapshot strictly earlier than tournament date";\n report.rankMaxAgeDays=maxRankAgeDays;
  report.rankCoverage=built.coverage;
  report.rankTimingRule="ranking_date < tourney_date; same-day ranking snapshots are excluded conservatively";
  const json=JSON.stringify(report,null,2)+"\n";
