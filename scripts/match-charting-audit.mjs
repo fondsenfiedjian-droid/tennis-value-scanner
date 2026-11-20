@@ -13,7 +13,13 @@ const FILES = [
   "stats-ShotDirection",
   "stats-ServeDirection",
   "stats-ServeInfluence",
-  "stats-NetPoints"
+  "stats-NetPoints",
+  "stats-KeyPointsReturn",
+  "stats-KeyPointsServe",
+  "stats-ShotDirOutcomes",
+  "stats-SnV",
+  "stats-SvBreakSplit",
+  "stats-SvBreakTotal"
 ];
 const TOURS = ["m", "w"];
 const text = value => String(value ?? "").trim();
