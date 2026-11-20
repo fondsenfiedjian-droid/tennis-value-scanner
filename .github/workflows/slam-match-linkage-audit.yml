@@ -75,9 +75,9 @@ jobs:
           import { readFile, appendFile } from "node:fs/promises";
           const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/slam-match-linkage-audit.json", "utf8"));
           const rows = [
-            "| Events | Metadata rows | Unique linked | ATP | WTA | Ambiguous | Unmatched | Missing names | Round conflicts | Winner checks | Winner mismatches |",
-            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-            "| " + report.totals.events + " | " + report.totals.metadataRows + " | " + report.totals.linkedUniqueMatches + " | " + report.totals.linkedATP + " | " + report.totals.linkedWTA + " | " + report.totals.ambiguous + " | " + report.totals.unmatched + " | " + report.totals.missingPlayerNames + " | " + report.totals.roundConflicts + " | " + report.totals.winnerCrossChecks + " | " + report.totals.winnerMismatches + " |"
+            "| Events | Metadata rows | Unique linked | Full-name links | Initial-surname links | ATP | WTA | Alias ambiguous | Ambiguous | Unmatched | Missing names | Round conflicts | Winner checks | Winner mismatches |",
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| " + report.totals.events + " | " + report.totals.metadataRows + " | " + report.totals.linkedUniqueMatches + " | " + report.totals.linkedByFullName + " | " + report.totals.linkedByInitialSurname + " | " + report.totals.linkedATP + " | " + report.totals.linkedWTA + " | " + report.totals.aliasAmbiguous + " | " + report.totals.ambiguous + " | " + report.totals.unmatched + " | " + report.totals.missingPlayerNames + " | " + report.totals.roundConflicts + " | " + report.totals.winnerCrossChecks + " | " + report.totals.winnerMismatches + " |"
           ];
           await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           NODE
