@@ -610,3 +610,20 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No production probability, EV, recommendation, Worker, PWA, API quota or Winamax scraper changes.
 - Initial walk-forward run completed successfully (run `44776347399`). Preliminary results: overall serve/return alone did not improve Elo; surface-only features were near neutral; the combined overall+surface correction showed only small, mostly statistically uncertain gains. Do not integrate into production.
 - Added individual serve-only and return-only ablations for overall and same-surface rates to distinguish which feature contributes. The expanded workflow rerun is pending. Research results are not betting ROI or proof of profitability.
+
+
+### Sackmann pre-match serve/return walk-forward research — merged and evaluated (2026-11-20)
+- PR #59 merged to main as `ac6d5dcfd9f4ea749424c4be8fc5005beb97405d`.
+- Research workflow `44776598331` completed successfully using the 1991–2026 ATP/WTA archive. Regression run `44776598326`: 352 tests passed, 0 failed. Project-state guard `44776598322` passed.
+- Protocol: build rolling 365-day player serve-point-win and return-point-win rates using only prior completed matches; require at least five prior stats-complete matches for each player; exclude all same-day matches before updating history. ATP/WTA evaluated separately. Expanding walk-forward annual fits for 2020–2026 use only earlier seasons from 2016 onward. Baseline is the repository's chronological K=32 Elo; 1991–2015 results are rating warm-up.
+- Aggregate out-of-sample results (paired difference = candidate minus Elo; negative is better):
+  - ATP overall serve-only: 13,641 matches, ΔBrier +0.000054, ΔLogLoss 0.000000; overall return-only: +0.000066 / +0.000036; overall serve+return: +0.000158 / +0.000033.
+  - ATP surface serve-only: 10,809, +0.000058 / +0.000073; surface return-only: +0.000010 / +0.000035; surface serve+return: +0.000095 / +0.000157 (Brier CI +0.000022 to +0.000167, worse than Elo).
+  - ATP overall+surface combined: 10,809, ΔBrier −0.000104 (95% CI −0.000314 to +0.000107), ΔLogLoss −0.000553 (95% CI −0.001086 to −0.000020). Only the small LogLoss difference excludes zero; Brier does not.
+  - WTA overall serve-only: 12,147, ΔBrier −0.000004 / ΔLogLoss +0.000002; overall return-only: +0.000065 / −0.000011; overall serve+return: +0.000053 / −0.000073.
+  - WTA surface serve-only: 8,886, −0.000027 / +0.000043; surface return-only: +0.000013 / −0.000031; surface serve+return: +0.000001 / +0.000038.
+  - WTA overall+surface combined: 8,886, ΔBrier −0.000196 (95% CI −0.000524 to +0.000133), ΔLogLoss −0.000688 (95% CI −0.001461 to +0.000085); both intervals include zero.
+- Decision: no robust, generalizable improvement. Keep serve/return features research-only; do not add them to production probabilities, EV, or either recommendation. The small ATP LogLoss gain is not enough to justify model complexity, especially with no corresponding robust WTA/Brier result and mixed annual effects.
+- This evaluates probability metrics only, not market-relative value, CLV, betting ROI or profitability. No production probabilities, EV, recommendations, Worker, PWA, API quota or Winamax scraper were changed.
+- The source and derived report remain subject to CC BY-NC-SA 4.0: non-commercial use, attribution to Jeff Sackmann / Tennis Abstract, and share-alike. Do not use commercially without separate permission.
+- Next research candidates: test whether historical rankings and age add incremental value beyond Elo, with the same expanding chronological protocol; keep live production untouched unless the signal is repeatable and materially improves out-of-sample calibration.
