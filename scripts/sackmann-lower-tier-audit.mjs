@@ -6,18 +6,18 @@ import { parseCsv } from "./backtest.mjs";
 const PINNED_COMMIT = "83733587353df8a41f2fd4f516147d5aa83f5a8d";
 const validDate = value => {
   const s=String(value??"");
-  if(!/^\\d{8}$/.test(s)) return false;
+  if(!/^\d{8}$/.test(s)) return false;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8);
   const dt=new Date(Date.UTC(y,m-1,d));
   return dt.getUTCFullYear()===y && dt.getUTCMonth()===m-1 && dt.getUTCDate()===d;
 };
-const validId = value => /^\\d+$/.test(String(value??"")) && Number(value)>0;
+const validId = value => /^\d+$/.test(String(value??"")) && Number(value)>0;
 const validCount = value => value!=="" && value!=null && Number.isInteger(Number(value)) && Number(value)>=0;
 const surfaces = new Set(["Hard","Clay","Grass","Carpet"]);
 function completedScore(value,bestOf){
   const s=String(value??"").trim();
-  if(!s || /\\b(?:W\\/O|RET|ABD|DEF|DEFAULT|CANC)\\b/i.test(s)) return false;
-  const sets=[...s.matchAll(/(\\d{1,2})-(\\d{1,2})/g)].filter(m=>{
+  if(!s || /\b(?:W\/O|RET|ABD|DEF|DEFAULT|CANC)\b/i.test(s)) return false;
+  const sets=[...s.matchAll(/(\d{1,2})-(\d{1,2})/g)].filter(m=>{
     const a=+m[1],b=+m[2],hi=Math.max(a,b),lo=Math.min(a,b);
     return (hi>=6 && hi-lo>=2)||(hi===7&&lo===6);
   }).length;
@@ -28,7 +28,7 @@ export function auditLowerTierFiles(files){
   const schemaCounts={};
   for(const file of files){
     const name=basename(file.filename);
-    const m=name.match(/^(atp|wta)_matches_(futures|qual_chall|qual_itf)_(\\d{4})\\.csv$/i);
+    const m=name.match(/^(atp|wta)_matches_(futures|qual_chall|qual_itf)_(\d{4})\.csv$/i);
     if(!m) throw new Error("Unexpected lower-tier filename: "+name);
     const tour=m[1].toUpperCase();
     const type=m[2].toLowerCase();
@@ -83,10 +83,10 @@ async function main(){
   const args=process.argv.slice(2);let dir="",out="lower-tier-audit.json";
   for(let i=0;i<args.length;i++){if(args[i]==="--input-dir")dir=args[++i];else if(args[i]==="--out")out=args[++i];else throw new Error("Usage: node scripts/sackmann-lower-tier-audit.mjs --input-dir DIR --out report.json");}
   if(!dir)throw new Error("Missing --input-dir");
-  const names=(await readdir(dir)).filter(n=>/^(atp|wta)_matches_(futures|qual_chall|qual_itf)_\\d{4}\\.csv$/i.test(n)).sort();
+  const names=(await readdir(dir)).filter(n=>/^(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(n)).sort();
   if(!names.length)throw new Error("No lower-tier source files found");
   const files=[];for(const name of names)files.push({filename:name,content:await readFile(join(dir,name),"utf8")});
-  const report=auditLowerTierFiles(files);await writeFile(out,JSON.stringify(report,null,2)+"\\n");
+  const report=auditLowerTierFiles(files);await writeFile(out,JSON.stringify(report,null,2)+"\n");
   for(const g of report.groups)console.log(g.tour+" "+g.sourceType+": "+g.completedMatches+" completed / "+g.rows+" source rows across "+g.files+" files");
   console.log("Wrote aggregate-only audit: "+out);
 }
