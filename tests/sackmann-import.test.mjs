@@ -29,10 +29,17 @@ test("keeps ATP and WTA explicit and rejects unknown tour",()=>{
 test("excludes invalid IDs, impossible dates and retired or walkover results",()=>{
   const result=normalizeSackmannRows([
     row({winner_id:"0"}),row({tourney_date:"20250230"}),
-    row({score:"6-4 2-1 RET"}),row({score:"W/O"})
+    row({score:"6-4 2-1 RET"}),row({score:"W/O"}),
+    row({score:"7-5 2-1"}),row({score:"6-4 6-3",best_of:"5"})
   ],"atp");
   assert.equal(result.rows.length,0);
-  assert.deepEqual(result.excluded,{invalidDate:1,invalidPlayers:1,unfinishedOrRetired:2,unsupportedSurface:0});
+  assert.deepEqual(result.excluded,{invalidDate:1,invalidPlayers:1,unfinishedOrRetired:4,unsupportedSurface:0});
+});
+
+test("rejects partial scores that do not contain enough completed sets",()=>{
+  assert.equal(normalizeSackmannRows([row({score:"7-5 2-1"})],"atp").rows.length,0);
+  assert.equal(normalizeSackmannRows([row({score:"6-4 6-3",best_of:"5"})],"atp").rows.length,0);
+  assert.equal(normalizeSackmannRows([row({score:"6-4 6-3 6-2",best_of:"5"})],"atp").rows.length,1);
 });
 
 test("preserves unknown surface as blank and reports it",()=>{

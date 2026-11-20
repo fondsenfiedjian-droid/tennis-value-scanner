@@ -690,3 +690,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - License: Sackmann source archive is CC BY-NC-SA 4.0. No commercial use or public redistribution of raw/derived data without appropriate permission/licence review.
 - PR #64 was merged to `main` on 2026-11-20 as `46e7e37ceede54bbf0a7a8225acb6329959f8781`. Regression workflow `44809660323` passed; project-state documentation guard `44809660520` passed. Production code was not changed and no data download or deployment was required.
 - The importer has only passed unit tests so far; it has not yet been run against actual ATP/WTA archive CSVs. Next: validate on small source samples, then run separate chronological ATP/WTA backtests and test rank/age as additional pre-match signals. Do not activate these signals in production unless out-of-sample results show a repeatable improvement.
+
+
+### Sackmann importer score-completeness correction — implementation in review (2026-11-20)
+- Inspection of actual archive ATP/WTA 2025 CSVs confirmed the source schema and exposed that a score containing a partial second set (e.g. 7-5 2-1) must not be treated as a completed match.
+- Follow-up importer validates completed set scores only, requires at least two completed sets for best-of-three and three for best-of-five, and continues excluding explicit RET/W/O/ABD/DEF/DEFAULT/CANC outcomes.
+- Regression tests cover partial set fragments and best-of-five minimum completed sets.
+- No production model, deployment, Live Tennis API, Apify, paid service or archive data storage is affected.
+- Branch: `fix/sackmann-score-filter-v2`; CI/PR pending. The importer has not yet been run against the full archive.
