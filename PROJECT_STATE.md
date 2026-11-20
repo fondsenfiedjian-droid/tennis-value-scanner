@@ -802,3 +802,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added coverage and snapshot-age diagnostics and a walk-forward comparison using the existing Elo/rank/age research framework.
 - GitHub Actions downloads ranking history separately for ATP and WTA, runs the study, and uploads aggregate-only reports. No raw archive data is committed.
 - This is a research check only; production prediction logic remains unchanged.
+
+
+- Pre-match ranking join now also applies a 45-day freshness ceiling. Older weekly snapshots are treated as missing; the report includes stale-snapshot counts. This avoids carrying a player's rank across long absences.
