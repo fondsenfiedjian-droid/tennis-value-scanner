@@ -6,6 +6,7 @@ const cors = {
 };
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
+const WORKER_BUILD_ID = "historical-score-diagnostics-2026-11-20-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -364,6 +365,7 @@ export default {
       return response({
         status: "ok",
         service: "tennis-value-api",
+        buildId: WORKER_BUILD_ID,
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
@@ -386,7 +388,7 @@ export default {
           return response({ error: "Invalid Apify datasetId" }, 400);
         }
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v5/" + encodeURIComponent(datasetId));
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v6/" + encodeURIComponent(datasetId));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -425,6 +427,7 @@ export default {
 
         const payload = {
           source: "Apify tennis-results historical dataset",
+          buildId: WORKER_BUILD_ID,
           datasetId,
           datasetName: datasetId === "1UFINeSkMhdbaTfPa" ? "tennis-results-history-2026-11-19" : null,
           retrievedAt: new Date().toISOString(),
@@ -438,13 +441,15 @@ export default {
             ...cors,
             "Content-Type": "application/json; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
-            "X-Data-Cache": "MISS"
+            "X-Data-Cache": "MISS",
+            "X-Worker-Build": WORKER_BUILD_ID
           }
         });
         await cache.put(cacheKey, cacheResponse);
         return response(payload, 200, {
           "Cache-Control": "public, max-age=3600",
-          "X-Data-Cache": "MISS"
+          "X-Data-Cache": "MISS",
+          "X-Worker-Build": WORKER_BUILD_ID
         });
       } catch {
         return response({ error: "Could not retrieve historical tennis data from Apify" }, 502);
