@@ -174,7 +174,13 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
     ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
     linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0, linkedFromAdjacentYear: 0,
-    unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, byYear: {}
+    unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, unmatchedByReason: {}, unmatchedTournamentByReason: {}, byYear: {}
+  };
+  const recordUnmatched = (reason, tournament) => {
+    stats.unmatchedByReason[reason] = (stats.unmatchedByReason[reason] || 0) + 1;
+    if (!stats.unmatchedTournamentByReason[reason]) stats.unmatchedTournamentByReason[reason] = {};
+    const name = tournament || "Unknown";
+    stats.unmatchedTournamentByReason[reason][name] = (stats.unmatchedTournamentByReason[reason][name] || 0) + 1;
   };
   for (const row of uniqueRows) {
     const date = validDate(row.Date), rawDate = text(row.Date), tournament = text(row.Tournament);
@@ -189,6 +195,8 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     if (!p1 || !p2) stats.missingPlayerNameRows++;
     if (!date || !tournament || !p1 || !p2) {
       stats.unmatched++;
+      const invalidReason = !rawDate ? "missing-date" : !date ? "invalid-date" : !tournament ? "missing-tournament" : "missing-player-name";
+      recordUnmatched(invalidReason, tournament);
       stats.unmatchedTournamentCounts[tournament || "Unknown"] = (stats.unmatchedTournamentCounts[tournament || "Unknown"] || 0) + 1;
       continue;
     }
@@ -196,6 +204,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     if (index.resultDateRange && (date < index.resultDateRange.from || date > index.resultDateRange.to)) {
       stats.outsideResultDateCoverage++;
       stats.unmatched++;
+      recordUnmatched("outside-result-date-coverage", tournament);
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
       continue;
     }
@@ -210,6 +219,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     }
     if (!available.length) {
       stats.eventNotFound++; stats.unmatched++; ys.unmatched++;
+      recordUnmatched("event-not-found", tournament);
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
       continue;
     }
@@ -273,6 +283,8 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
       if (candidate.year !== year) stats.linkedFromAdjacentYear++;
     } else {
       stats.unmatched++; ys.unmatched++;
+      const reasonCode = reason || "pair-not-found";
+      recordUnmatched(reasonCode, tournament);
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
       if (round) stats.unmatchedRoundCounts[round] = (stats.unmatchedRoundCounts[round] || 0) + 1;
       if (!reason) stats.pairNotFound++;
@@ -281,6 +293,9 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
   stats.linkagePct = Number((100 * stats.linked / Math.max(1, uniqueRows.length)).toFixed(2));
   stats.unmatchedTournamentCounts = Object.fromEntries(Object.entries(stats.unmatchedTournamentCounts).sort((a,b)=>b[1]-a[1]).slice(0,30));
   stats.unmatchedRoundCounts = Object.fromEntries(Object.entries(stats.unmatchedRoundCounts).sort((a,b)=>b[1]-a[1]));
+  for (const [reason, counts] of Object.entries(stats.unmatchedTournamentByReason)) {
+    stats.unmatchedTournamentByReason[reason] = Object.fromEntries(Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20));
+  }
   return stats;
 }
 
