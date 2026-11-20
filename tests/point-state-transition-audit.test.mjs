@@ -73,3 +73,15 @@ test("audit emits aggregate-only coverage and does not retain match IDs", () => 
   assert.equal(report.totals.matchesWithZeroStart, 1);
   assert.equal(JSON.stringify(report).includes("m1"), false);
 });
+
+test("does not coerce missing set or game counters into zero",()=>{
+ const result=inferPointStateTransition(state({
+  sets_p1:"",sets_p2:"",games_p1:"[5,null]",games_p2:"[3,0]",
+  points_p1:"40",points_p2:"40"
+ }),state({
+  sets_p1:"",sets_p2:"",games_p1:"[5,null]",games_p2:"[3,0]",
+  points_p1:"40",points_p2:"40"
+ }));
+ assert.equal(result.status,"ambiguous");
+ assert.equal(result.reason,"no-score-change");
+});
