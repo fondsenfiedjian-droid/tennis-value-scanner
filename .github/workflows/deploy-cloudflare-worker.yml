@@ -1,9 +1,9 @@
 name: Deploy Cloudflare Worker
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Regression tests"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -11,11 +11,14 @@ permissions:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
