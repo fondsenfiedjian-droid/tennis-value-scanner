@@ -258,10 +258,10 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     for (const [name, definition] of Object.entries(DEFINITIONS)) {
       const training = history.filter(definition.filter);
       const baseline = fitLogistic(training, ["eloScaled"], {
-        minMatches: minTrainingMatches, maxRows: maxTrainingRows, seed: tour + year + name + "baseline"
+        minMatches: minTrainingMatches, maxRows: maxTrainingRows, seed: tour + year + name
       });
       const candidate = fitLogistic(training, definition.features, {
-        minMatches: minTrainingMatches, maxRows: maxTrainingRows, seed: tour + year + name + "candidate"
+        minMatches: minTrainingMatches, maxRows: maxTrainingRows, seed: tour + year + name
       });
       if (baseline && candidate) models[name] = { baseline, candidate, trainingMatches: training.length };
     }
@@ -273,7 +273,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     const year = date.slice(0, 4);
     if (year !== currentYear) {
       currentYear = year;
-      yearModels = date >= evaluationStart && date <= evaluationEnd ? buildModels(year) : {};
+      yearModels = year >= evaluationStart.slice(0, 4) && year <= evaluationEnd.slice(0, 4) ? buildModels(year) : {};
       yearReport = {
         models: Object.fromEntries(Object.entries(yearModels).map(([name, model]) => [
           name, comparisonBucket(model.trainingMatches,
