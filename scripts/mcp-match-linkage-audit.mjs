@@ -121,8 +121,10 @@ function finishAudit(context){
           const offset=a-b;offsets.push(offset);
           const bucket=offset<0?"negative":offset===0?"zero":offset<=7?"oneToSeven":offset<=14?"eightToFourteen":offset<=21?"fifteenToTwentyOne":"over21";
           dateOffsetBuckets[bucket]++;
-          if(!dateOffsetByYear[year])dateOffsetByYear[year]={links:0,negative:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
+          if(!dateOffsetByYear[year])dateOffsetByYear[year]={links:0,minOffset:null,maxOffset:null,negative:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
           dateOffsetByYear[year].links++;
+          dateOffsetByYear[year].minOffset=dateOffsetByYear[year].minOffset===null?offset:Math.min(dateOffsetByYear[year].minOffset,offset);
+          dateOffsetByYear[year].maxOffset=dateOffsetByYear[year].maxOffset===null?offset:Math.max(dateOffsetByYear[year].maxOffset,offset);
           dateOffsetByYear[year][bucket]++;
           if(offset<0)counters.negativeDateOffsets++;
           if(offset>21)counters.dateOffsetsOver21Days++;
