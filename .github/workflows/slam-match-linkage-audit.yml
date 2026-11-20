@@ -1,0 +1,90 @@
+name: Grand Slam match linkage to historical results
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/slam-match-linkage-audit.mjs"
+      - "tests/slam-match-linkage-audit.test.mjs"
+      - ".github/workflows/slam-match-linkage-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned Slam metadata and ATP/WTA results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
+          mkdir -p research-data
+          curl --fail --silent --show-error --location --retry 3 \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$commit?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const files = tree.tree.filter(item =>
+            /^slam_pointbypoint\/\d{4}-(ausopen|frenchopen|wimbledon|usopen)-matches\.csv$/i.test(item.path) ||
+            /^(atp|wta)\/(atp|wta)_matches_(201[1-9]|202[0-4])\.csv$/i.test(item.path)
+          ).map(item => item.path).sort();
+          if (files.length !== 77) throw new Error("Expected 77 pinned linkage files, found " + files.length);
+          await writeFile(process.env.RUNNER_TEMP + "/linkage-files.txt", files.join("\n") + "\n");
+          console.log("Pinned linkage source files: " + files.length);
+          NODE
+          curl --fail --silent --show-error --location --connect-timeout 15 --max-time 300 --retry 4 --retry-all-errors --retry-delay 5 \
+            "https://codeload.github.com/Aneeshers/tennis-sackmann-archive/tar.gz/$commit" \
+            --output "$RUNNER_TEMP/archive.tar.gz"
+          mkdir -p "$RUNNER_TEMP/archive-src"
+          tar -xzf "$RUNNER_TEMP/archive.tar.gz" -C "$RUNNER_TEMP/archive-src"
+          archive_root="$(find "$RUNNER_TEMP/archive-src" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          export ARCHIVE_ROOT="$archive_root"
+          node --input-type=module <<'NODE'
+          import { readFile, copyFile } from "node:fs/promises";
+          import { join, basename } from "node:path";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const files = tree.tree.filter(item =>
+            /^slam_pointbypoint\/\d{4}-(ausopen|frenchopen|wimbledon|usopen)-matches\.csv$/i.test(item.path) ||
+            /^(atp|wta)\/(atp|wta)_matches_(201[1-9]|202[0-4])\.csv$/i.test(item.path)
+          ).map(item => item.path).sort();
+          if (files.length !== 77) throw new Error("Expected 77 pinned linkage files, found " + files.length);
+          for (const path of files) await copyFile(join(process.env.ARCHIVE_ROOT, path), join("research-data", basename(path)));
+          console.log("Copied " + files.length + " pinned linkage files from source archive");
+          NODE
+          test "$(find research-data -type f | wc -l)" -eq 77
+      - name: Audit exact and ambiguous Slam match links
+        run: |
+          set -euo pipefail
+          node scripts/slam-match-linkage-audit.mjs --input-dir research-data --out "$RUNNER_TEMP/slam-match-linkage-audit.json"
+      - name: Publish aggregate linkage summary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/slam-match-linkage-audit.json", "utf8"));
+          const rows = [
+            "| Events | Metadata rows | Unique linked | Full-name links | Initial-surname links | ATP | WTA | Alias ambiguous | Alias unavailable | Ambiguous | Unmatched | Missing names | Round conflicts | Winner checks | Winner mismatches |",
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| " + report.totals.events + " | " + report.totals.metadataRows + " | " + report.totals.linkedUniqueMatches + " | " + report.totals.linkedByFullName + " | " + report.totals.linkedByInitialSurname + " | " + report.totals.linkedATP + " | " + report.totals.linkedWTA + " | " + report.totals.aliasAmbiguous + " | " + report.totals.aliasUnavailable + " | " + report.totals.ambiguous + " | " + report.totals.unmatched + " | " + report.totals.missingPlayerNames + " | " + report.totals.roundConflicts + " | " + report.totals.winnerCrossChecks + " | " + report.totals.winnerMismatches + " |"
+          ];
+          await appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
+          NODE
+      - name: Upload aggregate-only linkage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grand-slam-match-linkage-audit
+          path: ${{ runner.temp }}/slam-match-linkage-audit.json
+          if-no-files-found: error
+          retention-days: 30
