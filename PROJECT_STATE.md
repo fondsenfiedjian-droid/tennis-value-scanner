@@ -557,8 +557,25 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Decision: retain the workload module as research/diagnostics only. Do not integrate into production probabilities, EV or either recommendation until it passes additional season-by-season holdouts, surface/tournament segment stability, calibration and market-comparison checks.
 
 
-### Human Factor workload surface-stability validation — in review (2026-11-20)
+### Human Factor workload surface-stability validation — passed (2026-11-20)
 - Extended the research-only report to segment the already-trained core workload correction by Hard, Clay, Grass, Carpet and Unknown surface categories.
 - Each surface segment is evaluated on the same full-year 2026 holdout and the July–November 2026 temporal holdout. The temporal model is trained once on January–June 2026 across the tour, then evaluated unchanged within each surface; no surface-specific model fitting is used.
 - Report sample counts with every segment so small or missing surface groups are not mistaken for reliable evidence.
 - No production probabilities, EV, recommendation logic, Worker, PWA, API or quota behavior changes.
+
+
+#### Surface holdout results
+- PR #57 research workflow run `44774581946` completed successfully; regression tests run `44774582107` and project-state guard run `44774581919` passed. Report artifact: `human-factor-workload-report`, 30-day retention. No raw CSVs were committed.
+- On the full-year 2026 holdout, the core correction improved Brier and LogLoss on Hard and Clay for both tours:
+  - ATP Hard: n=25,120, ΔBrier −0.004637, ΔLogLoss −0.010072; Clay: n=18,992, −0.004659 / −0.010249.
+  - WTA Hard: n=18,095, −0.004557 / −0.010274; Clay: n=12,286, −0.004087 / −0.009241.
+- On the July–November temporal holdout, Hard and Clay remained positive for both tours:
+  - ATP Hard n=13,643: −0.004453 / −0.009755; Clay n=10,724: −0.004947 / −0.011012.
+  - WTA Hard n=9,546: −0.004165 / −0.009365; Clay n=6,454: −0.004658 / −0.010427.
+- Smaller surfaces were less stable:
+  - ATP Grass n=912 full year / 224 second-half: full-year improvement was small (−0.000512 / −0.001109), but second-half metrics worsened (+0.004358 / +0.009448).
+  - ATP Carpet n=311 / 163: full-year improvement was small (−0.000868 / −0.002439), but second-half metrics worsened (+0.003582 / +0.007510).
+  - WTA Grass n=812 / 159: small improvements (full year −0.001177 / −0.002898; second half −0.001302 / −0.003416).
+  - WTA Carpet n=321 / 241: larger apparent improvements (full year −0.010218 / −0.021577; second half −0.010505 / −0.022276), but the sample is too small to trust this magnitude without replication.
+- Interpretation: the signal is most stable on Hard and Clay, the dominant surfaces in this sample. Grass and Carpet evidence is sparse and heterogeneous; do not generalize the aggregate workload benefit to those surfaces. These are paired probability metrics, not ROI, causal effects or profitability.
+- Decision: keep Human Factor workload research-only. Any future production experiment should be limited initially to Hard/Clay validation and must still pass independent multi-season holdouts, calibration and market comparison. Do not add surface-specific adjustments based on these small 2026 segments.
