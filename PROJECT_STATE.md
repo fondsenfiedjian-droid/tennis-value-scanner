@@ -843,3 +843,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `docs/PFE_FEATURE_MAP.md`: candidate formulas, denominator/data-dictionary caveats, leakage controls, sample-threshold sweep, and chronological validation protocol. No PFE feature is enabled in production.
 
 - Expanded the Match Charting audit from the initial ten to all 16 available aggregate stat families per tour, including key-point, serve-and-volley, serve/break split, and shot-direction outcome families. The workflow downloads source files to the ephemeral runner only.
+
+- Expanded 16-family audit completed successfully (run 44823375916): ATP 7,565 and WTA 4,257 unique charted metadata IDs (11,822 combined); 2,003,405 ATP and 1,085,144 WTA aggregate-stat rows (3,088,549 total). All 16 families have 100% ID-join coverage among the IDs present in each family, but family sample size differs substantially. Serve-and-volley (SnV) is especially sparse: 6,327 ATP and 1,078 WTA unique matches. Metadata quality remains review-required: unexpected surface rows ATP 2/WTA 9; unexpected handedness rows ATP 2/WTA 8. No production feature activation.
