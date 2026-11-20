@@ -3251,8 +3251,8 @@ test("archive import preserves model-version and schedule-revision snapshots", (
 test("verified result provenance survives archive export/import normalization and revisions", () => {
   const { applyVerifiedMatchResult, mergePredictionArchive } = makeArchiveStore();
   const rows = [
-    { matchId: 991, matchKey: "991", side: "A", player: "Player One", opponent: "Player Two", odds: 2, probability: 60, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" },
-    { matchId: 991, matchKey: "991", side: "B", player: "Player Two", opponent: "Player One", odds: 2, probability: 40, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" }
+    { matchId: 991, matchKey: "991", side: "A", player: "Player One", opponent: "Player Two", odds: 2, probability: 60, ev: 20, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" },
+    { matchId: 991, matchKey: "991", side: "B", player: "Player Two", opponent: "Player One", odds: 2, probability: 40, ev: -20, capturedAt: 100, matchDate: "1970-01-01T00:00:01.000Z" }
   ];
   const result = { id: 991, players: { p1: { name: "Player One" }, p2: { name: "Player Two" } }, status: "completed", outcome: "completed", winner: 1, result_version: 4, result_restated_at: "2026-11-20T14:00:00Z" };
   const applied = applyVerifiedMatchResult(rows, result, 200);
