@@ -94,6 +94,8 @@ function finishAudit(context){
     const tour=code==="m"?"ATP":"WTA";
     const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,dateOffsetsOver21Days:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
     const seen=new Set(),offsets=[];
+    const dateOffsetBuckets={negative:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
+    const dateOffsetByYear={};
     for(const row of rows){
       const id=String(row.match_id??"").trim();
       if(!id||seen.has(id))continue;
@@ -117,6 +119,11 @@ function finishAudit(context){
         const a=dayNumber(date),b=dayNumber(candidate.date);
         if(a!==null&&b!==null){
           const offset=a-b;offsets.push(offset);
+          const bucket=offset<0?"negative":offset===0?"zero":offset<=7?"oneToSeven":offset<=14?"eightToFourteen":offset<=21?"fifteenToTwentyOne":"over21";
+          dateOffsetBuckets[bucket]++;
+          if(!dateOffsetByYear[year])dateOffsetByYear[year]={links:0,negative:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
+          dateOffsetByYear[year].links++;
+          dateOffsetByYear[year][bucket]++;
           if(offset<0)counters.negativeDateOffsets++;
           if(offset>21)counters.dateOffsetsOver21Days++;
         }
@@ -128,6 +135,8 @@ function finishAudit(context){
     offsets.sort((a,b)=>a-b);
     counters.dateOffsetDays=offsets.length?{count:offsets.length,min:offsets[0],median:offsets[Math.floor((offsets.length-1)/2)],p90:offsets[Math.floor((offsets.length-1)*0.9)],max:offsets.at(-1)}:null;
     counters.dateOffsetAnomalyLinks=counters.negativeDateOffsets+counters.dateOffsetsOver21Days;
+    counters.dateOffsetBuckets=dateOffsetBuckets;
+    counters.dateOffsetByYear=dateOffsetByYear;
     counters.dateOffsetConsistentLinks=offsets.length-counters.dateOffsetAnomalyLinks;
     counters.linkagePct=counters.uniqueMatchIds?Number((100*counters.linkedUnique/counters.uniqueMatchIds).toFixed(2)):null;
     byTour[tour]=counters;
