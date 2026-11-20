@@ -46,6 +46,28 @@ jobs:
               test -s "research-data/$file"
             done
           done
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$RESULTS_COMMIT?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const files = tree.tree.filter(item =>
+            /^(atp|wta)\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(item.path)
+          ).map(item => item.path).sort();
+          if (files.length !== 144) throw new Error("Expected 144 lower-tier files, found " + files.length);
+          await writeFile(process.env.RUNNER_TEMP + "/lower-tier-files.txt", files.join("\n") + "\n");
+          console.log("Pinned lower-tier files: " + files.length);
+          NODE
+          cat "$RUNNER_TEMP/lower-tier-files.txt" | xargs -r -n 1 -P 8 sh -c '
+            set -eu
+            path="$1"
+            name="${path##*/}"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$RESULTS_COMMIT/$path" \
+              --output "research-data/$name"
+            test -s "research-data/$name"
+          ' _
           echo "Downloaded $(find research-data -type f | wc -l) pinned source files"
       - name: Run strict aggregate-only linkage audit
         run: node scripts/mcp-match-linkage-audit.mjs --input-dir research-data --out "$RUNNER_TEMP/mcp-match-linkage-audit.json"
