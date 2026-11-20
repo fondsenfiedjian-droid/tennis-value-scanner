@@ -319,3 +319,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Coverage is labelled `partial_prediction_archive_not_complete_tour_history`; archived prediction rows are a sparse, selection-biased sample and cannot establish total player workload.
 - Added tests for valid counts, same-day exclusion, non-completed exclusions, incomplete/contradictory identities and invalid targets.
 - This adapter remains descriptive only; it is not connected to probability or EV. Before model integration, test archive coverage and incremental value on strictly chronological held-out predictions. Never present archive counts as complete tour history.
+
+
+### Archive workload adapter — merged and validated (2026-11-20)
+- PR #33 merged: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/33
+- Merge commit: `a62d9f426cc95bd2f532cb33d1a82ddfe31a4f20`.
+- Regression workflow run `44746104205`: 328 tests passed, 0 failed.
+- Project-state guard run `44746104347`: passed.
+- The adapter reads the app's archived prediction/result row shape, but no production archive was uploaded or inspected; it is a pure function tested against representative rows. It is not wired into the live prediction pipeline.
+- Important limitation: archive rows are sparse and selection-biased; scheduled dates do not establish match completion time. The adapter only counts earlier calendar days and explicitly leaves rest hours/duration unknown. No probability/EV changes and no production deploy required.
+- Next: evaluate archive completeness using a private export locally (never commit it), then create a chronological holdout experiment. If archive coverage is too sparse, use a separate lawful historical results source rather than treating the archive as complete player workload.
