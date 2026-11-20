@@ -689,3 +689,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No data download, Live Tennis API request, Apify run, paid service, production change or deployment was performed. Importer has not yet been run against the full archive; it requires the user/source CSVs to be available in a local folder.
 - License: Sackmann source archive is CC BY-NC-SA 4.0. No commercial use or public redistribution of raw/derived data without appropriate permission/licence review.
 - Branch: `feat/sackmann-private-import`; PR/CI pending. Next: run CI, fix findings, then test on a small local ATP/WTA source sample before attempting a full archive import and chronological feature evaluation.
+
+
+### Sackmann importer score-completeness correction — follow-up in review (2026-11-20)
+- A real-file schema inspection of archive ATP/WTA 2025 CSVs confirmed expected columns and exposed a missing quality gate: a score with only one completed set could pass the first importer version.
+- Updated `scripts/sackmann-import.mjs` to require at least two completed sets for best-of-three and three for best-of-five, while continuing to reject explicit RET/W/O/ABD/DEF/DEFAULT/CANC outcomes.
+- Added tests for partial scores and best-of-five minimum set counts. This is a research-import quality correction only; no production model or deployed behavior is affected.
+- PR #64 remains merged; this follow-up is in branch `fix/sackmann-incomplete-score-filter` and PR/CI are pending. The importer has not yet been run against a complete archive. Next: verify CI, merge only if all checks pass, then test actual source sample rows locally/in an isolated research runner.
