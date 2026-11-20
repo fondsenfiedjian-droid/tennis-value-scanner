@@ -1551,7 +1551,8 @@
     }
     const cached=pfePlayerStatsCache.get(id);
     const cachedTtl=cached?.value?.accessStatus==='available'?60*1000:
-      cached?.value?.accessStatus==='rate_limited'?Math.min(7*24*60*60*1000,Math.max(2000,Number(cached.value.retryAfterSeconds||30)*1000)):2*60*1000;
+      cached?.value?.accessStatus==='rate_limited'?Math.min(7*24*60*60*1000,Math.max(2000,Number(cached.value.retryAfterSeconds||30)*1000)):
+      cached?.value?.accessStatus==='forbidden_or_plan_restricted'?6*60*60*1000:2*60*1000;
     if(cached&&Date.now()-cached.savedAt<cachedTtl)return cached.value;
     const task=(async()=>{
       try{
@@ -1615,7 +1616,7 @@
       const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=1.9);
       return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
-    // Reuse every valid local prediction; only three cache misses may request profiles.
+    // Reuse every valid local prediction; cap new profile lookups at eight per scan.
     const cachedCandidates=[],uncachedCandidates=[];
     for(const candidate of allCandidates){
       const el=document.getElementById('model-'+candidate.i);
@@ -1627,7 +1628,7 @@
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
-    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,3)];
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,8)];
     const totalCandidates=allCandidates.length;
     const dayBets=[];
     renderBestBet(dayBets,0,totalCandidates);
