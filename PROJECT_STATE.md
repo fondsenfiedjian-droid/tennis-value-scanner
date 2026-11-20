@@ -699,3 +699,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No production model, deployment, Live Tennis API, Apify, paid service or archive data storage is affected.
 - PR #68 merged to `main` on 2026-11-20 as `55985093c3f87a740417cd72f0c9a20835a07b07`. Regression tests `44810204287` and project-state guard `44810204145` passed. A local focused check also passed seven score-completeness cases. No production deployment or API/Apify usage was required.
 - Real ATP/WTA 2025 files were inspected for schema compatibility, but the importer has not yet been run against the full archive. Next: run the importer on a small, representative ATP/WTA CSV sample, then execute separate chronological backtests and evaluate rank/age features without leakage.
+
+
+### Full Sackmann archive import validation — implementation in review (2026-11-20)
+- Expanded the existing non-commercial research audit workflow to download yearly ATP and WTA main-tour match files from 1968 through 2026 into the ephemeral GitHub Actions runner.
+- The workflow now executes the actual `scripts/sackmann-import.mjs` CLI separately for ATP and WTA, then checks that both normalized outputs are non-empty and reports aggregate date coverage, match counts, rank/age/surface coverage and duplicate match-key counts.
+- The existing source-field coverage audit remains in place. Only aggregate diagnostics are uploaded; raw archive CSVs and normalized player-level match data remain in the ephemeral runner and are not committed or uploaded as artifacts.
+- The workflow is triggered by a PR touching the Sackmann audit/import files, or manually with workflow_dispatch. The current implementation PR will therefore exercise the complete import against real source files when its checks run.
+- No Live Tennis API calls, Apify runs, paid services, production model changes or production deployment are involved. Source is CC BY-NC-SA 4.0; this remains non-commercial research only.
+- Branch: `research/run-sackmann-full-import-validation`. Validation result and run ID will be recorded after CI completes.
