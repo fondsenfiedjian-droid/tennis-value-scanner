@@ -349,7 +349,7 @@ export default {
       try {
         // This is a separate, fixed historical dataset; it does not affect the live Winamax /odds feed.
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v2/tennis-results-history-2026-11-19");
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v3/tennis-results-history-2026-11-19");
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
