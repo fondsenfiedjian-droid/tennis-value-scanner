@@ -1714,7 +1714,7 @@
           freshness,ratingQualityA:result.ratingQualityA,ratingQualityB:result.ratingQualityB,ratingQualityGap:result.ratingQualityGap,
           oddsKnown:Number.isFinite(currentOddsAge)&&currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES,matchDateKnown:!!matchDate(m),
           bookmakerKnown:!!(el.dataset.bookmakerA&&el.dataset.bookmakerB),probabilitiesValid:Number.isFinite(Number(result.probabilityExactA))&&Number.isFinite(Number(result.probabilityExactB)),
-          calibration:archiveProbabilityCalibration(readPredictionArchive())
+          calibration:archiveProbabilityCalibration(readPredictionArchive(),30,CURRENT_CALIBRATION_MODEL_VERSION)
         });
         const [pfePlayerA,pfePlayerB]=await Promise.all([
           loadPfePlayerStats(idA),loadPfePlayerStats(idB)
