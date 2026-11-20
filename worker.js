@@ -281,8 +281,84 @@ export default {
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/historical", "/predict"]
       });
+    }
+
+    if (path === "/historical") {
+      if (request.method !== "GET") {
+        return response({ error: "Method not allowed" }, 405);
+      }
+      if (!env.APIFY_TOKEN) {
+        return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
+      }
+
+      try {
+        // This is a separate, fixed historical dataset; it does not affect the live Winamax /odds feed.
+        const cache = caches.default;
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/tennis-results-history-2026-11-19");
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const datasetId = "1UFINeSkMhdbaTfPa";
+        const upstream = await fetch(
+          "https://api.apify.com/v2/datasets/" + datasetId + "/items?clean=true&format=json&limit=1000",
+          {
+            headers: {
+              "Authorization": "Bearer " + env.APIFY_TOKEN,
+              "Accept": "application/json"
+            }
+          }
+        );
+
+        if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Apify historical dataset request failed",
+            datasetId,
+            upstreamStatus: upstream.status
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+
+        let items;
+        try {
+          items = await upstream.json();
+        } catch {
+          return response({ error: "Apify historical dataset response was not valid JSON", datasetId }, 502);
+        }
+        if (!Array.isArray(items)) {
+          return response({ error: "Apify historical dataset response was not an array", datasetId }, 502);
+        }
+
+        const payload = {
+          source: "Apify tennis-results historical dataset",
+          datasetId,
+          datasetName: "tennis-results-history-2026-11-19",
+          retrievedAt: new Date().toISOString(),
+          count: items.length,
+          items
+        };
+        const cacheResponse = new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: {
+            ...cors,
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+            "X-Data-Cache": "MISS"
+          }
+        });
+        await cache.put(cacheKey, cacheResponse);
+        return response(payload, 200, {
+          "Cache-Control": "public, max-age=3600",
+          "X-Data-Cache": "MISS"
+        });
+      } catch {
+        return response({ error: "Could not retrieve historical tennis data from Apify" }, 502);
+      }
     }
 
     if (path === "/odds") {
@@ -776,7 +852,7 @@ export default {
 
     return response({
       service: "tennis-value-api",
-      endpoints: ["/health", "/matches", "/player-stats", "/odds", "/predict"]
+      endpoints: ["/health", "/matches", "/player-stats", "/odds", "/historical", "/predict"]
     });
   }
 };
