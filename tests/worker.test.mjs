@@ -655,6 +655,30 @@ test("frontend validates precise Elo probabilities against fair odds without rou
   assert.equal(sandbox.validate({ ...exact, fairOddsA: 2 }), false);
 });
 
+test("maximum EV selection prioritizes expected value but requires verified inputs and exposes risk separately", () => {
+  const start = frontendSource.indexOf("function selectHighestEvBet(");
+  const end = frontendSource.indexOf("function renderBestBet(", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = { Number };
+  vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.select = selectHighestEvBet;", sandbox);
+  const candidate = (player, ev, reliabilityScore = 70, freshnessLevel = "medium", probability = 42, odds = 3.1) => ({
+    player, ev, reliabilityScore, freshnessLevel, probability, odds, valueEligible: true
+  });
+  const bets = [
+    candidate("Highest EV", 31, 70, "medium", 38),
+    candidate("Lower EV but safer", 24, 94, "good", 72),
+    { ...candidate("Missing value approval", 60, 99, "good"), valueEligible: false },
+    candidate("Stale quote", 55, 90, "limited"),
+    candidate("Weak data quality", 52, 64, "good"),
+    candidate("Invalid probability", 49, 90, "good", 0),
+    candidate("Odds too low", 48, 90, "good", 60, 1.4),
+    candidate("Negative EV", -2, 99, "good")
+  ];
+  assert.equal(sandbox.select(bets).player, "Highest EV");
+  assert.equal(sandbox.select(bets.filter(bet => bet.player !== "Highest EV")).player, "Lower EV but safer");
+  assert.equal(sandbox.select(bets.filter(bet => !["Highest EV", "Lower EV but safer"].includes(bet.player))), null);
+});
+
 test("daily best bet prioritizes validated reliability and uses the odds floor only as a filter", () => {
   const start = frontendSource.indexOf("function selectBestBet(");
   const end = frontendSource.indexOf("function renderBestBet(", start);
@@ -1711,7 +1735,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v118/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v119/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
