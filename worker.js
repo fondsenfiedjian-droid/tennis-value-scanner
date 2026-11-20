@@ -51,6 +51,30 @@ function diagnoseHistoricalItems(items) {
   const validOdds = (v) => Number.isFinite(Number(v)) && Number(v) > 1 && Number(v) <= 1000;
   const keys = items.map(x => [x?.date, x?.tour, x?.tournament, x?.player1, x?.player2].join("|"));
   const duplicates = keys.length - new Set(keys).size;
+  let openingPairsChecked = 0;
+  let suspiciousOpeningPairs = 0;
+  let reliableOpeningPairs = 0;
+  let player1Shortened = 0, player1Lengthened = 0;
+  let player2Shortened = 0, player2Lengthened = 0;
+  for (const match of items) {
+    for (const quote of Array.isArray(match?.bookmakerOdds) ? match.bookmakerOdds : []) {
+      const a = quote?.player1?.opening;
+      const b = quote?.player2?.opening;
+      if (!validOdds(a) || !validOdds(b)) continue;
+      openingPairsChecked++;
+      const margin = 1 / Number(a) + 1 / Number(b) - 1;
+      if (margin < -0.05 || margin > 0.25) suspiciousOpeningPairs++;
+      else reliableOpeningPairs++;
+    }
+    if (validOdds(match?.openingOddsPlayer1Avg) && validOdds(match?.currentOddsPlayer1Avg)) {
+      if (Number(match.currentOddsPlayer1Avg) < Number(match.openingOddsPlayer1Avg) * 0.98) player1Shortened++;
+      if (Number(match.currentOddsPlayer1Avg) > Number(match.openingOddsPlayer1Avg) * 1.02) player1Lengthened++;
+    }
+    if (validOdds(match?.openingOddsPlayer2Avg) && validOdds(match?.currentOddsPlayer2Avg)) {
+      if (Number(match.currentOddsPlayer2Avg) < Number(match.openingOddsPlayer2Avg) * 0.98) player2Shortened++;
+      if (Number(match.currentOddsPlayer2Avg) > Number(match.openingOddsPlayer2Avg) * 1.02) player2Lengthened++;
+    }
+  }
   return {
     tourCounts: countBy("tour"),
     statusCounts: countBy("status"),
@@ -60,6 +84,12 @@ function diagnoseHistoricalItems(items) {
     walkovers: items.filter(x => x?.walkover === true).length,
     bothOddsValid: items.filter(x => validOdds(x?.oddsPlayer1) && validOdds(x?.oddsPlayer2)).length,
     missingOrInvalidOdds: items.filter(x => !validOdds(x?.oddsPlayer1) || !validOdds(x?.oddsPlayer2)).length,
+    openingOddsPairsChecked: openingPairsChecked,
+    reliableOpeningOddsPairs: reliableOpeningPairs,
+    suspiciousOpeningOddsPairs: suspiciousOpeningPairs,
+    movementBeyond2Percent: {
+      player1Shortened, player1Lengthened, player2Shortened, player2Lengthened
+    },
     surfaceCounts: countBy("surface"),
     missingPlayer1Rank: items.filter(x => x?.player1Rank == null).length,
     missingPlayer2Rank: items.filter(x => x?.player2Rank == null).length,
