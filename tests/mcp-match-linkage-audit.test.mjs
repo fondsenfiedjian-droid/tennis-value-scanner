@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditMcpMatchLinkage } from "../scripts/mcp-match-linkage-audit.mjs";
+import { auditMcpMatchLinkage, parseMcpMetadataCsv } from "../scripts/mcp-match-linkage-audit.mjs";
 
 const meta = overrides => ({
   match_id: "m1", Date: "20250302", Tournament: "Indian Wells Masters",
@@ -110,4 +110,14 @@ test("maps generic Olympics metadata to the correct host event for that year",()
  );
  assert.equal(report.linked,1);
  assert.equal(report.linkedByEventAlias,1);
+});
+
+test("tolerant metadata parser preserves embedded quotes and quoted commas",()=>{
+ const rows=parseMcpMetadataCsv([
+  "match_id,Player 1,Tournament",
+  'm1,A,Club "A" Open',
+  'm2,B,"Australian Open, Men"'
+ ].join("\n"));
+ assert.equal(rows[0].Tournament,'Club "A" Open');
+ assert.equal(rows[1].Tournament,"Australian Open, Men");
 });
