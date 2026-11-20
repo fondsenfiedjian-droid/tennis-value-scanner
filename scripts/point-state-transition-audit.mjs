@@ -194,7 +194,7 @@ async function main() {
   const raw = await readFile(input);
   const csv = input.endsWith(".gz") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
   const report = auditPointStateTransitions(parseCsv(csv));
-  await writeFile(out, JSON.stringify(report, null, 2) + "\\n");
+  await writeFile(out, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only point-state audit: " + out);
 }
