@@ -62,7 +62,7 @@ test("allows a unique full-name link when the metadata round field is unusable",
 test("links cross-year events when the archived tournament start date is in December", () => {
   const report = audit(
     [meta({ Date: "20250101", Tournament: "United Cup", Round: "RR" })],
-    [result({ tourney_date: "20241227", tourney_name: "United Cup", round: "RR" })]
+    [result({ tourney_date: "20241227", tourney_name: "United Cup", round: "RR" }), result({ tourney_date: "20250115", tourney_name: "Auckland", match_num: "2", winner_name: "Other Player", loser_name: "Another Player" })]
   );
   assert.equal(report.linked, 1);
   assert.equal(report.linkedFromAdjacentYear, 1);
