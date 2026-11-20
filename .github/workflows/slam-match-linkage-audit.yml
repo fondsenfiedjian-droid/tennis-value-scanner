@@ -85,6 +85,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: grand-slam-match-linkage-audit
-          path: \${{ runner.temp }}/slam-match-linkage-audit.json
+          path: ${{ runner.temp }}/slam-match-linkage-audit.json
           if-no-files-found: error
           retention-days: 30
