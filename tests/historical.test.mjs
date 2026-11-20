@@ -61,3 +61,24 @@ test("historical endpoint reads the fixed dataset without changing the Winamax f
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
 });
+
+
+test("historical endpoint accepts another validated Apify dataset without changing the default", async () => {
+  let requestedUrl = "";
+  sandbox.fetch = async (url) => {
+    requestedUrl = url;
+    return new Response(JSON.stringify([{
+      date: "2026-11-18", tour: "atp-single", player1: "Player A",
+      player2: "Player B", winner: "Player A", score: "6-4 6-3",
+      oddsPlayer1: 1.5, oddsPlayer2: 2.6, surface: "hard", finished: true
+    }]), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const invalid = await worker.fetch(new Request("https://worker.test/historical?datasetId=bad"), { APIFY_TOKEN: "test-token" });
+  assert.equal(invalid.status, 400);
+  const result = await worker.fetch(new Request("https://worker.test/historical?datasetId=AbCdEf1234567890"), { APIFY_TOKEN: "test-token" });
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.datasetId, "AbCdEf1234567890");
+  assert.equal(payload.items[0].tour, "atp-single");
+  assert.equal(requestedUrl, "https://api.apify.com/v2/datasets/AbCdEf1234567890/items?clean=true&format=json&limit=1000");
+});
