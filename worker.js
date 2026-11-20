@@ -46,6 +46,29 @@ function diagnoseOddsItems(items, now = Date.now()) {
   };
 }
 
+function diagnoseHistoricalItems(items) {
+  const countBy = (field) => Object.fromEntries([...new Set(items.map(x => String(x?.[field] ?? "missing")))].sort().map(v => [v, items.filter(x => String(x?.[field] ?? "missing") === v).length]));
+  const validOdds = (v) => Number.isFinite(Number(v)) && Number(v) > 1 && Number(v) <= 1000;
+  const keys = items.map(x => [x?.date, x?.tour, x?.tournament, x?.player1, x?.player2].join("|"));
+  const duplicates = keys.length - new Set(keys).size;
+  return {
+    tourCounts: countBy("tour"),
+    statusCounts: countBy("status"),
+    finished: items.filter(x => x?.finished === true).length,
+    unfinishedOrUnknown: items.filter(x => x?.finished !== true).length,
+    retired: items.filter(x => x?.retired === true).length,
+    walkovers: items.filter(x => x?.walkover === true).length,
+    bothOddsValid: items.filter(x => validOdds(x?.oddsPlayer1) && validOdds(x?.oddsPlayer2)).length,
+    missingOrInvalidOdds: items.filter(x => !validOdds(x?.oddsPlayer1) || !validOdds(x?.oddsPlayer2)).length,
+    surfaceCounts: countBy("surface"),
+    missingPlayer1Rank: items.filter(x => x?.player1Rank == null).length,
+    missingPlayer2Rank: items.filter(x => x?.player2Rank == null).length,
+    missingWinner: items.filter(x => !x?.winner).length,
+    missingScore: items.filter(x => !x?.score).length,
+    duplicateMatches: duplicates
+  };
+}
+
 function internalCacheRequest(request, pathname) {
   const cacheUrl = new URL(request.url);
   cacheUrl.pathname = pathname;
@@ -340,6 +363,7 @@ export default {
           datasetName: "tennis-results-history-2026-11-19",
           retrievedAt: new Date().toISOString(),
           count: items.length,
+          diagnostics: diagnoseHistoricalItems(items),
           items
         };
         const cacheResponse = new Response(JSON.stringify(payload), {
