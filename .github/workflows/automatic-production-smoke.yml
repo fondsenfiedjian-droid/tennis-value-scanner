@@ -64,9 +64,9 @@ jobs:
           const swResponse = await getWithRetry(process.env.APP_URL + "/sw.js");
           const serviceWorker = await swResponse.text();
           if (!serviceWorker.includes("tennis-value-static-v116")) {
-            throw new Error("Netlify is not serving the expected service-worker cache version v115");
+            throw new Error("Netlify is not serving the expected service-worker cache version v116");
           }
-          console.log("PWA service worker: cache v115 is published");
+          console.log("PWA service worker: cache v116 is published");
 
           const healthResponse = await getWithRetry(process.env.API_URL + "/health");
           const health = await healthResponse.json();
@@ -79,14 +79,14 @@ jobs:
           console.log("Worker health: OK; required configuration flags are present");
 
           const matchesResponse = await getWithRetry(
-            process.env.API_URL + "/matches?status=upcoming&draw=singles&limit=5"
+            process.env.API_URL + "/matches?status=upcoming&draw=singles&limit=200"
           );
           const matchesPayload = await matchesResponse.json();
           const matches = Array.isArray(matchesPayload) ? matchesPayload
             : [matchesPayload?.data, matchesPayload?.matches, matchesPayload?.results, matchesPayload?.events]
               .find(Array.isArray);
           if (!matches) throw new Error("Matches endpoint returned an unrecognized payload shape");
-          console.log("Matches API: HTTP", matchesResponse.status, "records:", matches.length,
+          console.log("Matches API (same cached request as app): HTTP", matchesResponse.status, "records:", matches.length,
             "cache:", matchesResponse.headers.get("X-Data-Cache") || "unknown");
 
           const oddsResponse = await getWithRetry(process.env.API_URL + "/odds");
