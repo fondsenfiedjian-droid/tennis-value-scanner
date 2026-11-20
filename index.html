@@ -554,7 +554,7 @@
   function oddsEventParticipants(o){
     let home=String(o?.homeTeam||'').trim(),away=String(o?.awayTeam||'').trim();
     if(!home||!away){
-      const parts=String(o?.eventName||'').trim().split(/\s+(?:-|–|—|vs\\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
+      const parts=String(o?.eventName||'').trim().split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(parts.length===2){home=home||parts[0];away=away||parts[1];}
     }
     return {home:normalizePlayer(home),away:normalizePlayer(away)};
@@ -584,7 +584,7 @@
       const {home,away}=oddsEventParticipants(o);
       if(!home||!away||home===away)return false;
       const eventName=String(o.eventName||'').trim();
-      const eventParts=eventName.split(/\s+(?:-|–|—|vs\\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
+      const eventParts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||(playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
       if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
@@ -595,6 +595,7 @@
       const value=Number(o.oddsDecimal);
       return Number.isFinite(value)&&value>1;
     });
+    // Event IDs are bookmaker-specific: never require two providers to share one.
     const groups=new Map();
     for(const quote of candidates){const key=oddsEventGroupKey(quote);if(!key)continue;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(quote);}
     const selected=[];
@@ -602,8 +603,8 @@
       const latestByOutcome={};
       for(const quote of quotes){const side=String(quote.outcome).toLowerCase(),current=latestByOutcome[side];if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latestByOutcome[side]=quote;}
       if(latestByOutcome.home&&latestByOutcome.away){
-        const h=Date.parse(latestByOutcome.home.scrapedAt),a=Date.parse(latestByOutcome.away.scrapedAt);
-        if(!Number.isFinite(h)||!Number.isFinite(a)||Math.abs(h-a)>30*60*1000)continue;
+        const homeScrapedAt=Date.parse(latestByOutcome.home.scrapedAt),awayScrapedAt=Date.parse(latestByOutcome.away.scrapedAt);
+        if(!Number.isFinite(homeScrapedAt)||!Number.isFinite(awayScrapedAt)||Math.abs(homeScrapedAt-awayScrapedAt)>30*60*1000)continue;
         selected.push(...Object.values(latestByOutcome));
       }
     }
