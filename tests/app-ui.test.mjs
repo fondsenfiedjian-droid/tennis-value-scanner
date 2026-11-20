@@ -344,16 +344,21 @@ test("frontend API requests have a bounded timeout and clear their timer", () =>
 });
 
 
-test("highest EV of the day is separate from the balanced best bet and opens its match", () => {
-  assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
-  assert.match(html, /id="highestEvContent"/);
-  assert.match(html, /id="highestEvOpen"/);
+test("best bet of the day prioritizes validated reliability and opens its match from the whole feature card", () => {
+  assert.match(html, /id="bestBet" class="best-bet" role="button" tabindex="0"/);
+  assert.match(html, /СТАВКА ДНЯ/);
+  assert.match(html, /best-bet-odds/);
+  assert.match(html, /best-bet-pair/);
+  assert.match(html, /reliabilityEligible===true/);
+  assert.match(html, /reliabilityScore>=85/);
+  assert.match(html, /calibrationReady=reliability\.calibrationIncluded===true/);
+  assert.match(html, /\.sort\(\(a,b\)=>b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\|\|b\.ev-a\.ev\)/);
+  assert.match(html, /box\.onclick=openDetails/);
+  assert.match(html, /box\.onkeydown=/);
+  assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
   assert.match(html, /const highest=bets\.filter\(x=>Number\.isFinite\(x\.ev\)&&x\.ev>0/);
   assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.probability-a\.probability\)/);
-  assert.match(html, /data-match-index=/);
-  assert.match(html, /Number\(highest\.matchIndex\)/);
-  assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const best=selectBestBet\(bets,minEv,bestBetMinOdds\)/);
+  assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
 });
 
 test("bankroll tab and assets are fully removed from the application shell", () => {

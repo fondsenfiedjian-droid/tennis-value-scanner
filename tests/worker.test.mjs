@@ -627,26 +627,29 @@ test("frontend validates precise Elo probabilities against fair odds without rou
   assert.equal(sandbox.validate({ ...exact, fairOddsA: 2 }), false);
 });
 
-test("daily best bet respects the configured minimum EV and odds floor", () => {
+test("daily best bet prioritizes validated reliability and uses the odds floor only as a filter", () => {
   const start = frontendSource.indexOf("function selectBestBet(");
   const end = frontendSource.indexOf("function renderBestBet(", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = { Number };
   vm.runInNewContext(frontendSource.slice(start, end) + "\nglobalThis.select = selectBestBet;", sandbox);
+  const qualified = (player, score, probability, ev, odds = 2.1) => ({
+    player, reliabilityScore: score, reliabilityEligible: true, probability, ev, odds,
+    freshnessLevel: "good", valueEligible: true
+  });
   const bets = [
-    { player: "A", odds: 2.4, ev: 2.9, freshnessLevel: "good" },
-    { player: "B", odds: 1.8, ev: 20, freshnessLevel: "good" },
-    { player: "C", odds: 2.1, ev: 6, freshnessLevel: "limited" },
-    { player: "D", odds: 2.2, ev: 4, freshnessLevel: "medium" },
-    { player: "E", odds: 2.05, ev: 5, freshnessLevel: "good" },
-    { player: "F", odds: 2.6, ev: 12, freshnessLevel: "good", valueEligible: false }
+    qualified("EV leader", 86, 91, 35),
+    qualified("Most reliable", 96, 82, 8),
+    qualified("High probability", 90, 95, 3),
+    { ...qualified("No calibration", 100, 99, 60), reliabilityEligible: false },
+    { ...qualified("Medium freshness", 99, 98, 50), freshnessLevel: "medium" },
+    { ...qualified("Bad value gate", 99, 98, 50), valueEligible: false },
+    { ...qualified("Negative EV", 99, 98, -1) },
+    qualified("Low odds", 99, 98, 50, 1.8)
   ];
-  assert.equal(sandbox.select(bets, 3).player, "E");
-  assert.equal(sandbox.select(bets, 7), null);
-  assert.equal(sandbox.select(bets, 0).player, "E");
-  assert.equal(sandbox.select(bets, 2, 2.3).player, "A");
-  assert.equal(sandbox.select(bets, 2, 2.5), null);
-  assert.notEqual(sandbox.select(bets, 3).player, "F");
+  assert.equal(sandbox.select(bets, 0, 1.9).player, "Most reliable");
+  assert.equal(sandbox.select(bets, 0, 2.2), null);
+  assert.equal(sandbox.select(bets.filter(bet => bet.player !== "Most reliable"), 0).player, "High probability");
 });
 
 test("value signal quality blocks stale inputs, invalid ratings and Elo-market conflicts", () => {
