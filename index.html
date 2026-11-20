@@ -191,7 +191,7 @@
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
   <div id="bestBet" class="best-bet" role="button" tabindex="0" aria-label="Открыть подробности ставки дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
-  <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">МАКСИМАЛЬНЫЙ EV ДНЯ</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
+  <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">EV ДНЯ · РИСКОВЫЙ ШАНС</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
@@ -1557,13 +1557,15 @@
       const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
       const tournament=highest.match.tournament_name||highest.match.tournament||highest.match.event_name||highest.match.competition||'Турнир не указан';
       const fairOdds=100/highest.probability;
+      const impliedProbability=100/highest.odds;
+      const modelEdge=highest.probability-impliedProbability;
       const freshnessLabel=highest.freshnessLevel==='good'?'свежие данные':'котировка может быть до 6 часов';
       const riskNotes=[];
       if(highest.reliabilityScore<85)riskNotes.push('качество данных ниже строгого фильтра «Ставки дня»');
       if(highest.freshnessLevel==='medium')riskNotes.push('котировка не обязательно актуальна у букмекера');
       if(highest.probability<50)riskNotes.push('вероятность прохода ниже 50%');
       riskNotes.push('EV — оценка модели, а не гарантия прибыли');
-      evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(highest.player)+' — '+escapeHtml(highest.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Ставка: <b>'+escapeHtml(highest.player)+'</b> · '+escapeHtml(highest.bookmaker||'Winamax')+' <b>'+highest.odds.toFixed(2)+'</b><br><span class="best-bet-value">EV +'+highest.ev.toFixed(2)+'%</span> · вероятность модели '+highest.probability.toFixed(2)+'% · справедливый кэф '+fairOdds.toFixed(2)+'<br>Качество данных: '+highest.reliabilityScore+'/100 · '+freshnessLabel+'<br><b>Риск:</b> '+escapeHtml(riskNotes.join('; '))+'</div>';
+      evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(highest.player)+' — '+escapeHtml(highest.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Ставка: <b>'+escapeHtml(highest.player)+'</b> · '+escapeHtml(highest.bookmaker||'Winamax')+' <b>'+highest.odds.toFixed(2)+'</b><br><span class="best-bet-value">EV +'+highest.ev.toFixed(2)+'%</span> · вероятность модели '+highest.probability.toFixed(2)+'% · справедливый кэф '+fairOdds.toFixed(2)+'<br>Вероятность по коэффициенту: '+impliedProbability.toFixed(2)+'% · преимущество модели: '+(modelEdge>=0?'+':'')+modelEdge.toFixed(2)+' п.п.<br>Качество данных: '+highest.reliabilityScore+'/100 · '+freshnessLabel+'<br><b>Формат:</b> небольшая ставка ради возможного крупного выигрыша; не рекомендация для крупной суммы.<br><b>Риск:</b> '+escapeHtml(riskNotes.join('; '))+'</div>';
       evButton.hidden=false;
       evButton.onclick=()=>{
         const card=document.querySelector('.match-card[data-match-index="'+Number(highest.matchIndex)+'"]');
