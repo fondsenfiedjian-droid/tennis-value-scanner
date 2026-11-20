@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           mkdir -p research-data
           for tour in m w; do
-            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 4 \
               "https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/$MCP_COMMIT/charting-$tour-matches.csv" \
               --output "research-data/charting-$tour-matches.csv"
             test -s "research-data/charting-$tour-matches.csv"
@@ -55,11 +55,11 @@ jobs:
           await writeFile(process.env.RUNNER_TEMP + "/result-files.txt", files.join("\n") + "\n");
           console.log("Pinned result files: " + main.length + " main-tour + " + lower.length + " lower-tier");
           NODE
-          cat "$RUNNER_TEMP/result-files.txt" | xargs -r -n 1 -P 8 sh -c '
+          cat "$RUNNER_TEMP/result-files.txt" | xargs -r -n 1 -P 2 sh -c '
             set -eu
             path="$1"
             name="${path##*/}"
-            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 4 \
               "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$RESULTS_COMMIT/$path" \
               --output "research-data/$name"
             test -s "research-data/$name"
@@ -74,9 +74,9 @@ jobs:
           const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/mcp-match-linkage-audit.json", "utf8"));
           const t = report.totals;
           const lines = [
-            "| Tour | Metadata IDs | Exact links | Main tour | Challenger/qualifying | Futures | ITF qualifying | Link rate | Date anomalies | Round conflicts | Event mismatches | No player pair in year |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.uniqueMatchIds + " | " + x.linkedUnique + " | " + x.linkedMainTour + " | " + x.linkedChallengerQualifying + " | " + x.linkedFutures + " | " + x.linkedITFQualifying + " | " + x.linkagePct + "% | " + x.dateOffsetAnomalyLinks + " | " + x.roundConflicts + " | " + x.eventMismatches + " | " + x.noPlayerPairInYear + " |"),
+            "| Tour | Metadata IDs | Exact links | Main tour | Challenger/qualifying | Futures | ITF qualifying | Cross-year | Link rate | Date anomalies | Round conflicts | Event mismatches | No player pair in year |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.uniqueMatchIds + " | " + x.linkedUnique + " | " + x.linkedMainTour + " | " + x.linkedChallengerQualifying + " | " + x.linkedFutures + " | " + x.linkedITFQualifying + " | " + x.linkedCrossYear + " | " + x.linkagePct + "% | " + x.dateOffsetAnomalyLinks + " | " + x.roundConflicts + " | " + x.eventMismatches + " | " + x.noPlayerPairInYear + " |"),
             "",
             "Total unique metadata IDs: " + t.uniqueMatchIds + "; exact unique links: " + t.linkedUnique + " (" + t.linkagePct + "%).",
             "No player-level linkage records or identifiers are retained."

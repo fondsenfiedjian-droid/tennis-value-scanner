@@ -92,8 +92,10 @@ function finishAudit(context){
   const byTour={};
   for(const [code,rows] of context.metadata){
     const tour=code==="m"?"ATP":"WTA";
-    const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,dateOffsetsOver21Days:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
+    const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,negativeUpTo7Days:0,negativeOver7Days:0,dateOffsetsOver21Days:0,linkedCrossYear:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
     const seen=new Set(),offsets=[];
+    const dateOffsetBuckets={negativeUpTo7:0,negativeOver7:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
+    const dateOffsetByYear={};
     for(const row of rows){
       const id=String(row.match_id??"").trim();
       if(!id||seen.has(id))continue;
@@ -104,40 +106,72 @@ function finishAudit(context){
       if(!date)counters.missingDates++;else if(!validDate(date))counters.invalidDates++;
       const year=/^\d{4}/.test(date)?date.slice(0,4):id.slice(0,4);
       const pair=pairKey(p1,p2),event=eventKey(row.Tournament),round=normalizeRound(row.Round);
-      const candidates=[...(context.yearPairIndex.get([tour,year,pair].join(":"))?.values()||[])];
+      const candidateYears=[year];
+      if(validDate(date)){
+        const month=Number(date.slice(4,6)),yearNumber=Number(year);
+        if(month===12)candidateYears.push(String(yearNumber+1));
+        if(month===1)candidateYears.push(String(yearNumber-1));
+      }
+      const candidatesByIdentity=new Map();
+      for(const candidateYear of candidateYears){
+        const group=context.yearPairIndex.get([tour,candidateYear,pair].join(":"));
+        if(group)for(const [identity,candidate] of group)candidatesByIdentity.set(identity,candidate);
+      }
+      const candidates=[...candidatesByIdentity.values()];
       const eventCandidates=candidates.filter(candidate=>candidate.event===event);
       const exactCandidates=eventCandidates.filter(candidate=>candidate.round===round);
-      if(exactCandidates.length===1){
-        const candidate=exactCandidates[0];
+      const withOffsets=exactCandidates.map(candidate=>({
+        candidate,
+        offset:dayNumber(date)!==null&&dayNumber(candidate.date)!==null?dayNumber(date)-dayNumber(candidate.date):null
+      }));
+      const plausibleCandidates=withOffsets.filter(item=>item.offset!==null&&item.offset>=-7&&item.offset<=21);
+      let selected=null;
+      if(plausibleCandidates.length===1)selected=plausibleCandidates[0];
+      else if(plausibleCandidates.length>1)counters.ambiguous++;
+      else if(exactCandidates.length===1)selected=withOffsets[0];
+      else if(exactCandidates.length>1)counters.ambiguous++;
+      else if(eventCandidates.length)counters.roundConflicts++;
+      else if(candidates.length)counters.eventMismatches++;
+      else counters.noPlayerPairInYear++;
+      if(selected){
+        const candidate=selected.candidate,offset=selected.offset;
         counters.linkedUnique++;counters.linkedFullName++;
+        if(candidate.date.slice(0,4)!==year)counters.linkedCrossYear++;
         if(candidate.sourceTypes.has("main"))counters.linkedMainTour++;
         else if(candidate.sourceTypes.has("qual_chall"))counters.linkedChallengerQualifying++;
         else if(candidate.sourceTypes.has("futures"))counters.linkedFutures++;
         else if(candidate.sourceTypes.has("qual_itf"))counters.linkedITFQualifying++;
-        const a=dayNumber(date),b=dayNumber(candidate.date);
-        if(a!==null&&b!==null){
-          const offset=a-b;offsets.push(offset);
+        if(offset!==null){
+          offsets.push(offset);
+          const bucket=offset< -7?"negativeOver7":offset<0?"negativeUpTo7":offset===0?"zero":offset<=7?"oneToSeven":offset<=14?"eightToFourteen":offset<=21?"fifteenToTwentyOne":"over21";
+          dateOffsetBuckets[bucket]++;
+          if(!dateOffsetByYear[year])dateOffsetByYear[year]={links:0,minOffset:null,maxOffset:null,negativeUpTo7:0,negativeOver7:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
+          dateOffsetByYear[year].links++;
+          dateOffsetByYear[year].minOffset=dateOffsetByYear[year].minOffset===null?offset:Math.min(dateOffsetByYear[year].minOffset,offset);
+          dateOffsetByYear[year].maxOffset=dateOffsetByYear[year].maxOffset===null?offset:Math.max(dateOffsetByYear[year].maxOffset,offset);
+          dateOffsetByYear[year][bucket]++;
           if(offset<0)counters.negativeDateOffsets++;
+          if(offset>=-7&&offset<0)counters.negativeUpTo7Days++;
+          if(offset< -7)counters.negativeOver7Days++;
           if(offset>21)counters.dateOffsetsOver21Days++;
         }
-      }else if(exactCandidates.length>1)counters.ambiguous++;
-      else if(eventCandidates.length)counters.roundConflicts++;
-      else if(candidates.length)counters.eventMismatches++;
-      else counters.noPlayerPairInYear++;
+      }
     }
     offsets.sort((a,b)=>a-b);
     counters.dateOffsetDays=offsets.length?{count:offsets.length,min:offsets[0],median:offsets[Math.floor((offsets.length-1)/2)],p90:offsets[Math.floor((offsets.length-1)*0.9)],max:offsets.at(-1)}:null;
-    counters.dateOffsetAnomalyLinks=counters.negativeDateOffsets+counters.dateOffsetsOver21Days;
-    counters.dateOffsetConsistentLinks=offsets.length-counters.dateOffsetAnomalyLinks;
+    counters.dateOffsetAnomalyLinks=counters.negativeOver7Days+counters.dateOffsetsOver21Days;
+    counters.dateOffsetBuckets=dateOffsetBuckets;
+    counters.dateOffsetByYear=dateOffsetByYear;
+    counters.dateOffsetPlausibleLinks=offsets.length-counters.dateOffsetAnomalyLinks;
     counters.linkagePct=counters.uniqueMatchIds?Number((100*counters.linkedUnique/counters.uniqueMatchIds).toFixed(2)):null;
     byTour[tour]=counters;
   }
   const totals=Object.values(byTour).reduce((sum,x)=>{
-    for(const k of ["metadataRows","uniqueMatchIds","linkedUnique","linkedFullName","ambiguous","roundConflicts","eventMismatches","noPlayerPairInYear","missingNames","invalidDates","missingDates","negativeDateOffsets","dateOffsetsOver21Days","linkedMainTour","linkedChallengerQualifying","linkedFutures","linkedITFQualifying","dateOffsetAnomalyLinks","dateOffsetConsistentLinks"])sum[k]=(sum[k]||0)+x[k];
+    for(const k of ["metadataRows","uniqueMatchIds","linkedUnique","linkedFullName","ambiguous","roundConflicts","eventMismatches","noPlayerPairInYear","missingNames","invalidDates","missingDates","negativeDateOffsets","negativeUpTo7Days","negativeOver7Days","dateOffsetsOver21Days","linkedCrossYear","linkedMainTour","linkedChallengerQualifying","linkedFutures","linkedITFQualifying","dateOffsetAnomalyLinks","dateOffsetPlausibleLinks"])sum[k]=(sum[k]||0)+x[k];
     return sum;
   },{});
   totals.linkagePct=totals.uniqueMatchIds?Number((100*totals.linkedUnique/totals.uniqueMatchIds).toFixed(2)):null;
-  return {schemaVersion:2,source:"Jeff Sackmann Match Charting Project metadata linked to Jeff Sackmann ATP/WTA main-tour and lower-tier results",mcpCommit:"1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",resultsCommit:"83733587353df8a41f2fd4f516147d5aa83f5a8d",license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",totals,byTour,warnings:["Only exact normalized full-name pairs, explicit event aliases, year and round are accepted; no initials or fuzzy matches.","Only unique candidate matches are linked. Unmatched rows may be events absent from the archive or contain source naming/date inconsistencies.","Sackmann tourney_date is usually the event-week date, not the exact match date. MCP Date is the charted match date; date offsets are diagnostics only.","Only aggregate counts are written. No player names, match IDs or player-level linkage records are retained.","Metadata date/surface/hand quality anomalies remain quarantined; this audit does not approve those fields as model features."]};
+  return {schemaVersion:3,source:"Jeff Sackmann Match Charting Project metadata linked to Jeff Sackmann ATP/WTA main-tour and lower-tier results",mcpCommit:"1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",resultsCommit:"83733587353df8a41f2fd4f516147d5aa83f5a8d",license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",totals,byTour,warnings:["Only exact normalized full-name pairs, explicit event aliases, year and round are accepted; no initials or fuzzy matches.","Only unique candidate matches are linked. December/January metadata may match an adjacent-year result file when its event-week date falls within -7 to +21 days of the charted date; otherwise adjacent-year candidates are not accepted. Unmatched rows may be events absent from the archive or contain source naming/date inconsistencies.","Sackmann tourney_date is usually the event-week date, not the exact match date. MCP Date is the charted match date; date offsets are diagnostics only.","Only aggregate counts are written. No player names, match IDs or player-level linkage records are retained.","Metadata date/surface/hand quality anomalies remain quarantined; this audit does not approve those fields as model features."]};
 }
 
 export function auditMcpMatchLinkage(files){

@@ -904,3 +904,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - Full-history MCP linkage audit completed successfully (run 44835316124): 10,671/11,822 unique charted IDs linked (90.26%): ATP 7,045/7,565 (93.13%), WTA 3,626/4,257 (85.18%). Source-tier split: 10,193 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous exact candidates; 50 round conflicts; 830 event mismatches; 271 pairs had no candidate in the supplied archive.
 - Full-history date diagnostics: 282 links have MCP dates earlier than Sackmann event-week dates; 11 links exceed 21 days; 10,378 offsets are 0–21 days. Extreme offsets remain (-261 WTA, +361 ATP). These are not chronology-safe until individually explained; all linked MCP features remain blocked from rolling pre-match PFE use.
+
+
+- Added aggregate date-offset diagnostics by year and bins (negative, same-day, 1–7, 8–14, 15–21, >21 days) to localize MCP/Sackmann date anomalies without storing match IDs or player-level records. Added tests for date buckets and year aggregation.
+
+
+- Linkage chronology refinement: for December/January charted matches, the audit now checks the adjacent calendar year's results and selects only a unique exact event/pair/round candidate with a plausible event-week offset (-7 to +21 days). This prevents a same-year false match when a tournament crosses New Year. Small negative offsets are not automatically anomalies; offsets below -7 or above +21 remain quarantined.
+
+
+- Cross-year linkage/date-window audit completed (run 44836426492): 10,690/11,822 unique MCP IDs linked (90.42%); ATP 7,053/7,565 (93.23%), WTA 3,637/4,257 (85.44%). Twenty adjacent-year links were accepted. Tier split: 10,212 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous candidates; 52 round conflicts; 849 event mismatches; 231 no-pair candidates.
+- With the -7 to +21 day event-week plausibility window, 10,667 linked matches have plausible date offsets and 23 remain anomalies (12 below -7 days, 11 above +21). Of 299 negative offsets, 287 are only -1 to -7 days and are treated as plausible event-week alignment, not errors. Extreme offsets: ATP -345/+366; WTA -261/+31. No MCP features are production-enabled; same-event order remains unverified.

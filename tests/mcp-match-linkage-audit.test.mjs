@@ -18,6 +18,11 @@ test("links unique exact player pairs by tour, year, event and round",()=>{
  assert.equal(report.totals.linkedUnique,2);
  assert.equal(report.byTour.ATP.dateOffsetDays.min,2);
  assert.equal(report.byTour.WTA.dateOffsetDays.min,38);
+ assert.equal(report.byTour.ATP.dateOffsetBuckets.oneToSeven,1);
+ assert.equal(report.byTour.WTA.dateOffsetBuckets.over21,1);
+ assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].over21,1);
+ assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].minOffset,38);
+ assert.equal(report.byTour.WTA.dateOffsetByYear["2024"].maxOffset,38);
  assert.equal(JSON.stringify(report).includes("Novak Djokovic"),false);
 });
 
@@ -62,7 +67,7 @@ test("tolerates embedded quote characters in Match Charting metadata",()=>{
  assert.equal(report.byTour.ATP.linkedUnique,1);
 });
 
-test("classifies Challenger qualifying links and flags impossible date offsets",()=>{
+test("classifies Challenger links and treats a small negative event-week offset as plausible",()=>{
  const row="20240710-M-Nottingham-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Nottingham,QF";
  const report=auditMcpMatchLinkage([
   {filename:"charting-m-matches.csv",content:[metaHeader,row].join("\n")},
@@ -73,6 +78,41 @@ test("classifies Challenger qualifying links and flags impossible date offsets",
  assert.equal(report.byTour.ATP.linkedChallengerQualifying,1);
  assert.equal(report.byTour.ATP.linkedMainTour,0);
  assert.equal(report.byTour.ATP.negativeDateOffsets,1);
+ assert.equal(report.byTour.ATP.dateOffsetAnomalyLinks,0);
+ assert.equal(report.byTour.ATP.dateOffsetPlausibleLinks,1);
+ assert.equal(report.byTour.ATP.dateOffsetBuckets.negativeUpTo7,1);
+ assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].negativeUpTo7,1);
+ assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].minOffset,-2);
+ assert.equal(report.byTour.ATP.dateOffsetByYear["2024"].maxOffset,-2);
+});
+
+test("prefers a plausible adjacent-year result for a December match",()=>{
+ const row="20231229-M-United_Cup-RR-Player_A-Player_B,Player A,Player B,20231229,United Cup,RR";
+ const report=auditMcpMatchLinkage([
+  {filename:"charting-m-matches.csv",content:[metaHeader,row].join("\n")},
+  {filename:"charting-w-matches.csv",content:metaHeader},
+  {filename:"atp_matches_2023.csv",content:[resultHeader,"2023-9900,United Cup,20230102,100,Player A,Player B,RR"].join("\n")},
+  {filename:"atp_matches_2024.csv",content:[resultHeader,"2024-9900,United Cup,20240101,100,Player A,Player B,RR"].join("\n")},
+  {filename:"wta_matches_2023.csv",content:resultHeader},
+  {filename:"wta_matches_2024.csv",content:resultHeader}
+ ]);
+ assert.equal(report.byTour.ATP.linkedUnique,1);
+ assert.equal(report.byTour.ATP.linkedCrossYear,1);
+ assert.equal(report.byTour.ATP.dateOffsetDays.min,-3);
+ assert.equal(report.byTour.ATP.dateOffsetBuckets.negativeUpTo7,1);
+ assert.equal(report.byTour.ATP.dateOffsetAnomalyLinks,0);
+});
+
+test("keeps a large negative date offset flagged as an anomaly",()=>{
+ const row="20240710-M-Wimbledon-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Wimbledon,QF";
+ const report=auditMcpMatchLinkage([
+  {filename:"charting-m-matches.csv",content:[metaHeader,row].join("\n")},
+  {filename:"charting-w-matches.csv",content:metaHeader},
+  {filename:"atp_matches_2024.csv",content:[resultHeader,"2024-0451,Wimbledon,20240810,120,Novak Djokovic,Carlos Alcaraz,QF"].join("\n")},
+  {filename:"wta_matches_2024.csv",content:resultHeader}
+ ]);
+ assert.equal(report.byTour.ATP.linkedUnique,1);
+ assert.equal(report.byTour.ATP.negativeOver7Days,1);
  assert.equal(report.byTour.ATP.dateOffsetAnomalyLinks,1);
- assert.equal(report.byTour.ATP.dateOffsetConsistentLinks,0);
+ assert.equal(report.byTour.ATP.dateOffsetPlausibleLinks,0);
 });
