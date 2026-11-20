@@ -627,3 +627,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - This evaluates probability metrics only, not market-relative value, CLV, betting ROI or profitability. No production probabilities, EV, recommendations, Worker, PWA, API quota or Winamax scraper were changed.
 - The source and derived report remain subject to CC BY-NC-SA 4.0: non-commercial use, attribution to Jeff Sackmann / Tennis Abstract, and share-alike. Do not use commercially without separate permission.
 - Next research candidates: test whether historical rankings and age add incremental value beyond Elo, with the same expanding chronological protocol; keep live production untouched unless the signal is repeatable and materially improves out-of-sample calibration.
+
+
+### Launch hardening — Bet of the Day eligibility guard (2026-11-20)
+- Found and fixed an eligibility gap in `selectBestBet`: unlike the separate EV-of-the-Day selector, it previously had no upper odds bound and did not independently validate that model probability was finite and within 0–100%.
+- The Bet of the Day selector now requires odds within the configured minimum and a hard maximum of 15.00, plus a finite probability greater than 0 and no more than 100%.
+- Added executable regression coverage for odds 1.49, 15.00 and 15.01, and invalid probabilities 0, above 100 and NaN.
+- Service Worker cache advanced from v131 to v132 so deployed Android clients refresh the corrected application shell.
+- Updated the deployment runbook's service-worker version and recorded the latest verified production smoke status (2026-11-20 16:49 UTC).
+- Implementation is on branch `fix/bet-of-day-odds-guard`; regression workflow run `44798255774` passed 353/353 tests and project-state guard run `44798255740` passed on head `169143ff1dead3ce131ae414a9c7416b2e0aace5`. Production deployment has not yet been triggered.
+- This is an eligibility/data-validation correction only. It does not alter the Elo model, probability estimates, Winamax scraper, or API usage.
+- CI also exposed three pre-existing CLV tests with hard-coded 2026-11-20 evening timestamps. Their match starts and quote snapshots are now generated relative to the test clock, preserving the intended pre-match/closing-quote relationships at any execution hour. This removes wall-clock-dependent failures without changing CLV production logic.

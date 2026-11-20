@@ -1,6 +1,6 @@
 # Production launch runbook
 
-Last reviewed: 2026-11-19
+Last reviewed: 2026-11-20
 
 This project has two independently deployed parts:
 - Static PWA on Netlify: https://fascinating-paprenjak-1aa9b3.netlify.app
@@ -23,7 +23,7 @@ A passing GitHub test run does not deploy either service. Never mark launch comp
 3. If it is not, use **Trigger deploy → Deploy site**.
 4. Wait for the deploy to finish successfully.
 5. Open https://fascinating-paprenjak-1aa9b3.netlify.app in a private browser tab and confirm the app title and current UI.
-6. On an installed Android PWA, fully close and reopen the app after deployment so Service Worker v111 can install.
+6. On an installed Android PWA, fully close and reopen the app after deployment so Service Worker v132 can install.
 
 ## 3. Publish the Worker
 
@@ -63,11 +63,15 @@ Do not place real bets as an acceptance test. Do not infer profitability from a 
 - Matches failure: inspect Live Tennis key, plan/quota, upstream status, and Worker logs.
 - Odds endpoint error: inspect Apify token, task `s9Des4R3jhMfA8e3s`, whether it has a successful run, upstream status, and Worker logs.
 - Odds endpoint returns items but no eligible pairs: compare `diagnostics.fieldCoverage`, bookmaker names/country, outcome counts, freshness, event IDs, player names, competition, and start times. Do not weaken matching rules to force quotes onto unrelated matches.
-- Browser still shows old UI: close all PWA windows, reopen, and verify Service Worker cache version `tennis-value-static-v111`.
+- Browser still shows old UI: close all PWA windows, reopen, and verify Service Worker cache version `tennis-value-static-v132`.
 
-## Current deployment status
+## Current deployment status (last verified 2026-11-20 16:49 UTC)
 
-Unknown until the manual production smoke check passes. Repository commits and CI results are not evidence of a live deployment.
+- Production smoke run `44776962702`: successful.
+- PWA: HTTP 200; the verified main-branch shell used Service Worker cache `tennis-value-static-v131`.
+- Cloudflare Worker: health check successful; required configuration flags were present.
+- Winamax `/odds`: HTTP 200; 20 items, 20 valid decimal odds, 20 fresh scrape timestamps in that smoke run.
+- This verifies technical availability at that time, not prediction profitability or continuous feed quality. Re-run the smoke check after any production change.
 
 
 ## Apify Winamax task
