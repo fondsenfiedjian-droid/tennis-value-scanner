@@ -53,8 +53,10 @@ export function auditLowerTierFiles(files){
         const pair=[winner,loser].sort((a,b)=>Number(a)-Number(b)).join(":");
         const natural=[date,row.tourney_id??"",row.match_num??"",pair,row.round??""].join("|");
         const signature=JSON.stringify([row.score??"",row.tourney_name??"",row.surface??"",row.best_of??"",row.tourney_level??""]);
-        if(!g.naturalKeys.has(natural))g.naturalKeys.set(natural,new Set());
-        g.naturalKeys.get(natural).add(signature);
+        if(!g.naturalKeys.has(natural))g.naturalKeys.set(natural,{count:0,signatures:new Set()});
+        const identity=g.naturalKeys.get(natural);
+        identity.count++;
+        identity.signatures.add(signature);
       } else g.invalidScores++;
       for(const col of Object.keys(row))g.columns.set(col,(g.columns.get(col)||0)+1);
     }
@@ -65,9 +67,10 @@ export function auditLowerTierFiles(files){
     sourceCommit:PINNED_COMMIT,
     license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",
     groups:[...groups.values()].map(g=>{
-      const duplicateGroups=[...g.naturalKeys.values()].filter(set=>set.size>0);
-      const exactDuplicateGroups=duplicateGroups.filter(set=>set.size===1).length;
-      const conflictingDuplicateGroups=duplicateGroups.filter(set=>set.size>1).length;
+      const duplicateGroups=[...g.naturalKeys.values()].filter(identity=>identity.count>1);
+      const exactDuplicateGroups=duplicateGroups.filter(identity=>identity.signatures.size===1).length;
+      const conflictingDuplicateGroups=duplicateGroups.filter(identity=>identity.signatures.size>1).length;
+      const duplicateExcessRows=duplicateGroups.reduce((sum,identity)=>sum+identity.count-1,0);
       const uniqueCompletedMatchGroups=g.naturalKeys.size;
       return {tour:g.tour,sourceType:g.sourceType,files:g.files,years:[...g.years].sort(),rows:g.rows,
         validDates:g.validDates,invalidDates:g.invalidDates,validPlayerPairs:g.validPlayerPairs,
@@ -77,7 +80,7 @@ export function auditLowerTierFiles(files){
         ageBothPct:g.completedMatches?Number((100*g.ageBoth/g.completedMatches).toFixed(2)):null,
         knownSurfacePct:g.completedMatches?Number((100*g.knownSurface/g.completedMatches).toFixed(2)):null,
         coreServeStatsBothPct:g.completedMatches?Number((100*g.coreServeStatsBoth/g.completedMatches).toFixed(2)):null,
-        uniqueCompletedMatchGroups,duplicateNaturalMatchGroups:exactDuplicateGroups+conflictingDuplicateGroups,exactDuplicateGroups,conflictingDuplicateGroups,columns:[...g.columns.keys()].sort()};
+        uniqueCompletedMatchGroups,duplicateNaturalMatchGroups:duplicateGroups.length,duplicateExcessRows,exactDuplicateGroups,conflictingDuplicateGroups,columns:[...g.columns.keys()].sort()};
     }),
     warnings:["Lower-tier and qualifying results are separate from main-tour matches; do not merge Elo streams without tier-aware calibration.",
       "Counts are an audit only. No raw match rows or player-level derived data are retained.",
