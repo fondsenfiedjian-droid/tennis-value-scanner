@@ -493,10 +493,10 @@ test("optional player statistics are not fetched during automatic prediction sca
 
 
 test("EV panel preserves bookmaker pair and opens match when prediction calculation fails", () => {
-  assert.match(html, /const oddsFallback=matches\\.map\\(\\(m,i\\)=>/);
+  assert.match(html, /const oddsFallback=matches\.map\(\(m,i\)=>/);
   assert.match(html, /Коэффициенты Winamax:/);
   assert.match(html, /EV не рассчитан:/);
-  assert.match(html, /evButton\\.hidden=false;/);
-  assert.match(html, /quote\\.matchIndex/);
-  assert.match(html, /renderBestBet\\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\\)/);
+  assert.match(html, /evButton\.hidden=false;/);
+  assert.match(html, /quote\.matchIndex/);
+  assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
