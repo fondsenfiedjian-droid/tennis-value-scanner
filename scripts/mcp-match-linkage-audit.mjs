@@ -266,7 +266,11 @@ async function main() {
   const output = oi >= 0 ? args[oi+1] : "mcp-match-linkage-audit.json";
   if (!dir) throw new Error("Usage: node scripts/mcp-match-linkage-audit.mjs --input-dir DIR --out report.json");
   const files = await readdir(dir);
-  const readCsv = async name => parseCsv(await readFile(join(dir,name),"utf8"));
+  const readCsv = async name => {
+    const source = await readFile(join(dir,name),"utf8");
+    try { return parseCsv(source); }
+    catch (error) { throw new Error("CSV parse failed for " + name + ": " + error.message); }
+  };
   const metadata = {ATP:await readCsv("charting-m-matches.csv"),WTA:await readCsv("charting-w-matches.csv")};
   const results = {ATP:[],WTA:[]};
   for (const file of files) {
