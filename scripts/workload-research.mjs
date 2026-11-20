@@ -28,7 +28,12 @@ export function buildPreMatchWorkload(rows) {
     while (index < clean.length && clean[index].tourney_date === date) day.push(clean[index++]);
     const get = player => {
       const history = histories.get(player) ?? [];
-      const prior = history.filter(item => today - item.day >= 1 && today - item.day <= 7);
+      const prior = [];
+      for (let i = history.length - 1; i >= 0; i--) {
+        const age = today - history[i].day;
+        if (age > 7) break;
+        if (age >= 1) prior.push(history[i]);
+      }
       const prior3 = prior.filter(item => today - item.day <= 3);
       const playingDays7 = new Set(prior.map(item => item.date)).size;
       const knownDurations = prior.filter(item => Number.isFinite(item.durationMinutes));
@@ -104,8 +109,12 @@ function fitCorrection(training, standardization, penalty=0.05) {
         for(let j=0;j<width;j++) hessian[i][j]+=weight*x[i]*x[j];
       }
     }
-    for(let i=0;i<width;i++){gradient[i]-=penalty*beta[i];hessian[i][i]+=penalty;}
-    const step=solve(hessian,gradient.map(value=>value/training.length));
+    for(let i=0;i<width;i++){
+      gradient[i]=gradient[i]/training.length-penalty*beta[i];
+      for(let j=0;j<width;j++) hessian[i][j]/=training.length;
+      hessian[i][i]+=penalty;
+    }
+    const step=solve(hessian,gradient);
     const maxStep=Math.max(...step.map(Math.abs));
     beta=beta.map((value,i)=>value+step[i]);
     if(maxStep<1e-7)break;
