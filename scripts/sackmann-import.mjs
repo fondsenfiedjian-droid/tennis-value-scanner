@@ -21,7 +21,12 @@ const finiteOrNull = v => {
 const completedScore = (value, bestOf) => {
   const s=String(value??"").trim();
   if(!s || /\b(?:W\/O|RET|ABD|DEF|DEFAULT|CANC)\b/i.test(s)) return false;
-  const sets=(s.match(/\d{1,2}-\d{1,2}/g)??[]).length;
+  const sets=[...s.matchAll(/(\d{1,2})-(\d{1,2})/g)]
+    .filter(match=>{
+      const a=Number(match[1]),b=Number(match[2]);
+      const high=Math.max(a,b),low=Math.min(a,b);
+      return (high>=6 && high-low>=2) || (high===7 && low===6);
+    }).length;
   const format=Number(bestOf);
   const requiredSets=format===5 ? 3 : 2;
   return sets>=requiredSets;
