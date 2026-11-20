@@ -587,3 +587,15 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The workflow downloads source CSVs only into ephemeral GitHub Actions storage. The report contains aggregate coverage only, no raw rows or player-level records, and is marked CC BY-NC-SA 4.0. No source CSVs or derived match-level data are committed.
 - No production model, probabilities, EV, recommendation logic, Worker, PWA, API quota or Winamax scraper behavior changes.
 - Pending: run regression tests and the isolated coverage workflow, inspect ATP/WTA results, then decide whether rolling pre-match serve/return research is feasible. Any such feature must use only matches completed before the target date and remain research-only until independent chronological validation.
+
+
+### Sackmann historical data coverage audit — merged and completed (2026-11-20)
+- PR #58 merged to main as `e67f20fcb31c3b0f65b2569badfd308aec3e2462`.
+- The isolated GitHub Actions workflow downloaded all 72 ATP/WTA yearly match files for 1991–2026 into ephemeral runner storage and completed successfully (run `44775779212`). No source CSVs or row-level/player-level records were committed or uploaded.
+- The aggregate audit contains 109,191 valid ATP matches and 94,760 valid WTA matches, spanning 1990-12-31 through 2026-05-25 in the archive snapshot.
+- Overall both-player serve-point / first- and second-serve-points-won coverage: ATP 90.77%, WTA 48.94%. Full both-player serve plus break-point-stat coverage: ATP 90.77%, WTA 28.58%. The lower WTA aggregate is caused by older seasons: from 2016 onward coverage is substantially higher; 2025 core/full coverage is 97.63% for WTA and 91.15% for ATP. 2026 is partial through May 25 (ATP 82.50%, WTA 86.55%).
+- Both-player ranking coverage: ATP 97.06%, WTA 93.73%; age coverage: ATP 99.97%, WTA 99.95%. Match-duration coverage is ATP 88.09% and WTA 26.42%, so duration must be treated as missing where absent.
+- The audit report is aggregate-only and marked CC BY-NC-SA 4.0. Source attribution: Jeff Sackmann / Tennis Abstract, original repositories `tennis_atp` and `tennis_wta`; archival mirror `Aneeshers/tennis-sackmann-archive`. Non-commercial use only; preserve attribution and share-alike for derived material. Do not use these data commercially without separate permission.
+- PR regression run `44775779234`: 348 tests passed, 0 failed. Audit run `44775779212` and project-state guard run `44775779294` succeeded.
+- No production probabilities, EV, recommendation logic, Worker, PWA, API quota, Winamax scraper or live data were changed.
+- Next research step: construct strictly pre-match rolling serve-point-win and return-point-win rates from prior completed matches only, with same-day records excluded and minimum-sample/coverage gates. Evaluate ATP and WTA separately, initially on the well-covered 2016–2026 period, using chronological training/evaluation and paired Brier/LogLoss against Elo. Include overall and surface-specific versions only if sample sizes support them. Keep research-only; do not integrate into production based on in-sample or aggregate results.
