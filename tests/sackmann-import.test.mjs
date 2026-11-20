@@ -42,6 +42,12 @@ test("rejects partial scores that do not contain enough completed sets",()=>{
   assert.equal(normalizeSackmannRows([row({score:"6-4 6-3 6-2",best_of:"5"})],"atp").rows.length,1);
 });
 
+test("supports Next Gen Fast4 set scoring without accepting partial sets elsewhere",()=>{
+  assert.equal(normalizeSackmannRows([row({tourney_name:"Next Gen Finals",score:"4-3(4) 4-2 4-1",best_of:"5"})],"atp").rows.length,1);
+  assert.equal(normalizeSackmannRows([row({tourney_name:"Next Gen Finals",score:"4-3(4) 2-1",best_of:"5"})],"atp").rows.length,0);
+  assert.equal(normalizeSackmannRows([row({tourney_name:"Regular Open",score:"4-1 4-2 4-3(4)",best_of:"5"})],"atp").rows.length,0);
+});
+
 test("preserves unknown surface as blank and reports it",()=>{
   const result=normalizeSackmannRows([row({surface:"Unknown"})],"atp");
   assert.equal(result.rows[0].surface,"");
