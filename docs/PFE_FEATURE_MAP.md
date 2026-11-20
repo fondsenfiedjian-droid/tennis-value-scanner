@@ -117,3 +117,25 @@ A separate exact-linkage audit connects Slam match metadata to ATP/WTA main-tour
 ## Grand Slam metadata linkage audit
 
 A research-only audit linked the 49 event metadata files (2011–2024) to ATP/WTA main-tour results from the same pinned archive. Initial aggregate result: 10,110 of 10,513 metadata rows linked (96.16%); 8,048 by normalized full names and 2,062 by unique initial-surname aliases; 371 unmatched named rows split into 330 with at least one player alias absent from the event result roster and 41 with an ambiguous initial-surname alias; no pair was ambiguously linked after unique-only resolution. A further 32 rows lack player names, and 636 available winner cross-checks had zero mismatches. Winner fields are absent in much of the metadata, so this is not a universal winner validation. Event dates in Sackmann results are tournament-week dates, not match-specific dates; they cannot establish within-event match order. Alias-based links are weaker than full-name links and must remain separately tagged. No player-level linked dataset is retained and no feature is enabled.
+
+
+## Live Tennis API point-state feature candidates (research only)
+
+The Live Tennis API academic dataset records scoreboard states rather than strokes. A point outcome can be inferred from the transition between consecutive states in the same match, but the public sample may begin mid-match or stop before the final point. The `server` field is recorded at each state; its exact alignment to the transition must be validated before attributing the point to a server. The public sample does not contain the external Sackmann player-ID crosswalk in version 1.0.3.
+
+Potential derived signals, after transition validation:
+- Serve-point win rate and return-point win rate, separately by tour and surface.
+- Hold/break and tiebreak performance, with denominators and sample sizes.
+- Deciding-set and high-pressure score-state outcomes, with strong shrinkage toward tour/surface baselines.
+- Live score-state features (sets, games, points, server, tiebreak flag) for a separate in-play probability model.
+
+Research safeguards:
+1. Reconstruct outcomes only from consecutive states in capture order; do not treat rows as individual point results.
+2. Validate point transitions for standard games, deuce/advantage, tiebreaks, set changes, missing states and service changes against hand-checked matches.
+3. Retain match-level observed coverage: tape start state, final state, observed duration/points, and whether the full match is present. Do not extrapolate missing segments as losses or zeros.
+4. Keep live-observed and post-match reconstructed provenance separate. Public sample contains observed rows only; reconstructed history is not part of the public deposit.
+5. For pre-match features, aggregate only matches completed before the target match start. For same-event matches, require reliable match-specific timestamps/order; otherwise exclude same-event history.
+6. Require minimum prior match/point counts, shrink sparse player estimates, and test on untouched chronological holdouts.
+7. Keep ATP, WTA, Challenger and ITF populations separate until tier-specific calibration and transitions are validated.
+
+These candidates are not shot-style or serve-speed features: the dataset explicitly has no serve speed, serve direction or shot-level fields. No production PFE feature is enabled.

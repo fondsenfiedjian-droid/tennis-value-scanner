@@ -865,3 +865,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - Initial Slam linkage audit (run 44829495676): 10,110/10,513 metadata rows linked (96.16%); 8,048 full-name and 2,062 unique initial-surname links; 371 unmatched named rows (330 alias unavailable in the event result roster; 41 initial-surname alias collisions); 32 missing-name rows; 636 winner checks, zero mismatches. Alias links are separately tagged. The event-week dates are not match-specific; no within-event chronology can be inferred.
 - Linkage audit refinement classifies unmatched rows by alias ambiguity, missing roster identity, or no matching player pair. It stores aggregate counts only and never emits player names.
+
+- Added `docs/DATA_SOURCE_REGISTRY.md`: pinned historical baseline, TennisMyLife live ATP/WTA candidate and its non-commercial/no-redistribution terms, Live Tennis API academic point-state dataset (173,571 match index; 22,031 observed matches / 3.18M score states), and AcesAPI as an optional credit-limited cross-check. No new provider data or API key was ingested; no paid calls or subscriptions were made. All candidates remain behind quality, licensing and chronology gates.
+
+- Public Live Tennis API Zenodo sample is versioned: use v1.0.3, which follows the v1.0.2 UTC timestamp correction. The public players file dropped the external Sackmann ID crosswalk; do not assume direct player-ID joins from the public sample. Full research data is described as retaining the crosswalk, subject to institutional access approval.
+
+- Added research-only point-state PFE candidates to `docs/PFE_FEATURE_MAP.md`: transition-derived serve/return outcomes, hold/break, tiebreak and score-pressure features, plus a separate in-play model path. The server-to-transition alignment, partial-tape coverage, same-event chronology and tier calibration are explicit validation gates; no feature is active.
