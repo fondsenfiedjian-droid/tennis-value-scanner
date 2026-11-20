@@ -1563,7 +1563,7 @@
       if(highest.freshnessLevel==='medium')riskNotes.push('котировка не обязательно актуальна у букмекера');
       if(highest.probability<50)riskNotes.push('вероятность прохода ниже 50%');
       riskNotes.push('EV — оценка модели, а не гарантия прибыли');
-      evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(highest.player)+' — '+escapeHtml(highest.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Ставка: <b>'+escapeHtml(highest.player)</b> · '+escapeHtml(highest.bookmaker||'Winamax')+' <b>'+highest.odds.toFixed(2)+'</b><br><span class="best-bet-value">EV +'+highest.ev.toFixed(2)+'%</span> · вероятность модели '+highest.probability.toFixed(2)+'% · справедливый кэф '+fairOdds.toFixed(2)+'<br>Качество данных: '+highest.reliabilityScore+'/100 · '+freshnessLabel+'<br><b>Риск:</b> '+escapeHtml(riskNotes.join('; '))+'</div>';
+      evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(highest.player)+' — '+escapeHtml(highest.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Ставка: <b>'+escapeHtml(highest.player)+'</b> · '+escapeHtml(highest.bookmaker||'Winamax')+' <b>'+highest.odds.toFixed(2)+'</b><br><span class="best-bet-value">EV +'+highest.ev.toFixed(2)+'%</span> · вероятность модели '+highest.probability.toFixed(2)+'% · справедливый кэф '+fairOdds.toFixed(2)+'<br>Качество данных: '+highest.reliabilityScore+'/100 · '+freshnessLabel+'<br><b>Риск:</b> '+escapeHtml(riskNotes.join('; '))+'</div>';
       evButton.hidden=false;
       evButton.onclick=()=>{
         const card=document.querySelector('.match-card[data-match-index="'+Number(highest.matchIndex)+'"]');
