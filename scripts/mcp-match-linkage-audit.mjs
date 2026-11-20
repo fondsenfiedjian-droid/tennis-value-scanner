@@ -109,11 +109,16 @@ function collect(map, events, round, pairKey) {
 }
 function withinDateWindow(rows, matchDate, windowDays) {
   const target = day(matchDate);
-  const eligible = rows.filter(row => {
-    const delta = target - day(row.date);
-    return delta >= 0 && delta <= windowDays;
-  });
-  return { eligible, conflicts: rows.length - eligible.length };
+  const deltas = rows.map(row => target - day(row.date));
+  const eligible = rows.filter((row, i) => deltas[i] >= 0 && deltas[i] <= windowDays);
+  return { eligible, conflicts: rows.length - eligible.length, deltas };
+}
+function addDateConflictDeltas(stats, rows, matchDate) {
+  const checked = withinDateWindow(rows, matchDate, 21);
+  for (const delta of checked.deltas) {
+    const bin = delta < 0 ? "before-event" : delta <= 28 ? "22-28-days" : delta <= 35 ? "29-35-days" : "over-35-days";
+    stats.dateConflictDeltaBins[bin] = (stats.dateConflictDeltaBins[bin] || 0) + 1;
+  }
 }
 
 function buildIndex(rows, tour) {
@@ -172,6 +177,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     validMetadataDateRows: 0, invalidMetadataDateRows: 0, missingMetadataDateRows: 0,
     missingPlayerNameRows: 0, missingTournamentRows: 0, missingRoundRows: 0, invalidRoundRows: 0,
     eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
+    dateConflictDeltaBins: {"before-event":0,"22-28-days":0,"29-35-days":0,"over-35-days":0},
     ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
     linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0, linkedFromAdjacentYear: 0,
     unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, unmatchedByReason: {}, unmatchedTournamentByReason: {}, byYear: {}
@@ -232,12 +238,12 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
       const filtered = withinDateWindow(fullExact, date, windowDays).eligible;
       if (filtered.length === 1) { candidate = filtered[0]; method = "full"; }
       else if (filtered.length > 1) { stats.ambiguousFullNamePairs++; reason = "ambiguous-full"; }
-      else { stats.dateConflicts++; reason = "date-conflict"; }
+      else { stats.dateConflicts++; addDateConflictDeltas(stats, fullExact, date); reason = "date-conflict"; }
     } else if (!round && fullAny.length) {
       const filtered = withinDateWindow(fullAny, date, windowDays).eligible;
       if (filtered.length === 1) { candidate = filtered[0]; method = "full-no-round"; }
       else if (filtered.length > 1) { stats.ambiguousFullNamePairs++; reason = "ambiguous-full"; }
-      else { stats.dateConflicts++; reason = "date-conflict"; }
+      else { stats.dateConflicts++; addDateConflictDeltas(stats, fullAny, date); reason = "date-conflict"; }
     } else if (!fullExact.length) {
       const a1 = alias(p1), a2 = alias(p2);
       if (a1 && a2) {
@@ -260,7 +266,7 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
           const filtered = withinDateWindow(candidates,date,windowDays).eligible;
           if (filtered.length === 1) { candidate = filtered[0]; method = round ? "alias" : "alias-no-round"; }
           else if (filtered.length > 1) { stats.ambiguousAliasPairs++; reason = "ambiguous-alias"; }
-          else if (candidates.length) { stats.dateConflicts++; reason = "date-conflict"; }
+          else if (candidates.length) { stats.dateConflicts++; addDateConflictDeltas(stats, candidates, date); reason = "date-conflict"; }
         }
       } else { stats.aliasUnavailable++; reason = "alias-unavailable"; }
     }
