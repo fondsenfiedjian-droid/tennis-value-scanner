@@ -44,6 +44,22 @@ test("Valuebetennis importer excludes matches ending inside an unfinished set", 
   assert.deepEqual(parsed.rows.map(row => row.match_num), ["9504", "9505"]);
 });
 
+test("Valuebetennis importer rejects malformed scores and accepts completed best-of-five scores", () => {
+  const csv = [
+    header,
+    "9601,2026-11-19,811,atp,Hard,1,2,1,6-4 2-1,1.8,2.0,1.7,2.1",
+    "9602,2026-11-19,812,atp,Hard,3,4,3,6-4 UNKNOWN,1.8,2.0,1.7,2.1",
+    "9603,2026-11-19,813,atp,Hard,5,6,5,6-4,1.8,2.0,1.7,2.1",
+    "9604,2026-11-19,814,atp,Hard,7,8,7,6-4 7-6(6),1.8,2.0,1.7,2.1",
+    "9605,2026-11-19,815,atp,Hard,9,10,9,6-4 3-6 6-2 4-6 6-3,1.8,2.0,1.7,2.1"
+  ].join("\n");
+  const parsed = parseValuebetennisCsv(csv);
+  assert.equal(parsed.rows.length, 2);
+  assert.equal(parsed.rejectedByReason.incomplete_set_score, 1);
+  assert.equal(parsed.rejectedByReason.invalid_score_format, 2);
+  assert.deepEqual(parsed.rows.map(row => row.match_num), ["9604", "9605"]);
+});
+
 test("Valuebetennis importer detects semicolon delimiter and UTF-8 BOM", () => {
   const csv = "\uFEFF" + header.replaceAll(",", ";") + "\n" +
     "2001;2025-02-01;600;atp;Grass;12;13;13;6-4 6-4;2;1.8;2.1;1.7";
