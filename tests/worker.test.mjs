@@ -1610,7 +1610,8 @@ test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", 
 test("prediction scanner reuses all fresh cached candidates and caps only uncached API lookups", () => {
   assert.match(frontendSource, /const allCandidates=matches\.map/);
   assert.match(frontendSource, /const cachedCandidates=\[\],uncachedCandidates=\[\]/);
-  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,3\)\]/);
+  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,8\)\]/);
+  assert.match(frontendSource, /forbidden_or_plan_restricted'\?6\*60\*60\*1000/);
   assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
   assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed\)/);
 });
