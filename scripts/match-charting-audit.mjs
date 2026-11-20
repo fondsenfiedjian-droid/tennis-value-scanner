@@ -96,6 +96,7 @@ export function auditMatchChartingFiles(filesByName) {
     warnings: [
       "Crowdsourced and selectively charted sample; not representative of the full ATP/WTA calendar.",
       "Match-level charting coverage is not proof that every point or every stat family is present.",
+      "Metadata rows with unexpected surface/hand values require manual review before feature engineering.",
       "Research-only: do not activate player-style features in production from coverage counts alone."
     ]
   };
@@ -109,11 +110,17 @@ export function auditMatchChartingFiles(filesByName) {
     const dates = matchRows.map(row => text(row.Date)).filter(validDate).sort();
     const surfaces = {};
     const hands = { player1: {}, player2: {} };
+    const allowedSurfaces = new Set(["Hard", "Clay", "Grass", "Carpet"]);
+    const allowedHands = new Set(["R", "L"]);
+    let rowsWithUnexpectedSurface = 0;
+    let rowsWithUnexpectedHand = 0;
     for (const row of matchRows) {
       const surface = text(row.Surface) || "Unknown";
       surfaces[surface] = (surfaces[surface] || 0) + 1;
+      if (!allowedSurfaces.has(surface)) rowsWithUnexpectedSurface++;
       const h1 = text(row["Pl 1 hand"]) || "Unknown";
       const h2 = text(row["Pl 2 hand"]) || "Unknown";
+      if (![h1, h2].every(hand => hand === "Unknown" || allowedHands.has(hand))) rowsWithUnexpectedHand++;
       hands.player1[h1] = (hands.player1[h1] || 0) + 1;
       hands.player2[h2] = (hands.player2[h2] || 0) + 1;
     }
@@ -132,7 +139,12 @@ export function auditMatchChartingFiles(filesByName) {
         validDateRows: dates.length,
         dateRange: dates.length ? { from: dates[0], to: dates.at(-1) } : null,
         surfaceCounts: surfaces,
-        playerHandCounts: hands
+        playerHandCounts: hands,
+        qualityChecks: {
+          rowsWithUnexpectedSurface,
+          rowsWithUnexpectedHand,
+          status: rowsWithUnexpectedSurface || rowsWithUnexpectedHand || metadataDuplicates ? "review-required" : "clean"
+        }
       },
       statFiles: files
     };
