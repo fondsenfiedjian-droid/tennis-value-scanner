@@ -1,3 +1,7 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { gunzipSync } from "node:zlib";
+import { parseCsv } from "./backtest.mjs";
+
 const integer = value => {
   const n = Number(value);
   return Number.isInteger(n) ? n : null;
@@ -176,4 +180,24 @@ export function auditPointStateTransitions(rows) {
     provenance: "observed score states only; rows are not point outcomes",
     totals
   };
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  let input = "", out = "point-state-transition-audit.json";
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--input") input = args[++i];
+    else if (args[i] === "--out") out = args[++i];
+    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] --out report.json");
+  }
+  if (!input) throw new Error("Missing --input");
+  const raw = await readFile(input);
+  const csv = input.endsWith(".gz") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
+  const report = auditPointStateTransitions(parseCsv(csv));
+  await writeFile(out, JSON.stringify(report, null, 2) + "\\n");
+  console.log(JSON.stringify(report.totals));
+  console.log("Wrote aggregate-only point-state audit: " + out);
+}
+if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
+  main().catch(error => { console.error(error.message); process.exitCode = 1; });
 }
