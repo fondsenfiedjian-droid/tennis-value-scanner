@@ -301,3 +301,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `tests/human-factor.test.mjs` covering time windows, rest, consecutive days, incomplete duration data, invalid/future timestamps, epoch timestamps, empty history and descriptive comparisons.
 - This is an experimental foundation only: it is not yet wired into live predictions or the PWA because the current live feed does not provide a complete, verified per-player recent-match history with reliable duration data. Do not infer player fatigue or psychology when source data is absent.
 - Next: identify a lawful, reliable recent-results feed; build a strictly pre-match history adapter; run chronological ablation tests (baseline vs workload features) on a held-out period. Only then consider learning coefficients and allowing any probability adjustment. Psychological proxies remain deferred until they can be measured without subjective labels.
+
+
+### Human-factor workload baseline — merged (2026-11-20)
+- PR #32 merged: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/32
+- Merge commit: `56539a07a53103abc670a9d2368314a3676db2ce`.
+- Regression workflow run `44745619099`: 325 tests passed, 0 failed. The project-state guard also passed.
+- Added module `human-factor.js` and tests `tests/human-factor.test.mjs`; README and this journal document its experimental status.
+- This is a backend-independent source module, not a frontend or Worker change; no Netlify/Cloudflare deployment is required or claimed.
+- Probability and EV calculations remain unchanged. Next engineering step is to inspect what reliable pre-match player-history fields are already available in the local prediction/result archive, then determine whether a strictly pre-match workload adapter can be built without extra API quota. Do not assume match durations exist.
