@@ -93,3 +93,15 @@ test("keeps invalid dates and unknown events unmatched without retaining player 
   assert.equal(serialized.includes("Carlos Alcaraz"), false);
   assert.equal(serialized.includes("m1"), false);
 });
+
+test("maps generic Olympics metadata to the correct host event for that year",()=>{
+ const report=audit(
+  [meta({Date:"20240727",Tournament:"Olympics",Round:"R32"})],
+  [
+   result({tourney_date:"20240726",tourney_name:"Paris Olympics",round:"R32"}),
+   result({tourney_date:"20240801",tourney_name:"Montreal",match_num:"2",winner_name:"Other Player",loser_name:"Another Player"})
+  ]
+ );
+ assert.equal(report.linked,1);
+ assert.equal(report.linkedByEventAlias,1);
+});
