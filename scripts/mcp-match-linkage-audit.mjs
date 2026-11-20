@@ -65,7 +65,7 @@ export function auditMcpMatchLinkage(files){
   for(const file of files){
     const name=basename(file.filename),mm=name.match(META_FILE),rm=name.match(RESULT_FILE);
     if(mm)metadata.set(mm[1].toLowerCase(),parseMcpCsv(file.content));
-    else if(rm)results.push({tour:rm[1].toUpperCase(),year:rm[2],rows:parseCsv(file.content)});
+    else if(rm)results.push({tour:rm[1].toUpperCase(),sourceType:rm[2]||"main",year:rm[3],rows:parseCsv(file.content)});
     else throw new Error("Unexpected MCP linkage filename: "+name);
   }
   if(!metadata.has("m")||!metadata.has("w")||!results.length)throw new Error("ATP/WTA MCP metadata and annual result files are required");
@@ -81,14 +81,14 @@ export function auditMcpMatchLinkage(files){
     if(pair==="|")continue;
     const event=eventKey(row.tourney_name),round=normalizeRound(row.round);
     const identity=[row.tourney_id,row.match_num,pair,round].join(":");
-    add(exactIndex,[file.tour,year,event,pair,round].join(":"),row,identity);
-    add(eventPairIndex,[file.tour,year,event,pair].join(":"),row,identity);
-    add(yearPairIndex,[file.tour,year,pair].join(":"),row,identity);
+    add(exactIndex,[file.tour,year,event,pair,round].join(":"),{...row,__sourceType:file.sourceType},identity);
+    add(eventPairIndex,[file.tour,year,event,pair].join(":"),{...row,__sourceType:file.sourceType},identity);
+    add(yearPairIndex,[file.tour,year,pair].join(":"),{...row,__sourceType:file.sourceType},identity);
   }
   const byTour={};
   for(const [code,rows] of metadata){
     const tour=code==="m"?"ATP":"WTA";
-    const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,dateOffsetsOver21Days:0};
+    const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,dateOffsetsOver21Days:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
     const seen=new Set(),offsets=[];
     for(const row of rows){
       const id=String(row.match_id??"").trim();
@@ -106,6 +106,11 @@ export function auditMcpMatchLinkage(files){
       const candidates=[...(exactIndex.get([tour,year,event,pair,round].join(":"))?.values()||[])];
       if(candidates.length===1){
         counters.linkedUnique++;counters.linkedFullName++;
+        const sourceType=candidates[0].__sourceType;
+        if(sourceType==="main")counters.linkedMainTour++;
+        else if(sourceType==="qual_chall")counters.linkedChallengerQualifying++;
+        else if(sourceType==="futures")counters.linkedFutures++;
+        else if(sourceType==="qual_itf")counters.linkedITFQualifying++;
         const resultDate=String(candidates[0].tourney_date??"");
         const a=dayNumber(date),b=dayNumber(resultDate);
         if(a!==null&&b!==null){const offset=a-b;offsets.push(offset);if(offset<0)counters.negativeDateOffsets++;if(offset>21)counters.dateOffsetsOver21Days++;}
@@ -116,11 +121,13 @@ export function auditMcpMatchLinkage(files){
     }
     offsets.sort((a,b)=>a-b);
     counters.dateOffsetDays=offsets.length?{count:offsets.length,min:offsets[0],median:offsets[Math.floor((offsets.length-1)/2)],p90:offsets[Math.floor((offsets.length-1)*0.9)],max:offsets.at(-1)}:null;
+    counters.dateOffsetAnomalyLinks=counters.negativeDateOffsets+counters.dateOffsetsOver21Days;
+    counters.dateOffsetConsistentLinks=offsets.length-counters.dateOffsetAnomalyLinks;
     counters.linkagePct=counters.uniqueMatchIds?Number((100*counters.linkedUnique/counters.uniqueMatchIds).toFixed(2)):null;
     byTour[tour]=counters;
   }
   const totals=Object.values(byTour).reduce((sum,x)=>{
-    for(const k of ["metadataRows","uniqueMatchIds","linkedUnique","linkedFullName","ambiguous","roundConflicts","eventMismatches","noPlayerPairInYear","missingNames","invalidDates","missingDates","negativeDateOffsets","dateOffsetsOver21Days"])sum[k]=(sum[k]||0)+x[k];
+    for(const k of ["metadataRows","uniqueMatchIds","linkedUnique","linkedFullName","ambiguous","roundConflicts","eventMismatches","noPlayerPairInYear","missingNames","invalidDates","missingDates","negativeDateOffsets","dateOffsetsOver21Days","linkedMainTour","linkedChallengerQualifying","linkedFutures","linkedITFQualifying","dateOffsetAnomalyLinks","dateOffsetConsistentLinks"])sum[k]=(sum[k]||0)+x[k];
     return sum;
   },{});
   totals.linkagePct=totals.uniqueMatchIds?Number((100*totals.linkedUnique/totals.uniqueMatchIds).toFixed(2)):null;
