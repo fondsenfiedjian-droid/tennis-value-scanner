@@ -329,3 +329,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The adapter reads the app's archived prediction/result row shape, but no production archive was uploaded or inspected; it is a pure function tested against representative rows. It is not wired into the live prediction pipeline.
 - Important limitation: archive rows are sparse and selection-biased; scheduled dates do not establish match completion time. The adapter only counts earlier calendar days and explicitly leaves rest hours/duration unknown. No probability/EV changes and no production deploy required.
 - Next: evaluate archive completeness using the app's **JSON backup** (`Статистика → Резервная копия JSON`), not the CSV export. Code inspection confirmed the CSV column list omits `playerId`/`opponentId`, while the JSON backup preserves full archive records required by `calculateArchiveWorkloadProfile()`. Analyze the JSON privately and never commit it. Then create a chronological holdout experiment. If archive coverage is too sparse, use a separate lawful historical results source rather than treating the archive as complete player workload.
+
+
+## Local-only archive workload coverage audit (2026-11-20)
+- Added a local PWA diagnostic in the Statistics view. It reads the existing browser archive and displays record/match/player-ID coverage plus the number of target matches where either/both players have archived history in prior 3/7 UTC calendar days.
+- The archive is read in-browser only; the audit makes no network requests, exports no archive, and does not alter predictions, EV or stakes.
+- Added pure helper `analyzeArchiveWorkloadCoverage()` in `human-factor.js` and regression coverage for completed pairs, missing IDs and prior-day availability.
+- The diagnostic remains descriptive: the prediction archive is a partial sample, not a complete tour history. Same-day records are excluded.
+- Next: run regression workflow; after deployment is confirmed, ask the user to open Statistics → «Аудит нагрузки игроков» and share only the small numeric report. Then decide whether archive coverage is sufficient for a chronological experiment.
