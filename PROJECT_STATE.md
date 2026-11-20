@@ -449,5 +449,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### Calibration leakage guard — earliest scheduled start (2026-11-20)
 - Calibration now compares every candidate snapshot against the earliest known scheduled match start across all archived snapshots for that match, not the first date among only `upcoming` rows.
 - This prevents a later schedule revision from reclassifying a snapshot taken after the original start as a valid pre-match forecast.
-- Added regression coverage for a match rescheduled after its original start; the later snapshot must not enter calibration.
+- Added regression coverage for a match rescheduled after its original start; the later snapshot must not enter calibration. Post-start exclusions are counted once per match, not double-counted.
 - PWA shell cache advanced from v125 to v126. Existing archive data remains unchanged; no external API calls.
