@@ -638,3 +638,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Implementation is on branch `fix/bet-of-day-odds-guard`; regression workflow run `44798255774` passed 353/353 tests and project-state guard run `44798255740` passed on head `169143ff1dead3ce131ae414a9c7416b2e0aace5`. Production deployment has not yet been triggered.
 - This is an eligibility/data-validation correction only. It does not alter the Elo model, probability estimates, Winamax scraper, or API usage.
 - CI also exposed three pre-existing CLV tests with hard-coded 2026-11-20 evening timestamps. Their match starts and quote snapshots are now generated relative to the test clock, preserving the intended pre-match/closing-quote relationships at any execution hour. This removes wall-clock-dependent failures without changing CLV production logic.
+
+
+### EV panel odds fallback fix (2026-11-20)
+- The EV-day panel previously hid its Open match action whenever no valid positive-EV model candidate existed. If the prediction API failed or the local prediction cache was empty, the panel showed no player pair or bookmaker prices even though the match card had a verified complete fresh Winamax quote pair.
+- The panel now retains and displays the match pair and both Winamax odds as a quote-only fallback, clearly labels EV as uncalculated, and provides a working Open match action. It does not label an unmodelled quote as a value bet or infer a probability.
+- Regression test covers fallback markup, quote display and match navigation.
+- Prediction model, selection thresholds, API behavior and automatic betting remain unchanged. No Live Tennis API quota is consumed by this UI fallback.
+- Implementation branch: fix/ev-day-odds-fallback; awaiting CI and production deployment.
