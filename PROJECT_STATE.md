@@ -678,3 +678,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #62 was merged to `main` on 2026-11-20 as `0727c5c5ca6168d49b22c7a2ffcd87e47ce75bce`. On the merged head, all six GitHub checks completed: worker-tests passed, project-state guard passed, Cloudflare Worker build passed, Netlify deploy preview passed; three hosting-rule checks were neutral. GitHub commit status and PR state were successful/merged.
 - The adapter remains offline and is not connected to production predictions. No Live Tennis API calls, Apify runs, paid services, production deployment or user archive upload were used for this merge.
 - Next: research whether pre-match historical ranking and age add repeatable out-of-sample value beyond chronological Elo. Use only ranking/age information available on or before the match date; evaluate ATP/WTA separately with expanding chronological holdouts and paired Brier/LogLoss. Keep the research-only and license restrictions explicit; do not add Sackmann-derived data to the public app or commercial use without separate permission.
+
+
+### Sackmann private historical import preparation — implementation in review (2026-11-20)
+- Added `scripts/sackmann-import.mjs`: offline CLI reads yearly main-tour `atp_matches_YYYY.csv` or `wta_matches_YYYY.csv` files from a user-supplied local folder and writes a compact normalized CSV outside the repository.
+- Retains tournament date/ID, tour, round, surface, winner/loser IDs and names, rank/ranking points, age, score, best-of and match duration. ATP and WTA are explicitly separate.
+- Excludes impossible dates, invalid/equal player IDs, and walkover/retirement/unfinished outcomes. Unknown surfaces are retained with blank surface and counted. No raw or generated Sackmann data is committed.
+- Added unit tests in `tests/sackmann-import.test.mjs` and usage/licensing documentation in `docs/SACKMANN_RESEARCH.md`.
+- Source rows already carry winner/loser rank and age snapshots associated with tournament date; these are candidates for research, not production features. Do not assume they are exact match-start snapshots; validate tournament date alignment and availability before any modelling.
+- No data download, Live Tennis API request, Apify run, paid service, production change or deployment was performed. Importer has not yet been run against the full archive; it requires the user/source CSVs to be available in a local folder.
+- License: Sackmann source archive is CC BY-NC-SA 4.0. No commercial use or public redistribution of raw/derived data without appropriate permission/licence review.
+- Branch: `feat/sackmann-private-import`; PR/CI pending. Next: run CI, fix findings, then test on a small local ATP/WTA source sample before attempting a full archive import and chronological feature evaluation.
