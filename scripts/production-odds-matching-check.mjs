@@ -80,7 +80,7 @@ if (matched.some(row => row.side1 === null || row.side2 === null)) {
 const predictionCandidates = matched.filter(row =>
   row.playerIdA && row.playerIdB &&
   [Number(row.side1), Number(row.side2)].some(value => Number.isFinite(value) && value >= 1.9)
-).slice(0, 3);
+).slice(0, 9);
 let successfulPredictions = 0;
 let unavailableRatings = 0;
 if (predictionCandidates.length) {
