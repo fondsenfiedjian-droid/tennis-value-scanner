@@ -75,6 +75,40 @@ The latest ephemeral audit found these categorical values in the 16 family files
 
 Next step: map each literal code to the correct workbook formula/category and verify player perspective and denominator. Do not convert these strings into features by guesswork.
 
+
+## Aggregate-family codebook: verified mappings
+
+The following mappings were checked against the pinned source CSVs and the extracted MatchChart 0.3.2 workbook. “Verified” here means the row orientation/category and arithmetic are supported by source examples/formulas; it does not establish predictive value or population representativeness.
+
+### Overview — player and set orientation verified
+
+- Each row belongs to the named `player`; `set=Total` is the whole-match aggregate and numeric set values are per-set rows.
+- Verified fields: `serve_pts`, `aces`, `dfs`, `first_in`, `first_won`, `second_in`, `second_won`, `bk_pts`, `bp_saved`, `return_pts`, `return_pts_won`, winners and unforced-error splits.
+- Safe candidate rates, when denominators are positive: first-serve-in = `first_in / serve_pts`; first-serve points won = `first_won / first_in`; second-serve points won = `second_won / second_in`; service points won = `(first_won + second_won) / serve_pts`; break points saved = `bp_saved / bk_pts`; return points won = `return_pts_won / return_pts`.
+- The workbook MatchStats formulas independently confirm the service-point and first/second-serve denominators. Do not calculate second-serve rate with `second_in` as the denominator for second serves played; `second_in` is the number of second serves in, whereas the workbook's second-serve-points denominator is second-serve points played (service points minus first serves in).
+
+### ServeBasics — player perspective and first/second serve rows verified
+
+- `player` identifies the player; `row=1` is first-serve points, `row=2` is second-serve points, and `row=Total` is all service points. This is consistent with the workbook's first/second-serve definitions and the source arithmetic (the 1 and 2 point counts sum to Total in checked examples).
+- `pts` and `pts_won` provide the natural denominator/numerator for serve-point win rate within each row. `aces`, `unret`, `forced_err` and `pts_won_lte_3_shots` are counts, not percentages.
+- `wide`, `body`, and `t` are directional serve counts. Treat them as descriptive counts only until the source's direction denominator and treatment of first-serve faults are tested across the full file.
+
+### Rally — explicit Player1/Player2 orientation verified; subrows partly decoded
+
+- The file identifies `server` and `returner` by name. `pl1_*` and `pl2_*` are match Player1/Player2 fields; in the workbook Player1 is the player who served first in the match. Do not reinterpret pl1/pl2 as current server/returner.
+- `row=Total` is the whole-match rally aggregate; `1-3`, `4-6`, `7-9`, and `10` are rally-length buckets. The workbook counts shots including the serve and excludes errors, so do not equate these bins with number of post-serve groundstrokes.
+- Suffix rows such as `1-3-1`, `1-3-2` remain unmapped until their additional dimension is independently verified. Exclude them from features rather than guessing.
+
+### Still blocked pending family-specific verification
+
+ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints, KeyPointsReturn, KeyPointsServe, ShotDirOutcomes, SnV, SvBreakSplit and SvBreakTotal have been inspected for schema and literal category values, but their row orientation, category intersections and/or denominators are not yet sufficiently verified for player features. In particular:
+- Return-depth codes 7/8/9 in the point notation describe return landing depth (service boxes / mid-court / near baseline); that does not automatically decode every aggregate `row` label such as `89`, `4D` or `v1st`.
+- Key-point labels and serve/break split labels must not be treated as mutually exclusive or additive without formula-level checks.
+- Serve-direction counts need a validated attempt denominator; serve-in and error columns may represent different populations.
+- Shot-direction and shot-type counts may overlap at point-ending shots and serve returns; do not sum them as if they partition all strokes.
+
+No aggregate-family feature is production-enabled. The next implementation stage is a row-code/denominator audit using source match reports and workbook formulas, followed by exact prior-match linkage and chronological testing.
+
 ## Research protocol
 
 1. Decode all row/category codes and denominators from the source workbook/instructions before computing features.
