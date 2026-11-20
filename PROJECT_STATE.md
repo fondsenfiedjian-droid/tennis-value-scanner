@@ -699,3 +699,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No production model, deployment, Live Tennis API, Apify, paid service or archive data storage is affected.
 - PR #68 merged to `main` on 2026-11-20 as `55985093c3f87a740417cd72f0c9a20835a07b07`. Regression tests `44810204287` and project-state guard `44810204145` passed. A local focused check also passed seven score-completeness cases. No production deployment or API/Apify usage was required.
 - Real ATP/WTA 2025 files were inspected for schema compatibility, but the importer has not yet been run against the full archive. Next: run the importer on a small, representative ATP/WTA CSV sample, then execute separate chronological backtests and evaluate rank/age features without leakage.
+
+
+### Sackmann Next Gen Fast4 score-format correction — implementation in review (2026-11-20)
+- Actual ATP 2025 archive audit found 15 completed Next Gen Finals matches using Fast4 sets (4-game sets); the standard completed-set gate would incorrectly exclude them.
+- Follow-up importer recognizes Next Gen/Fast4 tournament names and applies Fast4 completion rules, including 4-3 sets with a tiebreak marker. The regular-tour score gate remains unchanged.
+- Added tests for valid Next Gen completed scores, partial Fast4 scores and rejection of Fast4-looking scores at ordinary tournaments.
+- No production behavior, external API calls, Apify runs, paid services or raw archive storage.
+- Branch: `fix/sackmann-nextgen-score-format`; CI/PR pending. Next: run CI and repeat the 2025 ATP/WTA data-quality audit.
