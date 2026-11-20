@@ -319,7 +319,7 @@ test("settings apply a selected skin immediately, persist it on Save, and restor
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v121"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v122"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
