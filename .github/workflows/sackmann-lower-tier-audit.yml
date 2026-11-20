@@ -35,10 +35,10 @@ jobs:
           import { readFile, writeFile } from "node:fs/promises";
           const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
           const files = tree.tree.filter(item =>
-            /^(atp|wta)\\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\\d{4}\\.csv$/i.test(item.path)
+            /^(atp|wta)\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(item.path)
           ).map(item => item.path).sort();
           if (files.length !== 144) throw new Error("Expected 144 pinned lower-tier files, found " + files.length);
-          await writeFile(process.env.RUNNER_TEMP + "/lower-tier-files.txt", files.join("\\n") + "\\n");
+          await writeFile(process.env.RUNNER_TEMP + "/lower-tier-files.txt", files.join("\n") + "\n");
           console.log("Pinned lower-tier source files: " + files.length);
           NODE
           cat "$RUNNER_TEMP/lower-tier-files.txt" | xargs -r -n 1 -P 8 sh -c '
@@ -65,7 +65,7 @@ jobs:
             "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|",
             ...report.groups.map(g => `| ${g.tour} | ${g.sourceType} | ${g.files} | ${g.years[0]}–${g.years.at(-1)} | ${g.rows} | ${g.completedMatches} | ${g.uniquePlayers} | ${g.rankBothPct}% | ${g.ageBothPct}% | ${g.knownSurfacePct}% | ${g.coreServeStatsBothPct}% |`)
           ];
-          await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\\n") + "\\n"));
+          await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n"));
           NODE
       - name: Upload aggregate-only audit report
         uses: actions/upload-artifact@v4
