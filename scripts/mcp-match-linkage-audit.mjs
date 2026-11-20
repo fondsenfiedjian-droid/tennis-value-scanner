@@ -58,10 +58,10 @@ function add(map, key, row) {
   if (!map.has(key)) map.set(key, []);
   map.get(key).push(row);
 }
-function collect(map, year, events, round, pairKey) {
+function collect(map, events, round, pairKey) {
   const found = new Map();
-  for (const event of events) {
-    const key = round ? [year,event,round,pairKey].join("|") : [year,event,pairKey].join("|");
+  for (const item of events) {
+    const key = round ? [item.year,item.event,round,pairKey].join("|") : [item.year,item.event,pairKey].join("|");
     for (const row of map.get(key) || []) found.set(row.rowKey, row);
   }
   return [...found.values()];
@@ -160,18 +160,23 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
     }
     if (!stats.byYear[year]) stats.byYear[year] = {metadata:0,linked:0,fullName:0,alias:0,unmatched:0};
     const ys = stats.byYear[year]; ys.metadata++;
-    const eventSet = index.eventsByYear.get(year) || new Set();
-    const available = matchingEvents(tournament, year, eventSet);
+    const available = [];
+    for (const candidateYear of [String(Number(year) - 1), year, String(Number(year) + 1)]) {
+      const eventSet = index.eventsByYear.get(candidateYear) || new Set();
+      for (const event of matchingEvents(tournament, candidateYear, eventSet)) {
+        available.push({ year: candidateYear, event });
+      }
+    }
     if (!available.length) {
       stats.eventNotFound++; stats.unmatched++; ys.unmatched++;
       stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
       continue;
     }
     const fullPair = pair(player(p1), player(p2));
-    const fullExact = round ? collect(index.fullRound, year, available, round, fullPair) : [];
-    const fullAny = collect(index.fullEvent, year, available, null, fullPair);
+    const fullExact = round ? collect(index.fullRound, available, round, fullPair) : [];
+    const fullAny = collect(index.fullEvent, available, null, fullPair);
     let candidate = null, method = "", reason = "";
-    const eventAlias = available.some(key => key !== token(tournament));
+    const eventAlias = available.some(item => item.event !== token(tournament) || item.year !== year);
     if (fullExact.length) {
       const filtered = withinDateWindow(fullExact, date, windowDays).eligible;
       if (filtered.length === 1) { candidate = filtered[0]; method = "full"; }
@@ -188,8 +193,8 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
         let collision = false;
         const aliasEvents = [];
         for (const event of available) {
-          const r1 = index.aliasRoster.get([year,event,a1].join("|"));
-          const r2 = index.aliasRoster.get([year,event,a2].join("|"));
+          const r1 = index.aliasRoster.get([event.year,event.event,a1].join("|"));
+          const r2 = index.aliasRoster.get([event.year,event.event,a2].join("|"));
           if ((r1 && r1.size > 1) || (r2 && r2.size > 1)) collision = true;
           else if (r1 && r1.size === 1 && r2 && r2.size === 1) aliasEvents.push(event);
         }
@@ -197,8 +202,9 @@ function auditTour(metadataRows, resultRows, tour, options = {}) {
         else if (!aliasEvents.length) { stats.aliasUnavailable++; reason = "alias-unavailable"; }
         else {
           const aliasPair = pair(a1,a2);
-          const aliasExact = round ? collect(index.aliasRound,year,aliasEvents,round,aliasPair) : [];
-          const aliasAny = collect(index.aliasEvent,year,aliasEvents,null,aliasPair);
+          const eventOptions = available.filter(item => aliasEvents.includes(item.event));
+          const aliasExact = round ? collect(index.aliasRound,eventOptions,round,aliasPair) : [];
+          const aliasAny = collect(index.aliasEvent,eventOptions,null,aliasPair);
           const candidates = round ? aliasExact : aliasAny;
           const filtered = withinDateWindow(candidates,date,windowDays).eligible;
           if (filtered.length === 1) { candidate = filtered[0]; method = round ? "alias" : "alias-no-round"; }
