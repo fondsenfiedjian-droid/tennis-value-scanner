@@ -828,3 +828,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Positive-EV match count and positive/negative EV diagnostics reflect positive EV (>0), not the Bet of the Day threshold.
 - Skin selection now previews and persists immediately when changed, and sets the skin on both body and document root. Cancel no longer unexpectedly reverts a skin already selected.
 - Both black/terracotta and olive skins remain supported. No model, bookmaker, API or deployment logic changed.
+
+
+### Match Charting Project audit — implementation in review (2026-11-20)
+- Added a research-only Match Charting Project audit on branch `research/mcp-dataset-audit`. The source is pinned to Jeff Sackmann repository commit `1813a1309b7ed7ebf1c7e884b32bf675d00e4edf` (2026-09-18) for reproducibility.
+- The workflow downloads ATP/WTA match metadata and ten aggregate stat families per tour (Overview, Rally, ServeBasics, ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints) into an ephemeral GitHub Actions runner.
+- The audit reports match counts, duplicate IDs, date range, surface and handedness distributions, per-family row/schema coverage and match-ID join coverage. It uploads only aggregate JSON for 30 days; raw source CSVs are not committed.
+- Source README states more than 5,000 contributor-charted matches and declares CC BY-NC-SA 4.0. Data are selective/crowdsourced and non-commercial only; no production PFE feature activation is authorized by this audit.
+- Added unit tests and methodology/license documentation. Pull request CI will run the audit download in parallel with the existing research workflows. This is a source acquisition and coverage audit, not yet a point-level predictive test.
