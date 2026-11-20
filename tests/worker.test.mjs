@@ -3196,3 +3196,32 @@ test("PFE fixed-weight sensitivity is surfaced as a diagnostic and never auto-ap
   assert.ok(frontendSource.includes("Elo/рынок "));
   assert.ok(frontendSource.includes("Кандидатные веса пока не применяются автоматически"));
 });
+
+
+test("archive does not suppress an otherwise identical snapshot from a different model version", () => {
+  const { readPredictionArchive, savePredictionSnapshot, persistPredictionArchive } = makeArchiveStore();
+  const match = { id: "model-version-match" };
+  const element = { dataset: { nameA: "Player A", nameB: "Player B", playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10" } };
+  const result = { probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800 };
+  savePredictionSnapshot(match, element, result);
+  const legacy = readPredictionArchive().map(row => ({ ...row, model: "general-elo-v1", modelVersion: "1" }));
+  persistPredictionArchive(legacy);
+  savePredictionSnapshot(match, element, result);
+  const rows = readPredictionArchive();
+  assert.equal(rows.length, 4);
+  assert.equal(rows.filter(row => row.modelVersion === "1").length, 2);
+  assert.equal(rows.filter(row => row.modelVersion === "2").length, 2);
+});
+
+test("archive snapshot duplicate suppression preserves schedule and capture-status revisions", () => {
+  const { readPredictionArchive, savePredictionSnapshot, persistPredictionArchive } = makeArchiveStore();
+  const match = { id: "schedule-revision-match", startTime: "2026-11-22T12:00:00Z", status: "upcoming" };
+  const element = { dataset: { nameA: "Player A", nameB: "Player B", playerA: "1", playerB: "2", oddsA: "1.80", oddsB: "2.10" } };
+  const result = { probabilityA: 60, probabilityB: 40, ratingA: 1900, ratingB: 1800 };
+  savePredictionSnapshot(match, element, result);
+  const first = readPredictionArchive();
+  assert.equal(first.length, 2);
+  persistPredictionArchive(first.map(row => ({ ...row, captureStatus: "live" })));
+  savePredictionSnapshot(match, element, result);
+  assert.equal(readPredictionArchive().length, 4);
+});
