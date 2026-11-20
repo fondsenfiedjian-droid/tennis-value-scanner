@@ -6,7 +6,7 @@ const cors = {
 };
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
-const WORKER_BUILD_ID = "historical-score-diagnostics-2026-11-20-1";
+const WORKER_BUILD_ID = "live-tennis-quota-circuit-breaker-2026-11-20-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -316,6 +316,58 @@ function findEloForSurface(profile, requestedSurface) {
   return overall === null ? null : { rating: overall, type: "overall", surface };
 }
 
+const LIVE_TENNIS_QUOTA_GUARD_URL = "https://tennis-value-api.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard";
+
+async function fetchLiveTennis(url, options = {}) {
+  const cache = caches.default;
+  const guardKey = new Request(LIVE_TENNIS_QUOTA_GUARD_URL, { method: "GET" });
+  const guard = await cache.match(guardKey);
+  if (guard) {
+    const payload = await guard.json();
+    return response(payload, 429, {
+      "Retry-After": String(payload.retryAfterSeconds || 60),
+      "X-Live-Tennis-Quota-Guard": "HIT"
+    });
+  }
+
+  const upstream = await fetch(url, options);
+  if (upstream.status === 429) {
+    let body = {};
+    try { body = await upstream.clone().json(); } catch {}
+    const scope = String(body?.scope || body?.rate_limit?.scope || "unknown").toLowerCase();
+    const resetsAt = body?.resets_at || body?.rate_limit?.resets_at || null;
+    const retryAfterHeader = upstream.headers.get("Retry-After");
+    const retryAfterDate = Date.parse(retryAfterHeader || "");
+    let retrySeconds = /^\d+$/.test(String(retryAfterHeader || ""))
+      ? Number(retryAfterHeader)
+      : Number.isFinite(retryAfterDate) && retryAfterDate > Date.now()
+        ? Math.ceil((retryAfterDate - Date.now()) / 1000)
+        : 0;
+    const resetTime = resetsAt ? Date.parse(resetsAt) : NaN;
+    if (Number.isFinite(resetTime) && resetTime > Date.now()) {
+      retrySeconds = Math.ceil((resetTime - Date.now()) / 1000);
+    } else if (!retrySeconds) {
+      retrySeconds = scope === "day" ? 6 * 60 * 60 : 60;
+    }
+    retrySeconds = Math.max(5, Math.min(24 * 60 * 60, retrySeconds));
+    const payload = {
+      error: "Live Tennis API quota is temporarily blocked; cached predictions and match data remain available where possible",
+      accessStatus: "rate_limited",
+      rateLimitScope: scope,
+      resetsAt,
+      retryAfterSeconds: retrySeconds
+    };
+    await cache.put(guardKey, new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=" + retrySeconds
+      }
+    }));
+  }
+  return upstream;
+}
+
 const playerProfileInflight = new Map();
 
 async function getPlayerProfile(playerId, apiKey) {
@@ -331,7 +383,7 @@ async function getPlayerProfile(playerId, apiKey) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached.json();
 
-    const res = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
+    const res = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
       headers: { "X-API-Key": apiKey, "Accept": "application/json" }
     });
     if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
@@ -615,7 +667,7 @@ export default {
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         let stats;
@@ -680,7 +732,7 @@ export default {
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         const body = await upstream.json();
@@ -773,7 +825,7 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        const upstream = await fetch(
+        const upstream = await fetchLiveTennis(
           `https://api.livetennisapi.com/api/public/v1/matches?${params.toString()}`,
           {
             headers: {
