@@ -1,0 +1,50 @@
+name: Match Charting Project data audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/match-charting-audit.mjs"
+      - "tests/match-charting-audit.test.mjs"
+      - ".github/workflows/match-charting-audit.yml"
+      - "docs/MATCH_CHARTING_RESEARCH.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned ATP/WTA Match Charting CSVs
+        env:
+          SOURCE_COMMIT: 1813a1309b7ed7ebf1c7e884b32bf675d00e4edf
+        run: |
+          set -euo pipefail
+          mkdir -p research-data
+          for tour in m w; do
+            for family in matches stats-Overview stats-Rally stats-ServeBasics stats-ReturnDepth stats-ReturnOutcomes stats-ShotTypes stats-ShotDirection stats-ServeDirection stats-ServeInfluence stats-NetPoints stats-KeyPointsReturn stats-KeyPointsServe stats-ShotDirOutcomes stats-SnV stats-SvBreakSplit stats-SvBreakTotal; do
+              file="charting-${tour}-${family}.csv"
+              url="https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/$SOURCE_COMMIT/$file"
+              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" --output "research-data/$file"
+              test -s "research-data/$file"
+            done
+          done
+      - name: Run aggregate coverage and schema audit
+        run: |
+          node scripts/match-charting-audit.mjs --out match-charting-audit.json research-data/*.csv
+      - name: Upload aggregate audit only
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-charting-project-audit
+          path: match-charting-audit.json
+          if-no-files-found: error
+          retention-days: 30

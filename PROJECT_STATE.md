@@ -828,3 +828,22 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Positive-EV match count and positive/negative EV diagnostics reflect positive EV (>0), not the Bet of the Day threshold.
 - Skin selection now previews and persists immediately when changed, and sets the skin on both body and document root. Cancel no longer unexpectedly reverts a skin already selected.
 - Both black/terracotta and olive skins remain supported. No model, bookmaker, API or deployment logic changed.
+
+
+### Match Charting Project audit — implementation in review (2026-11-20)
+- Added a research-only Match Charting Project audit on branch `research/mcp-dataset-audit`. The source is pinned to Jeff Sackmann repository commit `1813a1309b7ed7ebf1c7e884b32bf675d00e4edf` (2026-09-18) for reproducibility.
+- The workflow downloads ATP/WTA match metadata and sixteen aggregate stat families per tour (Overview, Rally, ServeBasics, ReturnDepth, ReturnOutcomes, ShotTypes, ShotDirection, ServeDirection, ServeInfluence, NetPoints) into an ephemeral GitHub Actions runner.
+- The audit reports match counts, duplicate IDs, date range, surface and handedness distributions, per-family row/schema coverage and match-ID join coverage. It uploads only aggregate JSON for 30 days; raw source CSVs are not committed.
+- Source README states more than 5,000 contributor-charted matches and declares CC BY-NC-SA 4.0. Data are selective/crowdsourced and non-commercial only; no production PFE feature activation is authorized by this audit.
+- Added unit tests and methodology/license documentation. Pull request CI will run the audit download in parallel with the existing research workflows. This is a source acquisition and coverage audit, not yet a point-level predictive test.
+
+- Strict calendar validation (run 44824215512): ATP has 1 invalid date and no missing dates; WTA has 8 invalid dates and 10 missing dates. The valid ATP range begins 1960-05-29 and requires source-level verification. Keep all Match Charting features research-only; exclude unverified metadata dates/surface/hand fields.
+- Metadata quality review found unexpected categorical values (including non-surface text in Surface and non-R/L hand values) plus duplicate metadata IDs. Added explicit quality flags; do not use metadata date/surface/hand fields for features until source rows are inspected and repaired. Research-only; no production feature activation.
+
+- Added `docs/PFE_FEATURE_MAP.md`: candidate formulas, denominator/data-dictionary caveats, leakage controls, sample-threshold sweep, and chronological validation protocol. No PFE feature is enabled in production.
+
+- Expanded the Match Charting audit from the initial ten to all 16 available aggregate stat families per tour, including key-point, serve-and-volley, serve/break split, and shot-direction outcome families. The workflow downloads source files to the ephemeral runner only.
+
+- Expanded 16-family audit completed successfully (run 44823375916): ATP 7,565 and WTA 4,257 unique charted metadata IDs (11,822 combined); 2,003,405 ATP and 1,085,144 WTA aggregate-stat rows (3,088,549 total). All 16 families have 100% ID-join coverage among the IDs present in each family, but family sample size differs substantially. Serve-and-volley (SnV) is especially sparse: 6,327 ATP and 1,078 WTA unique matches. Metadata quality remains review-required: unexpected surface rows ATP 2/WTA 9; unexpected handedness rows ATP 2/WTA 8. No production feature activation.
+
+- Point-level dictionary semantics verified at the pinned source: Player1 is the first server; `Svr`, `Ret`, `PtWinner`, and `isSvrWinner` encode player/role direction; `rallyCount` includes the serve and excludes errors. Aggregate-stat row orientation and denominators remain unverified pending the MatchChart workbook Instructions tab.
