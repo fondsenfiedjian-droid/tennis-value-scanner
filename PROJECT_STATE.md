@@ -1,6 +1,6 @@
 # Tennis Value Scanner — Project State
 
-Last updated: 2026-11-19  
+Last updated: 2026-11-20
 Repository: https://github.com/fondsenfiedjian-droid/tennis-value-scanner  
 Default branch: `main`
 
@@ -244,3 +244,43 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Deployment runbook was corrected to match the active PWA: removed obsolete Bankroll and Winamax CSV import acceptance steps.
 - Current Cloudflare Worker deployment and live `/odds` response remain unverified. The verification environment could not reach the Worker endpoint, and no Cloudflare deployment action is connected here. Do not enable an Apify schedule until Worker deployment and live odds verification are complete.
 - Next operator action: deploy Worker `tennis-value-api` from the repository using an authenticated Wrangler session (`npx wrangler deploy`), then run the manual production smoke workflow and inspect actual Winamax quote timestamps, event matching and two-sided coverage. Netlify frontend deployment is not required for the Worker-only change unless the PWA source also changes.
+
+
+## 10. Operational update — 2026-11-20
+
+### Winamax feed and deployment automation
+- PR #13 merged: improved Winamax feed parsing and matching from Apify event names, including paired outcomes without relying on an event ID. Worker deployment run 44736112227 succeeded; regression tests passed.
+- PR #19 merged: expanded diagnostic candidate coverage from 3 to 9 matched Winamax markets.
+- Apify task remains `s9Des4R3jhMfA8e3s` (Winamax Tennis France); do not change scraper configuration. Schedule `8srAGLJOalg4DBZwo` is enabled every six hours at minute 13, Europe/Paris.
+- Latest confirmed successful Apify run `CAu0k9DZixaNl4dh4`: 20 rows, representing 10 two-sided match-winner markets. Sample included Alcaraz–Cobolli 1.13/5.00 and Medvedev–Tiafoe 1.33/3.00. This is a snapshot, not a guarantee of continuous coverage.
+
+### Live Tennis API quota protection
+- PR #21 merged: cap uncached prediction work at 5 new matches per pass, reuse valid local predictions from the 7-day cache, cache explicit plan-restricted player-stat responses for 6 hours, keep diagnostic workflow manual-only, and handle transient 502 profile failures gracefully.
+- PR #29 merged and Worker deployed (deployment run 44743011014): centralized live API requests through `fetchLiveTennis()`; after an upstream HTTP 429, store a shared Cloudflare Cache cooldown guard and block repeated provider calls during the cooldown, returning a local 429 with Retry-After and `X-Live-Tennis-Quota-Guard: HIT`. Regression tests passed, including the guard test.
+- Regression suite after PR #29: 316/316 passed. Production smoke run 44743050063 passed: PWA HTTP 200, service worker v116, Worker health OK, Winamax feed HTTP OK, 20 quotes present, 20 valid and fresh.
+- Live Tennis API free plan is 100 requests/day and 30/minute. Usage observed on 2026-11-20 around 13:17: 323 calls today, 222 errors, remaining quota 0. This exceeded the daily allowance; do not assume the API is available until a fresh usage check and a controlled request confirm reset.
+- Do not run extra live diagnostics while quota is exhausted. The `/usage` endpoint is quota-exempt. The 429 circuit breaker prevents repeated upstream calls after the first 429 is observed; it does not restore quota.
+
+### CI deployment workflow
+- PR #30 and PR #31 merged. Worker deployment now runs automatically after the Regression tests workflow succeeds on main; manual workflow dispatch remains available. Deploy checks out the exact tested commit.
+- Regression run 44743246328 passed (316 tests). Follow-up Worker deploy run 44743290693 and production smoke run 44743290609 were triggered but their final conclusions were not yet confirmed at the time of this update. Check these runs before claiming the automation's production execution is complete. The Worker code itself was already deployed and smoke-tested in run 44743050063; PR #31 changes workflow orchestration only.
+
+### API subscription decision — pending, no purchase approved
+- User asked whether to purchase a paid Live Tennis API plan after exhausting the free quota. No subscription or purchase has been authorized or made.
+- Current recommendation: do not buy PRO ($29.99/month) yet. First reduce unnecessary requests and assess whether required player information can be derived from the user's historical match archives and other lawful data sources. Consider BASIC ($9.99/month) only after verifying its exact endpoint access and whether it covers the remaining operational need. Do not represent external historical data as a complete replacement for current player statistics without validation.
+- User prioritizes keeping operating costs low. Any paid service or subscription requires explicit approval before purchase.
+
+### Product decision: Bet of the Day
+- “Ставка дня” is intended for a larger stake; reliability is the primary criterion, not maximum EV. If no candidate clears a sufficiently strict reliability threshold, show no recommendation rather than promote a speculative pick.
+- Card layout requested: “Ставка дня” label/button at upper left, large visually emphasized odds in the center, player pairing at the bottom; tapping opens detailed analysis.
+- Keep “Максимальный EV дня” separate from the reliability-first “Ставка дня”. EV alone must never determine the latter. Display exact selected player, odds, probability, fair odds, EV, reliability, sample size, freshness and risk notes.
+
+### Current next priorities
+1. Confirm final status of GitHub Actions runs 44743290693 (Worker deploy) and 44743290609 (production smoke).
+2. Avoid Live Tennis API calls beyond quota-exempt usage checks until the daily quota resets; then perform one controlled verification.
+3. Inspect and tighten the reliability gate for “Ставка дня”; verify that it can return no pick when evidence is insufficient.
+4. Verify that predictions and final results are consistently recorded in the archive for later calibration.
+5. Continue using existing historical datasets and validated sources before considering paid PRO. Keep all user-provided archives private; do not commit them to the public repository.
+
+### Documentation rule
+- Update this `PROJECT_STATE.md` after every material architecture, product-scope, data-source, subscription, deployment, validation or priority decision. Record commit/PR/run identifiers and distinguish confirmed facts from pending checks. Read this file at the start of each work session and update it before reporting the session as complete.
