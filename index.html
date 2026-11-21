@@ -299,6 +299,13 @@
   function normalizePreferredBookmaker(value){
     return ['winamax','betclic','netbet','best'].includes(String(value))?String(value):'winamax';
   }
+  function selectPreferredBookmakerPair(quotes,preference,sideForPlayer,playerName){
+    const mode=normalizePreferredBookmaker(preference);
+    const pool=mode==='best'?quotes:(Array.isArray(quotes)?quotes:[]).filter(quote=>String(quote?.bookmaker||'').trim().toLowerCase()===mode);
+    const best=(side)=>pool.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
+    const quoteA=best('1'),quoteB=best('2'),completePair=!!(quoteA&&quoteB);
+    return {mode,quotes:mode==='best'?pool:(completePair?pool:[]),quoteA:mode==='best'?quoteA:(completePair?quoteA:null),quoteB:mode==='best'?quoteB:(completePair?quoteB:null),completePair};
+  }
   function normalizeRefreshRate(value){
     const minutes=Number(value);
     return [0,30,60,180].includes(minutes)?minutes:60;
@@ -711,18 +718,14 @@
       const maxOdds=Number($('#maxOdds').value||5);
       const allMatched=oddsForMatch(m);
       const preferredBookmaker=normalizePreferredBookmaker(readSettings().preferredBookmaker);
-      const bestQuoteForSide=(quotes,side)=>quotes.filter(o=>oddsSideForPlayer(o,a)===side).sort((x,y)=>Number(y.oddsDecimal)-Number(x.oddsDecimal))[0]||null;
-      const comparisonQuoteA=bestQuoteForSide(allMatched,'1'),comparisonQuoteB=bestQuoteForSide(allMatched,'2');
-      let selectedBookQuotes=allMatched;
-      if(preferredBookmaker!=='best'){
-        selectedBookQuotes=allMatched.filter(o=>String(o.bookmaker||'').trim().toLowerCase()===preferredBookmaker);
-      }
-      const selectedPairA=bestQuoteForSide(selectedBookQuotes,'1'),selectedPairB=bestQuoteForSide(selectedBookQuotes,'2');
-      const completePreferredPair=!!(selectedPairA&&selectedPairB);
+      const comparisonPair=selectPreferredBookmakerPair(allMatched,'best',oddsSideForPlayer,a);
+      const selectedPair=selectPreferredBookmakerPair(allMatched,preferredBookmaker,oddsSideForPlayer,a);
+      const comparisonQuoteA=comparisonPair.quoteA,comparisonQuoteB=comparisonPair.quoteB;
+      const completePreferredPair=preferredBookmaker==='best'||selectedPair.completePair;
       // A single-book mode requires a complete, fresh two-sided pair from that same bookmaker.
-      const displayQuoteA=preferredBookmaker==='best'?comparisonQuoteA:(completePreferredPair?selectedPairA:null);
-      const displayQuoteB=preferredBookmaker==='best'?comparisonQuoteB:(completePreferredPair?selectedPairB:null);
-      const matched=(preferredBookmaker==='best'?allMatched:selectedBookQuotes).filter(o=>{
+      const displayQuoteA=selectedPair.quoteA,displayQuoteB=selectedPair.quoteB;
+      const selectedBookQuotes=selectedPair.quotes;
+      const matched=selectedBookQuotes.filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
       });
