@@ -242,3 +242,7 @@ Successful aggregate run: GitHub Actions `44866408907`. Source archive: Jeff Sac
 Lower is better. Negative paired differences favor the adjusted model. ATP LogLoss improved with a 95% interval narrowly below zero; ATP Brier did not show a clear improvement. WTA point estimates improved, but both intervals include zero. The annual results are not uniform: the 2021 ATP Brier result regressed, while 2024 showed a clear improvement for both tours. The specification was selected among several tested feature combinations using the same pooled walk-forward period, so these figures are not an independent final confirmation and are vulnerable to selection effects.
 
 **Decision:** retain overall and same-surface serve/return rates as research candidates only. Do not activate them in production or claim betting profitability. Next validation must freeze the specification and test it on a later untouched chronological period, report calibration by tour/surface/tier and compare against Elo and rank/age baselines. No live probabilities, EV calculations or recommendations were changed.
+
+## Match Charting linkage gate
+
+The aggregate-only main-tour audit linked 10,278/11,822 unique charted metadata IDs (ATP 6,734/7,565; WTA 3,544/4,257). Full names accounted for 10,275 links and three unique initial-surname aliases. Event/round/date conflicts and out-of-snapshot rows remain excluded. This is a selective linked sample, not tour-representative coverage; no player-level linked data or production features are retained.
