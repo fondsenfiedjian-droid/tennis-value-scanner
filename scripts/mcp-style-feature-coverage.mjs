@@ -119,7 +119,7 @@ function indexStatRows(statFiles) {
 function newTourReport(minPriorMatches) {
   return {
     inputLinkedRows: 0, linkedMatches: 0, validChronologyMatches: 0, mainTourTargets: 0,
-    excludedDuplicateRows: 0, excludedInvalidDates: 0, excludedDateOffsetAnomalies: 0, excludedMissingPlayerIds: 0,
+    excludedDuplicateRows: 0, excludedMissingMatchIds: 0, excludedInvalidDates: 0, excludedDateOffsetAnomalies: 0, excludedMissingPlayerIds: 0,
     targetsWithAllFeatures: 0,
     featureMatchCoverage: Object.fromEntries(FEATURES.map(feature => [feature, 0])),
     priorHistoryCoverage: Object.fromEntries(FEATURES.map(feature => [feature, {
@@ -146,7 +146,7 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
     if (!["ATP", "WTA"].includes(tour)) continue;
     const report = tours[tour];
     report.inputLinkedRows++;
-    if (!matchId) { report.excludedMissingPlayerIds++; continue; }
+    if (!matchId) { report.excludedMissingMatchIds++; continue; }
     if (byId.has(tour + ":" + matchId)) { report.excludedDuplicateRows++; continue; }
     byId.add(tour + ":" + matchId);
     const day = dateNumber(link.date);
