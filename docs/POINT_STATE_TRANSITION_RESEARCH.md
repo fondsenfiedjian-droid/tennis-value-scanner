@@ -86,3 +86,13 @@ Interpretation: ordinary-game rotation is broadly consistent with the “current
 ## Alternative server-field phase audit (2026-11-21)
 
 The first rotation diagnostic found 94.85% ordinary-game agreement but only 51.61% tiebreak agreement under the hypothesis that each state names the next point's server. A follow-up now compares a second plausible interpretation: the field names the player who served the most recent point. Under that alternative, the server is expected to remain unchanged on the game-ending transition, then change after the first point of the next game; in a tiebreak, it changes after the second point and every two points thereafter. Both hypotheses are reported side by side, with ordinary-game game-boundary and within-game transitions separated. Neither interpretation is treated as truth until source-level examples or authoritative semantics settle the phase.
+
+### Alternative phase comparison on the real sample (2026-11-21)
+
+Successful run: GitHub Actions `44863408028`.
+
+- **Ordinary games, next-point-server hypothesis:** 788,443/831,264 (94.85%) overall. Within games: 727,555/741,219 (98.16%). At game boundaries: 60,888/90,045 (67.62%).
+- **Ordinary games, last-point-server alternative:** 693,129/831,264 (83.38%) overall. Within games: 663,972/741,219 (89.58%). At game boundaries: 29,157/90,045 (32.38%).
+- **Tiebreak:** next-point hypothesis 6,839/13,252 (51.61%); last-point alternative 6,413/13,252 (48.39%). Neither is convincing.
+
+The next-point-server interpretation is substantially more consistent for ordinary games, especially within games, so it remains the leading hypothesis there. However, only 67.62% of game-boundary transitions match it; this boundary mismatch must be explained before serve ownership is considered reliable. Tiebreak server alignment remains unresolved. Keep server-based point attribution and all serve/return features blocked.
