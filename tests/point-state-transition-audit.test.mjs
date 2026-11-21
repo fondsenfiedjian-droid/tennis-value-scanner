@@ -295,3 +295,31 @@ test("summarizes timestamp gaps separately for inferred and ambiguous transition
   assert.equal(report.timestampGapStats.byAmbiguousReason["multi-point-gap-or-score-conflict"].count, 1);
   assert.equal(report.timestampGapStats.byAmbiguousReason["multi-point-gap-or-score-conflict"].p50Seconds, 120);
 });
+
+
+test("splits tiebreak server switch matrix by primary player tour", () => {
+  const rows = [
+    state({
+      points_p1: "0", points_p2: "0", server: "1", is_tiebreak: "true"
+    }),
+    state({
+      points_p1: "1", points_p2: "0", server: "1", is_tiebreak: "true"
+    }),
+    state({
+      points_p1: "1", points_p2: "1", server: "1", is_tiebreak: "true"
+    }),
+    state({
+      points_p1: "2", points_p2: "1", server: "1", is_tiebreak: "true"
+    })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", player1_id: "p1", player2_id: "p2", round: "ATP test" }
+  ], [
+    { player_id: "p1", tour: "ATP" },
+    { player_id: "p2", tour: "ATP" }
+  ]);
+  assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedSwitch.checked, 2);
+  assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedSwitch.observedHold, 2);
+  assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.checked, 1);
+  assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.observedHold, 1);
+});
