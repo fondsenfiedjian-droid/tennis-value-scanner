@@ -37,7 +37,22 @@ The MatchStats formulas verify these denominators for the workbook's own per-mat
 - Unforced errors include the unforced-error and double-fault flags for the player who lost the point.
 - Rally-length buckets use `AY`: 0–4 shots, 5–9 shots, and 10+ shots.
 
-The Instructions sheet defines shot-direction codes relative to the opponent's handedness: 1 = right-hander forehand/left-hander backhand side, 2 = middle, 3 = right-hander backhand/left-hander forehand side. Return-depth codes 7/8/9 distinguish shallow, medium and deep returns. These labels are not direct player-handedness features. The aggregate CSV files still require family-specific row-orientation and category validation before these formulas can be applied to them.
+The Instructions sheet defines shot-direction codes relative to the opponent's handedness: 1 = right-hander forehand/left-hander backhand side, 2 = middle, 3 = right-hander backhand/left-hander forehand side. Return-depth codes are optional and apply to the service return: 7 = return lands within the service boxes; 8 = behind the service line but closer to the service line than the baseline; 9 = closer to the baseline than the service line; 0 or omission = unknown. These labels are not direct player-handedness features. The aggregate CSV files still require family-specific row-orientation and category validation before these formulas can be applied to them.
+
+### Workbook instruction and formula review (2026-11-21)
+
+Reviewed the short-lived CI extraction of the pinned MatchChart 0.3.2 workbook (source commit `1813a1309b7ed7ebf1c7e884b32bf675d00e4edf`; artifact `match-charting-instructions`). The raw workbook and extracted codebook are not committed. Source terms remain CC BY-NC-SA 4.0, non-commercial and share-alike.
+
+Confirmed workbook semantics:
+- Player 1 is explicitly the player who serves first; Player 2 is the opponent. Each point row records `Svr`, `Ret`, `PtWinner` and whether the server won.
+- Serve direction: 4 = wide, 5 = body, 6 = down the T, 0 = unknown.
+- Rally shot type is a letter code; direction 1/2/3 is relative to the opponent's handedness (not an absolute court coordinate): right-hander forehand/left-hander backhand side, middle, right-hander backhand/left-hander forehand side.
+- Return depth is optional: 7 = inside the service boxes; 8 = beyond the service line but nearer the service line than the baseline; 9 = nearer the baseline than the service line; 0 or blank = unknown.
+- `+` marks serve-and-volley attempts or approach shots; `*` marks winners/aces in their relevant serve/rally context; `#` and `@` distinguish forced and unforced errors, with `#` also used for unreturnables on serves. Context matters: the same symbol cannot be decoded without its serve/rally position.
+- The workbook's MatchStats formulas define service points as rows with a server and a recorded first-serve entry. First-serve-in rate uses service points as denominator; first-serve points won uses first serves in; second-serve points won uses second-serve opportunities (service points minus first serves in); service points won is the sum of first- and second-serve points won.
+- Break-point opportunities are score-state flags on the returner's side; a break point is converted when the returner wins that point. Aces are assigned to the point winner; double faults are assigned to the server who lost the point. The workbook's total-winner figure adds aces and rally winners; its unforced-error figure adds unforced rally errors and double faults for the player who lost the point.
+
+These formulas describe the workbook's own per-match summary only. They do **not** prove that every exported aggregate CSV family uses the same player orientation, category partition or denominator. ReturnDepth, ReturnOutcomes, ServeDirection, ServeInfluence, ShotDirection and related families remain blocked until each exported family's row labels and totals reconcile independently.
 
 ## Candidate features and denominators
 
