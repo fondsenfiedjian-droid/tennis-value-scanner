@@ -126,7 +126,6 @@ export function runProtectedRankingResearch(matchRows,observations,options={}){
       actualWinner:m.outcome===1?m.p1Name:m.p2Name,
       probabilities:{elo:+pElo.toFixed(6),ordinaryRank:+pOrd.toFixed(6),protectedRank:+pProtected.toFixed(6)},
       brier:{elo:+((pElo-m.outcome)**2).toFixed(6),ordinaryRank:+((pOrd-m.outcome)**2).toFixed(6),protectedRank:+((pProtected-m.outcome)**2).toFixed(6)}});
-     }
      evaluatedProtectedMatches++;
     }
    }
