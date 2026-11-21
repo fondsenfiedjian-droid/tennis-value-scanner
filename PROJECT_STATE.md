@@ -1062,3 +1062,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Follow-up PFE-combined ACE chronological holdouts completed: train through 2024/test 2025 (ATP n=28,067 ΔBrier -0.004738, WTA n=22,142 ΔBrier -0.005755); train Jan–Jun 2026/test Jul–Nov 2026 (ATP n=24,845 ΔBrier -0.009702, WTA n=16,454 ΔBrier -0.009165). All paired Brier and LogLoss 95% intervals were below zero. These reinforce workload signal on PFE but remain research-only; a future untouched forward sample and Winamax market validation are still required.
+
+
+- Corrective audit 2026-11-21: found and fixed an availability-gating bug in the PFE+ACE experiment. RestDays/restDaysAvailable are now independent of 7-day workload presence and remain available when both players have older prior-match history. All PFE+ACE results before this correction are provisional/superseded pending a rerun. New diagnostics separate recent-week workload coverage, both-player rest-history coverage, and known-duration coverage.
