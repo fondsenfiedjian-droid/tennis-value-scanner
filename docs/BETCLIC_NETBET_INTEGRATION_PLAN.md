@@ -23,24 +23,29 @@ Add Betclic and NetBet beside the existing Winamax feed. All three bookmakers mu
 
 ### Preferred unified provider: The Odds API
 
-Official bookmaker catalogue lists these French bookmaker keys:
-- `betclic_fr`
-- `netbet_fr`
-- `winamax_fr`
+The official French bookmaker catalogue currently lists:
+- `betclic_fr` — Betclic (FR)
+- `netbet_fr` — NetBet (FR)
+- `winamax_fr` — Winamax (FR)
 
-The API supports tennis sport keys and featured `h2h` (match-winner) market requests. Its API allows selecting explicit bookmaker keys; up to ten selected bookmakers count as one region for quota purposes. This is a promising single integration path for Betclic and NetBet, and could later be used as an independent Winamax cross-check. It does not replace the current Winamax Apify task in this first release.
+The API supports explicit bookmaker selection with the `bookmakers` parameter, `h2h` (match-winner) markets and decimal odds. Up to ten selected bookmakers count as one region for quota purposes. For our first validation request, select only `betclic_fr,netbet_fr`; do not request every bookmaker. This is a promising unified path, but catalogue membership does not prove that both bookmakers offer odds for every tennis event.
+
+**Important coverage limitation discovered 2026-11-21:** the provider's public tennis coverage page names Grand Slams, ATP 1000, ATP 500, WTA 1000 and WTA 500. It does not claim comprehensive Challenger, ITF, lower-tier ATP/WTA or WTA125 coverage. The API uses competition-specific sport keys (for example `tennis_atp_french_open`), not one universal ATP key and one universal WTA key. Therefore:
+- First call `GET /v4/sports` (does not consume odds quota) to discover currently in-season tennis sport keys.
+- Test a small number of currently active ATP and WTA competition keys separately.
+- Record tournament tier, event count, bookmaker presence, complete two-way markets, quote timestamps and credit cost.
+- Do not represent The Odds API as full-tour coverage. Challenger/ITF coverage needs a separate verified source or must remain explicitly unavailable.
 
 Official published pricing observed 2026-11-21:
-- Starter: free, 500 credits/month.
-- 20,000 credits/month: USD 30/month.
+- Free plan: 500 credits/month.
+- A published paid tier: 20,000 credits/month for USD 30/month.
 - Historical odds are a paid-plan feature.
-- Live odds requests consume credits based on markets and regions; empty responses do not consume credits.
-
-Before implementation, validate with a real API key that ATP and WTA sport keys return both `betclic_fr` and `netbet_fr` for French tennis events. Catalogue membership alone does not prove coverage for every tournament, event, or market.
+- The sports-list endpoint does not count against quota. Odds requests consume credits based on markets and bookmaker regions; up to ten explicitly selected bookmakers count as one region.
 
 Documentation:
 - https://the-odds-api.com/sports-odds-data/bookmaker-apis.html
 - https://the-odds-api.com/sports/tennis-odds
+- https://the-odds-api.com/sports-odds-data/sports-apis.html
 - https://the-odds-api.com/liveapi/guides/v4/
 - https://the-odds-api.com/
 
@@ -67,7 +72,7 @@ A third-party Betclic API product also advertises French pre-match/live tennis m
 3. Normalize every quote to a common schema:
    - `bookmaker` (`winamax`, `betclic`, `netbet`)
    - `bookmakerCountry: "FR"`
-   - `sport: "tennis"`, `tour` where known
+   - `sport: "tennis"`, `tour` and competition tier where known
    - `eventId` and `sourceEventId` (provider-specific; never treated as cross-bookmaker IDs)
    - `eventName`, `homeTeam`, `awayTeam`
    - `startTime` (UTC ISO-8601)
@@ -86,11 +91,14 @@ A third-party Betclic API product also advertises French pre-match/live tennis m
 
 ## Credentials and cost gate
 
-No API key or paid account is currently assumed. Do not commit secrets to GitHub. If using The Odds API, store its key as a Cloudflare Worker secret (for example `ODDS_API_KEY`) after the user supplies/creates it. First validate on the free tier and inspect actual credit use. Do not subscribe to the USD 30/month plan or enable a paid Apify actor without explicit approval.
+No The Odds API key or paid account is currently assumed. Do not commit secrets to GitHub. If using The Odds API, store its key as a Cloudflare Worker secret (for example `ODDS_API_KEY`) after the user creates it. First validate on the free tier and inspect actual credit use. Do not subscribe to a paid plan or enable a paid Apify actor without explicit approval.
+
+The separate Live Tennis API key is not an Odds API key and cannot authenticate requests to The Odds API.
 
 ## Immediate next steps
 
-1. Obtain or create a The Odds API key and run one minimal ATP and one WTA test request selecting only `betclic_fr,netbet_fr`, `h2h`, decimal odds.
-2. Record exact returned bookmaker names, event counts, coverage and credit cost.
-3. If both sources are present and sufficiently complete, implement the unified adapter. If one is absent/weak, use the NetBet Apify actor for NetBet only and separately resolve Betclic permissions/source.
-4. Implement and test on this branch; preserve the current Winamax path byte-for-byte where practical.
+1. Obtain a The Odds API key (separate from Live Tennis API) and call `GET /v4/sports` to discover current tennis competition keys; this call is quota-free.
+2. Run minimal, date-appropriate ATP and WTA competition tests selecting only `betclic_fr,netbet_fr`, `h2h`, decimal odds.
+3. Record actual coverage, event counts, complete markets, timestamps and credit cost. Explicitly note that Challenger/ITF coverage is not established.
+4. If both sources are present and sufficiently complete for the competitions we need, implement the unified adapter. If one is absent/weak, evaluate the NetBet Apify actor for NetBet only and separately resolve Betclic permissions/source.
+5. Implement and test on this branch; preserve the current Winamax path byte-for-byte where practical.
