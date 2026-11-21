@@ -64,7 +64,9 @@ for(const file of files){
   let header=null, dateIdx=-1, rankIdx=-1, idIdx=-1, pointsIdx=-1;
   let rowsN=0,missingId=0,missingDate=0,missingPoints=0,matchedRows=0;
   let minDate=null,maxDate=null,lastDate=null,nonMonotonicDates=0,duplicatePlayerDate=0;
-  let dateIds=new Set(),currentDate=null;
+  const seenPlayerDates=new Set();
+  const dateRegressionSamples=[];
+  const duplicateSamples=[];
   const uniqueIds=new Set();
   let matchedUniqueIds=0;
   for await(const row of rows(file)){
@@ -72,18 +74,32 @@ for(const file of files){
       if([dateIdx,rankIdx,idIdx,pointsIdx].some(x=>x<0))throw new Error(file+': expected ranking_date, rank, player, points'); continue;}
     rowsN++;
     const d=String(row.fields[dateIdx]??'').trim(),id=String(row.fields[idIdx]??'').trim(),p=String(row.fields[pointsIdx]??'').trim();
-    if(!d)missingDate++; else {if(!minDate||d<minDate)minDate=d;if(!maxDate||d>maxDate)maxDate=d;
-      if(lastDate&&d<lastDate)nonMonotonicDates++; lastDate=d;
-      if(d!==currentDate){currentDate=d;dateIds=new Set();}
-      if(id){if(dateIds.has(id))duplicatePlayerDate++;dateIds.add(id);}
+    if(!d)missingDate++; else {
+      if(!minDate||d<minDate)minDate=d;
+      if(!maxDate||d>maxDate)maxDate=d;
+      if(lastDate&&d<lastDate){
+        nonMonotonicDates++;
+        if(dateRegressionSamples.length<8)dateRegressionSamples.push({previous:lastDate,current:d,row:rowsN});
+      }
+      lastDate=d;
+      if(id){
+        const key=d+'|'+id;
+        if(seenPlayerDates.has(key)){
+          duplicatePlayerDate++;
+          if(duplicateSamples.length<8)duplicateSamples.push({date:d,playerId:id,rank:String(row.fields[rankIdx]??'').trim(),row:rowsN});
+        } else seenPlayerDates.add(key);
+      }
     }
-    if(!id)missingId++; else {if(!uniqueIds.has(id)){uniqueIds.add(id);if(archiveIds.has(id))matchedUniqueIds++;}if(archiveIds.has(id))matchedRows++;}
+    if(!id)missingId++; else {
+      if(!uniqueIds.has(id)){uniqueIds.add(id);if(archiveIds.has(id))matchedUniqueIds++;}
+      if(archiveIds.has(id))matchedRows++;
+    }
     if(!p)missingPoints++;
   }
   reports.push({file,rows:rowsN,dateRange:{from:minDate,to:maxDate},uniqueRankingPlayerIds:uniqueIds.size,
     exactArchiveIdMatches:matchedUniqueIds,
     archiveIdMatchRate:uniqueIds.size?Number((matchedUniqueIds/uniqueIds.size).toFixed(6)):null,
     rankingRowsWithArchiveId:matchedRows,missingPlayerIdRows:missingId,missingDateRows:missingDate,
-    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,nonMonotonicDateRows:nonMonotonicDates});
+    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,duplicateSamples,dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
 }
 console.log(JSON.stringify({schemaVersion:1,readOnly:true,tour,archive,archiveRows,archiveUniquePlayerIds:archiveIds.size,files:reports},null,2));
