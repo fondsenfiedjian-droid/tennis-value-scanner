@@ -117,9 +117,20 @@ export function inferPointStateTransition(before, after) {
   };
 }
 
-export function auditPointStateTransitions(rows) {
+export function auditPointStateTransitions(rows, matchRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
+  const metadata = new Map();
+  for (const match of matchRows) {
+    const id = String(match.match_id ?? "").trim();
+    if (id) metadata.set(id, String(match.tier_key ?? "unknown").trim() || "unknown");
+  }
+  const tierStats = {};
+  const timestampStats = {
+    validStates: 0, invalidOrMissingStates: 0,
+    nonMonotonicTransitions: 0, duplicateTimestampTransitions: 0,
+    timestampedMatches: 0, matchesWithTimestampOrderIssue: 0
+  };
   let rowsWithoutMatchId = 0;
   for (const row of rows) {
     const id = String(row.match_id ?? "").trim();
@@ -142,6 +153,36 @@ export function auditPointStateTransitions(rows) {
   for (const states of groups.values()) {
     const transitions = Math.max(0, states.length - 1);
     let inferred = 0;
+    let timestampIssue = false;
+    let previousTimestamp = null;
+    const tierKey = metadata.get(String(states[0].match_id)) || "unmatched";
+    if (!tierStats[tierKey]) tierStats[tierKey] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
+    tierStats[tierKey].matchesWithPoints++;
+    for (const state of states) {
+      const rawTimestamp = String(state.timestamp_utc ?? "").trim();
+      const timestamp = rawTimestamp ? Date.parse(rawTimestamp) : NaN;
+      if (Number.isFinite(timestamp)) {
+        timestampStats.validStates++;
+        if (previousTimestamp !== null) {
+          if (timestamp < previousTimestamp) {
+            timestampStats.nonMonotonicTransitions++;
+            timestampIssue = true;
+          } else if (timestamp === previousTimestamp) {
+            timestampStats.duplicateTimestampTransitions++;
+          }
+        }
+        previousTimestamp = timestamp;
+      } else {
+        timestampStats.invalidOrMissingStates++;
+        previousTimestamp = null;
+      }
+    }
+    if (states.some(state => Number.isFinite(Date.parse(String(state.timestamp_utc ?? ""))))) {
+      timestampStats.timestampedMatches++;
+    }
+    if (timestampIssue) timestampStats.matchesWithTimestampOrderIssue++;
     if (states.length && integer(states[0].sets_p1) === 0 && integer(states[0].sets_p2) === 0 &&
       JSON.stringify(gameArray(states[0].games_p1)) === "[0]" &&
       JSON.stringify(gameArray(states[0].games_p2)) === "[0]" &&
@@ -152,10 +193,13 @@ export function auditPointStateTransitions(rows) {
     for (let i = 0; i + 1 < states.length; i++) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
       totals.transitions++;
+      tierStats[tierKey].transitions++;
       if (result.status === "inferred") {
+        tierStats[tierKey].inferred++;
         totals.inferred++;
         inferred++;
       } else {
+        tierStats[tierKey].ambiguous++;
         totals.ambiguous++;
         totals.byReason[result.reason] = (totals.byReason[result.reason] || 0) + 1;
       }
@@ -182,22 +226,26 @@ export function auditPointStateTransitions(rows) {
     schemaVersion: 1,
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
+    timestampStats,
+    byTierKey: tierStats,
     totals
   };
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  let input = "", out = "point-state-transition-audit.json";
+  let input = "", matchesInput = "", out = "point-state-transition-audit.json";
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--input") input = args[++i];
+    else if (args[i] === "--matches") matchesInput = args[++i];
     else if (args[i] === "--out") out = args[++i];
-    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] --out report.json");
+    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] [--matches matches.csv[.gz]] --out report.json");
   }
   if (!input) throw new Error("Missing --input");
   const raw = await readFile(input);
   const csv = input.endsWith(".gz") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
-  const report = auditPointStateTransitions(parseCsv(csv));
+  const matchRows = matchesInput ? parseCsv((await readFile(matchesInput)).toString("utf8")) : [];
+  const report = auditPointStateTransitions(parseCsv(csv), matchRows);
   await writeFile(out, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only point-state audit: " + out);
