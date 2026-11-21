@@ -54,7 +54,7 @@ The archival evaluator now has a separate diagnostic path that:
 3. averages the two only when their disagreement is at most 8 percentage points;
 4. uses feature-specific surface rates shrunk toward each player's overall rates when surface history is sufficient, then passes the two service-point probabilities and the source `best_of` value to PFE's existing `calculateMatchWinProbability()` function.
 
-This is a deliberately conservative bridge test, not a validated opponent-adjusted estimator. It does not change PFE's live model registry, Worker endpoints, or betting recommendations. A missing format, insufficient prior history, or disagreement above the threshold excludes the point-model prediction rather than inventing an input. The report also compares the existing core surface-residual model and the detailed extended-profile model on an identical common sample to avoid confusing model changes with coverage changes.
+This is a deliberately conservative bridge test, not a validated opponent-adjusted estimator. It does not change PFE's live model registry, Worker endpoints, or betting recommendations. A missing format, insufficient prior history, or disagreement above the threshold excludes the point-model prediction rather than inventing an input. The report also compares the existing core surface-residual model, the detailed profile model, and a core-plus-extended model on an identical common sample to test whether the detailed features add incremental value rather than merely changing coverage.
 
 ## Candidate matchup calculation
 For player A serving against player B returning, estimate expected service-point win probability from:
