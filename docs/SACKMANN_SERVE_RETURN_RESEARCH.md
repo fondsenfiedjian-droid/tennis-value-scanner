@@ -81,3 +81,7 @@ The 730-day / 5-match configuration is strongest in aggregate for both tours. Th
 The combined model's annual standardized coefficients consistently assign negative weights to overall serve/return differences and positive weights to same-surface differences. This suggests that the useful signal may be a surface-relative adjustment rather than raw absolute rates. Next test residualized surface features and sample-size shrinkage before any further recommendation.
 
 **Decision: research-only. No production feature is activated.**
+
+## Frozen-coefficient later-period holdout
+
+In addition to the expanding annual walk-forward, each specification is fitted once on eligible pre-match rows from 2016 through 2024, then frozen and evaluated on 2025–2026 without refitting. Rolling player serve/return features remain strictly pre-match and exclude same-day matches. The 2026 archive is partial through 2026-05-25. This is a temporal stability check, not a blind test, because the annual 2025–2026 results have already been inspected. Treat it as exploratory, not confirmatory.
