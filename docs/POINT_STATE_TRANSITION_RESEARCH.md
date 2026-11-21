@@ -222,7 +222,7 @@ Across these 90,045 boundaries, 85,670 after-states (95.1%) had a 0-0 point-scor
 
 ## Match tape capture-boundary coverage (2026-11-21)
 
-An aggregate diagnostic checks the first and last observed scoreboard states per match against public match metadata. It counts matches whose first captured state is exactly 0-0, missing point-score fields at the first/last observed state, and whether the last observed set counters reach the number of sets required by the match format (BO3/BO5). It separates normal completions from matches with a recorded terminal event and reports explicit ATP/WTA round-prefix classification plus a secondary player-primary-tour agreement proxy.
+An aggregate diagnostic checks the first and last observed scoreboard states per match against public match metadata. It counts matches whose first captured state is exactly 0-0, missing point-score fields at the first/last observed state, and whether the last observed set counters reach the number of sets required by the match format (BO3/BO5). It separates matches with no recorded terminal event from matches with a recorded terminal event and reports explicit ATP/WTA round-prefix classification plus a secondary player-primary-tour agreement proxy.
 
 Reaching the required set count is only a coverage proxy, not proof that the tape includes the final point. Matches that do not reach the target may be truncated, retired, or otherwise incomplete; they are never padded or treated as losses/zeros.
 
@@ -233,7 +233,7 @@ Successful aggregate-only run: GitHub Actions `44866625208` (June 2026 public sa
 - Only 212/5,380 tapes (3.94%) begin at the exact 0-0 match-start state. 5,168 begin after the match has already progressed.
 - 431 first observed states (8.0%) have at least one missing point-score field; 60 last observed states (1.1%) have a missing point-score field.
 - Among 5,226 matches with no recorded terminal event, 3,969 (75.96%) reach the BO3/BO5 required set count in their last observed state; 1,257 (24.04%) do not.
-- Player-tour agreement proxy: ATP 2,062 matches (89 start at 0-0; 1,501/2,004 normal completions reach target, 74.90%); WTA 1,684 matches (67 start at 0-0; 1,203/1,637 reach target, 73.49%). 1,634 matches remain unclassified by this proxy.
+- Player-tour agreement proxy: ATP 2,062 matches (89 start at 0-0; 1,501/2,004 matches with no recorded terminal event reach target, 74.90%); WTA 1,684 matches (67 start at 0-0; 1,203/1,637 reach target, 73.49%). 1,634 matches remain unclassified by this proxy.
 
 Interpretation: use the sample for transition research within observed tape segments, not as complete match histories. The aggregate 77% monthly match coverage is not per-match tape completeness.
 
