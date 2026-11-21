@@ -26,7 +26,9 @@ if ([scheduleStart, scheduleEnd, oddsStart, oddsEnd].some(index => index < 0)) {
   throw new Error("Could not locate the production app's schedule/odds matching functions");
 }
 
-const freshnessConstant = html.match(/const ODDS_FRESHNESS_MAX_AGE_MS\s*=\s*(\d+)\s*;/);\nif (!freshnessConstant) throw new Error("Could not locate the production odds freshness setting");\nconst sandbox = { cachedOdds: oddsResponse.data.items, ODDS_FRESHNESS_MAX_AGE_MS: Number(freshnessConstant[1]), Date, Set, Map, Number, String, Math, Object, Array, RegExp, JSON };
+const freshnessConstant = html.match(/const ODDS_FRESHNESS_MAX_AGE_MS\s*=\s*(\d+)\s*;/);
+if (!freshnessConstant) throw new Error("Could not locate the production odds freshness setting");
+const sandbox = { cachedOdds: oddsResponse.data.items, ODDS_FRESHNESS_MAX_AGE_MS: Number(freshnessConstant[1]), Date, Set, Map, Number, String, Math, Object, Array, RegExp, JSON };
 const source = html.slice(scheduleStart, scheduleEnd) + "\n" + html.slice(oddsStart, oddsEnd) +
   "\nglobalThis.checkFns = { extractMatches, playerName, getPlayerId, matchDate, oddsForMatch, oddsSideForPlayer };";
 vm.runInNewContext(source, sandbox);
