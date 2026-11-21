@@ -938,3 +938,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Real-sample audit run `44862908490` succeeded against the public June 2026 Zenodo sample (ephemeral download; raw files not retained). 5,380 matches / 951,064 states / 945,684 transitions. After terminal-score gate: 772,578 inferred (81.70%), 173,106 ambiguous (18.30%); this is parser coverage, not accuracy. Timestamp checks: all states parseable, no reversals or duplicate adjacent timestamps. Server presence: 906,319 before / 907,569 after transitions; ownership alignment remains unvalidated.
 - Tour reporting: explicit round prefix only 353 ATP / 306 WTA / 4,721 unclassified. Secondary player-primary-tour agreement: 2,062 ATP / 1,684 WTA / 1,634 unclassified; inferred rates 83.73% ATP / 82.25% WTA. This is a player-affiliation proxy, not verified event tour. No production features enabled; manual transition/server validation remains next.
 - Latest CI for PR #95 at this point: regression tests passed; project-state guard passed; real-sample audit passed. PR remains open pending review of final checks.
+
+### PFE server-rotation alignment audit (2026-11-21)
+- Added research-only checks comparing server values across regular-game and tiebreak transitions. Ordinary games should retain the server until a game counter advances; tiebreak service follows one point, then pairs of points. Boundary/ambiguous transitions are skipped, not guessed.
+- Added synthetic regression tests and included aggregate alignment counts in the ephemeral sample workflow. This tests rotation consistency only; it does not yet establish whether server-before or server-after owns the point.
+- No production feature enabled; real-sample alignment results pending CI.
