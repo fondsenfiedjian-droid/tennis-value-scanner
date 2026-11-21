@@ -39,13 +39,43 @@ The extended profile candidate improves both error metrics over Elo, but does **
 - Surface-specific extended profiles shrunk toward overall rates can improve Brier/LogLoss over Elo, but their incremental value beyond the core residual model is not established.
 - Shrinkage prior 3 performed somewhat better than 5 or 10 in the explored holdout; this is not a license to tune further on the same holdout.
 
-## PFE point-engine bridge
+## PFE point-engine bridge and correction feature
 
-A preliminary bridge that averaged overall serve rate with one minus opponent return rate performed worse than Elo:
-- ATP: Δ Brier +0.003013 on 3,200 matches.
-- WTA: Δ Brier +0.008932 on 3,046 matches; LogLoss also worsened materially.
+The first split-profile evaluation is complete (GitHub Actions research run 44898985313, commit `1039943112ff6e6927278a1e724359b2fc643ce3`). It uses first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates; delegates the consistency check to PFE's `deriveServeReturnMatchInputs()`; and converts accepted point inputs through PFE's `calculateMatchWinProbability()`. It is still research-only.
 
-That crude bridge is rejected. It is superseded by a stricter implementation using first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates. It delegates the consistency check to PFE's existing `deriveServeReturnMatchInputs()` and converts point inputs through `calculateMatchWinProbability()`. Results for that split-profile bridge are pending a separate full run.
+### Raw PFE point-to-match probabilities: rejected
+
+On the full eligible holdout, the uncorrected point-engine output was worse than Elo:
+
+| Tour | n | Δ Brier (95% paired CI) | Δ LogLoss (95% paired CI) | Accuracy: Elo → point model |
+|---|---:|---:|---:|---:|
+| ATP | 3,142 | +0.003210 (-0.001535, +0.007954) | +0.006119 (-0.005124, +0.017363) | 64.35% → 64.00% |
+| WTA | 2,926 | +0.011864 (+0.006840, +0.016889) | +0.025996 (+0.013960, +0.038032) | 65.07% → 62.78% |
+
+WTA's deterioration is statistically clear under the paired intervals. The raw PFE point probability must not be substituted for Elo or used directly in betting.
+
+### PFE point delta as a feature: promising, not approved
+
+A more useful design is to treat the difference between PFE's point-engine logit and Elo's logit as a *feature*, then fit a regularized correction on earlier seasons only. This learns how much of the point-engine signal is reliable without blindly replacing the base model. On the identical 730-day / shrinkage-5 common sample:
+
+| Tour / specification | n | Δ Brier (95% paired CI vs Elo) | Δ LogLoss (95% paired CI vs Elo) | Accuracy: Elo → corrected |
+|---|---:|---:|---:|---:|
+| ATP point-delta only | 2,740 | -0.003217 (-0.004855, -0.001579) | -0.008840 (-0.013101, -0.004579) | 64.27% → 64.60% |
+| ATP core residual + point delta | 2,740 | -0.003414 (-0.005274, -0.001554) | -0.009282 (-0.013894, -0.004669) | 64.27% → 64.64% |
+| ATP core + extended + point delta | 2,740 | -0.003503 (-0.005469, -0.001536) | -0.009609 (-0.014434, -0.004785) | 64.27% → 64.64% |
+| WTA point-delta only | 2,509 | -0.001537 (-0.002701, -0.000373) | -0.004369 (-0.007540, -0.001198) | 65.72% → 65.56% |
+| WTA core residual + point delta | 2,509 | -0.002115 (-0.003438, -0.000793) | -0.005685 (-0.009186, -0.002184) | 65.72% → 65.48% |
+| WTA core + extended + point delta | 2,509 | -0.002009 (-0.003375, -0.000644) | -0.005460 (-0.009051, -0.001869) | 65.72% → 64.93% |
+
+Negative deltas mean lower error than Elo. The paired intervals here compare each specification with Elo on the same common sample; they are **not** direct confidence intervals for differences between the specifications. The point-delta feature improves Brier and LogLoss in both tours on this 730-day sample. Accuracy is mixed, especially WTA. The large extended feature block does not consistently improve on the simpler core-residual-plus-point-delta specification.
+
+The 730-day result is directionally stable across shrinkage strengths 3, 5 and 10. The 365-day window is weaker for WTA; the 84-day window is not reliable for either tour. This makes a long, rolling history the only current candidate worth carrying forward.
+
+### Coverage and interpretation
+
+For the 730-day / shrinkage-5 run, 19,722 ATP and 20,? WTA matches had enough input to generate point-engine output across the evaluation history; 3,156 ATP and a similar-sized WTA subset were marked for review due to serve/return disagreement. (Exact full-period counts are included in the machine report; holdout counts are shown above.) The 8-percentage-point consistency threshold is a conservative exclusion rule, not proof that the retained rates are unbiased.
+
+**Decision:** reject raw point-engine match probabilities. Keep the PFE point-logit delta as a research feature for a separately trained correction layer, with ATP and WTA calibrated separately. Do not promote it into PFE's live model registry until a new, untouched forward period confirms the gains and betting-market tests show incremental value.
 
 ### Split first/second-serve PFE bridge — standalone result
 
