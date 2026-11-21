@@ -18,13 +18,13 @@ function addPlayerSide(nameToIds, ageHistory, name, id, date, age, tour) {
   const key=tour+":"+normalized;
   if(!nameToIds.has(key)) nameToIds.set(key,new Set());
   nameToIds.get(key).add(playerId);
-  if(!validAge(Number(age)) || !/^\\d{8}$/.test(String(date??""))) return;
+  if(!validAge(Number(age)) || !/^\d{8}$/.test(String(date??""))) return;
   if(!ageHistory.has(tour+":"+playerId)) ageHistory.set(tour+":"+playerId,[]);
   ageHistory.get(tour+":"+playerId).push({date:String(date),age:Number(age)});
 }
 
 function ageAsOf(history, date) {
-  if(!history?.length || !/^\\d{8}$/.test(String(date??""))) return null;
+  if(!history?.length || !/^\d{8}$/.test(String(date??""))) return null;
   const target=dayNumber(date);
   let low=0,high=history.length;
   while(low<high){
