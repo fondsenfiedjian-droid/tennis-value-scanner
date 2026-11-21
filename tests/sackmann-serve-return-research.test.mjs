@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPreMatchServeReturn } from "../scripts/sackmann-serve-return-research.mjs";
+import { auditServeReturnStats, buildPreMatchServeReturn } from "../scripts/sackmann-serve-return-research.mjs";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
  tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
@@ -60,4 +60,16 @@ test("accepts valid zero-second-serve opportunity matches without fabricating se
  const target=row("20250102",2,1,3,stats(10,10,8,0),stats(10,10,7,0));
  const features=buildPreMatchServeReturn([valid,target],{minOverallMatches:1,minSurfaceMatches:1});
  assert.ok(Number.isFinite(features.get("20250102:1:3:Hard").serveDiff));
+});
+
+
+test("reports serve-stat quality and isolates impossible second-serve opportunity rows", () => {
+ const rows=[
+  row("20250101",1,1,2,stats(10,8,2,3),stats(10,8,2,0)),
+  row("20250102",2,3,4,stats(10,10,8,0),stats(10,10,7,0))
+ ];
+ const report=auditServeReturnStats(rows);
+ assert.equal(report.matches,2);
+ assert.deepEqual(report.winner,{valid:1,invalid:1,reasons:{second_won_exceeds_opportunities:1}});
+ assert.deepEqual(report.loser,{valid:2,invalid:0,reasons:{}});
 });
