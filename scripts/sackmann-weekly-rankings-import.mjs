@@ -79,7 +79,7 @@ function makeWriters(outDir,tour) {
   q.write(csvLine(['tour','ranking_date','player_id','rank','points','source_file','source_row','conflict_reason']));
   return {c,q,canonical,quarantine,report};
 }
-function write(stream,line){return new Promise((resolve,reject)=>{if(stream.write(line))resolve();else{stream.once('drain',resolve);stream.once('error',reject);}});}
+function write(stream,line){return new Promise((resolve,reject)=>{\n  if(stream.destroyed)return reject(new Error('Output stream is destroyed'));\n  if(stream.write(line))return resolve();\n  const cleanup=()=>{stream.removeListener('drain',onDrain);stream.removeListener('error',onError);};\n  const onDrain=()=>{cleanup();resolve();};\n  const onError=error=>{cleanup();reject(error);};\n  stream.once('drain',onDrain);stream.once('error',onError);\n});}
 async function finish(stream){await new Promise((resolve,reject)=>stream.end(err=>err?reject(err):resolve()));}
 async function main(){
   const {tour,outDir,files,chunkSize}=argsParse();
