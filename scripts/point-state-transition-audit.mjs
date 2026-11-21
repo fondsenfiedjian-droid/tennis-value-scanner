@@ -424,7 +424,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     !["true", "1", "yes"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
   const pointScoreMissing = state => !String(state.points_p1 ?? "").trim() || !String(state.points_p2 ?? "").trim();
   for (const [id, states] of groups) {
-    const meta = metadata.get(id) || { tour: "unclassified", bestOf: "", eventStatus: "" };
+    const meta = metadata.get(id) || { tour: "unclassified", bestOf: "", eventStatus: null };
     const tour = meta.tour || "unclassified";
     if (!captureBoundaryCoverage.byTour[tour]) {
       captureBoundaryCoverage.byTour[tour] = {
@@ -457,20 +457,19 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
       if (firstMissing) target.firstStateMissingPointScore++;
       if (lastMissing) target.lastStateMissingPointScore++;
-      if (!meta.eventStatus) target.noRecordedTerminalEvent++;
-      else target.recordedTerminalEvent++;
+      target[completionClass]++;
       if (meta.bestOf === "BO3" || meta.bestOf === "BO5") {
         const needed = meta.bestOf === "BO5" ? 3 : 2;
         const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
         const completedSets = lastSets1 !== null && lastSets2 !== null ? lastSets1 + lastSets2 : null;
         if (completedSets !== null && completedSets >= needed) {
           target.finalSetTargetReached++;
-          if (!meta.eventStatus) target.noTerminalEventTargetReached++;
-          else target.recordedTerminalEventTargetReached++;
+          if (completionClass === "noRecordedTerminalEvent") target.noTerminalEventTargetReached++;
+          else if (completionClass === "recordedTerminalEvent") target.recordedTerminalEventTargetReached++;
         } else {
           target.finalSetTargetNotReached++;
-          if (!meta.eventStatus) target.noTerminalEventTargetNotReached++;
-          else target.recordedTerminalEventTargetNotReached++;
+          if (completionClass === "noRecordedTerminalEvent") target.noTerminalEventTargetNotReached++;
+          else if (completionClass === "recordedTerminalEvent") target.recordedTerminalEventTargetNotReached++;
         }
       } else target.unknownBestOf++;
     }
