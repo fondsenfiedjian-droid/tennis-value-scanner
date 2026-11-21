@@ -309,6 +309,22 @@ function auditScoreVocabulary(rows) {
   return report;
 }
 
+function summarizeMatchCoverage(records) {
+  const values = records.filter(record => record.transitions > 0).map(record => record.inferred / record.transitions * 100).sort((a, b) => a - b);
+  const percentile = p => values.length ? Number(values[Math.min(values.length - 1, Math.ceil(p * values.length) - 1)].toFixed(2)) : null;
+  return {
+    matches: records.length,
+    matchesWithTransitions: values.length,
+    allTransitionsInferred: values.filter(value => value === 100).length,
+    atLeast95Pct: values.filter(value => value >= 95).length,
+    atLeast90Pct: values.filter(value => value >= 90).length,
+    atLeast80Pct: values.filter(value => value >= 80).length,
+    meanInferredPct: values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : null,
+    p50InferredPct: percentile(0.50),
+    p90InferredPct: percentile(0.90)
+  };
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const scoreVocabulary = auditScoreVocabulary(rows);
@@ -331,6 +347,9 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   }
   const tierStats = {};
   const tourStats = {};
+  const coverageByTour = {};
+  const coverageByPlayerTour = {};
+  const allMatchCoverage = [];
   const playerTourAgreementStats = {};
   const timestampStats = {
     validStates: 0, invalidOrMissingStates: 0,
@@ -397,6 +416,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     if (!tourStats[tour]) tourStats[tour] = {
       matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
     };
+    if (!coverageByTour[tour]) coverageByTour[tour] = [];
+    if (!coverageByPlayerTour[playerTour]) coverageByPlayerTour[playerTour] = [];
     tierStats[tierKey].matchesWithPoints++;
     tourStats[tour].matchesWithPoints++;
     playerTourAgreementStats[playerTour].matchesWithPoints++;
@@ -579,6 +600,11 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     byTierKey: tierStats,
     byTour: tourStats,
     byPlayerTourAgreement: playerTourAgreementStats,
+    matchParserCoverage: {
+      overall: summarizeMatchCoverage(allMatchCoverage),
+      byExplicitTour: Object.fromEntries(Object.entries(coverageByTour).map(([tour, records]) => [tour, summarizeMatchCoverage(records)])),
+      byPlayerTourAgreement: Object.fromEntries(Object.entries(coverageByPlayerTour).map(([tour, records]) => [tour, summarizeMatchCoverage(records)]))
+    },
     totals
   };
 }
