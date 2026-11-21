@@ -681,14 +681,14 @@
     const byTour=all.filter(m=>{const tour=normalizeTour(m.tour);return tour!==null&&tours.includes(tour);});
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
-    // Show only matches with a complete, fresh Winamax match-winner quote pair.
+    // Show only matches with a complete, fresh match-winner quote pair from an enabled bookmaker.
     const filtered=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length===2):[];
     $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · пар с коэффициентами: '+filtered.length;
     $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){
-      const message=!winnerEnabled?'Включи рынок «Победитель матча», чтобы увидеть пары с коэффициентами.':dateFiltered.length?'На выбранную дату нет матчей с полной актуальной парой коэффициентов Winamax.':'Матчей на выбранную дату не найдено.';
-      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Показываются только матчи, для которых найдены оба актуальных коэффициента Winamax.</div></div>';return;
+      const message=!winnerEnabled?'Включи рынок «Победитель матча», чтобы увидеть пары с коэффициентами.':dateFiltered.length?'На выбранную дату нет матчей с полной актуальной парой коэффициентов букмекеров.':'Матчей на выбранную дату не найдено.';
+      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Показываются только матчи, для которых найдены оба актуальных коэффициента хотя бы у одного подключённого букмекера.</div></div>';return;
     }
     list.innerHTML=filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
