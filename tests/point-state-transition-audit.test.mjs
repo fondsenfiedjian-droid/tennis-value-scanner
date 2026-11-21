@@ -232,4 +232,40 @@ test("audits regular-game and tiebreak server rotation without assuming unverifi
   assert.equal(report.serverAlignment.tiebreakMatches, 3);
   assert.equal(report.serverAlignment.regularMismatches, 0);
   assert.equal(report.serverAlignment.tiebreakMismatches, 0);
+  assert.equal(report.serverAlignment.regularAlternativeMismatches, 1);
+  assert.equal(report.serverAlignment.tiebreakAlternativeMismatches, 3);
+});
+
+
+test("compares last-point-server phase alternative against next-point-server phase", () => {
+  const rows = [
+    state({ points_p1: "40", points_p2: "30", server: "1" }),
+    state({ points_p1: "0", points_p2: "0", server: "1", games_p1: "[1]" }),
+    state({ points_p1: "15", points_p2: "0", server: "2", games_p1: "[1]" }),
+    state({
+      match_id: "m2", points_p1: "0", points_p2: "0",
+      server: "1", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "1", points_p2: "0",
+      server: "1", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "1", points_p2: "1",
+      server: "2", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "2", points_p2: "1",
+      server: "2", is_tiebreak: "true"
+    })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.serverAlignment.regularChecked, 2);
+  assert.equal(report.serverAlignment.regularAlternativeMatches, 2);
+  assert.equal(report.serverAlignment.regularMatches, 0);
+  assert.equal(report.serverAlignment.regularGameBoundaryAlternativeMatches, 1);
+  assert.equal(report.serverAlignment.regularWithinGameAlternativeMatches, 1);
+  assert.equal(report.serverAlignment.tiebreakChecked, 3);
+  assert.equal(report.serverAlignment.tiebreakAlternativeMatches, 3);
+  assert.equal(report.serverAlignment.tiebreakMatches, 0);
 });
