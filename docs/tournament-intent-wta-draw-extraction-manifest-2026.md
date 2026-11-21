@@ -13,7 +13,7 @@ WTA Tour-level singles main draws whose match dates fall in the study window, pl
 | Singapore | 21–27 Sep | WTA 500 | 28 | 27 | https://www.wtatennis.com/tournaments/1152/singapore/2026/draws |
 | Seoul | 21–27 Sep | WTA 250 | 32 | 31 | https://www.wtatennis.com/tournaments/1024/seoul/2026/draws |
 | Beijing | 29 Sep–11 Oct | WTA 1000 | 96 | 95 | https://www.wtatennis.com/tournaments/1020/beijing/2026/draws |
-| Wuhan | 12–18 Oct | WTA 1000 | 56 | 55 | https://www.wtatennis.com/tournaments/1075/wuhan/2026/draws |
+| Wuhan | 12–18 Oct | WTA 1000 | 56 | 55 | https://www.wtatennis.com/tournaments/wuhan-open/draws |
 | Ningbo | 19–25 Oct | WTA 500 | 28 | 27 | https://www.wtatennis.com/tournaments/2092/ningbo/2026/draws |
 | Osaka | 19–25 Oct | WTA 250 | 32 | 31 | https://www.wtatennis.com/tournaments/405/osaka/2026/draws |
 | Tokyo | 26 Oct–1 Nov | WTA 500 | 28 | 27 | https://www.wtatennis.com/tournaments/1056/tokyo/2026/draws |
