@@ -63,7 +63,7 @@ async function audit(file) {
       if (!header) {
         header = parseCsvLine(line.replace(/^\uFEFF/, '')).map(x => x.trim());
         const lower = header.map(x => x.toLowerCase());
-        idColumn = lower.findIndex(x => ['player_id', 'player1_id', 'winner_id', 'id'].includes(x));
+        idColumn = lower.findIndex(x => ['player_id', 'player1_id', 'winner_id', 'id', 'player'].includes(x));
         dateColumn = lower.findIndex(x => ['ranking_date', 'tourney_date', 'date', 'scheduled_at'].includes(x));
         tourColumn = lower.findIndex(x => ['tour', 'tour_code', 'circuit'].includes(x));
         surfaceColumn = lower.findIndex(x => x === 'surface');
