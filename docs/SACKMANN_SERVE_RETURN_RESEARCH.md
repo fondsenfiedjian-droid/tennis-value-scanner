@@ -81,3 +81,7 @@ The 730-day / 5-match configuration is strongest in aggregate for both tours. Th
 The combined model's annual standardized coefficients consistently assign negative weights to overall serve/return differences and positive weights to same-surface differences. This suggests that the useful signal may be a surface-relative adjustment rather than raw absolute rates. Next test residualized surface features and sample-size shrinkage before any further recommendation.
 
 **Decision: research-only. No production feature is activated.**
+
+## Sensitivity grid implementation
+
+A reproducible CI sensitivity mode tests 180/365/730-day rolling windows, minimum prior histories of 3/5/10 statistics-complete matches, surface-rate shrinkage toward overall rates with prior weights of 10/20, and shrinkage-weighted residualized surface effects with prior weights of 10/20. ATP and WTA remain separate. All variants use the same chronological K=32 Elo baseline and same-day exclusion. This is robustness analysis on the existing 2020–2026 walk-forward period, not a fresh untouched holdout. Results pending CI.
