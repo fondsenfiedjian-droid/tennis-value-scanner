@@ -50,3 +50,7 @@ The first real-sample run exposed a potential over-inference risk: the earlier p
 ### Tour split
 
 The public match index uses numeric `tier_key` identifiers, so those identifiers are reported literally and not interpreted as ATP/WTA. The audit additionally classifies a match as ATP or WTA only when its `round` label begins explicitly with that tour name (for example, `ATP Miami - ...`). All other rows remain `unclassified`. This is a conservative reporting split, not an assumption based on tournament name or numeric tier ID.
+
+### ATP/WTA coverage limitation and secondary cross-check
+
+The first explicit round-prefix split classified only 659 of 5,380 matches (353 ATP, 306 WTA); 4,721 match rows had round labels without an explicit ATP/WTA prefix and remain unclassified by this strict event-label method. To improve visibility without silently treating player identity as event identity, the audit now also reports a separate `byPlayerTourAgreement` diagnostic: a match is assigned to ATP or WTA in this secondary view only when both player records in `players.csv` declare the same primary tour. This is a proxy for player affiliation, not proof of the event's tour; the two reports must remain separate. The workflow downloads `players.csv.gz` ephemerally and does not publish raw data.
