@@ -87,7 +87,7 @@ function prepare(rows) {
   return {rows:unique,sourceRows:rows.length,invalidRows:rows.length-clean.length,
     duplicateRows,conflictingDuplicateRows,conflictingDuplicateMatches};
 }
-function metric(){return {n:0,brier:0,logLoss:0,correct:0};}
+function metric(){return {n:0,brier:0,logLoss:0,correct:0,extreme5:0,extreme5Wrong:0,extreme1:0,extreme1Wrong:0,lossOver2:0,lossOver46:0,maxLoss:0,bins:Array.from({length:10},()=>({n:0,p:0,y:0}))};}
 const LAYOFF_BANDS=[
   {key:"30_59",min:30,max:59},
   {key:"60_89",min:60,max:89},
@@ -113,13 +113,31 @@ function finishCohorts(map){
 }
 function add(bucket,p,y){
   p=clamp(p);bucket.n++;bucket.brier+=(p-y)**2;
-  bucket.logLoss-=y*Math.log(p)+(1-y)*Math.log(1-p);
+  const loss=-(y*Math.log(p)+(1-y)*Math.log(1-p));
+  bucket.logLoss+=loss;bucket.maxLoss=Math.max(bucket.maxLoss,loss);
   bucket.correct+=p>.5?y:p<.5?1-y:.5;
+  const extreme5=p<.05||p>.95,extreme1=p<.01||p>.99;
+  if(extreme5){bucket.extreme5++;if((p>.5?1:0)!==y)bucket.extreme5Wrong++;}
+  if(extreme1){bucket.extreme1++;if((p>.5?1:0)!==y)bucket.extreme1Wrong++;}
+  if(loss>2)bucket.lossOver2++;
+  if(loss>4.605170186)bucket.lossOver46++;
+  const bin=Math.min(9,Math.floor(p*10)),cell=bucket.bins[bin];
+  cell.n++;cell.p+=p;cell.y+=y;
 }
 function finish(bucket){
-  return bucket.n?{matches:bucket.n,brier:+(bucket.brier/bucket.n).toFixed(6),
-    logLoss:+(bucket.logLoss/bucket.n).toFixed(6),accuracy:+(100*bucket.correct/bucket.n).toFixed(2)}
-    :{matches:0,brier:null,logLoss:null,accuracy:null};
+  if(!bucket.n)return {matches:0,brier:null,logLoss:null,accuracy:null,diagnostics:null};
+  return {matches:bucket.n,brier:+(bucket.brier/bucket.n).toFixed(6),
+    logLoss:+(bucket.logLoss/bucket.n).toFixed(6),accuracy:+(100*bucket.correct/bucket.n).toFixed(2),
+    diagnostics:{
+      extreme5:{count:bucket.extreme5,wrong:bucket.extreme5Wrong},
+      extreme1:{count:bucket.extreme1,wrong:bucket.extreme1Wrong},
+      logLossOver2:bucket.lossOver2,logLossOver4_6:bucket.lossOver46,
+      maxIndividualLogLoss:+bucket.maxLoss.toFixed(6),
+      calibrationBins:bucket.bins.map((cell,index)=>({range:(index/10).toFixed(1)+"-"+((index+1)/10).toFixed(1),
+        count:cell.n,meanPredicted:cell.n?+(cell.p/cell.n).toFixed(4):null,
+        observedWinRate:cell.n?+(cell.y/cell.n).toFixed(4):null,
+        calibrationGap:cell.n?+((cell.p-cell.y)/cell.n).toFixed(4):null}))
+    }};
 }
 function compare(base,candidate,trainingMatches,trainingSample){
   const b=finish(base),c=finish(candidate);
