@@ -970,3 +970,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PFE score-value vocabulary audit (2026-11-21)
 - Added aggregate frequency and validation counts for normal-game score labels vs numeric tiebreak scores, including unexpected values, unexpected numeric values in normal-game states and unknown tiebreak flags.
 - Added synthetic regression tests and aggregate-only workflow output. Real-sample findings pending.
+- Real-sample score vocabulary run `44864969199`: 929,956 normal-flag states and 21,108 tiebreak-flag states; zero unknown flags. 5,368 normal states had missing scores and 504 had unexpected numeric values 1–9; 342 tiebreak states had missing scores and 43 had A/AD values. Tiebreak flag/score-vocabulary mismatches remain research-only and excluded from inference.
