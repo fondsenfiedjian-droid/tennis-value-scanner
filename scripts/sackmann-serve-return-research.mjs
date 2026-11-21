@@ -32,7 +32,10 @@ const SPECS=[
  {name:"surface_profile_only",features:SURFACE_PROFILE},
  {name:"shrunk_surface_profile_only",features:SHRUNK_SURFACE_PROFILE},
  {name:"overall_plus_shrunk_surface_profile",features:[...PROFILE,...SHRUNK_SURFACE_PROFILE]},
- {name:"core_residual_plus_extended_profile",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE]}
+ {name:"core_residual_plus_extended_profile",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE]},
+ {name:"pfe_point_delta_only",features:["pfePointLogitDelta"]},
+ {name:"core_residual_plus_pfe_point_delta",features:[...OVERALL,...SURFACE_RESIDUAL,"pfePointLogitDelta"]},
+ {name:"core_extended_plus_pfe_point_delta",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE,"pfePointLogitDelta"]}
 ];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
@@ -382,8 +385,10 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     ?PFE.calculateMatchWinProbability(pointA,pointB,{bestOf:features.bestOf}):null;
    const pointModelProbability=pointResult?.status==="provisional"&&Number.isFinite(pointResult.probabilityA)
     ?pointResult.probabilityA:null;
+   const pfePointLogitDelta=pointModelProbability===null?null:logit(pointModelProbability)-logit(prediction.probabilities.elo);
+   const matchedFeatures={...features,pfePointLogitDelta};
    matched.push({year:Number(prediction.date.slice(0,4)),baseProbability:prediction.probabilities.elo,
-    outcome:prediction.winnerId===prediction.player1Id?1:0,features,pointModelProbability,
+    outcome:prediction.winnerId===prediction.player1Id?1:0,features:matchedFeatures,pointModelProbability,
     surface:prediction.surface??"Unknown"});
   }
   const bySpec={};
@@ -427,11 +432,20 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,extendedNames,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
    coreResidualPlusExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
   };
+  const pfeCommonNames=[...commonNamesExtended,"pfePointLogitDelta"];
+  const pfeCommonRows=matched.filter(row=>pfeCommonNames.every(name=>Number.isFinite(row.features[name])));
+  const pfeCommonSampleComparisons={
+   commonEligibleMatches:pfeCommonRows.length,
+   coreSurfaceResidual:evaluateFixedHoldout(pfeCommonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   pfePointDeltaOnly:evaluateFixedHoldout(pfeCommonRows,["pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreResidualPlusPfePointDelta:evaluateFixedHoldout(pfeCommonRows,[...commonNamesCore,"pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreExtendedPlusPfePointDelta:evaluateFixedHoldout(pfeCommonRows,[...commonNamesExtended,"pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear})
+  };
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,pointInputStatusCounts,
     fixedHoldout:aggregatePredictions(pointHoldout),annual:pointAnnual,
     method:"Feature-specific overall and surface-shrunk first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates pass through PFE.deriveServeReturnMatchInputs with an 8-percentage-point disagreement limit; PFE.calculateMatchWinProbability converts the resulting point inputs using source best_of. No production path is changed."},
-   commonSampleComparisons,
+   commonSampleComparisons,pfeCommonSampleComparisons,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},surfaceShrinkageMatches,
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
    baseline:"Chronological K=32 Elo from the existing backtest engine; earlier match results are warm-up only.",
