@@ -422,7 +422,15 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     tiebreakFlagNonNumericAnomalies: 2,
     tiebreakFlagAlphaAdjacentToNormal: 1,
     tiebreakFlagAlphaWithNoAdjacentNormal: 1,
-    missingPointScoreStates: 0
+    missingPointScoreStates: 0,
+    normalFlagNumericValueCounts: { "5": 1, "50": 1 },
+    normalFlagNumericPairCounts: { "5:0": 1, "50:0": 1 },
+    normalFlagNumericWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
+    normalFlagNumericPreviousTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericNextTiebreakDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
+    tiebreakFlagAlphaValueCounts: { AD: 2, A: 1 },
+    tiebreakFlagAlphaPairCounts: { "AD:40": 1, "A:AD": 1 },
+    tiebreakFlagAlphaWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0 }
   });
 });
 
@@ -443,4 +451,56 @@ test("breaks down regular game-boundary server changes by timestamp gap", () => 
   assert.equal(slower.checked, 1);
   assert.equal(slower.observedHold, 1);
   assert.equal(slower.afterScoreReset, 1);
+});
+
+
+test("measures first and last observed states against match metadata without assuming full coverage", () => {
+  const rows = [
+    state({ match_id: "m1", sets_p1: "0", sets_p2: "0" }),
+    state({ match_id: "m1", sets_p1: "2", sets_p2: "0", games_p1: "[6,4]", games_p2: "[3,2]" }),
+    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]", points_p1: "", points_p2: "15" }),
+    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]" })
+  ];
+  const matches = [
+    { match_id: "m1", round: "ATP Paris - Final", best_of: "BO3", event_status: "", player1_id: "1", player2_id: "2" },
+    { match_id: "m2", round: "WTA Rome - SF", best_of: "BO3", event_status: "retired", player1_id: "3", player2_id: "4" }
+  ];
+  const players = [
+    { player_id: "1", tour: "ATP" }, { player_id: "2", tour: "ATP" },
+    { player_id: "3", tour: "WTA" }, { player_id: "4", tour: "WTA" }
+  ];
+  const report = auditPointStateTransitions(rows, matches, players);
+  const coverage = report.captureBoundaryCoverage;
+  assert.equal(coverage.overall.totalMatches, 2);
+  assert.equal(coverage.overall.firstStateAtMatchStart, 1);
+  assert.equal(coverage.overall.firstStateNotAtMatchStart, 1);
+  assert.equal(coverage.overall.firstStateMissingPointScore, 1);
+  assert.equal(coverage.overall.lastStateMissingPointScore, 0);
+  assert.equal(coverage.overall.normalCompletion, 1);
+  assert.equal(coverage.overall.nonNormalCompletion, 1);
+  assert.equal(coverage.overall.finalSetTargetReached, 1);
+  assert.equal(coverage.overall.finalSetTargetNotReached, 1);
+  assert.equal(coverage.byTour.ATP.totalMatches, 1);
+  assert.equal(coverage.byTour.WTA.totalMatches, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 1);
+  assert.equal(coverage.byPlayerTourAgreement.WTA.totalMatches, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.WTA.nonNormalCompletionTargetNotReached, 1);
+});
+
+test("measures score-flag anomaly proximity in either direction without reclassifying rows", () => {
+  const rows = [
+    state({ points_p1: "5", points_p2: "4", is_tiebreak: "false" }),
+    state({ points_p1: "0", points_p2: "0", is_tiebreak: "false" }),
+    state({ points_p1: "6", points_p2: "5", is_tiebreak: "true" }),
+    state({ points_p1: "AD", points_p2: "40", is_tiebreak: "true" }),
+    state({ points_p1: "40", points_p2: "30", is_tiebreak: "false" }),
+    state({ points_p1: "8", points_p2: "7", is_tiebreak: "true" })
+  ];
+  const report = auditPointStateTransitions(rows).tiebreakFlagAlignment;
+  assert.equal(report.normalFlagNumericWithinDistance[2], 1);
+  assert.equal(report.normalFlagNumericNextTiebreakDistance[2], 1);
+  assert.equal(report.tiebreakFlagAlphaWithinDistance[1], 1);
+  assert.deepEqual(report.normalFlagNumericValueCounts, { "4": 1, "5": 1 });
+  assert.deepEqual(report.normalFlagNumericPairCounts, { "5:4": 1 });
 });
