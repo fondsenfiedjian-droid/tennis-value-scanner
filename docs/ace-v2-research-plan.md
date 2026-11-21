@@ -130,3 +130,8 @@ The pre-match workload builder now calculates 14- and 28-calendar-day match coun
 ### Non-overlapping workload bands — pending validation
 
 The raw cumulative 14/28-day extension produced modest additional gains but unstable coefficients, likely due overlapping windows. The workload builder now derives non-overlapping bands: 1–3, 4–7, 8–14 and 15–28 calendar days, for both match counts and distinct playing days. The PFE research runner compares banded load-only and banded ACE against core ACE and the cumulative-window model on the same chronological holdouts. Inclusive boundaries, same-day exclusion and band derivation have regression fixtures. Results pending CI.
+
+
+### 14/28-day and non-overlapping band results — 2026-11-21
+
+The extended ACE comparisons completed on the same three chronological holdouts. The 14/28-day extension improved ATP Brier over core ACE by 0.000578 (2025), 0.000683 (full 2026) and 0.000594 (Jul–Nov 2026); paired 95% CIs excluded zero in all three. WTA was inconsistent: 2025 showed no improvement, full 2026 showed a small improvement (-0.000365), and Jul–Nov 2026 did not exclude zero. The non-overlapping band model and cumulative 14/28 model were effectively indistinguishable; banding did not materially improve performance. ATP coefficients for 14/28 load features were not stable enough to justify production adoption. **Decision:** keep 3/7-day load + rest-day core ACE as the shared candidate; retain 14/28-day extension as ATP-only research, and do not add it to WTA yet. Next ACE work should focus on age×load and nonlinear thresholds only after age mapping quality is measured; avoid further tuning the overlapping-window variants.
