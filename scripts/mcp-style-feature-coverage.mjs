@@ -123,7 +123,7 @@ function newTourReport(minPriorMatches) {
     featureMatchCoverage: Object.fromEntries(FEATURES.map(feature => [feature, 0])),
     priorHistoryCoverage: Object.fromEntries(FEATURES.map(feature => [feature, {
       overall: Object.fromEntries(minPriorMatches.map(n => [String(n), 0])),
-      sameSurface: Object.fromEntries(MIN_PRIOR_DEFAULT.map(n => [String(n), 0]))
+      sameSurface: Object.fromEntries(minPriorMatches.map(n => [String(n), 0]))
     }])),
     targetSurfaceCounts: { Hard: 0, Clay: 0, Grass: 0, unknown: 0 }
   };
