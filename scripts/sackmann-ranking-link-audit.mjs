@@ -39,7 +39,11 @@ async function* rows(file){
 function arg(name){const i=process.argv.indexOf(name);return i>=0?process.argv[i+1]:null;}
 const tour=arg('--tour');
 const archive=arg('--archive');
-const files=[];\nfor(let i=2;i<process.argv.length;i++){\n  if(process.argv[i]==='--tour'||process.argv[i]==='--archive'){i++;continue;}\n  if(!process.argv[i].startsWith('--'))files.push(process.argv[i]);\n}
+const files=[];
+for(let i=2;i<process.argv.length;i++){
+  if(process.argv[i]==='--tour'||process.argv[i]==='--archive'){i++;continue;}
+  if(!process.argv[i].startsWith('--'))files.push(process.argv[i]);
+}
 if(!['atp','wta'].includes(tour)||!archive||!files.length){
   console.error('Usage: node scripts/sackmann-ranking-link-audit.mjs --tour atp|wta --archive normalized.csv ranking-files.csv [...]');
   process.exit(2);
