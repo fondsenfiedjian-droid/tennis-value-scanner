@@ -128,3 +128,23 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  });
  assert.deepEqual(refit.standardizedCoefficients,result.standardizedCoefficients);
 });
+
+
+test("residualized surface effects and count-based shrinkage blend surface rates toward overall rates", () => {
+ const rows=[
+  row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20),"Hard"),
+  row("20250102",2,1,2,stats(100,60,50,30),stats(100,60,30,20),"Clay"),
+  row("20250103",3,3,4,stats(100,60,30,20),stats(100,60,30,20),"Hard"),
+  row("20250104",4,3,4,stats(100,60,30,20),stats(100,60,30,20),"Clay"),
+  row("20250105",5,3,1,stats(100,60,30,20),stats(100,60,30,20),"Hard")
+ ];
+ const target=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250105:1:3:Hard");
+ assert.ok(target);
+ assert.ok(Math.abs(target.serveDiff-0.2)<1e-9);
+ assert.ok(Math.abs(target.surfaceServeDiff-0.1)<1e-9);
+ assert.ok(Math.abs(target.surfaceServeResidual-(-0.1))<1e-9);
+ assert.equal(target.minSurfacePriorMatches,1);
+ assert.ok(Math.abs(target.surfaceServeDiffShrink5-(0.2+(1/6)*(-0.1)))<1e-9);
+ assert.ok(Math.abs(target.surfaceServeDiffShrink10-(0.2+(1/11)*(-0.1)))<1e-9);
+ assert.ok(Math.abs(target.surfaceServeDiffShrink20-(0.2+(1/21)*(-0.1)))<1e-9);
+});
