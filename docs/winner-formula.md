@@ -12,7 +12,7 @@ The first experiment adds a regularized logistic correction to the existing comb
 - coverage of known match durations;
 - an explicit workload-availability indicator.
 
-All workload features are A-minus-B differences. Same-day matches are excluded because their actual completion order is unknown. Missing workload is neutral and flagged rather than fabricated. The ATP and WTA models are trained separately.
+All workload features are A-minus-B differences. Same-day matches are excluded because their actual completion order is unknown. Rest-day differences are deliberately withheld from this first experiment because the available archive does not yet prove complete player-history coverage; missing workload is neutral and flagged rather than fabricated. The ATP and WTA models are trained separately.
 
 ## Evaluation protocol
 Train only on matches dated on or before the configured training cutoff; evaluate on a later, untouched date window. Compare Brier score, log loss, and accuracy against the existing combined model on exactly the same evaluation matches. Lower Brier/log loss is better. The module reports coverage and serialized coefficients. It is research-only and does not calculate betting ROI.
