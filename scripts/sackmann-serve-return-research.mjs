@@ -407,6 +407,9 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
   const pointRows=matched.filter(row=>Number.isFinite(row.pointModelProbability)&&row.features.bestOf);
+  const pointInputStatusCounts=matched.reduce((counts,row)=>{
+   const key=row.features.pfePointInputStatus??"unknown";counts[key]=(counts[key]??0)+1;return counts;
+  },{});
   const pointHoldout=pointRows.filter(row=>row.year>=holdoutStartYear&&row.year<=lastEvaluationYear)
    .map(row=>({...row,adjustedProbability:row.pointModelProbability}));
   const pointAnnual=[];
@@ -425,9 +428,9 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    coreResidualPlusExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
   };
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
-   pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,
+   pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,pointInputStatusCounts,
     fixedHoldout:aggregatePredictions(pointHoldout),annual:pointAnnual,
-    method:"Historical overall serve-point rate and opponent return cross-check are averaged for each player's service-point probability only when disagreement is <= 8 percentage points; PFE's exact point-to-match engine converts the two inputs using source best_of. No production path is changed."},
+    method:"Feature-specific overall and surface-shrunk first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates pass through PFE.deriveServeReturnMatchInputs with an 8-percentage-point disagreement limit; PFE.calculateMatchWinProbability converts the resulting point inputs using source best_of. No production path is changed."},
    commonSampleComparisons,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},surfaceShrinkageMatches,
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
