@@ -682,7 +682,7 @@
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
     // Show only matches with a complete, fresh match-winner quote pair from an enabled bookmaker.
-    const filtered=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length===2):[];
+    const filtered=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length>=2):[];
     $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · пар с коэффициентами: '+filtered.length;
     $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
@@ -715,7 +715,7 @@
       const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
         displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
         displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты Winamax не найдены';
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты букмекеров не найдены';
       const oddsObservedAt=Date.now();
       const selectedQuotes=[displayQuoteA,displayQuoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
