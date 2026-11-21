@@ -68,3 +68,7 @@ Run: GitHub Actions `44862908490` (successful). The public June 2026 sample cont
 - 57 matches had every observed transition inferred; most tapes still contain at least one ambiguous transition.
 
 Conclusion: the public sample is technically usable for further parser validation, but not ready for feature engineering. Next steps are manual source-level validation of stratified ordinary-game, advantage, tiebreak, game-boundary and set-boundary transitions; resolve the 25,406 counter transitions and major ambiguity groups; validate server alignment; and improve exact event-tour mapping. Keep ATP and WTA separate, and do not build rolling pre-match features until those checks pass.
+
+## Server-rotation alignment audit (research-only, 2026-11-21)
+
+A new diagnostic compares the server field on consecutive scoreboard states against two hypotheses: (1) in ordinary games the server remains the same until a game counter advances, then switches; (2) during a tiebreak, the server switches after the first point and then after every two points. Transitions into/out of tiebreaks, missing server values, counter jumps and unclassifiable states are skipped and counted separately. This checks consistency of the server field with expected rotation; it does not independently prove whether the before-state or after-state server owns the point. Treat match/mismatch rates as a diagnostic, not as validated point attribution.
