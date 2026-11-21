@@ -12,15 +12,44 @@ const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 
 function metrics(rows, model = null) {
-  if (!rows.length) return { matches:0,brier:null,logLoss:null,accuracy:null };
-  let brier=0,logLoss=0,correct=0;
+  if (!rows.length) return { matches:0,brier:null,logLoss:null,accuracy:null,calibration:null,pairedDifferenceVsBase:null };
+  let brier=0,logLoss=0,correct=0,baseBrier=0,baseLogLoss=0;
+  let deltaBrier=0,deltaBrier2=0,deltaLogLoss=0,deltaLogLoss2=0;
+  const bins=Array.from({length:10},()=>({matches:0,predicted:0,wins:0}));
   for (const row of rows) {
+    const base=clamp(row.baseProbability);
     const p=clamp(model ? predictLogistic(model,row.features) : row.baseProbability);
-    brier+=(p-row.outcome)**2;
-    logLoss-=row.outcome*Math.log(p)+(1-row.outcome)*Math.log(1-p);
-    correct+=p>0.5?row.outcome:p<0.5?1-row.outcome:0.5;
+    const y=row.outcome;
+    const bs=(p-y)**2,baseBs=(base-y)**2;
+    const ll=-y*Math.log(p)-(1-y)*Math.log(1-p);
+    const baseLl=-y*Math.log(base)-(1-y)*Math.log(1-base);
+    brier+=bs;logLoss+=ll;baseBrier+=baseBs;baseLogLoss+=baseLl;
+    const db=bs-baseBs,dl=ll-baseLl;
+    deltaBrier+=db;deltaBrier2+=db*db;deltaLogLoss+=dl;deltaLogLoss2+=dl*dl;
+    correct+=p>0.5?y:p<0.5?1-y:0.5;
+    const index=Math.min(9,Math.floor(p*10));
+    bins[index].matches++;bins[index].predicted+=p;bins[index].wins+=y;
   }
-  return {matches:rows.length,brier:+(brier/rows.length).toFixed(6),logLoss:+(logLoss/rows.length).toFixed(6),accuracy:+(100*correct/rows.length).toFixed(2)};
+  const n=rows.length;
+  const ci=(sum,sum2)=>1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n);
+  const meanBrier=deltaBrier/n,meanLogLoss=deltaLogLoss/n;
+  const calibrationBins=bins.map((bin,i)=>({
+    lower:i/10,upper:(i+1)/10,matches:bin.matches,
+    meanPredicted:bin.matches?+(bin.predicted/bin.matches).toFixed(5):null,
+    observedWinRate:bin.matches?+(bin.wins/bin.matches).toFixed(5):null
+  }));
+  const ece=bins.reduce((sum,bin)=>sum+(bin.matches/n)*Math.abs(bin.predicted/Math.max(1,bin.matches)-bin.wins/Math.max(1,bin.matches)),0);
+  return {
+    matches:n,brier:+(brier/n).toFixed(6),logLoss:+(logLoss/n).toFixed(6),
+    accuracy:+(100*correct/n).toFixed(2),
+    calibration:{expectedCalibrationError:+ece.toFixed(6),bins:calibrationBins},
+    pairedDifferenceVsBase:model?{
+      brier:+meanBrier.toFixed(6),
+      brierCI95:{lower:+(meanBrier-ci(deltaBrier,deltaBrier2)).toFixed(6),upper:+(meanBrier+ci(deltaBrier,deltaBrier2)).toFixed(6)},
+      logLoss:+meanLogLoss.toFixed(6),
+      logLossCI95:{lower:+(meanLogLoss-ci(deltaLogLoss,deltaLogLoss2)).toFixed(6),upper:+(meanLogLoss+ci(deltaLogLoss,deltaLogLoss2)).toFixed(6)}
+    }:null
+  };
 }
 
 function featureRow(prediction, workload) {
