@@ -1097,3 +1097,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Muchova's comments document a deliberate recovery/schedule decision before the Finals, not low priority for the Finals themselves.
 - All cases were discovered/retrieved retrospectively. They are research-log examples only and are deliberately excluded from the pre-match evidence registry. Source publication time and actual capture time must remain distinct.
 - No classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
+
+
+## Two-month retrospective research expansion (2026-11-21)
+- Research scope widened to 21 Sep–21 Nov 2026. Expanded `docs/tournament-intent-retrospective-cases-2026-11.md` with official/public cases: Rune (Shanghai, match rhythm after Achilles return), Kartal (gradual return after back injury), Pegula (recovery then explicit late-season ambition), Potapova and Anisimova (season-ending recovery decisions), Swiatek (season ended for thigh recovery despite Finals qualification contention), Alcaraz (match-rhythm objective coexisting with strong ambition), and Svitolina (rest after Wuhan followed by explicit readiness for WTA Finals).
+- Revised taxonomy separates preparation objective, cautious return, schedule/recovery decision, explicit high priority, mixed evidence and unknown.
+- Core lesson: preparation or recovery goals do not imply low intent to win. Apply schedule decisions only to matches after the public announcement. Never backfill post-match announcements into earlier match records.
+- This is a curated discovery set, not a systematic or representative sample; no denominator or prevalence estimate. Next phase must build a complete match list and search both players symmetrically.
+- All material in this expanded document is retrospective research. It is excluded from the pre-match registry; no probability, EV, bet-selection, live UI or Production changes.
