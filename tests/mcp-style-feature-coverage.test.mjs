@@ -64,7 +64,9 @@ test("excludes implausible event-date links and malformed surfaces from same-sur
     windowDays: 730,
     minPriorMatches: [1]
   });
+  assert.equal(report.byTour.ATP.inputLinkedRows, 4);
   assert.equal(report.byTour.ATP.linkedMatches, 3);
+  assert.equal(report.byTour.ATP.excludedDateOffsetAnomalies, 1);
   assert.equal(report.byTour.ATP.mainTourTargets, 3);
   assert.equal(report.byTour.ATP.targetSurfaceCounts.unknown, 1);
   assert.equal(report.byTour.ATP.priorHistoryCoverage.fhWinnerShare.overall["1"], 2);
