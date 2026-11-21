@@ -226,7 +226,8 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     annual.push({year,trainingMatches:training.length,evaluation:aggregatePredictions(yearRows),
      standardizedCoefficients:Object.fromEntries(spec.features.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))});
    }
-   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample)};
+   const fixedHoldout=evaluateFixedHoldout(eligible,spec.features,{holdoutStartYear,featureStartYear,lastEvaluationYear});
+   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    featureWindowDays:365,minimumPriorMatches:{overall:5,surface:5},
