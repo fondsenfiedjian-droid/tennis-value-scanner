@@ -87,7 +87,7 @@ function prepare(rows) {
   return {rows:unique,sourceRows:rows.length,invalidRows:rows.length-clean.length,
     duplicateRows,conflictingDuplicateRows,conflictingDuplicateMatches};
 }
-function metric(){return {n:0,brier:0,logLoss:0,correct:0,extreme5:0,extreme5Wrong:0,extreme1:0,extreme1Wrong:0,lossOver2:0,lossOver46:0,maxLoss:0,bins:Array.from({length:10},()=>({n:0,p:0,y:0}))};}
+function metric(){return {n:0,brier:0,logLoss:0,correct:0,extreme5:0,extreme5Wrong:0,extreme1:0,extreme1Wrong:0,lossOver2:0,lossOver46:0,maxLoss:0,worstErrors:[],bins:Array.from({length:10},()=>({n:0,p:0,y:0}))};}
 const LAYOFF_BANDS=[
   {key:"30_59",min:30,max:59},
   {key:"60_89",min:60,max:89},
@@ -98,6 +98,32 @@ const LAYOFF_BANDS=[
 function cohortBucket(map,key){
   if(!map.has(key))map.set(key,{baseline:metric(),candidate:metric()});
   return map.get(key);
+}
+function orientedFeatureRow(observation,playerIndex){
+  if(playerIndex===0)return observation;
+  return {
+    ...observation,
+    eloScaled:-observation.eloScaled,
+    layoffDiffLog:-observation.layoffDiffLog,
+    player1Over90:observation.player2Over90,
+    player2Over90:observation.player1Over90,
+    player1Over180:observation.player2Over180,
+    player2Over180:observation.player1Over180,
+    player1ReturnEpisode:observation.player2ReturnEpisode,
+    player2ReturnEpisode:observation.player1ReturnEpisode,
+    player1ReturnMatchesLog:observation.player2ReturnMatchesLog,
+    player2ReturnMatchesLog:observation.player1ReturnMatchesLog,
+    returnMatchesDiffLog:-observation.returnMatchesDiffLog
+  };
+}
+function featureContributions(model,row){
+  const contributions=model.featureNames.map((name,index)=>{
+    const standardized=(row[name]-model.means[index])/model.scales[index];
+    const coefficient=model.coefficients[index+1];
+    return {feature:name,rawValue:+row[name].toFixed(8),standardizedValue:+standardized.toFixed(6),
+      coefficient:+coefficient.toFixed(6),logitContribution:+(standardized*coefficient).toFixed(6)};
+  });
+  return {intercept:+model.coefficients[0].toFixed(6),features:contributions};
 }
 function finishCohorts(map){
   return Object.fromEntries([...map.entries()].map(([key,value])=>[key,{
@@ -111,10 +137,15 @@ function finishCohorts(map){
     }
   }]));
 }
-function add(bucket,p,y){
+function add(bucket,p,y,details=null){
   p=clamp(p);bucket.n++;bucket.brier+=(p-y)**2;
   const loss=-(y*Math.log(p)+(1-y)*Math.log(1-p));
   bucket.logLoss+=loss;bucket.maxLoss=Math.max(bucket.maxLoss,loss);
+  if(details){
+    bucket.worstErrors.push({...details,predictedProbability:+p.toFixed(9),actualOutcome:y,individualLogLoss:+loss.toFixed(6)});
+    bucket.worstErrors.sort((a,b)=>b.individualLogLoss-a.individualLogLoss);
+    if(bucket.worstErrors.length>20)bucket.worstErrors.length=20;
+  }
   bucket.correct+=p>.5?y:p<.5?1-y:.5;
   const extreme5=p<.05||p>.95,extreme1=p<.01||p>.99;
   if(extreme5){bucket.extreme5++;if((p>.5?1:0)!==y)bucket.extreme5Wrong++;}
@@ -136,7 +167,8 @@ function finish(bucket){
       calibrationBins:bucket.bins.map((cell,index)=>({range:(index/10).toFixed(1)+"-"+((index+1)/10).toFixed(1),
         count:cell.n,meanPredicted:cell.n?+(cell.p/cell.n).toFixed(4):null,
         observedWinRate:cell.n?+(cell.y/cell.n).toFixed(4):null,
-        calibrationGap:cell.n?+((cell.p-cell.y)/cell.n).toFixed(4):null}))
+        calibrationGap:cell.n?+((cell.p-cell.y)/cell.n).toFixed(4):null})),
+      ...(bucket.worstErrors.length?{worstErrors:bucket.worstErrors}: {})
     }};
 }
 function compare(base,candidate,trainingMatches,trainingSample){
@@ -159,6 +191,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const maxTrainingRows=Number.isInteger(options.maxTrainingRows)?options.maxTrainingRows:20000;
   const prepared=prepare(inputRows), matches=prepared.rows;
   const elo=new Map(),lastPlayed=new Map(),returnEpisode=new Map(),returnMatches=new Map(),history=[];
+  const captureWorstErrors=options.captureWorstErrors===true;
   const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),returnCohorts=new Map();
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
@@ -201,20 +234,30 @@ export function runLayoffWalkForward(inputRows, options={}) {
             {id:match.player1,gap:gap.player1LayoffDays,episode:Boolean(returnEpisode.get(match.player1)),played:returnMatches.get(match.player1)??0,pBase:p0,pCandidate:p1,outcome:match.outcome},
             {id:match.player2,gap:gap.player2LayoffDays,episode:Boolean(returnEpisode.get(match.player2)),played:returnMatches.get(match.player2)??0,pBase:1-p0,pCandidate:1-p1,outcome:1-match.outcome}
           ];
-          for(const view of playerViews){
+          for(let playerIndex=0;playerIndex<playerViews.length;playerIndex++){
+            const view=playerViews[playerIndex];
+            const orientedRow=orientedFeatureRow(observation,playerIndex);
+            const errorDetails=captureWorstErrors?{
+              date,tourneyId:match.tourneyId,matchNum:match.matchNum,round:match.round,surface:match.surface,
+              playerId:view.id,opponentId:playerViews[1-playerIndex].id,
+              playerLayoffDays:view.gap,returnEpisode:view.episode,returnMatchesBeforeMatch:view.played,
+              modelYear:year,trainingMatches:models.trainingMatches,
+              baselineProbability:+view.pBase.toFixed(9),candidateProbability:+view.pCandidate.toFixed(9),
+              candidateFeatureContributions:featureContributions(models.candidate,orientedRow)
+            }:null;
             if(view.gap!=null){
               const band=LAYOFF_BANDS.find(item=>view.gap>=item.min&&view.gap<=item.max);
               if(band){
                 const bucket=cohortBucket(layoffCohorts,band.key);
-                add(bucket.baseline,view.pBase,view.outcome);
-                add(bucket.candidate,view.pCandidate,view.outcome);
+                add(bucket.baseline,view.pBase,view.outcome,errorDetails);
+                add(bucket.candidate,view.pCandidate,view.outcome,errorDetails);
               }
             }
             const returnIndex=view.gap!=null&&view.gap>=90?1:(view.episode?view.played+1:0);
             if(returnIndex>=1&&returnIndex<=3){
               const bucket=cohortBucket(returnCohorts,String(returnIndex));
-              add(bucket.baseline,view.pBase,view.outcome);
-              add(bucket.candidate,view.pCandidate,view.outcome);
+              add(bucket.baseline,view.pBase,view.outcome,errorDetails);
+              add(bucket.candidate,view.pCandidate,view.outcome,errorDetails);
             }
           }
         }
@@ -279,6 +322,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
       returnMatches:"Player-match observations for the first, second and third match after a gap of at least 90 calendar days.",
       unit:"Each cohort observation is one player in one match; a match can contribute two observations if both players qualify."
     },
+    worstErrorsIncluded:captureWorstErrors,
     cohorts:{layoffDays:finishCohorts(layoffCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
     byYear
   };
@@ -287,6 +331,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
 async function main(){
   const args=process.argv.slice(2),opts={},files=[];
   for(let i=0;i<args.length;i++){
+    if(args[i]==="--worst-errors"){opts["worst-errors"]="true";continue;}
     if(["--tour","--from","--to","--k","--min-training","--max-training","--out"].includes(args[i])){
       const key=args[i].slice(2),value=args[++i];if(!value)throw new Error("Missing value for --"+key);opts[key]=value;
     } else if(args[i].startsWith("--")) throw new Error("Unknown option "+args[i]);
@@ -298,7 +343,8 @@ async function main(){
   for(const file of files){const parsed=parseCsv(await readFile(file,"utf8"));rows.push(...parsed);console.error("Loaded "+parsed.length+" rows from "+file);}
   const report=runLayoffWalkForward(rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",
     evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),
-    minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000)});
+    minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000),
+    captureWorstErrors:opts["worst-errors"]==="true"});
   const json=JSON.stringify(report,null,2)+"\n";
   if(opts.out)await writeFile(opts.out,json,"utf8");
   console.log(json);
