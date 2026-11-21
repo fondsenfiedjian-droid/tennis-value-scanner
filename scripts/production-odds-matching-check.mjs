@@ -112,7 +112,9 @@ if (predictionCandidates.length) {
           match: candidate.match,
           error: prediction.error,
           ratings: [prediction.ratingA ?? null, prediction.ratingB ?? null],
-          ratingTypes: [prediction.ratingTypeA ?? null, prediction.ratingTypeB ?? null]
+          ratingTypes: [prediction.ratingTypeA ?? null, prediction.ratingTypeB ?? null],
+          profileKeys: [prediction.diagnostic?.profileKeysA || [], prediction.diagnostic?.profileKeysB || []],
+          eloFields: [prediction.diagnostic?.eloFieldsA || [], prediction.diagnostic?.eloFieldsB || []]
         }));
         continue;
       }
