@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "winamax-odds-api-discovery-2026-11-21-1";
+const WORKER_BUILD_ID = "betclic-netbet-odds-smoke-test-2026-11-21-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -423,7 +423,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/historical", "/predict"]
       });
     }
 
@@ -687,6 +687,116 @@ export default {
           const value = upstream.headers.get(name);
           if (value !== null) headers[name] = value;
         }
+        const cacheResponse = new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        });
+        await cache.put(cacheKey, cacheResponse);
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not reach The Odds API" }, 502);
+      }
+    }
+
+    if (path === "/odds-api/test") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.ODDS_API_KEY) return response({ error: "ODDS_API_KEY secret is not configured" }, 500);
+
+      // Deliberately limited smoke test: only Betclic + NetBet, match-winner market.
+      // The caller supplies one currently active tennis sport key from /odds-api/sports.
+      const sportKey = (url.searchParams.get("sport") || "tennis_atp_finals").trim();
+      if (!/^tennis_[a-z0-9_]{2,80}$/.test(sportKey)) {
+        return response({ error: "sport must be a valid tennis sport key from /odds-api/sports" }, 400);
+      }
+
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(
+          "https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-test/v1/" + encodeURIComponent(sportKey),
+          { method: "GET" }
+        );
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const params = new URLSearchParams({
+          bookmakers: "betclic_fr,netbet_fr",
+          markets: "h2h",
+          oddsFormat: "decimal",
+          dateFormat: "iso"
+        });
+        const upstream = await fetch(
+          "https://api.the-odds-api.com/v4/sports/" + encodeURIComponent(sportKey) + "/odds/?" + params.toString(),
+          { headers: { "x-api-key": env.ODDS_API_KEY, "Accept": "application/json" } }
+        );
+        let events;
+        try { events = await upstream.json(); } catch {
+          return response({ error: "The Odds API returned invalid JSON", upstreamStatus: upstream.status }, 502);
+        }
+        if (!upstream.ok) {
+          return response({
+            error: "The Odds API odds request failed",
+            sportKey,
+            upstreamStatus: upstream.status,
+            providerMessage: typeof events?.message === "string" ? events.message : null
+          }, upstream.status);
+        }
+        if (!Array.isArray(events)) {
+          return response({ error: "The Odds API returned an unexpected odds payload", sportKey }, 502);
+        }
+
+        const bookmakerStats = {
+          betclic: { key: "betclic_fr", events: 0, completeH2hMarkets: 0, outcomeQuotes: 0 },
+          netbet: { key: "netbet_fr", events: 0, completeH2hMarkets: 0, outcomeQuotes: 0 }
+        };
+        const eventSummaries = events.map(event => {
+          const bookmakers = Array.isArray(event?.bookmakers) ? event.bookmakers : [];
+          const present = [];
+          for (const bookmaker of bookmakers) {
+            const target = bookmakerStats[bookmaker?.key === "betclic_fr" ? "betclic" :
+              bookmaker?.key === "netbet_fr" ? "netbet" : ""];
+            if (!target) continue;
+            present.push(target.key);
+            target.events++;
+            for (const market of Array.isArray(bookmaker.markets) ? bookmaker.markets : []) {
+              if (market?.key !== "h2h") continue;
+              const outcomes = Array.isArray(market.outcomes) ? market.outcomes : [];
+              target.outcomeQuotes += outcomes.length;
+              const names = new Set(outcomes.map(outcome => String(outcome?.name || "").trim().toLowerCase()));
+              if (names.has(String(event.home_team || "").trim().toLowerCase()) &&
+                  names.has(String(event.away_team || "").trim().toLowerCase())) {
+                target.completeH2hMarkets++;
+              }
+            }
+          }
+          return {
+            eventId: event?.id || null,
+            homeTeam: event?.home_team || null,
+            awayTeam: event?.away_team || null,
+            commenceTime: event?.commence_time || null,
+            bookmakers: present
+          };
+        });
+        const payload = {
+          source: "The Odds API",
+          sportKey,
+          requestedBookmakers: ["betclic_fr", "netbet_fr"],
+          market: "h2h",
+          oddsFormat: "decimal",
+          retrievedAt: new Date().toISOString(),
+          eventCount: events.length,
+          bookmakerStats,
+          events: eventSummaries,
+          quota: {
+            requestsRemaining: upstream.headers.get("x-requests-remaining"),
+            requestsUsed: upstream.headers.get("x-requests-used"),
+            lastRequestCost: upstream.headers.get("x-requests-last")
+          }
+        };
+        const headers = { "Cache-Control": "public, max-age=180", "X-Data-Cache": "MISS" };
         const cacheResponse = new Response(JSON.stringify(payload), {
           status: 200,
           headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
