@@ -178,3 +178,7 @@ Successful run: GitHub Actions `44864969199`.
 - Normal-game values observed and accepted: 0, 15, 30, 40, A and AD. Tiebreak scores are numeric and can exceed 9 (the sample includes values through 40).
 
 Interpretation: a small number of states have a tiebreak flag/score-vocabulary mismatch, in addition to missing values. The 504 numeric normal-flag states may be tiebreak-like states with a delayed or incorrect flag; the 43 non-numeric tiebreak-flag states may be the reverse. Keep them excluded from point-outcome inference until state-level flag alignment is understood. Missing point scores remain ambiguous.
+
+## Adjacent tiebreak-flag alignment audit (2026-11-21)
+
+The next validation step checks whether states with numeric scores under a normal-game flag are immediately adjacent, within the same match's source row order, to a tiebreak-flagged numeric state. It also checks whether tiebreak-flagged states containing non-numeric score tokens are adjacent to a normal-game-flagged state with a recognized normal score pair. This is a diagnostic for possible one-row flag lag or state-boundary transitions only; adjacency is not proof of a flag error, and no anomalous row is reclassified by this check.
