@@ -57,11 +57,31 @@ jobs:
             research-data/valuebetennis-matchs-2024.csv \
             research-data/valuebetennis-matchs-2025.csv \
             research-data/valuebetennis-matchs-2026.csv
-      - name: Upload PFE-combined ACE report
+      - name: Run earlier-year PFE-combined ACE holdout
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20241231 \
+            --from 20250101 \
+            --to 20251231 \
+            --out ace-pfe-2025-holdout.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Run second-half 2026 PFE-combined ACE holdout
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20260630 \
+            --from 20260701 \
+            --to 20261121 \
+            --out ace-pfe-2026-second-half.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Upload PFE-combined ACE reports
         uses: actions/upload-artifact@v4
         with:
-          name: ace-pfe-research-report
-          path: ace-pfe-research-report.json
+          name: ace-pfe-research-reports
+          path: ace-pfe-*.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload research report
