@@ -120,3 +120,12 @@ Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.00128
 Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
 
 Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.
+
+## Calibration diagnostics
+
+The aggregate evaluation report now includes, for both the Elo baseline and adjusted probabilities:
+- 10-bin reliability data (mean forecast probability vs observed win rate).
+- Expected calibration error (ECE) and maximum calibration error (MCE).
+- Logistic calibration intercept and slope (ideal values 0 and 1 respectively).
+
+These are reported alongside Brier score, LogLoss and paired confidence intervals for each annual evaluation and the fixed 2025–2026 holdout. Calibration is a diagnostic, not a feature-selection criterion by itself; interpret it with bin counts and the holdout's non-blind status. No production model changes are made.
