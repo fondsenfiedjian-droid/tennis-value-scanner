@@ -131,3 +131,33 @@ test("reports timestamp ordering problems and separates aggregate coverage by so
   assert.equal(report.byTierKey.atp.inferred, 2);
   assert.equal(JSON.stringify(report).includes("m1"), false);
 });
+
+
+test("does not infer a game or set winner from counters when the prior score is not one point from completion", () => {
+  const game = inferPointStateTransition(state({
+    games_p1: "[5]", games_p2: "[3]", points_p1: "15", points_p2: "0"
+  }), state({ games_p1: "[6]", games_p2: "[3]" }));
+  const set = inferPointStateTransition(state({
+    sets_p1: "0", sets_p2: "0", games_p1: "[5]", games_p2: "[3]",
+    points_p1: "15", points_p2: "0"
+  }), state({
+    sets_p1: "1", sets_p2: "0", games_p1: "[0,0]", games_p2: "[0,0]"
+  }));
+  assert.equal(game.status, "ambiguous");
+  assert.equal(set.status, "ambiguous");
+  assert.equal(game.reason, "counter-change-without-terminal-score");
+  assert.equal(set.reason, "counter-change-without-terminal-score");
+});
+
+test("allows a set-counter inference from a final tiebreak point state", () => {
+  const result = inferPointStateTransition(state({
+    sets_p1: "0", sets_p2: "0", games_p1: "[6]", games_p2: "[6]",
+    points_p1: "6", points_p2: "5", is_tiebreak: "true"
+  }), state({
+    sets_p1: "1", sets_p2: "0", games_p1: "[6,0]", games_p2: "[6,0]",
+    points_p1: "0", points_p2: "0", is_tiebreak: "false"
+  }));
+  assert.equal(result.status, "inferred");
+  assert.equal(result.winner, 1);
+  assert.equal(result.method, "set-counter");
+});
