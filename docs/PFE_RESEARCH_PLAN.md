@@ -55,3 +55,4 @@
 - Match Charting Project coverage is selective, not representative of the full tour.
 - Point-state observations can begin mid-match or stop before the final point. Missing rows are not point outcomes.
 - No server/tiebreak-dependent feature is production-approved until its source semantics reconcile at match level.
+- Compare raw same-surface rates with sample-size-shrunk and residualized surface effects (priors 10/20), across 180/365/730-day windows and 3/5/10 prior-match thresholds. Keep all variants research-only; the 2025–2026 fixed-coefficient holdout is a temporal stability check, not blind confirmation.
