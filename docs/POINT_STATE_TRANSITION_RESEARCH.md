@@ -115,3 +115,29 @@ Successful run: GitHub Actions `44863667707`.
 - `no-score-change`: 7,405 cases, median 5.02 s; 87.0% within 15 s.
 
 Interpretation: long gaps increase ambiguity in some categories, but many ambiguous transitions occur quickly. The next parser work should focus on score-field semantics, update/correction rows and counter consistency, not simply relax a time-gap threshold. Never infer a point outcome just because the time gap is short.
+
+## Official server-field semantics and tiebreak switch matrix (2026-11-21)
+
+The dataset's [official data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) defines `server` as the player serving at that score state. Therefore the next-point-server interpretation is the documented meaning; the last-point-server variant is only a diagnostic alternative, not an equally supported interpretation.
+
+The current tiebreak report only gives overall agreement. A new matrix will split transitions where the tiebreak service schedule predicts a switch (after point 1, then every two points) from transitions where it predicts the same server. This will show whether the near-50% agreement comes from both cases failing equally or from one phase being systematically offset. Even a strong aggregate pattern is not sufficient by itself to enable serve attribution; boundary and source-quality validation remain required.
+
+### Tiebreak expected-switch matrix — first real result (2026-11-21)
+
+Successful run: GitHub Actions `44863861215`.
+
+The official dictionary defines `server` as the player serving at that score state. Under the standard tiebreak rotation:
+- When the next point should use the other server (6,528 transitions), the field changed only 235 times (3.60%) and stayed the same 6,293 times (96.40%).
+- When the next point should use the same server (6,724 transitions), the field stayed the same 6,604 times (98.22%) and changed 120 times (1.78%).
+
+This shows the near-50% overall agreement is not random noise: the server field is almost always held constant through tiebreak score transitions, even where service should rotate. It appears not to be refreshed point-by-point during tiebreaks in this sample. Do not derive tiebreak serve/return ownership from it. A further breakdown by the players' primary-tour agreement (ATP/WTA proxy) is being added to check whether this affects both groups similarly; it is not event-tour ground truth.
+
+### Tiebreak server matrix split by player primary-tour agreement (2026-11-21)
+
+Successful run: GitHub Actions `44863980944`. The player-tour grouping is a secondary affiliation proxy, not event-tour truth.
+
+- **ATP proxy:** when a switch was expected, server changed 94/3,134 times (3.00%); when a hold was expected, it held 3,218/3,284 times (97.99%).
+- **WTA proxy:** when a switch was expected, server changed 22/1,402 times (1.57%); when a hold was expected, it held 1,431/1,442 times (99.24%).
+- Unclassified proxy group shows the same pattern: 5.97% observed switches when expected and 97.85% holds when expected.
+
+The stale-server pattern appears in both ATP and WTA player-affiliation groups, so it is not a tour-specific quirk in this sample. Do not use tiebreak `server` for point ownership or serve/return features. Ordinary-game boundary mismatches remain a separate unresolved issue.
