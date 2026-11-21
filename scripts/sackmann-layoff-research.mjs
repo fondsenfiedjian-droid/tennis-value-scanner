@@ -7,7 +7,9 @@ const FEATURES = [
   "layoffDiffLog", "layoffMaxLog",
   "player1Over90", "player2Over90",
   "player1Over180", "player2Over180",
-  "unknownPriorCount"
+  "player1ReturnEpisode", "player2ReturnEpisode",
+  "player1ReturnMatchesLog", "player2ReturnMatchesLog",
+  "returnMatchesDiffLog", "unknownPriorCount"
 ];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
@@ -21,7 +23,7 @@ function validDate(value) {
 }
 const dayNumber = date => Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
 
-export function calculateLayoffFeatures(player1LastDate, player2LastDate, matchDate) {
+export function calculateLayoffFeatures(player1LastDate, player2LastDate, matchDate, options={}) {
   const date=validDate(matchDate);
   if(!date) throw new RangeError("matchDate must be a real YYYYMMDD date");
   const current=dayNumber(date);
@@ -30,6 +32,12 @@ export function calculateLayoffFeatures(player1LastDate, player2LastDate, matchD
   if((days1!=null && days1<0)||(days2!=null && days2<0)) throw new RangeError("last match date cannot be after matchDate");
   const log1=days1==null?0:Math.log1p(days1);
   const log2=days2==null?0:Math.log1p(days2);
+  const episode1=days1!=null&&days1>=90 ? true : Boolean(options.player1ReturnEpisode);
+  const episode2=days2!=null&&days2>=90 ? true : Boolean(options.player2ReturnEpisode);
+  const count1=days1!=null&&days1>=90 ? 0 : Math.max(0,Number(options.player1ReturnMatches)||0);
+  const count2=days2!=null&&days2>=90 ? 0 : Math.max(0,Number(options.player2ReturnMatches)||0);
+  const returnLog1=episode1?Math.log1p(count1):0;
+  const returnLog2=episode2?Math.log1p(count2):0;
   return {
     player1LayoffDays:days1,
     player2LayoffDays:days2,
@@ -39,6 +47,11 @@ export function calculateLayoffFeatures(player1LastDate, player2LastDate, matchD
     player2Over90:days2!=null && days2>=90?1:0,
     player1Over180:days1!=null && days1>=180?1:0,
     player2Over180:days2!=null && days2>=180?1:0,
+    player1ReturnEpisode:episode1?1:0,
+    player2ReturnEpisode:episode2?1:0,
+    player1ReturnMatchesLog:Number(returnLog1.toFixed(8)),
+    player2ReturnMatchesLog:Number(returnLog2.toFixed(8)),
+    returnMatchesDiffLog:Number((returnLog1-returnLog2).toFixed(8)),
     unknownPriorCount:Number(days1==null)+Number(days2==null)
   };
 }
@@ -104,7 +117,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const minTrainingMatches=Number.isInteger(options.minTrainingMatches)?options.minTrainingMatches:1000;
   const maxTrainingRows=Number.isInteger(options.maxTrainingRows)?options.maxTrainingRows:20000;
   const prepared=prepare(inputRows), matches=prepared.rows;
-  const elo=new Map(),lastPlayed=new Map(),history=[];
+  const elo=new Map(),lastPlayed=new Map(),returnEpisode=new Map(),returnMatches=new Map(),history=[];
   const baseTotal=metric(),candidateTotal=metric(),byYear={};
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
@@ -127,7 +140,13 @@ export function runLayoffWalkForward(inputRows, options={}) {
     const dayRows=[];
     for(const match of day) {
       const r1=elo.get(match.player1)??1500,r2=elo.get(match.player2)??1500;
-      const gap=calculateLayoffFeatures(lastPlayed.get(match.player1)??null,lastPlayed.get(match.player2)??null,date);
+      const last1=lastPlayed.get(match.player1)??null,last2=lastPlayed.get(match.player2)??null;
+      const gap=calculateLayoffFeatures(last1,last2,date,{
+        player1ReturnEpisode:returnEpisode.get(match.player1),
+        player2ReturnEpisode:returnEpisode.get(match.player2),
+        player1ReturnMatches:returnMatches.get(match.player1),
+        player2ReturnMatches:returnMatches.get(match.player2)
+      });
       const observation={...match,eloScaled:(r1-r2)/400,...gap};
       dayRows.push(observation);
       if(date>=start&&date<=end) {
@@ -149,8 +168,20 @@ export function runLayoffWalkForward(inputRows, options={}) {
       deltas.set(match.loser,(deltas.get(match.loser)??0)-delta);
     }
     for(const [id,delta] of deltas) elo.set(id,(elo.get(id)??1500)+delta);
+    const appearances=new Map();
     for(const match of dayRows) {
-      lastPlayed.set(match.player1,date);lastPlayed.set(match.player2,date);
+      appearances.set(match.player1,(appearances.get(match.player1)??0)+1);
+      appearances.set(match.player2,(appearances.get(match.player2)??0)+1);
+    }
+    for(const [id,count] of appearances) {
+      const previous=lastPlayed.get(id)??null;
+      const gapDays=previous==null?null:dayNumber(date)-dayNumber(previous);
+      let episode=Boolean(returnEpisode.get(id));
+      let returnCount=returnMatches.get(id)??0;
+      if(gapDays!=null&&gapDays>=90){episode=true;returnCount=0;}
+      if(episode)returnMatches.set(id,returnCount+count);
+      returnEpisode.set(id,episode);
+      lastPlayed.set(id,date);
     }
     history.push(...dayRows);
     if(date>=start&&date<=end&&models) {
