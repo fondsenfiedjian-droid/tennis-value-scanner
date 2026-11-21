@@ -1,208 +1,381 @@
 #!/usr/bin/env node
-import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join, basename } from "node:path";
+import { readFile, readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const RESULT_FILE=/^(atp|wta)_matches_(?:(futures|qual_chall|qual_itf)_)?(\d{4})\.csv$/i;
-const META_FILE=/^charting-([mw])-matches\.csv$/i;
-const normalize=value=>String(value??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"");
-const normalizeRound=value=>{
-  const raw=String(value??"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
-  const aliases={FINAL:"F",SEMIFINAL:"SF",SEMIFINALS:"SF",QUARTERFINAL:"QF",QUARTERFINALS:"QF",ROUND1:"R128",ROUND2:"R64",ROUND3:"R32",ROUND4:"R16"};
-  return aliases[raw]||raw;
+export const MCP_SOURCE_COMMIT = "1813a1309b7ed7ebf1c7e884b32bf675d00e4edf";
+export const SACKMANN_SOURCE_COMMIT = "83733587353df8a41f2fd4f516147d5aa83f5a8d";
+const text = value => String(value ?? "").trim();
+const token = value => text(value).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const player = value => text(value).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const alias = value => {
+  const parts = player(value).split(" ").filter(Boolean);
+  return parts.length >= 2 ? parts[0][0] + parts.at(-1) : "";
 };
-const eventAliases={
-  frenchopen:"frenchopen",rolandgarros:"frenchopen",
-  australianopen:"australianopen",usopen:"usopen",wimbledon:"wimbledon",
-  rome:"rome",romemasters:"rome",madrid:"madrid",madridmasters:"madrid",
-  paris:"paris",parismasters:"paris",montecarlo:"montecarlo",montecarlomasters:"montecarlo",
-  indianwells:"indianwells",bnpparibasopen:"indianwells",miami:"miami",miamiopen:"miami"
+const pair = (a, b) => a < b ? a + "|" + b : b + "|" + a;
+const validDate = value => {
+  const s = text(value);
+  if (!/^\d{8}$/.test(s)) return null;
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(4, 6)), d = Number(s.slice(6, 8));
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d ? s : null;
 };
-const eventKey=value=>eventAliases[normalize(value)]||normalize(value);
-const pairKey=(a,b)=>[normalize(a),normalize(b)].sort().join("|");
-const validDate=value=>{
-  const v=String(value??"");
-  if(!/^\d{8}$/.test(v))return false;
-  const y=+v.slice(0,4),m=+v.slice(4,6),d=+v.slice(6,8);
-  if(y<1900||m<1||m>12||d<1||d>31)return false;
-  const date=new Date(Date.UTC(y,m-1,d));
-  return date.getUTCFullYear()===y&&date.getUTCMonth()===m-1&&date.getUTCDate()===d;
+const day = value => Date.UTC(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8))) / 86400000;
+const rounds = new Set(["R128", "R64", "R32", "R16", "QF", "SF", "F", "RR", "BR", "Q1", "Q2", "Q3", "PO", "PQ"]);
+const roundAliases = { ROUND128:"R128", ROUND64:"R64", ROUND32:"R32", ROUND16:"R16", QUARTERFINAL:"QF", QUARTERFINALS:"QF", SEMIFINAL:"SF", SEMIFINALS:"SF", FINAL:"F", ROUNDROBIN:"RR", QUALIFYING1:"Q1", QUALIFYING2:"Q2", QUALIFYING3:"Q3" };
+const normalizeRound = value => {
+  const raw = token(value).toUpperCase();
+  const round = roundAliases[raw] || raw;
+  return rounds.has(round) ? round : null;
 };
-const dayNumber=value=>validDate(value)?Date.UTC(+value.slice(0,4),+value.slice(4,6)-1,+value.slice(6,8))/86400000:null;
 
-function parseMcpCsv(source){
-  source=source.replace(/^\uFEFF/,"");
-  const rows=[];let row=[],field="",quoted=false;
-  const pushField=()=>{row.push(field);field="";};
-  const pushRow=()=>{pushField();if(row.some(value=>value!==""))rows.push(row);row=[];};
-  for(let i=0;i<source.length;i++){
-    const ch=source[i];
-    if(quoted){
-      if(ch==='"'&&source[i+1]==='"'){field+='"';i++;}
-      else if(ch==='"'&&[",","\n","\r",undefined].includes(source[i+1]))quoted=false;
-      else field+=ch;
+export function parseMcpMetadataCsv(source) {
+  source = source.replace(/^\uFEFF/, "");
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  const pushField = () => { row.push(field); field = ""; };
+  const pushRow = () => { pushField(); if (row.some(value => value !== "")) rows.push(row); row = []; };
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (quoted) {
+      if (ch === '"' && source[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"' && [",", "\n", "\r", undefined].includes(source[i + 1])) quoted = false;
+      else field += ch;
       continue;
     }
-    if(ch==='"'&&field.length===0)quoted=true;
-    else if(ch===",")pushField();
-    else if(ch==="\n")pushRow();
-    else if(ch==="\r"&&source[i+1]==="\n"){}
-    else if(ch==="\r")field+=ch;
-    else field+=ch;
+    if (ch === '"' && field.length === 0) quoted = true;
+    else if (ch === ",") pushField();
+    else if (ch === "\n") pushRow();
+    else if (ch === "\r" && source[i + 1] === "\n") { /* CRLF */ }
+    else field += ch;
   }
-  if(field!==""||row.length)pushRow();
-  if(!rows.length)return[];
-  const headers=rows.shift().map(value=>value.trim());
-  const seen=new Map();
-  const unique=headers.map(header=>{const n=(seen.get(header)||0)+1;seen.set(header,n);return n===1?header:header+"_"+n;});
-  return rows.map(values=>Object.fromEntries(unique.map((header,index)=>[header,values[index]??""])));
+  if (quoted) throw new SyntaxError("Unterminated quoted field in Match Charting metadata");
+  if (field !== "" || row.length) pushRow();
+  if (!rows.length) return [];
+  const rawHeaders = rows.shift();
+  const counts = new Map();
+  const headers = rawHeaders.map((header, i) => {
+    const base = header || "__unnamed_" + (i + 1);
+    const count = (counts.get(base) || 0) + 1;
+    counts.set(base, count);
+    return count === 1 ? base : base + "__duplicate_" + count;
+  });
+  return rows.map((values, i) => {
+    if (values.length > headers.length) throw new SyntaxError("Match Charting metadata row " + (i + 2) + " has more fields than its header");
+    return Object.fromEntries(headers.map((key, j) => [key, values[j] ?? ""]));
+  });
 }
 
-function createContext(metadataFiles){
-  const metadata=new Map();
-  for(const file of metadataFiles){
-    const m=basename(file.filename).match(META_FILE);
-    if(!m)throw new Error("Unexpected metadata filename: "+basename(file.filename));
-    metadata.set(m[1].toLowerCase(),parseMcpCsv(file.content));
+function eventKeys(name, year) {
+  const base = token(name);
+  if (!base) return [];
+  const keys = new Set([base]);
+  if (base.endsWith("masters") && base.length > 7) keys.add(base.slice(0, -7));
+  if (base === "canadamasters") ["canada", "toronto", "montreal"].forEach(x => keys.add(x));
+  const cityMasters = {
+    paris:"parismasters", rome:"romemasters", madrid:"madridmasters", miami:"miamimasters",
+    indianwells:"indianwellsmaster", montecarlo:"montecarlomasters", cincinnati:"cincinnatimasters",
+    shanghai:"shanghaimasters", toronto:"canadamasters", montreal:"canadamasters"
+  };
+  if (cityMasters[base]) keys.add(cityMasters[base]);
+  if (base === "tourfinals" || base === "masterscup" || base === "atpfinals") {
+    ["tourfinals","masterscup","atpfinals"].forEach(x => keys.add(x));
+    const host = Number(year) >= 2021 ? "turin" : Number(year) >= 2009 ? "london" : Number(year) >= 2005 ? "shanghai" : Number(year) >= 2002 ? "houston" : "";
+    if (host) keys.add(host);
   }
-  if(!metadata.has("m")||!metadata.has("w"))throw new Error("ATP/WTA MCP metadata files are required");
-  return {metadata,yearPairIndex:new Map()};
+  if (base === "adelaide") keys.add("adelaideinternational");
+  if (base === "singapore" && Number(year) >= 2014 && Number(year) <= 2018) keys.add("wtatourchampionships");
+  if (base === "istanbul" && Number(year) >= 2011 && Number(year) <= 2013) keys.add("wtatourchampionships");
+  if (base === "doha" && Number(year) >= 2008 && Number(year) <= 2010) keys.add("wtatourchampionships");
+  const davisAliases = {
+    daviscupworldgroupf:["daviscupfinalsf","daviscupfinals"],
+    daviscupworldgroupsf:["daviscupfinalssf","daviscupfinals"],
+    daviscupworldgroupqf:["daviscupfinalsqf","daviscupfinals"],
+    daviscupworldgroupr1:["daviscupqlsr1","daviscupworldgroupr1"],
+    daviscupworldgrouppo:["daviscupwg1po","daviscupwg2po"],
+    daviscupwg2:["daviscupwg2"]
+  };
+  if (davisAliases[base]) davisAliases[base].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupf") ["fedcupfinalsf","fedcupworldgroupf"].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupsf") ["fedcupfinalssf","fedcupworldgroupsf"].forEach(x => keys.add(x));
+  if (base === "fedcupworldgroupr1") ["fedcupqlsr1","fedcupworldgroupr1"].forEach(x => keys.add(x));
+  if (base === "bjkcupqualifiers") keys.add("billiejeankingcupqualifiers");
+  if (base === "bjkcupfinals") keys.add("billiejeankingcupfinals");
+  if (base === "australianopen") keys.add("melbourne");
+  if (base === "rolandgarros") ["frenchopen", "paris"].forEach(x => keys.add(x));
+  if (base === "wimbledon") keys.add("london");
+  if (base === "usopen") ["newyork", "foresthills"].forEach(x => keys.add(x));
+  if (base === "wtachampionships" || base === "tourchampionships") ["wtatourchampionships", "wtachampionships"].forEach(x => keys.add(x));
+  if (base === "olympics") {
+    const host = {1988:"seoul",1992:"barcelona",1996:"atlanta",2000:"sydney",2004:"athens",2008:"beijing",2012:"london",2016:"riodejaneiro",2021:"tokyo",2024:"paris"}[year];
+    if (host) { keys.add(host); keys.add(host + "olympics"); }
+  }
+  if (base === "parisolympics") keys.add("paris");
+  if (base === "tokyoolympics") keys.add("tokyo");
+  if (base === "daviscupqualifiers") keys.add("daviscupqls");
+  return [...keys];
 }
-function addResultsFile(context,file){
-  const name=basename(file.filename),m=name.match(RESULT_FILE);
-  if(!m)throw new Error("Unexpected results filename: "+name);
-  const tour=m[1].toUpperCase(),sourceType=m[2]||"main",fileYear=m[3];
-  const rows=parseCsv(file.content);
-  for(const row of rows){
-    const year=String(row.tourney_date??"").slice(0,4);
-    if(year!==fileYear)continue;
-    const pair=pairKey(row.winner_name,row.loser_name);
-    if(pair==="|")continue;
-    const event=eventKey(row.tourney_name),round=normalizeRound(row.round);
-    const identity=[row.tourney_id,row.match_num,pair,round,event].join(":");
-    const key=[tour,year,pair].join(":");
-    if(!context.yearPairIndex.has(key))context.yearPairIndex.set(key,new Map());
-    const group=context.yearPairIndex.get(key);
-    if(!group.has(identity)){
-      group.set(identity,{event,round,date:String(row.tourney_date??""),sourceTypes:new Set([sourceType])});
-    }else group.get(identity).sourceTypes.add(sourceType);
+function matchingEvents(name, year, eventSet) {
+  const keys = eventKeys(name, year);
+  const matched = new Set();
+  for (const event of eventSet) {
+    if (keys.includes(event)) matched.add(event);
+    else if (keys.some(key => ["daviscup", "fedcup", "bjkcup"].some(prefix => key.startsWith(prefix) && event.startsWith(key)))) matched.add(event);
+  }
+  return [...matched];
+}
+function add(map, key, row) {
+  if (!map.has(key)) map.set(key, []);
+  map.get(key).push(row);
+}
+function collect(map, events, round, pairKey) {
+  const found = new Map();
+  for (const item of events) {
+    const key = round ? [item.year,item.event,round,pairKey].join("|") : [item.year,item.event,pairKey].join("|");
+    for (const row of map.get(key) || []) found.set(row.rowKey, row);
+  }
+  return [...found.values()];
+}
+function withinDateWindow(rows, matchDate, windowDays) {
+  const target = day(matchDate);
+  const deltas = rows.map(row => target - day(row.date));
+  const eligible = rows.filter((row, i) => deltas[i] >= 0 && deltas[i] <= windowDays);
+  return { eligible, conflicts: rows.length - eligible.length, deltas };
+}
+function addDateConflictDeltas(stats, rows, matchDate) {
+  const checked = withinDateWindow(rows, matchDate, 21);
+  for (const delta of checked.deltas) {
+    const bin = delta <= -15 ? "15+-days-before" : delta <= -8 ? "8-14-days-before" : delta <= -4 ? "4-7-days-before" : delta < 0 ? "1-3-days-before" : delta <= 28 ? "22-28-days-after" : delta <= 35 ? "29-35-days-after" : "over-35-days-after";
+    stats.dateConflictDeltaBins[bin] = (stats.dateConflictDeltaBins[bin] || 0) + 1;
   }
 }
-function finishAudit(context){
-  const byTour={};
-  for(const [code,rows] of context.metadata){
-    const tour=code==="m"?"ATP":"WTA";
-    const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,negativeUpTo7Days:0,negativeOver7Days:0,dateOffsetsOver21Days:0,linkedCrossYear:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
-    const seen=new Set(),offsets=[];
-    const dateOffsetBuckets={negativeUpTo7:0,negativeOver7:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
-    const dateOffsetByYear={};
-    for(const row of rows){
-      const id=String(row.match_id??"").trim();
-      if(!id||seen.has(id))continue;
-      seen.add(id);counters.uniqueMatchIds++;
-      const p1=String(row["Player 1"]??"").trim(),p2=String(row["Player 2"]??"").trim();
-      if(!p1||!p2){counters.missingNames++;continue;}
-      const date=String(row.Date??"").trim();
-      if(!date)counters.missingDates++;else if(!validDate(date))counters.invalidDates++;
-      const year=/^\d{4}/.test(date)?date.slice(0,4):id.slice(0,4);
-      const pair=pairKey(p1,p2),event=eventKey(row.Tournament),round=normalizeRound(row.Round);
-      const candidateYears=[year];
-      if(validDate(date)){
-        const month=Number(date.slice(4,6)),yearNumber=Number(year);
-        if(month===12)candidateYears.push(String(yearNumber+1));
-        if(month===1)candidateYears.push(String(yearNumber-1));
+
+function buildIndex(rows, tour) {
+  const fullRound = new Map(), aliasRound = new Map(), fullEvent = new Map(), aliasEvent = new Map();
+  const aliasRoster = new Map(), eventsByYear = new Map();
+  let resultRows = 0, invalidResultDates = 0;
+  const dates = [];
+  for (const row of rows) {
+    const date = validDate(row.tourney_date);
+    const p1 = player(row.winner_name), p2 = player(row.loser_name), event = token(row.tourney_name);
+    const round = normalizeRound(row.round);
+    if (!date || !p1 || !p2 || !event) {
+      if (!date) invalidResultDates++;
+      continue;
+    }
+    const year = date.slice(0, 4);
+    if (!eventsByYear.has(year)) eventsByYear.set(year, new Set());
+    eventsByYear.get(year).add(event);
+    dates.push(date); resultRows++;
+    const fullPair = pair(p1, p2), a1 = alias(row.winner_name), a2 = alias(row.loser_name);
+    const aliasPair = a1 && a2 ? pair(a1, a2) : "";
+    const rowKey = [tour,year,date,text(row.tourney_id),text(row.match_num),fullPair,round || ""].join("|");
+    const record = { rowKey, date, year, event, fullPair, aliasPair };
+    add(fullEvent, [year,event,fullPair].join("|"), record);
+    if (round) add(fullRound, [year,event,round,fullPair].join("|"), record);
+    if (aliasPair) {
+      add(aliasEvent, [year,event,aliasPair].join("|"), record);
+      if (round) add(aliasRound, [year,event,round,aliasPair].join("|"), record);
+      for (const [a,n] of [[a1,p1],[a2,p2]]) {
+        const key = [year,event,a].join("|");
+        if (!aliasRoster.has(key)) aliasRoster.set(key, new Set());
+        aliasRoster.get(key).add(n);
       }
-      const candidatesByIdentity=new Map();
-      for(const candidateYear of candidateYears){
-        const group=context.yearPairIndex.get([tour,candidateYear,pair].join(":"));
-        if(group)for(const [identity,candidate] of group)candidatesByIdentity.set(identity,candidate);
+    }
+  }
+  return { fullRound, aliasRound, fullEvent, aliasEvent, aliasRoster, eventsByYear, resultRows, invalidResultDates, resultDateRange: dates.length ? {from:dates.sort()[0],to:dates.at(-1)} : null };
+}
+
+function auditTour(metadataRows, resultRows, tour, options = {}) {
+  const windowDays = Number.isInteger(options.dateWindowDays) ? options.dateWindowDays : 21;
+  const index = buildIndex(resultRows, tour);
+  const groups = new Map();
+  let missingMatchIdRows = 0;
+  for (const row of metadataRows) {
+    const id = text(row.match_id);
+    if (!id) { missingMatchIdRows++; continue; }
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(row);
+  }
+  const duplicates = [...groups.values()].filter(group => group.length > 1);
+  const uniqueRows = [...groups.values()].filter(group => group.length === 1).map(group => group[0]);
+  const stats = {
+    metadataRows: metadataRows.length, uniqueMetadataIds: groups.size, missingMatchIdRows,
+    duplicateMetadataIds: duplicates.length, duplicateMetadataRowsExcluded: duplicates.reduce((n,g)=>n+g.length,0),
+    resultRows: index.resultRows, invalidResultDateRows: index.invalidResultDates, resultDateRange: index.resultDateRange,
+    validMetadataDateRows: 0, invalidMetadataDateRows: 0, missingMetadataDateRows: 0,
+    missingPlayerNameRows: 0, missingTournamentRows: 0, missingRoundRows: 0, invalidRoundRows: 0,
+    eventNotFound: 0, pairNotFound: 0, roundConflicts: 0, dateConflicts: 0, outsideResultDateCoverage: 0,
+    dateConflictDeltaBins: {"1-3-days-before":0,"4-7-days-before":0,"8-14-days-before":0,"15+-days-before":0,"22-28-days-after":0,"29-35-days-after":0,"over-35-days-after":0},
+    ambiguousFullNamePairs: 0, ambiguousAliasPairs: 0, ambiguousAliasIdentities: 0, aliasUnavailable: 0,
+    linked: 0, linkedByFullName: 0, linkedByInitialSurname: 0, linkedWithoutUsableRound: 0, linkedByEventAlias: 0, linkedFromAdjacentYear: 0,
+    unmatched: 0, unmatchedTournamentCounts: {}, unmatchedRoundCounts: {}, unmatchedByReason: {}, unmatchedTournamentByReason: {}, byYear: {}
+  };
+  const recordUnmatched = (reason, tournament) => {
+    stats.unmatchedByReason[reason] = (stats.unmatchedByReason[reason] || 0) + 1;
+    if (!stats.unmatchedTournamentByReason[reason]) stats.unmatchedTournamentByReason[reason] = {};
+    const name = tournament || "Unknown";
+    stats.unmatchedTournamentByReason[reason][name] = (stats.unmatchedTournamentByReason[reason][name] || 0) + 1;
+  };
+  for (const row of uniqueRows) {
+    const date = validDate(row.Date), rawDate = text(row.Date), tournament = text(row.Tournament);
+    const round = normalizeRound(row.Round), rawRound = text(row.Round);
+    const p1 = text(row["Player 1"]), p2 = text(row["Player 2"]);
+    if (!rawDate) stats.missingMetadataDateRows++;
+    else if (!date) stats.invalidMetadataDateRows++;
+    else stats.validMetadataDateRows++;
+    if (!tournament) stats.missingTournamentRows++;
+    if (!rawRound) stats.missingRoundRows++;
+    else if (!round) stats.invalidRoundRows++;
+    if (!p1 || !p2) stats.missingPlayerNameRows++;
+    if (!date || !tournament || !p1 || !p2) {
+      stats.unmatched++;
+      const invalidReason = !rawDate ? "missing-date" : !date ? "invalid-date" : !tournament ? "missing-tournament" : "missing-player-name";
+      recordUnmatched(invalidReason, tournament);
+      stats.unmatchedTournamentCounts[tournament || "Unknown"] = (stats.unmatchedTournamentCounts[tournament || "Unknown"] || 0) + 1;
+      continue;
+    }
+    const year = date.slice(0, 4);
+    if (index.resultDateRange && (date < index.resultDateRange.from || date > index.resultDateRange.to)) {
+      stats.outsideResultDateCoverage++;
+      stats.unmatched++;
+      recordUnmatched("outside-result-date-coverage", tournament);
+      stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
+      continue;
+    }
+    if (!stats.byYear[year]) stats.byYear[year] = {metadata:0,linked:0,fullName:0,alias:0,unmatched:0};
+    const ys = stats.byYear[year]; ys.metadata++;
+    const available = [];
+    for (const candidateYear of [String(Number(year) - 1), year, String(Number(year) + 1)]) {
+      const eventSet = index.eventsByYear.get(candidateYear) || new Set();
+      for (const event of matchingEvents(tournament, candidateYear, eventSet)) {
+        available.push({ year: candidateYear, event });
       }
-      const candidates=[...candidatesByIdentity.values()];
-      const eventCandidates=candidates.filter(candidate=>candidate.event===event);
-      const exactCandidates=eventCandidates.filter(candidate=>candidate.round===round);
-      const withOffsets=exactCandidates.map(candidate=>({
-        candidate,
-        offset:dayNumber(date)!==null&&dayNumber(candidate.date)!==null?dayNumber(date)-dayNumber(candidate.date):null
-      }));
-      const plausibleCandidates=withOffsets.filter(item=>item.offset!==null&&item.offset>=-7&&item.offset<=21);
-      let selected=null;
-      if(plausibleCandidates.length===1)selected=plausibleCandidates[0];
-      else if(plausibleCandidates.length>1)counters.ambiguous++;
-      else if(exactCandidates.length===1)selected=withOffsets[0];
-      else if(exactCandidates.length>1)counters.ambiguous++;
-      else if(eventCandidates.length)counters.roundConflicts++;
-      else if(candidates.length)counters.eventMismatches++;
-      else counters.noPlayerPairInYear++;
-      if(selected){
-        const candidate=selected.candidate,offset=selected.offset;
-        counters.linkedUnique++;counters.linkedFullName++;
-        if(candidate.date.slice(0,4)!==year)counters.linkedCrossYear++;
-        if(candidate.sourceTypes.has("main"))counters.linkedMainTour++;
-        else if(candidate.sourceTypes.has("qual_chall"))counters.linkedChallengerQualifying++;
-        else if(candidate.sourceTypes.has("futures"))counters.linkedFutures++;
-        else if(candidate.sourceTypes.has("qual_itf"))counters.linkedITFQualifying++;
-        if(offset!==null){
-          offsets.push(offset);
-          const bucket=offset< -7?"negativeOver7":offset<0?"negativeUpTo7":offset===0?"zero":offset<=7?"oneToSeven":offset<=14?"eightToFourteen":offset<=21?"fifteenToTwentyOne":"over21";
-          dateOffsetBuckets[bucket]++;
-          if(!dateOffsetByYear[year])dateOffsetByYear[year]={links:0,minOffset:null,maxOffset:null,negativeUpTo7:0,negativeOver7:0,zero:0,oneToSeven:0,eightToFourteen:0,fifteenToTwentyOne:0,over21:0};
-          dateOffsetByYear[year].links++;
-          dateOffsetByYear[year].minOffset=dateOffsetByYear[year].minOffset===null?offset:Math.min(dateOffsetByYear[year].minOffset,offset);
-          dateOffsetByYear[year].maxOffset=dateOffsetByYear[year].maxOffset===null?offset:Math.max(dateOffsetByYear[year].maxOffset,offset);
-          dateOffsetByYear[year][bucket]++;
-          if(offset<0)counters.negativeDateOffsets++;
-          if(offset>=-7&&offset<0)counters.negativeUpTo7Days++;
-          if(offset< -7)counters.negativeOver7Days++;
-          if(offset>21)counters.dateOffsetsOver21Days++;
+    }
+    if (!available.length) {
+      stats.eventNotFound++; stats.unmatched++; ys.unmatched++;
+      recordUnmatched("event-not-found", tournament);
+      stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
+      continue;
+    }
+    const fullPair = pair(player(p1), player(p2));
+    const fullExact = round ? collect(index.fullRound, available, round, fullPair) : [];
+    const fullAny = collect(index.fullEvent, available, null, fullPair);
+    let candidate = null, method = "", reason = "";
+
+    if (fullExact.length) {
+      const filtered = withinDateWindow(fullExact, date, windowDays).eligible;
+      if (filtered.length === 1) { candidate = filtered[0]; method = "full"; }
+      else if (filtered.length > 1) { stats.ambiguousFullNamePairs++; reason = "ambiguous-full"; }
+      else { stats.dateConflicts++; addDateConflictDeltas(stats, fullExact, date); reason = "date-conflict"; }
+    } else if (!round && fullAny.length) {
+      const filtered = withinDateWindow(fullAny, date, windowDays).eligible;
+      if (filtered.length === 1) { candidate = filtered[0]; method = "full-no-round"; }
+      else if (filtered.length > 1) { stats.ambiguousFullNamePairs++; reason = "ambiguous-full"; }
+      else { stats.dateConflicts++; addDateConflictDeltas(stats, fullAny, date); reason = "date-conflict"; }
+    } else if (!fullExact.length) {
+      const a1 = alias(p1), a2 = alias(p2);
+      if (a1 && a2) {
+        let collision = false;
+        const aliasEvents = [];
+        for (const event of available) {
+          const r1 = index.aliasRoster.get([event.year,event.event,a1].join("|"));
+          const r2 = index.aliasRoster.get([event.year,event.event,a2].join("|"));
+          if ((r1 && r1.size > 1) || (r2 && r2.size > 1)) collision = true;
+          else if (r1 && r1.size === 1 && r2 && r2.size === 1) aliasEvents.push(event);
+        }
+        if (!aliasEvents.length && collision) { stats.ambiguousAliasIdentities++; reason = "alias-identity-collision"; }
+        else if (!aliasEvents.length) { stats.aliasUnavailable++; reason = "alias-unavailable"; }
+        else {
+          const aliasPair = pair(a1,a2);
+          const eventOptions = aliasEvents;
+          const aliasExact = round ? collect(index.aliasRound,eventOptions,round,aliasPair) : [];
+          const aliasAny = collect(index.aliasEvent,eventOptions,null,aliasPair);
+          const candidates = round ? aliasExact : aliasAny;
+          const filtered = withinDateWindow(candidates,date,windowDays).eligible;
+          if (filtered.length === 1) { candidate = filtered[0]; method = round ? "alias" : "alias-no-round"; }
+          else if (filtered.length > 1) { stats.ambiguousAliasPairs++; reason = "ambiguous-alias"; }
+          else if (candidates.length) { stats.dateConflicts++; addDateConflictDeltas(stats, candidates, date); reason = "date-conflict"; }
+        }
+      } else { stats.aliasUnavailable++; reason = "alias-unavailable"; }
+    }
+    if (!candidate && !reason && round) {
+      if (withinDateWindow(fullAny,date,windowDays).eligible.length) {
+        stats.roundConflicts++; reason = "round-conflict";
+      } else {
+        const a1 = alias(p1), a2 = alias(p2);
+        if (a1 && a2 && withinDateWindow(collect(index.aliasEvent,year,available,null,pair(a1,a2)),date,windowDays).eligible.length) {
+          stats.roundConflicts++; reason = "round-conflict";
         }
       }
     }
-    offsets.sort((a,b)=>a-b);
-    counters.dateOffsetDays=offsets.length?{count:offsets.length,min:offsets[0],median:offsets[Math.floor((offsets.length-1)/2)],p90:offsets[Math.floor((offsets.length-1)*0.9)],max:offsets.at(-1)}:null;
-    counters.dateOffsetAnomalyLinks=counters.negativeOver7Days+counters.dateOffsetsOver21Days;
-    counters.dateOffsetBuckets=dateOffsetBuckets;
-    counters.dateOffsetByYear=dateOffsetByYear;
-    counters.dateOffsetPlausibleLinks=offsets.length-counters.dateOffsetAnomalyLinks;
-    counters.linkagePct=counters.uniqueMatchIds?Number((100*counters.linkedUnique/counters.uniqueMatchIds).toFixed(2)):null;
-    byTour[tour]=counters;
+    if (candidate) {
+      stats.linked++; ys.linked++;
+      if (method.startsWith("full")) { stats.linkedByFullName++; ys.fullName++; }
+      else { stats.linkedByInitialSurname++; ys.alias++; }
+      if (method.endsWith("no-round")) stats.linkedWithoutUsableRound++;
+      if (candidate.event !== token(tournament)) stats.linkedByEventAlias++;
+      if (candidate.year !== year) stats.linkedFromAdjacentYear++;
+    } else {
+      stats.unmatched++; ys.unmatched++;
+      const reasonCode = reason || "pair-not-found";
+      recordUnmatched(reasonCode, tournament);
+      stats.unmatchedTournamentCounts[tournament] = (stats.unmatchedTournamentCounts[tournament] || 0) + 1;
+      if (round) stats.unmatchedRoundCounts[round] = (stats.unmatchedRoundCounts[round] || 0) + 1;
+      if (!reason) stats.pairNotFound++;
+    }
   }
-  const totals=Object.values(byTour).reduce((sum,x)=>{
-    for(const k of ["metadataRows","uniqueMatchIds","linkedUnique","linkedFullName","ambiguous","roundConflicts","eventMismatches","noPlayerPairInYear","missingNames","invalidDates","missingDates","negativeDateOffsets","negativeUpTo7Days","negativeOver7Days","dateOffsetsOver21Days","linkedCrossYear","linkedMainTour","linkedChallengerQualifying","linkedFutures","linkedITFQualifying","dateOffsetAnomalyLinks","dateOffsetPlausibleLinks"])sum[k]=(sum[k]||0)+x[k];
-    return sum;
-  },{});
-  totals.linkagePct=totals.uniqueMatchIds?Number((100*totals.linkedUnique/totals.uniqueMatchIds).toFixed(2)):null;
-  return {schemaVersion:3,source:"Jeff Sackmann Match Charting Project metadata linked to Jeff Sackmann ATP/WTA main-tour and lower-tier results",mcpCommit:"1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",resultsCommit:"83733587353df8a41f2fd4f516147d5aa83f5a8d",license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",totals,byTour,warnings:["Only exact normalized full-name pairs, explicit event aliases, year and round are accepted; no initials or fuzzy matches.","Only unique candidate matches are linked. December/January metadata may match an adjacent-year result file when its event-week date falls within -7 to +21 days of the charted date; otherwise adjacent-year candidates are not accepted. Unmatched rows may be events absent from the archive or contain source naming/date inconsistencies.","Sackmann tourney_date is usually the event-week date, not the exact match date. MCP Date is the charted match date; date offsets are diagnostics only.","Only aggregate counts are written. No player names, match IDs or player-level linkage records are retained.","Metadata date/surface/hand quality anomalies remain quarantined; this audit does not approve those fields as model features."]};
-}
-
-export function auditMcpMatchLinkage(files){
-  if(!Array.isArray(files)||!files.length)throw new Error("No MCP linkage files supplied");
-  const metadataFiles=files.filter(file=>META_FILE.test(basename(file.filename)));
-  const resultFiles=files.filter(file=>RESULT_FILE.test(basename(file.filename)));
-  const context=createContext(metadataFiles);
-  if(!resultFiles.length)throw new Error("Main-tour or lower-tier results are required");
-  for(const file of resultFiles)addResultsFile(context,file);
-  return finishAudit(context);
-}
-
-export async function auditMcpMatchLinkageDirectory(dir){
-  const names=(await readdir(dir)).sort();
-  const metadataFiles=[];
-  for(const name of names)if(META_FILE.test(name))metadataFiles.push({filename:name,content:await readFile(join(dir,name),"utf8")});
-  const context=createContext(metadataFiles);
-  for(const name of names)if(RESULT_FILE.test(name)){
-    const content=await readFile(join(dir,name),"utf8");
-    addResultsFile(context,{filename:name,content});
+  stats.linkagePct = Number((100 * stats.linked / Math.max(1, uniqueRows.length)).toFixed(2));
+  stats.unmatchedTournamentCounts = Object.fromEntries(Object.entries(stats.unmatchedTournamentCounts).sort((a,b)=>b[1]-a[1]).slice(0,30));
+  stats.unmatchedRoundCounts = Object.fromEntries(Object.entries(stats.unmatchedRoundCounts).sort((a,b)=>b[1]-a[1]));
+  for (const [reason, counts] of Object.entries(stats.unmatchedTournamentByReason)) {
+    stats.unmatchedTournamentByReason[reason] = Object.fromEntries(Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20));
   }
-  return finishAudit(context);
+  return stats;
 }
 
-async function main(){
-  const args=process.argv.slice(2);let dir="",out="mcp-match-linkage-audit.json";
-  for(let i=0;i<args.length;i++){if(args[i]==="--input-dir")dir=args[++i];else if(args[i]==="--out")out=args[++i];else throw new Error("Usage: node scripts/mcp-match-linkage-audit.mjs --input-dir DIR --out report.json");}
-  if(!dir)throw new Error("Missing --input-dir");
-  const report=await auditMcpMatchLinkageDirectory(dir);
-  await writeFile(out,JSON.stringify(report,null,2)+"\n");
-  console.log(JSON.stringify(report.totals));
-  console.log("Wrote aggregate-only MCP linkage audit: "+out);
+export function auditMcpMatchLinkage(input, options = {}) {
+  const tours = {};
+  for (const tour of ["ATP","WTA"]) tours[tour] = auditTour(input.metadata?.[tour] || [], input.results?.[tour] || [], tour, options);
+  return {
+    schemaVersion: 1,
+    sourceCommits: {matchChartingProject:MCP_SOURCE_COMMIT,sackmannArchive:SACKMANN_SOURCE_COMMIT},
+    join: "tour + year + tournament alias + unordered player pair + round + event-date window",
+    dateWindowDays: Number.isInteger(options.dateWindowDays) ? options.dateWindowDays : 21,
+    tours
+  };
 }
-if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href)main().catch(e=>{console.error(e.message);process.exitCode=1;});
+
+async function main() {
+  const args = process.argv.slice(2);
+  const di = args.indexOf("--input-dir"), oi = args.indexOf("--out");
+  const dir = di >= 0 ? args[di+1] : "";
+  const output = oi >= 0 ? args[oi+1] : "mcp-match-linkage-audit.json";
+  if (!dir) throw new Error("Usage: node scripts/mcp-match-linkage-audit.mjs --input-dir DIR --out report.json");
+  const files = await readdir(dir);
+  const readCsv = async name => {
+    const source = await readFile(join(dir,name),"utf8");
+    try { return parseCsv(source); }
+    catch (error) { throw new Error("CSV parse failed for " + name + ": " + error.message); }
+  };
+  const metadata = {
+    ATP: parseMcpMetadataCsv(await readFile(join(dir,"charting-m-matches.csv"),"utf8")),
+    WTA: parseMcpMetadataCsv(await readFile(join(dir,"charting-w-matches.csv"),"utf8"))
+  };
+  const results = {ATP:[],WTA:[]};
+  for (const file of files) {
+    const m = /^(atp|wta)_matches_(\d{4})\.csv$/.exec(file);
+    if (!m) continue;
+    results[m[1] === "atp" ? "ATP" : "WTA"].push(...await readCsv(file));
+  }
+  const report = auditMcpMatchLinkage({metadata,results});
+  await writeFile(output,JSON.stringify(report,null,2) + "\n");
+  for (const tour of ["ATP","WTA"]) {
+    const x=report.tours[tour];
+    console.log(tour + ": " + x.linked + "/" + x.uniqueMetadataIds + " linked (" + x.linkagePct + "%), full " + x.linkedByFullName + ", alias " + x.linkedByInitialSurname + ", unmatched " + x.unmatched);
+  }
+  console.log("Wrote aggregate-only Match Charting linkage audit: " + output);
+}
+if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
+  main().catch(error => { console.error(error.message); process.exitCode = 1; });
+}
