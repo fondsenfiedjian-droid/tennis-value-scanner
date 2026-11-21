@@ -31,6 +31,19 @@ The source is Jeff Sackmann's tennis datasets:
 The archive states CC BY-NC-SA 4.0. Attribute Jeff Sackmann, preserve the same license for redistribution, and do not use commercially without separate permission. Do not commit raw or generated Sackmann data to this public application repository. This tool is for non-commercial research pending legal clearance for any broader use.
 
 
+## Live Tennis API to Sackmann player ID linkage (2026-11-21)
+
+The Live Tennis API profile field `archive_player_id` was checked against the `player_id` column in the Sackmann `wta_players.csv` archive. In the production odds-matching diagnostic sample dated 2026-11-21, all 11 non-empty WTA archive IDs were found in the Sackmann player file and their names, IOC country codes, and dates of birth matched. Examples include Viktorija Golubic (203530), Jil Teichmann (213525), Tamara Zidansek (214461), Clara Burel (216262), Diane Parry (220348), and Storm Hunter (204411). Three other profiles in the same diagnostic sample had no `archive_player_id`; they remain unmatched and must not be joined by abbreviated names alone.
+
+This supports a direct ID join for profiles with a populated `archive_player_id`; it does not prove that every ATP/WTA/ITF player is covered. The reusable audit utility `scripts/sackmann-player-id-audit.mjs` checks exact IDs, normalized full names, and any supplied country/date-of-birth fields. Conflicting metadata is classified for manual review, and missing IDs remain unmatched. Run it with a JSON array of profile identity objects and the relevant Sackmann player CSV:
+
+```sh
+node scripts/sackmann-player-id-audit.mjs --tour wta --profiles profiles.json --players wta_players.csv --out wta-player-id-audit.json
+```
+
+The current production diagnostic also shows why historical Elo can help: some Live Tennis profiles have no `stats.ratings` block at all, while others expose `elo_rank` (a rank position, not an Elo rating value). The verified archive ID makes historical result linkage feasible for those players, but historical Elo must be reconstructed chronologically from completed matches, with no future-result leakage. This remains research-only; no production prediction logic is changed by this audit.
+
+
 ## Annual walk-forward rank and age research
 
 After importing normalized ATP or WTA CSVs, run the research model separately for each tour:
