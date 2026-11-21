@@ -70,7 +70,6 @@ function aggregate(history,today,surface=null,windowDays=365){
 export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365}={}){
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
- if(!Number.isInteger(holdoutStartYear)||holdoutStartYear<=featureStartYear||holdoutStartYear>lastEvaluationYear)throw new Error("holdoutStartYear must be after featureStartYear and no later than lastEvaluationYear");
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  const clean=rows.filter(row=>
   /^\d{8}$/.test(String(row.tourney_date??""))&&/^\d+$/.test(String(row.winner_id??""))&&
@@ -198,6 +197,7 @@ export function evaluateFixedHoldout(rows, names, {
 }
 
 export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025}={}){
+ if(!Number.isInteger(holdoutStartYear)||holdoutStartYear<=featureStartYear||holdoutStartYear>lastEvaluationYear)throw new Error("holdoutStartYear must be after featureStartYear and no later than lastEvaluationYear");
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
