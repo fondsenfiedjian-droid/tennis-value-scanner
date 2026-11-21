@@ -59,6 +59,15 @@ test("walk-forward layoff model is research-only and evaluates only with prior-y
     assert.equal(cohort.baseline.matches,cohort.playerMatchObservations);
     assert.equal(cohort.candidate.matches,cohort.playerMatchObservations);
     assert.ok(Number.isFinite(cohort.delta.brier));
+    for(const model of [cohort.baseline,cohort.candidate]){
+      const d=model.diagnostics;
+      assert.ok(d);
+      assert.ok(d.extreme5.count<=model.matches);
+      assert.ok(d.extreme5.wrong<=d.extreme5.count);
+      assert.ok(d.extreme1.count<=d.extreme5.count);
+      assert.equal(d.calibrationBins.reduce((sum,bin)=>sum+bin.count,0),model.matches);
+      assert.ok(Number.isFinite(d.maxIndividualLogLoss));
+    }
   }
 });
 
