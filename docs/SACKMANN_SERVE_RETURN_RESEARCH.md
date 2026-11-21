@@ -60,3 +60,24 @@ Interpretation:
 5. Freeze a recent holdout and rerun ATP/WTA separately; require stable improvements in both Brier and LogLoss before shadow testing.
 
 No production feature, live probability, EV or recommendation was changed by this research.
+
+## Sensitivity grid results (2026-11-21)
+
+Successful aggregate-only workflow: `44866738485`. The four configurations below use expanding chronological training and separate ATP/WTA models. All deltas are adjusted model minus Elo baseline; negative is better.
+
+| History / minimum prior matches | Tour | Eligible matches | Δ Brier (95% CI) | Δ LogLoss (95% CI) |
+|---|---|---:|---:|---:|
+| 180d / 5 | ATP | 12,109 | +0.000257 (+0.000034, +0.000481) | +0.000336 (-0.000233, +0.000906) |
+| 180d / 5 | WTA | 10,209 | +0.000006 (-0.000299, +0.000311) | -0.000076 (-0.000775, +0.000623) |
+| 365d / 3 | ATP | 20,768 | -0.000321 (-0.000521, -0.000120) | -0.000998 (-0.001487, -0.000509) |
+| 365d / 3 | WTA | 18,429 | -0.000208 (-0.000491, +0.000075) | -0.000647 (-0.001303, +0.000009) |
+| 365d / 10 | ATP | 12,890 | +0.000010 (-0.000174, +0.000194) | -0.000259 (-0.000732, +0.000215) |
+| 365d / 10 | WTA | 10,404 | -0.000232 (-0.000576, +0.000112) | -0.000668 (-0.001488, +0.000151) |
+| 730d / 5 | ATP | 20,803 | -0.000511 (-0.000753, -0.000268) | -0.001677 (-0.002294, -0.001060) |
+| 730d / 5 | WTA | 18,722 | -0.000351 (-0.000668, -0.000035) | -0.001171 (-0.001939, -0.000403) |
+
+The 730-day / 5-match configuration is strongest in aggregate for both tours. The 2026 partial holdout remains directionally positive but its paired intervals include zero for both tours. The selected combined specification was the best among seven alternatives in each of four configurations; no multiple-comparison correction was applied. Treat the result as exploratory, not confirmatory.
+
+The combined model's annual standardized coefficients consistently assign negative weights to overall serve/return differences and positive weights to same-surface differences. This suggests that the useful signal may be a surface-relative adjustment rather than raw absolute rates. Next test residualized surface features and sample-size shrinkage before any further recommendation.
+
+**Decision: research-only. No production feature is activated.**
