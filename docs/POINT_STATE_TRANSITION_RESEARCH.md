@@ -269,3 +269,14 @@ Successful aggregate-only run: GitHub Actions `44868121535` on the 951,064-state
 - Vendor round-prefix parsing classified only 12 of the 152 candidates (6 ATP, 6 WTA); player-primary-tour agreement is the more useful split, but leaves 40 unclassified.
 
 Interpretation: even after a strict structural gate, roughly one in six transitions remains ambiguous. The gate still does not prove that every point was captured or that an “inferable” transition is correct. The parser must remain research-only until individual matches can be compared with an independent complete score source and server/point ownership is verified. No player-level features or production changes are authorized.
+
+### Strict candidate-set real-sample result (2026-11-21)
+
+Successful aggregate-only run: GitHub Actions `44868121535`.
+
+- The strict filter retained 152 of 5,380 matches (2.83%) and 44,114 within-tape transitions. It inferred 36,857 transitions (83.55%) and left 7,257 ambiguous (16.45%).
+- By explicit round-prefix classification, only 6 matches were ATP and 6 WTA; 140 remained unclassified. The separate player-primary-tour agreement proxy classified 62 ATP, 50 WTA and 40 unclassified.
+- Under the player-tour proxy, ATP had 25,350 transitions (21,851 inferred; 3,499 ambiguous), WTA had 13,444 (11,475 inferred; 1,969 ambiguous), and unclassified had 5,320 (3,531 inferred; 1,789 ambiguous).
+- The most frequent remaining ambiguity reasons were multi-point gap/score conflict (3,019), game-counter jump/conflict (2,367), and counter change without a terminal score (1,269). These remain ambiguous; the parser is not used to choose the candidate set.
+
+Interpretation: strict metadata/tape filters produce a much smaller and cleaner research subset, but still leave 16.45% of transitions ambiguous. The explicit tour prefix is too sparse for reliable ATP/WTA comparison in this subset; the player-primary-tour split is only a proxy. Use the subset for parser validation, not predictive player features or production.
