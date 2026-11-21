@@ -434,7 +434,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     const p1 = String(state.points_p1 ?? "").trim().toUpperCase();
     const p2 = String(state.points_p2 ?? "").trim().toUpperCase();
     if (!p1 || !p2) return false;
-    if (isTrueTiebreak(state)) return /^\\d+$/.test(p1) && /^\\d+$/.test(p2);
+    if (isTrueTiebreak(state)) return /^\d+$/.test(p1) && /^\d+$/.test(p2);
     if (isFalseTiebreak(state)) return normalScoreRank(p1) !== null && normalScoreRank(p2) !== null;
     return false;
   };
