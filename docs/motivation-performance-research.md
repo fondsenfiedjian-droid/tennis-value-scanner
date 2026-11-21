@@ -97,3 +97,16 @@ The v1 candidate compares Elo-only logistic regression against Elo plus differen
 V1 deliberately does not yet include cumulative residual totals, losses specifically to lower-Elo opponents, workload or tournament-context variables. These should be added only after inspecting the first reports. The archive is incomplete below the main tours; zero or low archive activity must not be interpreted as proof of inactivity or lack of motivation.
 
 Validation: GitHub Actions regression suite passed 463/463 tests after the implementation and stream-writer repair. Research only; no production model changed.
+
+## Phase 1b — feature ablation
+
+The research script accepts `--exclude-features` (comma-separated exact feature names) to remove selected predictors from the candidate while keeping the Elo-only baseline and evaluation sample unchanged. Available predictors:
+
+- `gapMean3Diff,gapMean5Diff,gapMean10Diff`
+- `lossRate5Diff,lossRate10Diff`
+- `lossStreakDiff`
+- `historyCountDiff`
+
+Example: `--exclude-features historyCountDiff,lossStreakDiff`.
+
+Use this to test whether recent residuals, conventional loss-rate/streak features, and archive-history count each add independent value. Do not select features based on the full-history result alone; compare modern years and surfaces as well. The ablation remains research-only.
