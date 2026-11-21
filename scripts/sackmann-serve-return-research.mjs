@@ -247,16 +247,34 @@ function fitModel(rows,names,penalty=0.05){
 }
 function aggregatePredictions(rows){
  const n=rows.length;if(!n)return {matches:0,baseline:null,adjusted:null,pairedDifference:null};
- let b0=0,l0=0,b=0,l=0,db=0,db2=0,dl=0,dl2=0;
+ let b0=0,l0=0,b=0,l=0,db=0,db2=0,dl=0,dl2=0,correct0=0,correct=0;
+ const bins0=Array.from({length:10},()=>({count:0,predicted:0,observed:0}));
+ const bins=Array.from({length:10},()=>({count:0,predicted:0,observed:0}));
  for(const row of rows){
   const p0=clamp(row.baseProbability),p=clamp(row.adjustedProbability),y=row.outcome;
   const b0i=(p0-y)**2,bi=(p-y)**2,l0i=-y*Math.log(p0)-(1-y)*Math.log(1-p0),li=-y*Math.log(p)-(1-y)*Math.log(1-p);
   b0+=b0i;l0+=l0i;b+=bi;l+=li;db+=bi-b0i;db2+=(bi-b0i)**2;dl+=li-l0i;dl2+=(li-l0i)**2;
+  if((p0>=0.5?1:0)===y)correct0++;
+  if((p>=0.5?1:0)===y)correct++;
+  for(const [probability,target] of [[p0,bins0],[p,bins]]){
+   const bin=target[Math.min(9,Math.floor(probability*10))];
+   bin.count++;bin.predicted+=probability;bin.observed+=y;
+  }
  }
  const ci=(sum,sum2)=>n>1?1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n):null;
+ const calibration=source=>{
+  const populated=source.filter(bin=>bin.count>0);
+  return {
+   expectedCalibrationError:Number(populated.reduce((sum,bin)=>sum+bin.count/n*Math.abs(bin.predicted/bin.count-bin.observed/bin.count),0).toFixed(6)),
+   bins:source.map((bin,index)=>({lower:index/10,upper:(index+1)/10,matches:bin.count,
+    meanPredicted:bin.count?Number((bin.predicted/bin.count).toFixed(5)):null,
+    observedWinRate:bin.count?Number((bin.observed/bin.count).toFixed(5)):null}))
+  };
+ };
  return {
-  matches:n,baseline:{brier:Number((b0/n).toFixed(6)),logLoss:Number((l0/n).toFixed(6))},
-  adjusted:{brier:Number((b/n).toFixed(6)),logLoss:Number((l/n).toFixed(6))},
+  matches:n,
+  baseline:{brier:Number((b0/n).toFixed(6)),logLoss:Number((l0/n).toFixed(6)),accuracy:Number((100*correct0/n).toFixed(2)),calibration:calibration(bins0)},
+  adjusted:{brier:Number((b/n).toFixed(6)),logLoss:Number((l/n).toFixed(6)),accuracy:Number((100*correct/n).toFixed(2)),calibration:calibration(bins)},
   pairedDifference:{
    brier:Number((db/n).toFixed(6)),brierCI95:n>1?{lower:Number((db/n-ci(db,db2)).toFixed(6)),upper:Number((db/n+ci(db,db2)).toFixed(6))}:null,
    logLoss:Number((dl/n).toFixed(6)),logLossCI95:n>1?{lower:Number((dl/n-ci(dl,dl2)).toFixed(6)),upper:Number((dl/n+ci(dl,dl2)).toFixed(6))}:null
