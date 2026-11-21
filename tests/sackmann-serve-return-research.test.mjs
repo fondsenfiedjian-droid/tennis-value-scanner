@@ -249,6 +249,7 @@ test("SMA historical serve and opponent-return inputs can feed PFE's exact match
  ];
  const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
  assert.equal(f.bestOf,3);
+ assert.equal(f.pfePointInputStatus,"ready_for_score_simulation");
  assert.ok(Math.abs(f.servicePointP1-0.6)<1e-12);
  assert.ok(Math.abs(f.servicePointP2-0.5)<1e-12);
  const result=PFE.calculateMatchWinProbability(f.servicePointP1,f.servicePointP2,{bestOf:f.bestOf});
