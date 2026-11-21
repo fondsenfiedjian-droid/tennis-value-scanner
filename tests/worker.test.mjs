@@ -2535,7 +2535,9 @@ test("live prediction cards connect the Elo estimate to PFE without changing the
   assert.ok(frontendSource.includes("currentOddsAge<=ODDS_FRESHNESS_MAX_AGE_MINUTES"));
   assert.ok(frontendSource.includes("pfeAssessment.disagreement"));
   assert.ok(frontendSource.includes("pfeSourceLabels"));
-  assert.ok(frontendSource.includes("PFE: '+escapeHtml(pfeLabel)"));
+  assert.ok(frontendSource.includes("· Elo '+best.probability.toFixed(1)+'% · EV +"));
+  assert.ok(frontendSource.includes("вероятность Elo-модели '+highest.probability.toFixed(2)+'%"));
+  assert.ok(frontendSource.includes("PFE · объединённая оценка (диагностика): '+escapeHtml(pfeLabel)"));
   assert.ok(frontendSource.includes("PFE не меняет исходную вероятность, EV или размер ставки"));
 });
 
