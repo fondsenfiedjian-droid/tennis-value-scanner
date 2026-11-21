@@ -3284,27 +3284,32 @@ test("preferred bookmaker mode defaults safely and never silently mixes books", 
   assert.equal(normalizePreferredBookmaker("Betclic"),"winamax");
   assert.equal(normalizePreferredBookmaker("betclic"),"betclic");
   const quotes=[
-    {bookmaker:"winamax",side:"1",oddsDecimal:2.1},
-    {bookmaker:"winamax",side:"2",oddsDecimal:1.8},
-    {bookmaker:"betclic",side:"1",oddsDecimal:2.3},
-    {bookmaker:"betclic",side:"2",oddsDecimal:1.7},
-    {bookmaker:"netbet",side:"1",oddsDecimal:2.5}
+    {bookmaker:"winamax",side:"1",oddsDecimal:2.1,event:"event-1",scrapedAt:"2026-11-21T10:00:00Z"},
+    {bookmaker:"winamax",side:"2",oddsDecimal:1.8,event:"event-1",scrapedAt:"2026-11-21T10:01:00Z"},
+    {bookmaker:"winamax",side:"1",oddsDecimal:2.8,event:"event-2",scrapedAt:"2026-11-21T10:10:00Z"},
+    {bookmaker:"winamax",side:"2",oddsDecimal:1.9,event:"event-2",scrapedAt:"2026-11-21T10:11:00Z"},
+    {bookmaker:"betclic",side:"1",oddsDecimal:2.3,event:"event-3",scrapedAt:"2026-11-21T10:00:00Z"},
+    {bookmaker:"betclic",side:"2",oddsDecimal:1.7,event:"event-3",scrapedAt:"2026-11-21T10:01:00Z"},
+    {bookmaker:"netbet",side:"1",oddsDecimal:2.5,event:"event-4",scrapedAt:"2026-11-21T10:00:00Z"}
   ];
   const side=quote=>quote.side;
-  const winamax=selectPreferredBookmakerPair(quotes,"winamax",side,"Player A");
+  const event=quote=>quote.event;
+  const winamax=selectPreferredBookmakerPair(quotes,"winamax",side,"Player A",event);
   assert.equal(winamax.completePair,true);
   assert.equal(winamax.quoteA.bookmaker,"winamax");
   assert.equal(winamax.quoteB.bookmaker,"winamax");
+  assert.equal(winamax.quoteA.event,"event-2");
+  assert.equal(winamax.quoteB.event,"event-2");
   assert.equal(winamax.quotes.length,2);
-  const betclic=selectPreferredBookmakerPair(quotes,"betclic",side,"Player A");
+  const betclic=selectPreferredBookmakerPair(quotes,"betclic",side,"Player A",event);
   assert.equal(betclic.quoteA.bookmaker,"betclic");
   assert.equal(betclic.quoteB.bookmaker,"betclic");
-  const netbet=selectPreferredBookmakerPair(quotes,"netbet",side,"Player A");
+  const netbet=selectPreferredBookmakerPair(quotes,"netbet",side,"Player A",event);
   assert.equal(netbet.completePair,false);
   assert.equal(netbet.quoteA,null);
   assert.equal(netbet.quoteB,null);
   assert.equal(netbet.quotes.length,0);
-  const best=selectPreferredBookmakerPair(quotes,"best",side,"Player A");
+  const best=selectPreferredBookmakerPair(quotes,"best",side,"Player A",event);
   assert.equal(best.quoteA.bookmaker,"netbet");
   assert.equal(best.quoteB.bookmaker,"winamax");
 });
