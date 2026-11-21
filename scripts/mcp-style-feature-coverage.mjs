@@ -40,8 +40,7 @@ function overviewTotals(rows) {
   return Object.fromEntries(keys.map(key => [key, sumField(selected, key)]));
 }
 
-function buildPlayerMatchFeatures(match, statRows) {
-  const families = statRows[match.matchId] || {};
+function buildPlayerMatchFeatures(match, families) {
   const output = {};
   for (const side of ["player1", "player2"]) {
     const playerName = match[side + "Name"];
@@ -117,13 +116,13 @@ function indexStatRows(statFiles) {
   return byMatch;
 }
 
-function newTourReport() {
+function newTourReport(minPriorMatches) {
   return {
     linkedMatches: 0, validChronologyMatches: 0, mainTourTargets: 0,
-    targetsWithBothPlayersMatchedInOverview: 0,
+    targetsWithAllFeatures: 0,
     featureMatchCoverage: Object.fromEntries(FEATURES.map(feature => [feature, 0])),
     priorHistoryCoverage: Object.fromEntries(FEATURES.map(feature => [feature, {
-      overall: Object.fromEntries(MIN_PRIOR_DEFAULT.map(n => [String(n), 0])),
+      overall: Object.fromEntries(minPriorMatches.map(n => [String(n), 0])),
       sameSurface: Object.fromEntries(MIN_PRIOR_DEFAULT.map(n => [String(n), 0]))
     }])),
     targetSurfaceCounts: { Hard: 0, Clay: 0, Grass: 0, unknown: 0 }
@@ -137,7 +136,7 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
   if (!Array.isArray(linkedRows) || !Array.isArray(statFiles)) throw new Error("Linked rows and stat files are required");
   const statRows = indexStatRows(statFiles);
   const records = [];
-  const tours = { ATP: newTourReport(), WTA: newTourReport() };
+  const tours = { ATP: newTourReport(minPriorMatches), WTA: newTourReport(minPriorMatches) };
   const byId = new Set();
   for (const link of linkedRows) {
     const matchId = text(link.matchId), tour = text(link.tour);
@@ -145,8 +144,8 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
     if (!matchId || !["ATP", "WTA"].includes(tour) || byId.has(tour + ":" + matchId)) continue;
     byId.add(tour + ":" + matchId);
     const surface = text(link.surface);
-    const datePlausible = link.dateOffsetDays === null || link.dateOffsetDays === undefined ||
-      (Number(link.dateOffsetDays) >= -7 && Number(link.dateOffsetDays) <= 21);
+    const datePlausible = Number.isFinite(Number(link.dateOffsetDays)) &&
+      Number(link.dateOffsetDays) >= -7 && Number(link.dateOffsetDays) <= 21;
     const idsValid = text(link.player1Id) && text(link.player2Id) && text(link.player1Id) !== text(link.player2Id);
     if (day === null || !datePlausible || !idsValid) continue;
     const features = buildPlayerMatchFeatures({ ...link, matchId }, statRows[tour + ":" + matchId] || {});
@@ -162,7 +161,7 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
     if (record.sourceTier === "main") {
       report.mainTourTargets++;
       if (FEATURES.every(feature => record.player1Features[feature] !== null && record.player2Features[feature] !== null)) {
-        report.targetsWithBothPlayersMatchedInOverview++;
+        report.targetsWithAllFeatures++;
       }
       report.targetSurfaceCounts[SURFACES.has(surface) ? surface : "unknown"]++;
       for (const feature of FEATURES) {
