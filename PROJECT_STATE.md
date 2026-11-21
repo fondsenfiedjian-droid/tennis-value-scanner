@@ -1052,3 +1052,15 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Preferred bookmaker mode implementation (2026-11-22)
+- Implemented on isolated branch `feature/preferred-bookmaker-mode` for issue #156.
+- Added persistent Settings selector: Winamax (default for unset/new installs), Betclic, NetBet, or Best available.
+- EV quote inputs now come only from the selected bookmaker. In a single-book mode, both sides must have a valid fresh two-sided pair from that same bookmaker; if either side is missing, both EV quote inputs are suppressed rather than silently mixing providers.
+- Other providers' best side prices remain visible as explicitly labelled alternatives and are not used for EV in a single-book mode.
+- Best available mode retains the existing highest-price-per-side behavior; provider labels remain attached. PFE's existing same-bookmaker/same-event consensus checks remain unchanged.
+- Bumped static PWA cache from v133 to v134 so clients receive the updated settings UI.
+- Added regression tests for safe default, provider isolation, incomplete-pair suppression, best-available selection and settings persistence.
+- No probability model, EV formula, provider API, secrets, paid services, production Worker or production deployment changed.
+- Validation/CI pending. Keep this branch and its PR draft until checks pass and the user reviews it.
