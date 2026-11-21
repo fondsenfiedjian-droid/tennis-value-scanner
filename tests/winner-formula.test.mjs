@@ -7,7 +7,7 @@ const model={
   featureNames:["baseLogit","matches3","matches7","playingDays7","restDays","minutes7","durationCoverage7","workloadAvailable"],
   means:[0,0,0,0,0,0,0,0],
   scales:[1,1,1,1,1,1,1,1],
-  coefficients:[0,1,0.2,0.1,0.1,0.05,0.01,0.1,0.2]
+  coefficients:[0,1,-0.2,-0.1,-0.1,0.05,-0.01,-0.1,0.2]
 };
 
 test("winner formula returns complementary probabilities and recognizes workload advantage",()=>{
