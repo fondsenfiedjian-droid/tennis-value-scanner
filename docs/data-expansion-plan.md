@@ -81,12 +81,25 @@ Do not ingest them until source, collection method, redistribution rights and in
 
 - [x] Review public source descriptions and licences.
 - [x] Identify high-value data gaps and prioritize sources.
-- [ ] Add this plan and source register to the repository.
-- [ ] Add a local audit script for downloaded ranking and Live Tennis files.
+- [x] Add this plan and source register to the repository.
+- [x] Add a local read-only audit script for downloaded ranking and Live Tennis files.
 - [ ] Add download commands with resumable transfers and checksum capture.
 - [ ] Review schemas and prepare ID crosswalk checks.
 
 ### Phase B — local download (one Termux run)
+
+The audit utility is available at `scripts/tennis-dataset-audit.mjs`. After downloading files, run it with explicit paths; it streams `.csv.gz` files without extracting them and prints a JSON report. It does not modify inputs.
+
+```sh
+node scripts/tennis-dataset-audit.mjs \\
+  ~/tennis-data/rankings/atp_rankings_*.csv \\
+  ~/tennis-data/rankings/wta_rankings_*.csv \\
+  ~/tennis-data/livetennis/raw/matches.csv.gz \\
+  ~/tennis-data/livetennis/raw/players.csv.gz \\
+  ~/tennis-data/livetennis/raw/points_sample_2026-06.csv.gz
+```
+
+If a glob has no matching files, remove that path before running.
 
 1. Download ATP/WTA weekly ranking files.
 2. Download the Live Tennis public sample files.
