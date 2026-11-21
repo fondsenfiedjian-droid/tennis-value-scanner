@@ -448,6 +448,7 @@ test("measures first and last observed states against match metadata without ass
   assert.equal(coverage.overall.firstStateAtMatchStart, 1);
   assert.equal(coverage.overall.firstStateNotAtMatchStart, 1);
   assert.equal(coverage.overall.firstStateMissingPointScore, 1);
+  assert.equal(coverage.overall.lastStateMissingPointScore, 0);
   assert.equal(coverage.overall.normalCompletion, 1);
   assert.equal(coverage.overall.nonNormalCompletion, 1);
   assert.equal(coverage.overall.finalSetTargetReached, 1);
