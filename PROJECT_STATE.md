@@ -1061,3 +1061,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Keeps preparation/priority evidence separate from physical workload in `human-factor.js`.
 - Research/triage only: no live app integration, no probability adjustment, no EV or bet-selection changes. `probabilityAdjustment` is always null pending coverage and chronological validation.
 - Module documentation: `docs/tournament-intent-module.md`.
+
+
+## Tournament Intent evidence registry (2026-11-21)
+- Added `tournament-intent-registry.js` for reviewed, sourced, point-in-time evidence records tied to an exact player, event and target match.
+- Records require a public HTTPS source, publication and capture timestamps, target match start, explicit verification and reviewer identity.
+- Import reports accepted, rejected and duplicate rows with reasons; stale, unverified, malformed and post-match evidence is rejected.
+- Assessment filters by exact player and target match and independently rejects publication/capture after match start.
+- Added tests in `tests/tournament-intent-registry.test.mjs` and workflow documentation in `docs/tournament-intent-evidence-registry.md`.
+- Manual/reviewed evidence only. No automated crawler, live UI, probability adjustment, EV change or bet-selection change.
