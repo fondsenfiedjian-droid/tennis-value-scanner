@@ -428,7 +428,7 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     normalFlagNumericWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
     normalFlagNumericPreviousTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     normalFlagNumericNextTiebreakDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
-    tiebreakFlagAlphaValueCounts: { AD: 2, "40": 1, A: 1 },
+    tiebreakFlagAlphaValueCounts: { AD: 2, A: 1 },
     tiebreakFlagAlphaPairCounts: { "AD:40": 1, "A:AD": 1 },
     tiebreakFlagAlphaWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0 }
   });
