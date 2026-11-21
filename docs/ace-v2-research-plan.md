@@ -143,3 +143,22 @@ A research-only name-link audit has been added to measure whether Valuebetennis 
 
 
 The first strict full-name audit mapped only 10.02% of unique players and recovered both ages in 19.92% of matches. This was not accepted as adequate. The audit has been extended to compare tournament categories and to safely try token-order and first-initial + final-token aliases, while prioritizing exact full-name candidates and rejecting ambiguous mappings. The earlier 10.02%/19.92% figures are preliminary and will be superseded by the expanded audit.
+
+
+
+### Expanded age-link audit results — 2026-11-21
+
+The expanded identity audit completed successfully. It processed 177,888 Valuebetennis matches and 13,957 unique player identities. Only 1,534 identities (10.99%) mapped uniquely to a Sackmann player ID. Both players' ages were recovered for 37,499 matches (21.08%); at least one age was available for 46.35%. There were 24 ambiguous player identities, and ambiguous mappings were rejected.
+
+| Tour / year | Matches | Both ages available | Both-age coverage | At least one age |
+|---|---:|---:|---:|---:|
+| ATP 2024 | 27,529 | 5,724 | 20.79% | 46.59% |
+| ATP 2025 | 28,067 | 6,566 | 23.39% | 50.37% |
+| ATP 2026 partial | 46,071 | 6,907 | 14.99% | 36.57% |
+| WTA 2024 | 22,043 | 4,872 | 22.10% | 48.75% |
+| WTA 2025 | 22,142 | 6,099 | 27.54% | 55.49% |
+| WTA 2026 partial | 32,036 | 7,331 | 22.88% | 48.70% |
+
+**Decision:** reject the current Sackmann-to-Valuebetennis identity join for ACE age×load research. Coverage is too low and is especially weak in partial 2026; the audit cannot establish a representative age sample. Do not fit age×load on this linked sample or use it to claim tour-wide age effects. Revisit only with a separately licensed source that provides stable player IDs or verified dates of birth. Sackmann-derived age data remains non-commercial research only.
+
+The audit is intentionally conservative: exact/token-order names are preferred, first-initial + final-token aliases are accepted only when unique within tour, and age is sourced strictly before the target match date. No same-day or future age records are used.
