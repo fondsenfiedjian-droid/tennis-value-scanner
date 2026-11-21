@@ -437,11 +437,16 @@ test("measures first and last observed states against match metadata without ass
     state({ match_id: "m3", sets_p1: "1", sets_p2: "1", games_p1: "[2,6]", games_p2: "[6,4]" })
   ];
   const matches = [
-    { match_id: "m1", round: "ATP Paris - Final", best_of: "BO3", event_status: "" },
-    { match_id: "m2", round: "ATP Rome - QF", best_of: "BO3", event_status: "retired" },
-    { match_id: "m3", round: "WTA Rome - SF", best_of: "BO3", event_status: "" }
+    { match_id: "m1", round: "ATP Paris - Final", best_of: "BO3", event_status: "", player1_id: "1", player2_id: "2" },
+    { match_id: "m2", round: "ATP Rome - QF", best_of: "BO3", event_status: "retired", player1_id: "3", player2_id: "4" },
+    { match_id: "m3", round: "WTA Rome - SF", best_of: "BO3", event_status: "", player1_id: "5", player2_id: "6" }
   ];
-  const report = auditPointStateTransitions(rows, matches, []);
+  const players = [
+    { player_id: "1", tour: "ATP" }, { player_id: "2", tour: "ATP" },
+    { player_id: "3", tour: "ATP" }, { player_id: "4", tour: "ATP" },
+    { player_id: "5", tour: "WTA" }, { player_id: "6", tour: "WTA" }
+  ];
+  const report = auditPointStateTransitions(rows, matches, players);
   const coverage = report.captureBoundaryCoverage;
   assert.equal(coverage.overall.totalMatches, 3);
   assert.equal(coverage.overall.firstStateAtMatchStart, 1);
@@ -453,4 +458,9 @@ test("measures first and last observed states against match metadata without ass
   assert.equal(coverage.overall.finalSetTargetNotReached, 2);
   assert.equal(coverage.byTour.ATP.totalMatches, 2);
   assert.equal(coverage.byTour.WTA.totalMatches, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 2);
+  assert.equal(coverage.byPlayerTourAgreement.WTA.totalMatches, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetNotReached, 0);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.nonNormalCompletionTargetReached, 0);
 });
