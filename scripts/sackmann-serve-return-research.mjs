@@ -11,7 +11,7 @@ const PROFILE=[
  "secondServeReturnDiff","breakPointConvertDiff"
 ];
 const SURFACE_PROFILE=PROFILE.map(name=>"surface"+name[0].toUpperCase()+name.slice(1));
-const SHRUNK_SURFACE_PROFILE=PROFILE.map(name=>"shrunk"+name[0].toUpperCase()+name.slice(1));
+const SHRUNK_SURFACE_PROFILE=PROFILE.map(name=>"shrunkSurface"+name[0].toUpperCase()+name.slice(1));
 const SPECS=[
  {name:"overall_serve_only",features:["serveDiff"]},
  {name:"overall_return_only",features:["returnDiff"]},
