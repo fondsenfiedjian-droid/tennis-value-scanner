@@ -1358,11 +1358,14 @@
     $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     archiveStorageReady.then(renderArchive);
   }
+  let archiveAutoCheckRunning=false;
+  let archiveAutoCheckLastAt=0;
   $('#archiveCheckResults').onclick=async()=>{
     await archiveStorageReady;
     const button=$('#archiveCheckResults');
+    if(button.disabled)return;
     const rows=readPredictionArchive(),now=Date.now();
-    const ids=selectArchiveResultCheckIds(rows,now,10);
+    const ids=selectArchiveResultCheckIds(rows,now,archiveAutoCheckRunning?5:10);
     if(!ids.length){alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
     button.disabled=true;button.textContent='ПРОВЕРКА…';
     let checked=0,errors=0,statusesUpdated=0;
@@ -1392,9 +1395,16 @@
       const archiveFlush=await flushArchiveWrites();
       if(!archiveFlush.ok)errors++;
       renderArchive();
-        alert('Проверка завершена. Проверено матчей: '+checked+'. Получены статусы: '+statusesUpdated+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
+        if(!archiveAutoCheckRunning)alert('Проверка завершена. Проверено матчей: '+checked+'. Получены статусы: '+statusesUpdated+'. Ошибок: '+errors+'. За один запуск проверяется не более 10 матчей.');
     }finally{button.disabled=false;button.textContent='Проверить результаты';}
   };
+  async function runAutomaticArchiveResultCheck(){
+    if(archiveAutoCheckRunning||document.visibilityState!=='visible'||Date.now()-archiveAutoCheckLastAt<2*60*60*1000)return;
+    archiveAutoCheckRunning=true;
+    archiveAutoCheckLastAt=Date.now();
+    try{await $('#archiveCheckResults').onclick();}
+    finally{archiveAutoCheckRunning=false;}
+  }
   $('#archiveExport').onclick=async()=>{
     await archiveStorageReady;
     const rows=readPredictionArchive();
@@ -1996,7 +2006,14 @@
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
-  archiveStorageReady.then(()=>{if($('#statsView').style.display!=='none')renderArchive();});
+  archiveStorageReady.then(()=>{
+    if($('#statsView').style.display!=='none')renderArchive();
+    runAutomaticArchiveResultCheck();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')runAutomaticArchiveResultCheck();
+  });
+  setInterval(runAutomaticArchiveResultCheck,15*60*1000);
   loadMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
