@@ -1080,3 +1080,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `docs/tournament-intent-pilot-protocol.md` with a predeclared, consecutive-window sample design, fixed source-search budget, source-category logging and separate outcomes for no evidence, unavailable sources and incomplete searches.
 - The protocol requires pre-match-only evidence, independent review of positive records plus a random 20% of no-evidence observations, and reporting of coverage and reviewer agreement before any predictive study.
 - Any later predictive test must use chronological holdout data and compare against the unchanged baseline; no probability adjustment, EV change or bet-selection integration is authorised by this research step.
+
+
+## Tournament Intent prospective pilot window (2026-11-21)
+- Pilot protocol ranking eligibility widened from top 50 to top 150, with ranking bands 1–50, 51–100 and 101–150 kept separate. The 100-observation figure is a target, not a quota; do not widen the cutoff after reviewing evidence.
+- Added `docs/tournament-intent-pilot-window-2026-11-23.md` for 23 Nov–6 Dec 2026. It records official ATP/WTA/ITF event candidates, ranking snapshot/source requirements, and currently visible WTA player candidates.
+- ATP Davis Cup Finals are excluded from the individual-event sample because team obligations create a different context. ATP Challenger entries/draws and exact WTA/ITF target match IDs still require confirmation.
+- At reconnaissance time, checked WTA/ITF draws were not available; therefore zero match-level evidence records have been created. No-evidence classifications must not be assigned before exact matches are selected and the source-search protocol is completed.
+- No prediction, EV, bet-selection or Production behavior changes.
