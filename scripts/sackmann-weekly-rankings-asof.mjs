@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Research-only temporal join of weekly Sackmann rankings onto completed matches.
- * Uses the latest ranking_date <= match date for each exact player ID.
+ * Uses the latest ranking_date < match date for each exact player ID.
  * Streams both files; keeps only the latest snapshot per player in memory.
  */
 import fs from 'node:fs';
@@ -111,7 +111,7 @@ async function main(){
   const stats={schemaVersion:1,readOnlyInputs:true,tour,matchRows:0,rankRowsConsumed:0,winnerRankMatched:0,loserRankMatched:0,missingWinnerRank:0,missingLoserRank:0,missingWinnerPoints:0,missingLoserPoints:0,matchDateRegressions:0,rankingDateRegressions:0,rankAgeDays:{under30:0,'30to89':0,'90plus':0},rankAgeSamples:0};
   let lastMatchDate='';
   async function advanceRanks(date){
-    while(pendingRank && String(pendingRank[ri.date]??'').trim()<=date){
+    while(pendingRank && String(pendingRank[ri.date]??'').trim()<date){
       consumeRanking(pendingRank);stats.rankRowsConsumed++;
       nextRank=await rankIter.next();pendingRank=nextRank.done?null:nextRank.value.fields;
     }
