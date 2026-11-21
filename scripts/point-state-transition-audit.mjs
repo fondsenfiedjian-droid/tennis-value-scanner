@@ -303,7 +303,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   const tiebreakServerByPlayerTour = {};
   const stateDeltaDiagnostics = {
     fullScoreStateUnchanged: { total: 0, serverChanged: 0, tiebreakChanged: 0, bothChanged: 0, exactDuplicateExceptTimestamp: 0 },
-    samePointScore: { total: 0, countersChanged: 0, countersUnparseable: 0, countersStable: 0, serverChanged: 0, tiebreakChanged: 0 },
+    samePointScore: { total: 0, countersChanged: 0, gameCounterChanged: 0, setCounterChanged: 0, bothCountersChanged: 0, countersUnparseable: 0, countersStable: 0, serverChanged: 0, tiebreakChanged: 0 },
     missingPointScore: { total: 0, beforeMissing: 0, afterMissing: 0, bothMissing: 0, gameCounterChanged: 0, setCounterChanged: 0, serverChanged: 0 }
   };
   const serverAlignment = {
@@ -408,8 +408,12 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         if (serverChanged) diag.serverChanged++;
         if (tiebreakChanged) diag.tiebreakChanged++;
         const counters = transitionCounterChanges(before, after);
-        if (counters.setChanged || counters.gameChanged) diag.countersChanged++;
-        else if (!counters.setsComparable || !counters.gamesComparable) diag.countersUnparseable++;
+        if (counters.setChanged || counters.gameChanged) {
+          diag.countersChanged++;
+          if (counters.gameChanged) diag.gameCounterChanged++;
+          if (counters.setChanged) diag.setCounterChanged++;
+          if (counters.gameChanged && counters.setChanged) diag.bothCountersChanged++;
+        } else if (!counters.setsComparable || !counters.gamesComparable) diag.countersUnparseable++;
         else diag.countersStable++;
       }
       const beforeMissing = !String(before.points_p1 ?? "").trim() || !String(before.points_p2 ?? "").trim();
