@@ -78,3 +78,22 @@ test("reports serve-stat quality and isolates impossible second-serve opportunit
  assert.deepEqual(report.winner,{valid:1,invalid:1,reasons:{second_won_exceeds_opportunities:1}});
  assert.deepEqual(report.loser,{valid:2,invalid:0,reasons:{}});
 });
+
+
+test("history window controls which earlier matches enter pre-match rates",()=>{
+ const rows=[
+  row("20240101",1,1,2,stats(100,60,40,20),stats(100,60,30,20)),
+  row("20240801",2,1,2,stats(100,60,40,20),stats(100,60,30,20))
+ ];
+ const short=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,windowDays:180}).get("20240801:1:2:Hard");
+ const full=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,windowDays:365}).get("20240801:1:2:Hard");
+ assert.equal(short.serveDiff,null);
+ assert.ok(Number.isFinite(full.serveDiff));
+});
+
+test("history window and minimum-history settings reject invalid values",()=>{
+ const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
+ assert.throws(()=>buildPreMatchServeReturn(rows,{windowDays:0}),/windowDays/);
+ assert.throws(()=>buildPreMatchServeReturn(rows,{minOverallMatches:0}),/minOverallMatches/);
+ assert.throws(()=>buildPreMatchServeReturn(rows,{minSurfaceMatches:0}),/minSurfaceMatches/);
+});
