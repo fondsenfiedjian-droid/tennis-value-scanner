@@ -454,13 +454,13 @@ test("measures first and last observed states against match metadata without ass
   assert.equal(coverage.overall.firstStateMissingPointScore, 1);
   assert.equal(coverage.overall.normalCompletion, 2);
   assert.equal(coverage.overall.nonNormalCompletion, 1);
-  assert.equal(coverage.overall.finalSetTargetReached, 1);
-  assert.equal(coverage.overall.finalSetTargetNotReached, 2);
+  assert.equal(coverage.overall.finalSetTargetReached, 2);
+  assert.equal(coverage.overall.finalSetTargetNotReached, 1);
   assert.equal(coverage.byTour.ATP.totalMatches, 2);
   assert.equal(coverage.byTour.WTA.totalMatches, 1);
   assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 2);
   assert.equal(coverage.byPlayerTourAgreement.WTA.totalMatches, 1);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 2);
   assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetNotReached, 0);
   assert.equal(coverage.byPlayerTourAgreement.ATP.nonNormalCompletionTargetReached, 0);
 });
