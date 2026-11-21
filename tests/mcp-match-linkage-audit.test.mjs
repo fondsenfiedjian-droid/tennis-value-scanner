@@ -116,3 +116,23 @@ test("keeps a large negative date offset flagged as an anomaly",()=>{
  assert.equal(report.byTour.ATP.dateOffsetAnomalyLinks,1);
  assert.equal(report.byTour.ATP.dateOffsetPlausibleLinks,0);
 });
+
+
+test("provides linked player IDs only in memory and omits them from serialized audit output",()=>{
+ const header="match_id,Player 1,Player 2,Date,Tournament,Round,Surface,Best of";
+ const meta="20240710-M-Wimbledon-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Wimbledon,QF,Grass,BO5";
+ const results="tourney_id,tourney_name,tourney_date,match_num,winner_name,loser_name,winner_id,loser_id,score,round,surface,best_of";
+ const row="2024-0451,Wimbledon,20240708,120,Novak Djokovic,Carlos Alcaraz,104925,207989,6-7 7-6 7-6 6-3,QF,Grass,5";
+ const report=auditMcpMatchLinkage([
+  {filename:"charting-m-matches.csv",content:[header,meta].join("\n")},
+  {filename:"charting-w-matches.csv",content:"match_id,Player 1,Player 2,Date,Tournament,Round"},
+  {filename:"atp_matches_2024.csv",content:[results,row].join("\n")}
+ ]);
+ assert.equal(report.linkedRows.length,1);
+ assert.equal(report.linkedRows[0].player1Id,"104925");
+ assert.equal(report.linkedRows[0].player2Id,"207989");
+ assert.equal(report.linkedRows[0].winnerIsPlayer1,true);
+ const serialized=JSON.stringify(report);
+ assert.equal(serialized.includes("Novak Djokovic"),false);
+ assert.equal(serialized.includes("104925"),false);
+});
