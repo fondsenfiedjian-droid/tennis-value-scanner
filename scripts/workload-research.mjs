@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
 import { runBacktest } from "./backtest.mjs";
 
-const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays"];
+const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "restDaysAvailable"];
 const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "minutes7", "durationCoverage7"];
 const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
 const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
@@ -44,7 +44,7 @@ export function buildPreMatchWorkload(rows) {
         matches3: prior3.length,
         matches7: prior.length,
         playingDays7,
-        restDays: latest ? Math.min(30, today - latest.day) : 30,
+        restDays: latest ? Math.min(30, today - latest.day) : null,
         minutes7,
         durationCoverage7: prior.length ? knownDurations.length / prior.length : 0,
         knownDurationMatches7: knownDurations.length
@@ -56,7 +56,7 @@ export function buildPreMatchWorkload(rows) {
       const p2 = p1 === winner ? loser : winner;
       const a = get(p1), b = get(p2);
       features.set(pairKey(date,p1,p2), {
-        ...Object.fromEntries(FEATURE_NAMES.map(name => [name, a[name] - b[name]])),
+        ...Object.fromEntries(FEATURE_NAMES.map(name => [name, name === "restDaysAvailable" ? (a.restDays !== null && b.restDays !== null ? 1 : 0) : name === "restDays" ? (a.restDays !== null && b.restDays !== null ? a.restDays - b.restDays : 0) : a[name] - b[name]])),
         priorMatchRecords7: a.matches7 + b.matches7,
         knownDurationRecords7: a.knownDurationMatches7 + b.knownDurationMatches7
       });
@@ -203,7 +203,7 @@ export function runWorkloadResearch(csvTexts) {
     const featureSpecifications = [
       { name:"matches3_only", features:["matches3"] },
       { name:"matches7_only", features:["matches7"] },
-      { name:"playingDays7_and_restDays", features:["playingDays7","restDays"] },
+      { name:"playingDays7_and_restDays_with_availability", features:["playingDays7","restDays","restDaysAvailable"] },
       { name:"all_core_features", features:CORE_FEATURE_NAMES }
     ];
     const specificationTests = Object.fromEntries(featureSpecifications.map(spec => {
@@ -268,7 +268,7 @@ export function runWorkloadResearch(csvTexts) {
     tours,
     reports,
     citation:"Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm",
-    method:"Pre-match workload differences: previous 3/7 calendar days, distinct playing days in 7 days, rest days capped at 30, known prior 7-day minutes and duration coverage. Same-day matches excluded."
+    method:"Pre-match workload differences: previous 3/7 calendar days, distinct playing days in 7 days, rest days capped at 30 when both players have prior history; otherwise restDays is neutral and restDaysAvailable=0. Same-day matches excluded."
   };
 }
 
