@@ -42,7 +42,7 @@ The current archival builder derives the following pre-match rates from prior ma
 - first-serve and second-serve return points won / opportunities;
 - break-point conversion, derived as the opponent's break points faced minus break points saved.
 
-Each feature has its own valid-observation count. Missing or invalid optional counters suppress only that feature; they do not discard otherwise valid core service-point history. Same-day matches remain excluded. The research evaluator now compares serve-profile-only, return-profile-only, combined extended-profile, and core-plus-extended specifications against the same chronological Elo baseline.
+Each feature has its own valid-observation count. Missing or invalid optional counters suppress only that feature; they do not discard otherwise valid core service-point history. Same-day matches remain excluded. The research evaluator now compares serve-profile-only, return-profile-only, combined extended-profile, and core-plus-extended specifications against the same chronological Elo baseline. Reports include Brier score, log loss, accuracy, ten-bin reliability tables and expected calibration error, plus paired confidence intervals for Brier and log-loss differences.
 
 **Important limitation:** these are rolling player-level rates, not yet opponent-adjusted serve-vs-return matchup estimates. Opponent-strength residualization, tour/surface priors for each submetric, and direct PFE point-probability integration remain separate research tasks. Do not describe this branch as a finished matchup model or enable it in production.
 
