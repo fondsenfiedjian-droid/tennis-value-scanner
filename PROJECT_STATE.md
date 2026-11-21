@@ -949,3 +949,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added a second diagnostic hypothesis: server field may identify the most recent point's server rather than the next point's server. It compares both hypotheses and splits ordinary transitions into game-boundary vs within-game.
 - Added synthetic tests for both phase conventions. Real-sample comparison pending; neither convention is authoritative until source semantics are verified.
 - Alternative server-phase run `44863408028`: next-point-server hypothesis is stronger for ordinary games (94.85% overall; 98.16% within games; 67.62% at game boundaries) than last-point-server alternative (83.38% overall; 89.58% within games; 32.38% at boundaries). Tiebreak remains inconclusive (51.61% vs 48.39%). Keep server attribution blocked pending explanation of boundary mismatches and manual/source verification.
+
+### PFE timestamp-gap analysis (2026-11-21)
+- Added distributions of elapsed seconds between consecutive score states, separately for inferred and ambiguous transitions (count, mean, p50/p90/p95/p99/max and bins).
+- Added synthetic regression coverage and aggregate-only reporting in the ephemeral public-sample workflow. Real-sample results pending.
