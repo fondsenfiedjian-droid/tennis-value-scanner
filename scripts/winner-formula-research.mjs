@@ -52,6 +52,29 @@ function metrics(rows, model = null) {
   };
 }
 
+function pairedModelDifference(rows, referenceModel, candidateModel) {
+  if(rows.length<2)return {matches:rows.length,brier:null,brierCI95:null,logLoss:null,logLossCI95:null};
+  let brier=0,brier2=0,logLoss=0,logLoss2=0;
+  for(const row of rows){
+    const y=row.outcome;
+    const a=clamp(predictLogistic(referenceModel,row.features));
+    const b=clamp(predictLogistic(candidateModel,row.features));
+    const db=(b-y)**2-(a-y)**2;
+    const dl=(-y*Math.log(b)-(1-y)*Math.log(1-b))-(-y*Math.log(a)-(1-y)*Math.log(1-a));
+    brier+=db;brier2+=db*db;logLoss+=dl;logLoss2+=dl*dl;
+  }
+  const n=rows.length;
+  const ci=(sum,sum2)=>1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n);
+  const meanBrier=brier/n,meanLogLoss=logLoss/n;
+  return {
+    matches:n,
+    brier:+meanBrier.toFixed(6),
+    brierCI95:{lower:+(meanBrier-ci(brier,brier2)).toFixed(6),upper:+(meanBrier+ci(brier,brier2)).toFixed(6)},
+    logLoss:+meanLogLoss.toFixed(6),
+    logLossCI95:{lower:+(meanLogLoss-ci(logLoss,logLoss2)).toFixed(6),upper:+(meanLogLoss+ci(logLoss,logLoss2)).toFixed(6)}
+  };
+}
+
 function featureRow(prediction, workload) {
   const key=pairKey(prediction.date,prediction.player1Id,prediction.player2Id);
   const w=workload.get(key);
@@ -118,9 +141,22 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
     const observations=backtest.predictions.map(p=>featureRow(p,workload));
     const training=observations.filter(row=>row.date<=trainEnd);
     const evaluation=observations.filter(row=>row.date>=evalStart&&row.date<=evalEnd);
-    const model=fitLogistic(training.map(row=>({...row.features,outcome:row.outcome})),FEATURES,{
-      minMatches:minTrainingMatches,maxRows:50000,seed:"winner-formula-"+tour+"-"+trainEnd,penalty:1
-    });
+    const trainingRows=training.map(row=>({...row.features,outcome:row.outcome}));
+    const fitOptions={minMatches:minTrainingMatches,maxRows:50000,seed:"winner-formula-"+tour+"-"+trainEnd,penalty:1};
+    const model=fitLogistic(trainingRows,FEATURES,fitOptions);
+    const calibrationFeatures=["baseLogit"];
+    const coreAceFeatures=["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","workloadAvailable"];
+    const calibrationModel=fitLogistic(trainingRows,calibrationFeatures,fitOptions);
+    const coreAceModel=fitLogistic(trainingRows,coreAceFeatures,fitOptions);
+    const specificationTests={
+      calibrationOnly:calibrationModel?{features:calibrationFeatures,metrics:metrics(evaluation,calibrationModel),coefficients:calibrationModel.coefficients}:null,
+      coreAce:coreAceModel?{features:coreAceFeatures,metrics:metrics(evaluation,coreAceModel),coefficients:coreAceModel.coefficients}:null,
+      fullAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
+    };
+    const incrementalComparisons=calibrationModel&&coreAceModel?{
+      coreAceVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,coreAceModel),
+      fullAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null
+    }:null;
     reports[tour]={
       inputMatches:tourRows.length,
       trainingPeriod:"through "+trainEnd,
@@ -134,6 +170,8 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
       },
       baselineCombined:metrics(evaluation),
       winnerFormula:model?metrics(evaluation,model):null,
+      specificationTests,
+      incrementalComparisons,
       delta:model?{
         brier:+(metrics(evaluation,model).brier-metrics(evaluation).brier).toFixed(6),
         logLoss:+(metrics(evaluation,model).logLoss-metrics(evaluation).logLoss).toFixed(6),
