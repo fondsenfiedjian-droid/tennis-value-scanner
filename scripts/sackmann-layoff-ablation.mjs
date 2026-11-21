@@ -61,10 +61,11 @@ async function main() {
     evaluationEnd:opts.to??"20260525",kFactor:Number(opts.k??32),
     minTrainingMatches:Number(opts["min-training"]??1000),
     maxTrainingRows:Number(opts["max-training"]??20000),symmetricTraining:true};
+  const variants=VARIANTS.filter(v=>v.key!=="atp_compact"||opts.tour==="atp");
   const results={schemaVersion:2,researchOnly:true,tour:opts.tour,
     method:"Walk-forward yearly models; same dates and Elo baseline in every variant; symmetric training; one feature group excluded at a time, plus a predeclared compact ATP combination.",
     variants:{}};
-  for(const variant of VARIANTS) {
+  for(const variant of variants) {
     console.error("Running "+variant.key+"...");
     const report=runLayoffWalkForward(rows,{...common,excludedFeatures:variant.excluded});
     results.variants[variant.key]={label:variant.label,excludedFeatures:variant.excluded,
