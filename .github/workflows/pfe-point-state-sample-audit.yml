@@ -56,6 +56,10 @@ jobs:
           console.log("```json");
           console.log(JSON.stringify({ totals: report.totals, timestampStats: report.timestampStats }, null, 2));
           console.log("```");
+          console.log("\n## Coverage by explicit ATP/WTA round prefix");
+          console.log("```json");
+          console.log(JSON.stringify(report.byTour, null, 2));
+          console.log("```");
           console.log("\n## Coverage by source tier_key");
           console.log("```json");
           console.log(JSON.stringify(report.byTierKey, null, 2));
