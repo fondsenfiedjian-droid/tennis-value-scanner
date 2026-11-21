@@ -112,3 +112,87 @@ test("CLI runs from repository root with a relative script path and writes aggre
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+
+test("reports timestamp ordering problems and separates aggregate coverage by source tier", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:10Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:20Z" }),
+    state({ points_p1: "30", timestamp_utc: "2026-06-01T10:00:15Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "atp" }
+  ]);
+  assert.equal(report.timestampStats.validStates, 3);
+  assert.equal(report.timestampStats.nonMonotonicTransitions, 1);
+  assert.equal(report.timestampStats.matchesWithTimestampOrderIssue, 1);
+  assert.equal(report.byTierKey.atp.matchesWithPoints, 1);
+  assert.equal(report.byTierKey.atp.transitions, 2);
+  assert.equal(report.byTierKey.atp.inferred, 2);
+  assert.equal(JSON.stringify(report).includes("m1"), false);
+});
+
+
+test("does not infer a game or set winner from counters when the prior score is not one point from completion", () => {
+  const game = inferPointStateTransition(state({
+    games_p1: "[5]", games_p2: "[3]", points_p1: "15", points_p2: "0"
+  }), state({ games_p1: "[6]", games_p2: "[3]" }));
+  const set = inferPointStateTransition(state({
+    sets_p1: "0", sets_p2: "0", games_p1: "[5]", games_p2: "[3]",
+    points_p1: "15", points_p2: "0"
+  }), state({
+    sets_p1: "1", sets_p2: "0", games_p1: "[0,0]", games_p2: "[0,0]"
+  }));
+  assert.equal(game.status, "ambiguous");
+  assert.equal(set.status, "ambiguous");
+  assert.equal(game.reason, "counter-change-without-terminal-score");
+  assert.equal(set.reason, "counter-change-without-terminal-score");
+});
+
+test("allows a set-counter inference from a final tiebreak point state", () => {
+  const result = inferPointStateTransition(state({
+    sets_p1: "0", sets_p2: "0", games_p1: "[6]", games_p2: "[6]",
+    points_p1: "6", points_p2: "5", is_tiebreak: "true"
+  }), state({
+    sets_p1: "1", sets_p2: "0", games_p1: "[6,0]", games_p2: "[6,0]",
+    points_p1: "0", points_p2: "0", is_tiebreak: "false"
+  }));
+  assert.equal(result.status, "inferred");
+  assert.equal(result.winner, 1);
+  assert.equal(result.method, "set-counter");
+});
+
+
+test("separates ATP and WTA only when the match index has an explicit tour prefix", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:10Z" }),
+    state({ match_id: "m2", timestamp_utc: "2026-06-02T10:00:00Z" }),
+    state({ match_id: "m2", points_p2: "15", timestamp_utc: "2026-06-02T10:00:10Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "265", round: "ATP Miami - 1/16-finals" },
+    { match_id: "m2", tier_key: "270", round: "WTA Rome - Quarter-finals" }
+  ]);
+  assert.equal(report.byTour.ATP.matchesWithPoints, 1);
+  assert.equal(report.byTour.WTA.matchesWithPoints, 1);
+  assert.equal(report.byTour.ATP.inferred, 1);
+  assert.equal(report.byTour.WTA.inferred, 1);
+});
+
+
+test("keeps player-primary-tour agreement separate from explicit event-tour labels", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:10Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "265", round: "R32", player1_id: "p1", player2_id: "p2" }
+  ], [
+    { player_id: "p1", tour: "ATP" },
+    { player_id: "p2", tour: "ATP" }
+  ]);
+  assert.equal(report.byTour.unclassified.matchesWithPoints, 1);
+  assert.equal(report.byPlayerTourAgreement.ATP.matchesWithPoints, 1);
+  assert.equal(report.byPlayerTourAgreement.ATP.inferred, 1);
+});

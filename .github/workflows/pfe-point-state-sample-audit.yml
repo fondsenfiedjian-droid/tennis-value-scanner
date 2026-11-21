@@ -1,0 +1,72 @@
+name: PFE point-state real-sample audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/point-state-transition-audit.mjs"
+      - "tests/point-state-transition-audit.test.mjs"
+      - ".github/workflows/pfe-point-state-sample-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sample-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download public academic sample to ephemeral runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research-data
+          curl --fail --silent --show-error --location --retry 4 \
+            "https://zenodo.org/api/records/22048730" \
+            --output "$RUNNER_TEMP/zenodo-record.json"
+          for name in matches.csv.gz players.csv.gz points_sample_2026-06.csv.gz; do
+            url="$(jq -r --arg name "$name" '.files[] | select(.key == $name) | .links.self' "$RUNNER_TEMP/zenodo-record.json")"
+            test -n "$url" && test "$url" != "null"
+            curl --fail --silent --show-error --location --retry 4 "$url" --output "research-data/$name"
+            gzip -t "research-data/$name"
+          done
+          echo "Downloaded public sample files; raw data will not be uploaded or committed."
+      - name: Run aggregate-only point-state audit
+        run: |
+          node scripts/point-state-transition-audit.mjs \
+            --input research-data/points_sample_2026-06.csv.gz \
+            --matches research-data/matches.csv.gz \
+            --players research-data/players.csv.gz \
+            --out "$RUNNER_TEMP/pfe-point-state-report.json"
+      - name: Publish aggregate diagnostics only
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE' | tee -a "$GITHUB_STEP_SUMMARY"
+          import { readFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/pfe-point-state-report.json", "utf8"));
+          console.log("# PFE point-state public-sample audit");
+          console.log("\nSource: Live Tennis API public sample, CC BY-NC 4.0. Raw files remain ephemeral and are not published.\n");
+          console.log("## Overall");
+          console.log("```json");
+          console.log(JSON.stringify({ totals: report.totals, timestampStats: report.timestampStats }, null, 2));
+          console.log("```");
+          console.log("\n## Coverage by explicit ATP/WTA round prefix");
+          console.log("```json");
+          console.log(JSON.stringify(report.byTour, null, 2));
+          console.log("```");
+          console.log("\n## Coverage by player-primary-tour agreement (secondary proxy)");
+          console.log("```json");
+          console.log(JSON.stringify(report.byPlayerTourAgreement, null, 2));
+          console.log("```");
+          console.log("\n## Coverage by source tier_key");
+          console.log("```json");
+          console.log(JSON.stringify(report.byTierKey, null, 2));
+          console.log("```");
+          NODE

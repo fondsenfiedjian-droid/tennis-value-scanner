@@ -29,13 +29,31 @@ const gameArray = value => {
 };
 
 
+function isTerminalPointBeforeBoundary(before, after) {
+  const beforeP1 = String(before.points_p1 ?? "").trim().toUpperCase();
+  const beforeP2 = String(before.points_p2 ?? "").trim().toUpperCase();
+  const afterP1 = String(after.points_p1 ?? "").trim().toUpperCase();
+  const afterP2 = String(after.points_p2 ?? "").trim().toUpperCase();
+  if (afterP1 !== "0" || afterP2 !== "0") return false;
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  if (isTrue(before.is_tiebreak)) {
+    if (!/^\d+$/.test(beforeP1) || !/^\d+$/.test(beforeP2)) return false;
+    const a = Number(beforeP1), b = Number(beforeP2);
+    return Math.max(a, b) >= 6 && Math.abs(a - b) === 1;
+  }
+  const a = normalScoreRank(beforeP1), b = normalScoreRank(beforeP2);
+  if (a === null || b === null) return false;
+  return (a === 3 && b <= 2) || (b === 3 && a <= 2) ||
+    (a === 4 && b === 3) || (b === 4 && a === 3);
+}
+
 function inferSetOrGameWinner(before, after) {
   const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
   const t1 = integer(after.sets_p1), t2 = integer(after.sets_p2);
   if ([s1, s2, t1, t2].every(value => value !== null)) {
     const d1 = t1 - s1, d2 = t2 - s2;
-    if (d1 === 1 && d2 === 0) return { status: "inferred", winner: 1, method: "set-counter" };
-    if (d2 === 1 && d1 === 0) return { status: "inferred", winner: 2, method: "set-counter" };
+    if (d1 === 1 && d2 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 1, method: "set-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "set-counter" };
+    if (d2 === 1 && d1 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 2, method: "set-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "set-counter" };
     if (d1 !== 0 || d2 !== 0) return { status: "ambiguous", reason: "set-counter-jump-or-conflict", method: "set-counter" };
   }
 
@@ -49,8 +67,8 @@ function inferSetOrGameWinner(before, after) {
       g2.slice(0, -1).some((v, i) => v !== h2[i]);
     if (changedEarlier) return { status: "ambiguous", reason: "prior-set-score-mutated", method: "game-counter" };
     const d1 = h1.at(-1) - g1.at(-1), d2 = h2.at(-1) - g2.at(-1);
-    if (d1 === 1 && d2 === 0) return { status: "inferred", winner: 1, method: "game-counter" };
-    if (d2 === 1 && d1 === 0) return { status: "inferred", winner: 2, method: "game-counter" };
+    if (d1 === 1 && d2 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 1, method: "game-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "game-counter" };
+    if (d2 === 1 && d1 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 2, method: "game-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "game-counter" };
     if (d1 !== 0 || d2 !== 0) return { status: "ambiguous", reason: "game-counter-jump-or-conflict", method: "game-counter" };
   }
   return null;
@@ -117,9 +135,33 @@ export function inferPointStateTransition(before, after) {
   };
 }
 
-export function auditPointStateTransitions(rows) {
+export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
+  const playerTours = new Map(playerRows.map(player => [String(player.player_id ?? "").trim(), String(player.tour ?? "").trim().toUpperCase()]));
+  const metadata = new Map();
+  for (const match of matchRows) {
+    const id = String(match.match_id ?? "").trim();
+    const round = String(match.round ?? "").trim();
+    const tourMatch = round.match(/^(ATP|WTA)\b/i);
+    if (id) metadata.set(id, {
+      tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
+      tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified",
+      playerTour: (() => {
+        const p1 = playerTours.get(String(match.player1_id ?? "").trim());
+        const p2 = playerTours.get(String(match.player2_id ?? "").trim());
+        return p1 && p1 === p2 && (p1 === "ATP" || p1 === "WTA") ? p1 : "unclassified";
+      })()
+    });
+  }
+  const tierStats = {};
+  const tourStats = {};
+  const playerTourAgreementStats = {};
+  const timestampStats = {
+    validStates: 0, invalidOrMissingStates: 0,
+    nonMonotonicTransitions: 0, duplicateTimestampTransitions: 0,
+    timestampedMatches: 0, matchesWithTimestampOrderIssue: 0
+  };
   let rowsWithoutMatchId = 0;
   for (const row of rows) {
     const id = String(row.match_id ?? "").trim();
@@ -142,6 +184,47 @@ export function auditPointStateTransitions(rows) {
   for (const states of groups.values()) {
     const transitions = Math.max(0, states.length - 1);
     let inferred = 0;
+    let timestampIssue = false;
+    let previousTimestamp = null;
+    const matchMeta = metadata.get(String(states[0].match_id)) || { tierKey: "unmatched", tour: "unclassified" };
+    const tierKey = matchMeta.tierKey;
+    const tour = matchMeta.tour;
+    const playerTour = matchMeta.playerTour;
+    if (!tierStats[tierKey]) tierStats[tierKey] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
+    if (!playerTourAgreementStats[playerTour]) playerTourAgreementStats[playerTour] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
+    if (!tourStats[tour]) tourStats[tour] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
+    tierStats[tierKey].matchesWithPoints++;
+    tourStats[tour].matchesWithPoints++;
+    playerTourAgreementStats[playerTour].matchesWithPoints++;
+    for (const state of states) {
+      const rawTimestamp = String(state.timestamp_utc ?? "").trim();
+      const timestamp = rawTimestamp ? Date.parse(rawTimestamp) : NaN;
+      if (Number.isFinite(timestamp)) {
+        timestampStats.validStates++;
+        if (previousTimestamp !== null) {
+          if (timestamp < previousTimestamp) {
+            timestampStats.nonMonotonicTransitions++;
+            timestampIssue = true;
+          } else if (timestamp === previousTimestamp) {
+            timestampStats.duplicateTimestampTransitions++;
+          }
+        }
+        previousTimestamp = timestamp;
+      } else {
+        timestampStats.invalidOrMissingStates++;
+        previousTimestamp = null;
+      }
+    }
+    if (states.some(state => Number.isFinite(Date.parse(String(state.timestamp_utc ?? ""))))) {
+      timestampStats.timestampedMatches++;
+    }
+    if (timestampIssue) timestampStats.matchesWithTimestampOrderIssue++;
     if (states.length && integer(states[0].sets_p1) === 0 && integer(states[0].sets_p2) === 0 &&
       JSON.stringify(gameArray(states[0].games_p1)) === "[0]" &&
       JSON.stringify(gameArray(states[0].games_p2)) === "[0]" &&
@@ -152,10 +235,19 @@ export function auditPointStateTransitions(rows) {
     for (let i = 0; i + 1 < states.length; i++) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
       totals.transitions++;
+      tierStats[tierKey].transitions++;
+      tourStats[tour].transitions++;
+      playerTourAgreementStats[playerTour].transitions++;
       if (result.status === "inferred") {
+        tierStats[tierKey].inferred++;
+        tourStats[tour].inferred++;
+        playerTourAgreementStats[playerTour].inferred++;
         totals.inferred++;
         inferred++;
       } else {
+        tierStats[tierKey].ambiguous++;
+        tourStats[tour].ambiguous++;
+        playerTourAgreementStats[playerTour].ambiguous++;
         totals.ambiguous++;
         totals.byReason[result.reason] = (totals.byReason[result.reason] || 0) + 1;
       }
@@ -182,22 +274,34 @@ export function auditPointStateTransitions(rows) {
     schemaVersion: 1,
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
+    timestampStats,
+    byTierKey: tierStats,
+    byTour: tourStats,
+    byPlayerTourAgreement: playerTourAgreementStats,
     totals
   };
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  let input = "", out = "point-state-transition-audit.json";
+  let input = "", matchesInput = "", playersInput = "", out = "point-state-transition-audit.json";
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--input") input = args[++i];
+    else if (args[i] === "--matches") matchesInput = args[++i];
+    else if (args[i] === "--players") playersInput = args[++i];
     else if (args[i] === "--out") out = args[++i];
-    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] --out report.json");
+    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] [--matches matches.csv[.gz]] [--players players.csv[.gz]] --out report.json");
   }
   if (!input) throw new Error("Missing --input");
   const raw = await readFile(input);
   const csv = input.endsWith(".gz") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
-  const report = auditPointStateTransitions(parseCsv(csv));
+  const matchRaw = matchesInput ? await readFile(matchesInput) : null;
+  const matchCsv = matchRaw ? (matchesInput.endsWith(".gz") ? gunzipSync(matchRaw).toString("utf8") : matchRaw.toString("utf8")) : "";
+  const matchRows = matchCsv ? parseCsv(matchCsv) : [];
+  const playerRaw = playersInput ? await readFile(playersInput) : null;
+  const playerCsv = playerRaw ? (playersInput.endsWith(".gz") ? gunzipSync(playerRaw).toString("utf8") : playerRaw.toString("utf8")) : "";
+  const playerRows = playerCsv ? parseCsv(playerCsv) : [];
+  const report = auditPointStateTransitions(parseCsv(csv), matchRows, playerRows);
   await writeFile(out, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only point-state audit: " + out);
