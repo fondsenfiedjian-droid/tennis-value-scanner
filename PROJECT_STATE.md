@@ -1051,3 +1051,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Key distinction: the current ACE winner-formula feature vector does not use restDays, although the separate workload research builder calculates it. The addition must be tested explicitly and must not be silently described as already part of ACE.
 - Age is treated as a potential moderator of workload/recovery, not as a direct fatigue measurement. All additions stay research-only until multiple rolling origins, paired probability metrics, calibration, coverage and Winamax market tests support them.
 
+
+
+## 2026-11-21 — ACE/PFE validation update
+
+- Human-factor workload research completed successfully. On Elo baseline, the 2025-train/2026-test evaluation improved Brier by 0.005761 ATP (n=45,426) and 0.005256 WTA (n=31,568); the Jan–Jun 2026 train / Jul–Nov 2026 test also improved both tours. Known-duration coverage is low (1.28% ATP and 5.49% WTA of prior-week player-match records), so minutes remain optional and low-confidence.
+- Added a separate PFE-combined baseline evaluation in scripts/winner-formula-research.mjs. Train through 2025-12-31, test 2026-01-01..2026-11-21: ATP PFE Brier 0.225234 → PFE+ACE 0.216337 (paired Δ -0.008897, 95% CI -0.009616..-0.008178); WTA 0.219093 → 0.210927 (Δ -0.008166, CI -0.009058..-0.007274). LogLoss and ten-bin ECE also improved; accuracy +2.90pp ATP / +2.04pp WTA. This remains exploratory and research-only; the holdout has been inspected by related research and per-feature availability needs auditing.
+- The workload workflow now reports paired Brier/LogLoss confidence intervals and ten-bin calibration for ACE vs the combined PFE probability. It has been expanded to run 2025 and second-half 2026 chronological holdouts as well as the full 2026 holdout.
+- Next: complete those independent-origin PFE+ACE reports; audit rest-day history availability separately for each player; then test nonlinear load/recovery thresholds, 14/28-day load and age×load one group at a time. Do not enable ACE in production yet.
