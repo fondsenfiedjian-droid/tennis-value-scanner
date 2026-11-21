@@ -65,7 +65,8 @@ for(const file of files){
   let rowsN=0,missingId=0,missingDate=0,missingPoints=0,matchedRows=0;
   let minDate=null,maxDate=null,lastDate=null,nonMonotonicDates=0,duplicatePlayerDate=0;
   let dateIds=new Set(),currentDate=null;
-  const uniqueIds=new Set();\n  let matchedUniqueIds=0;
+  const uniqueIds=new Set();
+  let matchedUniqueIds=0;
   for await(const row of rows(file)){
     if(!row.fields){header=row.header;dateIdx=header.indexOf('ranking_date');rankIdx=header.indexOf('rank');idIdx=header.indexOf('player');pointsIdx=header.indexOf('points');
       if([dateIdx,rankIdx,idIdx,pointsIdx].some(x=>x<0))throw new Error(file+': expected ranking_date, rank, player, points'); continue;}
@@ -80,8 +81,8 @@ for(const file of files){
     if(!p)missingPoints++;
   }
   reports.push({file,rows:rowsN,dateRange:{from:minDate,to:maxDate},uniqueRankingPlayerIds:uniqueIds.size,
-    exactArchiveIdMatches:uniqueIds.size-[...uniqueIds].filter(id=>!archiveIds.has(id)).length,
-    archiveIdMatchRate:uniqueIds.size?Number(([...uniqueIds].filter(id=>archiveIds.has(id)).length/uniqueIds.size).toFixed(6)):null,
+    exactArchiveIdMatches:matchedUniqueIds,
+    archiveIdMatchRate:uniqueIds.size?Number((matchedUniqueIds/uniqueIds.size).toFixed(6)):null,
     rankingRowsWithArchiveId:matchedRows,missingPlayerIdRows:missingId,missingDateRows:missingDate,
     missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,nonMonotonicDateRows:nonMonotonicDates});
 }
