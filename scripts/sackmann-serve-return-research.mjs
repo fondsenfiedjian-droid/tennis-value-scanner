@@ -200,7 +200,7 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
      profileFeatures[shrunkName]=shrunkA-shrunkB;
     }else profileFeatures[shrunkName]=null;
    }
-   const toPfeProfile=(id,stats)=>{
+   const toPfeProfile=(id,stats,surfaceStats)=>{
     const definitions={
      firstServeIn:"firstServeIn",firstServePointsWon:"firstServeWon",
      secondServePointsWon:"secondServeWon",firstServeReturnPointsWon:"firstServeReturn",
@@ -209,14 +209,19 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
     const metrics={};
     let ready=true;
     for(const [pfeName,key] of Object.entries(definitions)){
-     const item=stats.profile[key];
+     const item=stats.profile[key],surfaceItem=surfaceStats.profile[key];
      if(item.matches<minOverallMatches||item.rate===null){ready=false;continue;}
-     metrics[pfeName]={pct:item.rate*100};
+     let rate=item.rate;
+     if(SURFACES.has(row.surface)&&surfaceItem.matches>=minSurfaceMatches&&surfaceItem.rate!==null){
+      const shrink=surfaceItem.matches/(surfaceItem.matches+surfaceShrinkageMatches);
+      rate=item.rate+shrink*(surfaceItem.rate-item.rate);
+     }
+     metrics[pfeName]={pct:rate*100};
     }
     return {status:ready?"ready_for_modeling":"insufficient_sample",playerId:Number(id),metrics};
    };
    const pfeInputs=overallReady?PFE.deriveServeReturnMatchInputs(
-    toPfeProfile(p1,a.overall),toPfeProfile(p2,b.overall),{maxDisagreement:0.08}
+    toPfeProfile(p1,a.overall,a.surface),toPfeProfile(p2,b.overall,b.surface),{maxDisagreement:0.08}
    ):null;
    const servicePointP1=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerA.servicePointWin:null;
    const servicePointP2=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerB.servicePointWin:null;
