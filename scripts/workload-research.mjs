@@ -4,7 +4,7 @@ import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
 import { runBacktest } from "./backtest.mjs";
 
 const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "restDaysAvailable"];
-const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "matches14", "matches28", "playingDays14", "playingDays28", "minutes7", "durationCoverage7"];
+const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "matches14", "matches28", "playingDays3", "playingDays14", "playingDays28", "matches4to7", "matches8to14", "matches15to28", "playingDays4to7", "playingDays8to14", "playingDays15to28", "minutes7", "durationCoverage7"];
 const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
 const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
@@ -38,6 +38,7 @@ export function buildPreMatchWorkload(rows) {
       const prior3 = prior28.filter(item => today - item.day <= 3);
       const prior7 = prior28.filter(item => today - item.day <= 7);
       const prior14 = prior28.filter(item => today - item.day <= 14);
+      const playingDays3 = new Set(prior3.map(item => item.date)).size;
       const playingDays7 = new Set(prior7.map(item => item.date)).size;
       const playingDays14 = new Set(prior14.map(item => item.date)).size;
       const playingDays28 = new Set(prior28.map(item => item.date)).size;
@@ -50,8 +51,15 @@ export function buildPreMatchWorkload(rows) {
         playingDays7,
         matches14: prior14.length,
         matches28: prior28.length,
+        playingDays3,
         playingDays14,
         playingDays28,
+        matches4to7: prior7.length - prior3.length,
+        matches8to14: prior14.length - prior7.length,
+        matches15to28: prior28.length - prior14.length,
+        playingDays4to7: playingDays7 - playingDays3,
+        playingDays8to14: playingDays14 - playingDays7,
+        playingDays15to28: playingDays28 - playingDays14,
         restDays: latest ? Math.min(30, today - latest.day) : null,
         minutes7,
         durationCoverage7: prior7.length ? knownDurations7.length / prior7.length : 0,
