@@ -172,7 +172,8 @@ function aggregatePredictions(rows){
   }
  };
 }
-export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5}={}){
+export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025}={}){
+ if(!Number.isInteger(holdoutStartYear)||holdoutStartYear<=featureStartYear||holdoutStartYear>lastEvaluationYear)throw new Error("holdoutStartYear must be after featureStartYear and not after lastEvaluationYear");
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
@@ -211,7 +212,8 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     annual.push({year,trainingMatches:training.length,evaluation:aggregatePredictions(yearRows),
      standardizedCoefficients:Object.fromEntries(spec.features.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))});
    }
-   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample)};
+   const fixedHoldout=evaluateFixedHoldout(eligible,spec.features,{holdoutStartYear,featureStartYear,lastEvaluationYear});
+   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},
@@ -225,7 +227,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   archiveMirror:"https://github.com/Aneeshers/tennis-sackmann-archive",
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
-  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,reports,
+  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,fixedHoldoutProtocol:"Fit each specification once on eligible rows from featureStartYear through the year before holdoutStartYear, freeze coefficients, then score holdoutStartYear through lastEvaluationYear without refitting.",reports,
   method:`For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous ${windowDays} days. Build overall and same-surface rates; require at least ${minOverallMatches} prior statistics-complete matches overall and ${minSurfaceMatches} same-surface matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.`,
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
@@ -240,15 +242,15 @@ async function main(){
  const options={};
  for(let i=0;i<args.length;i++){
   if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing output path");output=args[++i];}
-  else if(["--window-days","--min-overall-matches","--min-surface-matches"].includes(args[i])){
+  else if(["--window-days","--min-overall-matches","--min-surface-matches","--holdout-start-year"].includes(args[i])){
    if(!args[i+1])throw new Error("Missing value for "+args[i]);
-   const key={"--window-days":"windowDays","--min-overall-matches":"minOverallMatches","--min-surface-matches":"minSurfaceMatches"}[args[i]];
+   const key={"--window-days":"windowDays","--min-overall-matches":"minOverallMatches","--min-surface-matches":"minSurfaceMatches","--holdout-start-year":"holdoutStartYear"}[args[i]];
    options[key]=Number(args[++i]);
    if(!Number.isInteger(options[key])||options[key]<1)throw new Error(args[i-1]+" must be a positive integer");
   }else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
   else files.push(args[i]);
  }
- if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
+ if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--holdout-start-year 2025] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
  const inputs=[];for(const filename of files){inputs.push({filename,content:await readFile(filename,"utf8")});console.error("Loaded "+filename);}
  const report=runServeReturnResearch(inputs,options);await writeFile(output,JSON.stringify(report,null,2)+"\n");
  console.log("Wrote aggregate research report: "+output);console.error("Research only: no live probabilities, EV or recommendations are changed.");
