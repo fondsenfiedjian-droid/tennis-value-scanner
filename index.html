@@ -504,31 +504,44 @@
   }catch(e){localStorage.removeItem('tvs-odds-cache');}
   renderOddsStatus();
   async function loadOdds(){
+    let winamaxUpdated=false;
     try{
       const res=await fetchWithTimeout(API+'/odds');
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Winamax API: '+res.status));
-      if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов');
-      cachedOdds=payload.items;
+      if(!Array.isArray(payload.items))throw new Error('Неожиданный формат коэффициентов Winamax');
+      const thirdParty=cachedOdds.filter(item=>['betclic','netbet'].includes(String(item?.bookmaker||'').toLowerCase()));
+      cachedOdds=[...payload.items,...thirdParty];
       cachedOddsSavedAt=Date.now();
       const retrievedTimestamp=Date.parse(payload.retrievedAt||'');
       oddsRetrievedAt=Number.isFinite(retrievedTimestamp)&&retrievedTimestamp<=Date.now()+5*60*1000?new Date(retrievedTimestamp).toISOString():null;
       oddsLoadError=null;
       oddsDiagnostics=payload.diagnostics&&typeof payload.diagnostics==='object'?payload.diagnostics:null;
       oddsTaskRun=payload.taskRun&&typeof payload.taskRun==='object'?payload.taskRun:null;
-      localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt,retrievedAt:oddsRetrievedAt,odds:cachedOdds,diagnostics:oddsDiagnostics,taskRun:oddsTaskRun}));
-      renderOddsStatus();
-      return true;
+      winamaxUpdated=true;
     }catch(err){
       oddsLoadError=String(err?.message||err||'Ошибка неизвестного типа');
       if(!isFreshCacheTimestamp(cachedOddsSavedAt,ODDS_CACHE_TTL)){
-        cachedOdds=[];
+        cachedOdds=cachedOdds.filter(item=>['betclic','netbet'].includes(String(item?.bookmaker||'').toLowerCase()));
         cachedOddsSavedAt=0;
-        localStorage.removeItem('tvs-odds-cache');
       }
-      renderOddsStatus();
-      return false;
     }
+    // Odds API is a separate provider: a failure must never discard working Winamax quotes.
+    try{
+      const res=await fetchWithTimeout(API+'/odds-api/quotes?sport=tennis_atp_finals');
+      const payload=await res.json();
+      if(!res.ok)throw new Error(payload.error||('Betclic/NetBet API: '+res.status));
+      if(!Array.isArray(payload.items))throw new Error('Неожиданный формат Betclic/NetBet');
+      cachedOdds=cachedOdds.filter(item=>!['betclic','netbet'].includes(String(item?.bookmaker||'').toLowerCase())).concat(payload.items);
+    }catch(error){
+      // Retain only still-fresh cached third-party quotes; do not block Winamax.
+      const cachedThirdParty=cachedOdds.filter(item=>['betclic','netbet'].includes(String(item?.bookmaker||'').toLowerCase())&&
+        isFreshCacheTimestamp(Date.parse(item.scrapedAt||''),ODDS_CACHE_TTL));
+      cachedOdds=cachedOdds.filter(item=>!['betclic','netbet'].includes(String(item?.bookmaker||'').toLowerCase())).concat(cachedThirdParty);
+    }
+    localStorage.setItem('tvs-odds-cache',JSON.stringify({savedAt:cachedOddsSavedAt||Date.now(),retrievedAt:oddsRetrievedAt,odds:cachedOdds,diagnostics:oddsDiagnostics,taskRun:oddsTaskRun}));
+    renderOddsStatus();
+    return winamaxUpdated||cachedOdds.length>0;
   }
   function normalizePlayer(s){
     return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -579,7 +592,9 @@
     return tokensA.some(token=>tokensB.has(token));
   }
   const ODDS_PROVIDER_REGISTRY=Object.freeze({
-    winamax:{label:'Winamax',country:'FR',enabled:true}
+    winamax:{label:'Winamax',country:'FR',enabled:true},
+    betclic:{label:'Betclic',country:'FR',enabled:true},
+    netbet:{label:'NetBet',country:'FR',enabled:true}
   });
   function isPreMatchMatch(match,matchStart,now=Date.now()){
     if(!matchStart||typeof matchStart.getTime!=='function'||!Number.isFinite(matchStart.getTime())||matchStart.getTime()<=now)return false;
