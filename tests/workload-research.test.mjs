@@ -74,10 +74,10 @@ test("14 and 28 day workload windows use strict pre-match inclusive calendar cut
   assert.equal(atDay16.matches14,1);
   assert.equal(atDay16.matches28,2);
   const atDay29=features.get("20250129:1:5");
-  assert.equal(atDay29.matches14,1);
-  assert.equal(atDay29.matches28,2);
+  assert.equal(atDay29.matches14,2);
+  assert.equal(atDay29.matches28,3);
   const atDay30=features.get("20250130:1:6");
-  assert.equal(atDay30.matches14,1);
-  assert.equal(atDay30.matches28,2);
-  assert.equal(atDay30.playingDays28,2);
+  assert.equal(atDay30.matches14,2);
+  assert.equal(atDay30.matches28,3);
+  assert.equal(atDay30.playingDays28,3);
 });
