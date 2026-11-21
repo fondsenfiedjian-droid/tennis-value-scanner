@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { parseCsv, runBacktest } from "./backtest.mjs";
+import PFE from "../pfe.js";
 
 const OVERALL=["serveDiff","returnDiff"], SURFACE=["surfaceServeDiff","surfaceReturnDiff"];
 const SURFACE_RESIDUAL=["surfaceServeResidualDiff","surfaceReturnResidualDiff"];
@@ -199,7 +200,17 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
      profileFeatures[shrunkName]=shrunkA-shrunkB;
     }else profileFeatures[shrunkName]=null;
    }
+   const directP1=a.overall.serveRate,crossP1=1-b.overall.returnRate;
+   const directP2=b.overall.serveRate,crossP2=1-a.overall.returnRate;
+   const disagreementP1=Number.isFinite(directP1)&&Number.isFinite(crossP1)?Math.abs(directP1-crossP1):null;
+   const disagreementP2=Number.isFinite(directP2)&&Number.isFinite(crossP2)?Math.abs(directP2-crossP2):null;
+   const servicePointP1=overallReady&&disagreementP1!==null&&disagreementP1<=0.08?(directP1+crossP1)/2:null;
+   const servicePointP2=overallReady&&disagreementP2!==null&&disagreementP2<=0.08?(directP2+crossP2)/2:null;
+   const bestOf=Number(row.best_of);
    features.set(pairKey(date,p1,p2,row.surface),{
+    player1Id:p1,player2Id:p2,bestOf:[3,5].includes(bestOf)?bestOf:null,
+    servicePointP1,servicePointP2,servicePointDisagreementP1:disagreementP1,
+    servicePointDisagreementP2:disagreementP2,
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
     returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
     surfaceServeDiff:surfaceReadyWithOverall?a.surface.serveRate-b.surface.serveRate:null,
@@ -342,8 +353,16 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   for(const prediction of backtest.predictions??[]){
    const features=featureMap.get(pairKey(prediction.date,prediction.player1Id,prediction.player2Id,prediction.surface));
    if(!features){missingFeatures++;continue;}
+   const sameOrientation=String(prediction.player1Id)===String(features.player1Id);
+   const pointA=sameOrientation?features.servicePointP1:features.servicePointP2;
+   const pointB=sameOrientation?features.servicePointP2:features.servicePointP1;
+   const pointResult=features.bestOf&&Number.isFinite(pointA)&&Number.isFinite(pointB)
+    ?PFE.calculateMatchWinProbability(pointA,pointB,{bestOf:features.bestOf}):null;
+   const pointModelProbability=pointResult?.status==="provisional"&&Number.isFinite(pointResult.probabilityA)
+    ?pointResult.probabilityA:null;
    matched.push({year:Number(prediction.date.slice(0,4)),baseProbability:prediction.probabilities.elo,
-    outcome:prediction.winnerId===prediction.player1Id?1:0,features});
+    outcome:prediction.winnerId===prediction.player1Id?1:0,features,pointModelProbability,
+    surface:prediction.surface??"Unknown"});
   }
   const bySpec={};
   for(const spec of SPECS){
@@ -365,7 +384,27 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    const fixedHoldout=evaluateFixedHoldout(eligible,spec.features,{holdoutStartYear,featureStartYear,lastEvaluationYear});
    bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
+  const pointRows=matched.filter(row=>Number.isFinite(row.pointModelProbability)&&row.features.bestOf);
+  const pointHoldout=pointRows.filter(row=>row.year>=holdoutStartYear&&row.year<=lastEvaluationYear)
+   .map(row=>({...row,adjustedProbability:row.pointModelProbability}));
+  const pointAnnual=[];
+  for(let year=firstEvaluationYear;year<=lastEvaluationYear;year++){
+   const part=pointRows.filter(row=>row.year===year).map(row=>({...row,adjustedProbability:row.pointModelProbability}));
+   pointAnnual.push({year,evaluation:aggregatePredictions(part)});
+  }
+  const commonNamesCore=[...OVERALL,...SURFACE_RESIDUAL];
+  const commonNamesExtended=[...PROFILE,...SHRUNK_SURFACE_PROFILE];
+  const commonRows=matched.filter(row=>[...commonNamesCore,...commonNamesExtended].every(name=>Number.isFinite(row.features[name])));
+  const commonSampleComparisons={
+   commonEligibleMatches:commonRows.length,
+   coreSurfaceResidual:evaluateFixedHoldout(commonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
+  };
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
+   pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,
+    fixedHoldout:aggregatePredictions(pointHoldout),annual:pointAnnual,
+    method:"Historical overall serve-point rate and opponent return cross-check are averaged for each player's service-point probability only when disagreement is <= 8 percentage points; PFE's exact point-to-match engine converts the two inputs using source best_of. No production path is changed."},
+   commonSampleComparisons,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},surfaceShrinkageMatches,
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
    baseline:"Chronological K=32 Elo from the existing backtest engine; earlier match results are warm-up only.",
