@@ -100,3 +100,18 @@ The next-point-server interpretation is substantially more consistent for ordina
 ## Timestamp-gap audit (2026-11-21)
 
 The parser now measures elapsed seconds between consecutive observed states and reports distributions separately for inferred and ambiguous transitions: count, mean, median, p90/p95/p99, maximum and broad time-gap bins. Ambiguous transitions are also broken down by parser reason. This is intended to test whether ambiguous transitions are concentrated in long capture gaps or also occur at short intervals. A long gap is not automatically a missed point; timestamps are observed capture times and require cautious interpretation.
+
+### First real-sample timestamp-gap findings (2026-11-21)
+
+Successful run: GitHub Actions `44863667707`.
+
+- Across all 945,684 transitions: median gap 25.44 s; p90 69.83 s; p99 244.84 s; mean 43.88 s (mean is pulled upward by a small long-gap tail).
+- Inferred transitions: median 27.52 s; p90 64.39 s.
+- Ambiguous transitions: median 15.20 s; p90 109.95 s. Nearly half of ambiguous transitions occur within 15 seconds, so ambiguity is not explained solely by long capture gaps.
+- `multi-point-gap-or-score-conflict`: 84,126 cases, median 19.40 s; 45.8% within 15 s.
+- `game-counter-jump-or-conflict`: 30,940 cases, median 10.58 s; 52.4% within 15 s.
+- `counter-change-without-terminal-score`: 25,406 cases, median 29.18 s; 33.9% within 15 s.
+- `missing-point-score`: 9,148 cases, median 7.36 s; 78.7% within 15 s.
+- `no-score-change`: 7,405 cases, median 5.02 s; 87.0% within 15 s.
+
+Interpretation: long gaps increase ambiguity in some categories, but many ambiguous transitions occur quickly. The next parser work should focus on score-field semantics, update/correction rows and counter consistency, not simply relax a time-gap threshold. Never infer a point outcome just because the time gap is short.
