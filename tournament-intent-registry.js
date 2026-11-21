@@ -169,7 +169,16 @@ export function assessRegisteredTournamentIntent(records, player, targetMatch, o
     return row.verified === true && published !== null && captured !== null
       && published <= start && captured <= start;
   });
-  return assessTournamentIntent(safe, {
+  // Adapt the richer registry schema to the classifier's compact evidence contract.
+  // The classifier requires `source`; registry records retain both sourceName and sourceUrl.
+  const classifierRows = safe.map(row => ({
+    type: row.type,
+    observedAt: row.observedAt ?? row.capturedAt,
+    source: row.sourceName ? `${row.sourceName} — ${row.sourceUrl}` : row.sourceUrl,
+    detail: [row.quote, row.detail].filter(Boolean).join(" | "),
+    verified: row.verified === true
+  }));
+  return assessTournamentIntent(classifierRows, {
     asOf: options.asOf ?? targetMatch.startTime,
     targetDate: targetMatch.startTime,
     maxAgeDays: options.maxAgeDays ?? 45
