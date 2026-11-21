@@ -914,3 +914,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - Cross-year linkage/date-window audit completed (run 44836426492): 10,690/11,822 unique MCP IDs linked (90.42%); ATP 7,053/7,565 (93.23%), WTA 3,637/4,257 (85.44%). Twenty adjacent-year links were accepted. Tier split: 10,212 main-tour, 401 Challenger/qualifying, 5 Futures, 72 WTA ITF/qualifying. Zero ambiguous candidates; 52 round conflicts; 849 event mismatches; 231 no-pair candidates.
 - With the -7 to +21 day event-week plausibility window, 10,667 linked matches have plausible date offsets and 23 remain anomalies (12 below -7 days, 11 above +21). Of 299 negative offsets, 287 are only -1 to -7 days and are treated as plausible event-week alignment, not errors. Extreme offsets: ATP -345/+366; WTA -261/+31. No MCP features are production-enabled; same-event order remains unverified.
+
+
+- Rebased the point-state audit CLI entrypoint correction onto current main in an isolated follow-up branch; added a synthetic end-to-end test for relative-path invocation and aggregate-only output. This is a research tooling fix only; no source data, player-level output, model weights, or production behavior changed.
+
+## PFE working plan — user-confirmed 2026-11-21
+
+- Operating mode: combined. Continue the core PFE engine and independent factor research in parallel where dependencies permit.
+- Tour scope: ATP and WTA simultaneously. Keep datasets, model evaluation, calibration, sample-size checks and conclusions separately reportable by tour; do not assume a factor transfers equally between tours.
+- Research gate: no candidate feature enters production solely because it is available or intuitively plausible. Verify data definitions, player perspective, denominators, timestamp availability and leakage controls; test chronologically on independent holdouts and compare against the appropriate baseline.
+- Development sequence: maintain the usable scanner while expanding the historical archive and research modules; validate each factor independently, then combinations; preserve aggregate-only reporting and source-license restrictions.
+- Current immediate task: repair and pass the point-state audit CLI regression test, then continue point-state sample completeness and server-transition alignment validation. Point-state and Match Charting candidates remain research-only until their chronology and data-quality gates are satisfied.
