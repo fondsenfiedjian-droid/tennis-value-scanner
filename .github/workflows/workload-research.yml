@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - "scripts/workload-research.mjs"
+      - "scripts/winner-formula-research.mjs"
       - "scripts/valuebetennis-backtest.mjs"
+      - "scripts/backtest.mjs"
+      - "scripts/sackmann-rank-age-research.mjs"
       - ".github/workflows/workload-research.yml"
   workflow_dispatch:
 
@@ -44,6 +47,23 @@ jobs:
             research-data/valuebetennis-matchs-2024.csv \
             research-data/valuebetennis-matchs-2025.csv \
             research-data/valuebetennis-matchs-2026.csv
+      - name: Run PFE-combined ACE walk-forward research
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20251231 \
+            --from 20260101 \
+            --to 20261121 \
+            --out ace-pfe-research-report.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Upload PFE-combined ACE report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ace-pfe-research-report
+          path: ace-pfe-research-report.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
