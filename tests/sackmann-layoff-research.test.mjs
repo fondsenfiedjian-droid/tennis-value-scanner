@@ -87,7 +87,7 @@ test("optional worst-error audit records player context and candidate feature co
   assert.ok(worst.opponentId);
   assert.ok(Number.isFinite(worst.baselineProbability));
   assert.ok(Number.isFinite(worst.candidateProbability));
-  assert.equal(worst.candidateFeatureContributions.features.length,12);
+  assert.equal(worst.candidateFeatureContributions.features.length,13);
   assert.ok(worst.candidateFeatureContributions.features.every(item=>Number.isFinite(item.logitContribution)));
 });
 
