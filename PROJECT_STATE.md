@@ -1072,3 +1072,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Manual/reviewed evidence only. No automated crawler, live UI, probability adjustment, EV change or bet-selection change.
 
 - Added `scripts/import-tournament-intent-evidence.mjs`: local JSON/JSONL import utility with dry-run, merge, duplicate detection, rejection reporting and atomic output. It performs no network or Production writes. Added CLI integration tests.
+
+- Added `docs/tournament-intent-source-discovery.md`: official ATP/WTA source shortlist, evidence-type criteria, point-in-time review checklist and a manual pilot workflow. No scraper, API, production UI or probability adjustment enabled.
