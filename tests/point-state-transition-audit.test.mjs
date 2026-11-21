@@ -100,7 +100,7 @@ test("CLI runs from repository root with a relative script path and writes aggre
       "match_id,sets_p1,sets_p2,games_p1,games_p2,points_p1,points_p2,server,is_tiebreak,timestamp_utc",
       'm1,0,0,"[0]","[0]",0,0,1,false,2026-06-01T10:00:00Z',
       'm1,0,0,"[0]","[0]",15,0,1,false,2026-06-01T10:00:10Z'
-    ].join("\\n");
+    ].join("\n");
     await writeFile(input, csv);
     const run = spawnSync(process.execPath, ["scripts/point-state-transition-audit.mjs", "--input", input, "--out", output], { encoding: "utf8" });
     assert.equal(run.status, 0, run.stderr);
