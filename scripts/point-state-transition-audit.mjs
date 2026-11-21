@@ -250,7 +250,9 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     regularChecked: 0, regularMatches: 0, regularMismatches: 0,
     regularAlternativeMatches: 0, regularAlternativeMismatches: 0,
     regularGameBoundaryChecked: 0, regularGameBoundaryMatches: 0, regularGameBoundaryMismatches: 0,
+    regularGameBoundaryAlternativeMatches: 0, regularGameBoundaryAlternativeMismatches: 0,
     regularWithinGameChecked: 0, regularWithinGameMatches: 0, regularWithinGameMismatches: 0,
+    regularWithinGameAlternativeMatches: 0, regularWithinGameAlternativeMismatches: 0,
     tiebreakChecked: 0, tiebreakMatches: 0, tiebreakMismatches: 0,
     tiebreakAlternativeMatches: 0, tiebreakAlternativeMismatches: 0,
     skipped: 0, skippedReasons: {}
@@ -335,6 +337,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
           serverAlignment[bucket + "Checked"]++;
           if (serverCheck.status === "match") serverAlignment[bucket + "Matches"]++;
           else serverAlignment[bucket + "Mismatches"]++;
+          if (serverCheck.alternativeStatus === "match") serverAlignment[bucket + "AlternativeMatches"]++;
+          else serverAlignment[bucket + "AlternativeMismatches"]++;
         }
       }
       totals.transitions++;
