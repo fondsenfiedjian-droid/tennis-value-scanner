@@ -48,13 +48,16 @@ Each feature has its own valid-observation count, reported separately for overal
 **Important limitation:** these are rolling player-level rates, not yet opponent-adjusted serve-vs-return matchup estimates. Opponent-strength residualization, tour/surface priors for each submetric, and direct PFE point-probability integration remain separate research tasks. Do not describe this branch as a finished matchup model or enable it in production.
 
 ## PFE point-engine bridge (research-only)
-The archival evaluator now has a separate diagnostic path that:
-1. estimates each player's pre-match service-point win rate from their own prior service history;
-2. cross-checks it against one minus the opponent's prior return-points-won rate;
-3. averages the two only when their disagreement is at most 8 percentage points;
-4. uses feature-specific surface rates shrunk toward each player's overall rates when surface history is sufficient, then passes the two service-point probabilities and the source `best_of` value to PFE's existing `calculateMatchWinProbability()` function.
+The archival evaluator has a research-only PFE bridge that builds separate first-serve and second-serve estimates:
+1. use each player's pre-match first-serve-in, first-serve points-won and second-serve points-won rates;
+2. cross-check each serve component against the opponent's first-serve and second-serve return-points-won rates;
+3. reject the bridge for the match if either player's direct serve estimate and opponent-return cross-check disagree by more than 8 percentage points;
+4. shrink feature-specific same-surface rates toward each player's overall rate when same-surface history is sufficient;
+5. pass accepted point probabilities and the source `best_of` format into PFE's existing `calculateMatchWinProbability()` engine.
 
-This is a deliberately conservative bridge test, not a validated opponent-adjusted estimator. It does not change PFE's live model registry, Worker endpoints, or betting recommendations. A missing format, insufficient prior history, or disagreement above the threshold excludes the point-model prediction rather than inventing an input. The report also compares the existing core surface-residual model, the detailed profile model, and a core-plus-extended model on an identical common sample. A separate paired-sample ablation tests the raw PFE point-model logit delta alone, core+PFE stacking, and core+extended+PFE stacking. The PFE logit delta is the PFE match-probability logit minus the Elo logit; its fitted coefficient is learned only on earlier matches.
+The first raw point-to-match output was worse than Elo, especially for WTA, and is explicitly rejected as a standalone match probability. A separate correction experiment uses the PFE-vs-Elo match-logit difference as a feature in a regularized model trained only on earlier matches. That feature improved Brier and LogLoss on the 730-day common holdout for ATP and WTA, but it remains exploratory. This is not proof of betting profitability and does not change PFE's live model registry, Worker endpoints, or betting recommendations.
+
+The evaluator compares core surface-residual features, extended serve/return profiles, and the PFE point-logit feature on identical common samples. Missing format, insufficient prior history, or disagreement above the threshold excludes the raw point-model input rather than fabricating one. No production path is changed.
 
 ## Candidate matchup calculation
 For player A serving against player B returning, estimate expected service-point win probability from:
