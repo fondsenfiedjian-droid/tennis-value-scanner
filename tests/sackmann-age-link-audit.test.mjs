@@ -11,9 +11,9 @@ test("player names normalize accents and punctuation without guessing aliases",(
 
 test("age linking accepts unique exact names, rejects ambiguous names and excludes same-day/future ages",()=>{
   const valuebetennisRows=[
-    {tour:"atp",tourney_date:"20240101",player1Id:"100",player2Id:"200",player1Name:"Novak Djokovic",player2Name:"Carlos Alcaraz"},
-    {tour:"atp",tourney_date:"20240110",player1Id:"100",player2Id:"200",player1Name:"Novak Djokovic",player2Name:"Carlos Alcaraz"},
-    {tour:"atp",tourney_date:"20240111",player1Id:"300",player2Id:"400",player1Name:"Alex Smith",player2Name:"Unknown Player"}
+    {tour:"atp",tourney_date:"20240101",category:"Main tour",player1Id:"100",player2Id:"200",player1Name:"Novak Djokovic",player2Name:"Carlos Alcaraz"},
+    {tour:"atp",tourney_date:"20240110",category:"Main tour",player1Id:"100",player2Id:"200",player1Name:"Novak Djokovic",player2Name:"Carlos Alcaraz"},
+    {tour:"atp",tourney_date:"20240111",category:"Challenger",player1Id:"300",player2Id:"400",player1Name:"Alex Smith",player2Name:"Unknown Player"}
   ];
   const sackmannRows=[
     {tourney_date:"20240101",winner_id:"10",winner_name:"Novak Djokovic",winner_age:"36.5",loser_id:"20",loser_name:"Carlos Alcaraz",loser_age:"20.5"},
@@ -30,6 +30,8 @@ test("age linking accepts unique exact names, rejects ambiguous names and exclud
   assert.equal(report.totals.matchesBothAgesAvailable,1);
   assert.equal(report.totals.matchesNoAgeAvailable,2);
   assert.equal(report.totals.bothAgeCoveragePct,33.33);
+  assert.equal(report.byTourCategory["atp:Main tour"].matches,2);
+  assert.equal(report.byTourCategory["atp:Challenger"].matches,1);
   assert.match(report.method,/strictly before/);
 });
 
