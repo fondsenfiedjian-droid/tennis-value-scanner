@@ -358,6 +358,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     const tourMatch = round.match(/^(ATP|WTA)\b/i);
     if (id) metadata.set(id, {
       tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
+      bestOf: String(match.best_of ?? "").trim().toUpperCase(),
+      eventStatus: String(match.event_status ?? "").trim(),
       tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified",
       playerTour: (() => {
         const p1 = playerTours.get(String(match.player1_id ?? "").trim());
@@ -382,6 +384,54 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     groups.get(id).push(row);
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
+  const captureBoundaryCoverage = {
+    totalMatches: groups.size,
+    byTour: {},
+    overall: {
+      firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+      firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+      normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
+      finalSetTargetReached: 0, finalSetTargetNotReached: 0, unknownBestOf: 0
+    }
+  };
+  const isMatchStart = state => integer(state.sets_p1) === 0 && integer(state.sets_p2) === 0 &&
+    JSON.stringify(gameArray(state.games_p1)) === "[0]" &&
+    JSON.stringify(gameArray(state.games_p2)) === "[0]" &&
+    String(state.points_p1 ?? "").trim() === "0" &&
+    String(state.points_p2 ?? "").trim() === "0" &&
+    !["true", "1", "yes"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
+  const pointScoreMissing = state => !String(state.points_p1 ?? "").trim() || !String(state.points_p2 ?? "").trim();
+  for (const [id, states] of groups) {
+    const meta = metadata.get(id) || { tour: "unclassified", bestOf: "", eventStatus: "" };
+    const tour = meta.tour || "unclassified";
+    if (!captureBoundaryCoverage.byTour[tour]) {
+      captureBoundaryCoverage.byTour[tour] = {
+        totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+        firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+        normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0, unknownBestOf: 0
+      };
+    }
+    const bucket = captureBoundaryCoverage.byTour[tour];
+    bucket.totalMatches++;
+    const first = states[0], last = states.at(-1);
+    const atStart = isMatchStart(first);
+    const firstMissing = pointScoreMissing(first), lastMissing = pointScoreMissing(last);
+    const normalCompletion = !meta.eventStatus;
+    for (const target of [captureBoundaryCoverage.overall, bucket]) {
+      target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
+      if (firstMissing) target.firstStateMissingPointScore++;
+      if (lastMissing) target.lastStateMissingPointScore++;
+      if (!meta.eventStatus) target.normalCompletion++;
+      else target.nonNormalCompletion++;
+      if (meta.bestOf === "BO3" || meta.bestOf === "BO5") {
+        const needed = meta.bestOf === "BO5" ? 3 : 2;
+        const completedSets = integer(last.sets_p1) + integer(last.sets_p2);
+        if (Number.isFinite(completedSets) && completedSets >= needed) target.finalSetTargetReached++;
+        else target.finalSetTargetNotReached++;
+      } else target.unknownBestOf++;
+    }
+  }
   const tiebreakFlagAlignment = auditTiebreakFlagAlignment(groups);
   const tiebreakServerByPlayerTour = {};
   const stateDeltaDiagnostics = {
@@ -604,6 +654,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
     scoreVocabulary,
+    captureBoundaryCoverage,
     tiebreakFlagAlignment,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
