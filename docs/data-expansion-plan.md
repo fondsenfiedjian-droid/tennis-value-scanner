@@ -84,11 +84,11 @@ Do not ingest them until source, collection method, redistribution rights and in
 - [x] Add this plan and source register to the repository.
 - [x] Add a local read-only audit script for downloaded ranking and Live Tennis files.
 - [x] Add a resumable ATP/WTA weekly-ranking downloader with SHA-256 capture.
-- [ ] Review schemas and prepare ID crosswalk checks.
+- [x] Review weekly-ranking schemas and add exact-ID crosswalk audit against normalized match archives.
 
 ### Phase B — local download (one Termux run)
 
-The ranking downloader is available at `scripts/download-weekly-rankings.sh`. It downloads all ranking partitions present in the mirror (ATP 1970s–current; WTA 1980s–current), resumes interrupted transfers and records SHA-256 checksums plus source/licence metadata. Run it once:
+The ranking downloader is available at `scripts/download-weekly-rankings.sh`. The exact-ID linkage checker is `scripts/sackmann-ranking-link-audit.mjs`; it compares unique ranking player IDs with winner/loser IDs in the normalized ATP or WTA archive, reports missing points, duplicate player/date rows and date ordering, and does not modify either dataset. It downloads all ranking partitions present in the mirror (ATP 1970s–current; WTA 1980s–current), resumes interrupted transfers and records SHA-256 checksums plus source/licence metadata. Run it once:
 
 ```sh
 cd ~/tennis-value-scanner
@@ -106,6 +106,15 @@ node scripts/tennis-dataset-audit.mjs \\
 ```
 
 If a glob has no matching files, remove that path before running.
+
+After the first audit, run the exact-ID join checks separately for each tour:
+
+```sh
+node scripts/sackmann-ranking-link-audit.mjs --tour atp --archive ~/tennis-data/atp-normalized.csv ~/tennis-data/rankings/raw/atp_rankings_*.csv
+node scripts/sackmann-ranking-link-audit.mjs --tour wta --archive ~/tennis-data/wta-normalized.csv ~/tennis-data/rankings/raw/wta_rankings_*.csv
+```
+
+The audit uses exact numeric Sackmann player IDs, not names. A player absent from the match archive is reported as an unmatched ranking ID; this may reflect archive coverage rather than an invalid ranking record.
 
 1. Download ATP/WTA weekly ranking files.
 2. Download the Live Tennis public sample files.
