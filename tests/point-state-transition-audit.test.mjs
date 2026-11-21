@@ -504,3 +504,37 @@ test("measures score-flag anomaly proximity in either direction without reclassi
   assert.deepEqual(report.normalFlagNumericValueCounts, { "4": 1, "5": 1 });
   assert.deepEqual(report.normalFlagNumericPairCounts, { "5:4": 1 });
 });
+
+
+test("isolates strict observed-tape candidates without treating parser inference as a completeness criterion", () => {
+  const rows = [
+    state({ match_id: "good", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ match_id: "good", points_p1: "15", points_p2: "0", timestamp_utc: "2026-06-01T10:00:30Z" }),
+    state({ match_id: "good", sets_p1: "2", sets_p2: "0", games_p1: "[6,6]", games_p2: "[4,3]", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T11:30:00Z" }),
+    state({ match_id: "missing", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ match_id: "missing", points_p1: "", points_p2: "15", timestamp_utc: "2026-06-01T10:00:30Z" }),
+    state({ match_id: "missing", sets_p1: "2", sets_p2: "0", games_p1: "[6,6]", games_p2: "[4,3]", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T11:30:00Z" }),
+    state({ match_id: "unordered", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ match_id: "unordered", points_p1: "15", points_p2: "0", timestamp_utc: "2026-06-01T10:02:00Z" }),
+    state({ match_id: "unordered", sets_p1: "2", sets_p2: "0", games_p1: "[6,6]", games_p2: "[4,3]", points_p1: "0", points_p2: "0", timestamp_utc: "2026-06-01T10:01:00Z" })
+  ];
+  const matches = [
+    { match_id: "good", round: "ATP event", best_of: "BO3", event_status: "", player1_id: "1", player2_id: "2" },
+    { match_id: "missing", round: "ATP event", best_of: "BO3", event_status: "", player1_id: "3", player2_id: "4" },
+    { match_id: "unordered", round: "WTA event", best_of: "BO3", event_status: "", player1_id: "5", player2_id: "6" }
+  ];
+  const players = [
+    { player_id: "1", tour: "ATP" }, { player_id: "2", tour: "ATP" },
+    { player_id: "3", tour: "ATP" }, { player_id: "4", tour: "ATP" },
+    { player_id: "5", tour: "WTA" }, { player_id: "6", tour: "WTA" }
+  ];
+  const report = auditPointStateTransitions(rows, matches, players);
+  const candidates = report.strictCaptureCandidates;
+  assert.equal(candidates.overall.matches, 1);
+  assert.equal(candidates.overall.transitions, 2);
+  assert.equal(candidates.overall.inferred + candidates.overall.ambiguous, 2);
+  assert.equal(candidates.byPlayerTourAgreement.ATP.matches, 1);
+  assert.equal(candidates.byPlayerTourAgreement.WTA, undefined);
+  assert.equal(candidates.byTour.ATP.matches, 1);
+  assert.equal(candidates.byTour.WTA, undefined);
+});

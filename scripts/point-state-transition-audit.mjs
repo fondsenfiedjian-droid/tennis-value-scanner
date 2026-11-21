@@ -423,6 +423,36 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     String(state.points_p2 ?? "").trim() === "0" &&
     !["true", "1", "yes"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
   const pointScoreMissing = state => !String(state.points_p1 ?? "").trim() || !String(state.points_p2 ?? "").trim();
+  const strictCaptureCandidates = {
+    overall: { matches: 0, transitions: 0, inferred: 0, ambiguous: 0, byReason: {} },
+    byTour: {}, byPlayerTourAgreement: {}
+  };
+  const strictCaptureCandidateIds = new Set();
+  const isTrueTiebreak = state => ["true", "1", "yes"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
+  const isFalseTiebreak = state => ["false", "0", "no"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
+  const validScoreState = state => {
+    const p1 = String(state.points_p1 ?? "").trim().toUpperCase();
+    const p2 = String(state.points_p2 ?? "").trim().toUpperCase();
+    if (!p1 || !p2) return false;
+    if (isTrueTiebreak(state)) return /^\d+$/.test(p1) && /^\d+$/.test(p2);
+    if (isFalseTiebreak(state)) return normalScoreRank(p1) !== null && normalScoreRank(p2) !== null;
+    return false;
+  };
+  const strictlyIncreasingTimestamps = states => {
+    if (states.length < 2) return false;
+    let previous = null;
+    for (const state of states) {
+      const timestamp = Date.parse(String(state.timestamp_utc ?? ""));
+      if (!Number.isFinite(timestamp) || (previous !== null && timestamp <= previous)) return false;
+      previous = timestamp;
+    }
+    return true;
+  };
+  const newCandidateBucket = () => ({ matches: 0, transitions: 0, inferred: 0, ambiguous: 0, byReason: {} });
+  const addCandidateTransition = bucket => {
+    bucket.transitions++;
+  };
+
   for (const [id, states] of groups) {
     const meta = metadata.get(id) || { tour: "unclassified", bestOf: "", eventStatus: "" };
     const tour = meta.tour || "unclassified";
@@ -473,6 +503,25 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
           else target.nonNormalCompletionTargetNotReached++;
         }
       } else target.unknownBestOf++;
+    }
+
+    const bestOfKnown = meta.bestOf === "BO3" || meta.bestOf === "BO5";
+    const neededSets = meta.bestOf === "BO5" ? 3 : 2;
+    const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
+    const finalTargetReached = bestOfKnown && lastSets1 !== null && lastSets2 !== null &&
+      lastSets1 + lastSets2 >= neededSets;
+    const strictCandidate = states.length > 1 && atStart && normalCompletion && finalTargetReached &&
+      states.every(validScoreState) && strictlyIncreasingTimestamps(states);
+    if (strictCandidate) {
+      strictCaptureCandidateIds.add(id);
+      strictCaptureCandidates.overall.matches++;
+      for (const [map, key] of [
+        [strictCaptureCandidates.byTour, tour],
+        [strictCaptureCandidates.byPlayerTourAgreement, playerTour]
+      ]) {
+        if (!map[key]) map[key] = newCandidateBucket();
+        map[key].matches++;
+      }
     }
   }
   const tiebreakFlagAlignment = auditTiebreakFlagAlignment(groups);
@@ -573,6 +622,22 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     for (let i = 0; i + 1 < states.length; i++) {
       const before = states[i], after = states[i + 1];
       const result = inferPointStateTransition(before, after);
+      const matchIdForCandidate = String(before.match_id ?? "").trim();
+      if (strictCaptureCandidateIds.has(matchIdForCandidate)) {
+        const meta = metadata.get(matchIdForCandidate) || { tour: "unclassified", playerTour: "unclassified" };
+        const buckets = [strictCaptureCandidates.overall,
+          strictCaptureCandidates.byTour[meta.tour || "unclassified"],
+          strictCaptureCandidates.byPlayerTourAgreement[meta.playerTour || "unclassified"]];
+        for (const bucket of buckets) {
+          bucket.transitions++;
+          if (result.status === "inferred") bucket.inferred++;
+          else {
+            bucket.ambiguous++;
+            const reason = result.reason || "unknown";
+            bucket.byReason[reason] = (bucket.byReason[reason] || 0) + 1;
+          }
+        }
+      }
       const serverCheck = auditServerTransition(before, after);
       if (serverCheck.kind === "regular" && serverCheck.gameBoundary) {
         const beforeMs = Date.parse(String(before.timestamp_utc ?? ""));
@@ -723,6 +788,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     timestampStats,
     scoreVocabulary,
     captureBoundaryCoverage,
+    strictCaptureCandidates,
     tiebreakFlagAlignment,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),

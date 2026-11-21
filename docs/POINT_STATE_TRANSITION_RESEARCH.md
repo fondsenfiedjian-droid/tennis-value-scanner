@@ -251,3 +251,21 @@ Successful aggregate-only run: GitHub Actions `44866399882` on the 951,064-state
 - A recognized normal-game state appeared exactly 1–5 rows away from 37, 38, 38, 43 and 41 of these alphabetic anomalies respectively.
 
 Interpretation: anomaly patterns are not confined to a single adjacent row. Row proximity cannot distinguish delayed flag updates from malformed or partial snapshots. No automatic correction is justified; keep all non-missing mismatches excluded from point-winner inference until individual sequences can be validated against a trustworthy complete source.
+
+## Strict observed-tape candidate subset
+
+A conservative diagnostic subset is now counted for parser inspection. A match qualifies only when metadata identifies BO3/BO5, the recorded completion has no terminal-event marker, the first observed state is exact 0-0, the last observed set counters reach the format's required set count, every point-score pair is present and consistent with its normal/tiebreak flag, and all row timestamps are present and strictly increasing. This is still a candidate subset, not proof of full or correct capture.
+
+For qualifying matches, the audit reports inferred vs ambiguous adjacent transitions and ambiguous reasons, split by ATP/WTA round prefix and player-primary-tour agreement. Parser inference is not part of the candidate gate: ambiguous transitions remain counted rather than discarded, avoiding selection on the model's own output. No point winners are inferred from missing or counter-only transitions.
+
+### Strict candidate real-sample findings (2026-11-21)
+
+Successful aggregate-only run: GitHub Actions `44868121535` on the 951,064-state June 2026 public sample.
+
+- 152/5,380 matches met the strict candidate gate: 62 ATP, 50 WTA and 40 without same-tour player agreement.
+- These matches contained 44,114 adjacent transitions. The parser marked 36,857 (83.55%) as inferable and left 7,257 (16.45%) ambiguous. “Inferable” is parser coverage, not verified accuracy.
+- ATP: 25,350 transitions, 21,851 inferable (86.20%), 3,499 ambiguous (13.80%). WTA: 13,444 transitions, 11,475 inferable (85.35%), 1,969 ambiguous (14.65%). Unclassified: 5,320 transitions, 3,531 inferable (66.37%), 1,789 ambiguous (33.63%).
+- The largest ambiguity reasons across the strict subset were multi-point gap/score conflict (3,019), game-counter jump/conflict (2,367), and counter change without a terminal score (1,269); further reasons: set-counter jump/conflict (316), set-array length change without set counter (121), tiebreak gap/conflict (62), unchanged score (61), prior-set mutation (31), invalid tiebreak score (11).
+- Vendor round-prefix parsing classified only 12 of the 152 candidates (6 ATP, 6 WTA); player-primary-tour agreement is the more useful split, but leaves 40 unclassified.
+
+Interpretation: even after a strict structural gate, roughly one in six transitions remains ambiguous. The gate still does not prove that every point was captured or that an “inferable” transition is correct. The parser must remain research-only until individual matches can be compared with an independent complete score source and server/point ownership is verified. No player-level features or production changes are authorized.
