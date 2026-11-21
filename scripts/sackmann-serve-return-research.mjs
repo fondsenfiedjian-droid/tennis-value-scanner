@@ -12,6 +12,12 @@ const SPECS=[
  {name:"surface_serve_return",features:SURFACE},
  {name:"overall_plus_surface",features:[...OVERALL,...SURFACE]}
 ];
+const SURFACE_SHRINKAGE_SPECS=[
+ {name:"overall_plus_surface_residualized",features:["serveDiff","returnDiff","surfaceServeResidual","surfaceReturnResidual"]},
+ {name:"overall_plus_surface_shrink5",features:["serveDiff","returnDiff","surfaceServeDiffShrink5","surfaceReturnDiffShrink5"]},
+ {name:"overall_plus_surface_shrink10",features:["serveDiff","returnDiff","surfaceServeDiffShrink10","surfaceReturnDiffShrink10"]},
+ {name:"overall_plus_surface_shrink20",features:["serveDiff","returnDiff","surfaceServeDiffShrink20","surfaceReturnDiffShrink20"]}
+];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
 const sigmoid=x=>x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
@@ -96,13 +102,25 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
    const overallReady=a.overall.matches>=minOverallMatches&&b.overall.matches>=minOverallMatches;
    const surfaceReady=a.surface.matches>=minSurfaceMatches&&b.surface.matches>=minSurfaceMatches;
    const surfaceKnown=SURFACES.has(row.surface);
+   const serveDiff=overallReady?a.overall.serveRate-b.overall.serveRate:null;
+   const returnDiff=overallReady?a.overall.returnRate-b.overall.returnRate:null;
+   const surfaceServeDiff=surfaceKnown&&surfaceReady?a.surface.serveRate-b.surface.serveRate:null;
+   const surfaceReturnDiff=surfaceKnown&&surfaceReady?a.surface.returnRate-b.surface.returnRate:null;
+   const minSurfacePriorMatches=surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0;
+   const shrink=(overall,surface,k)=>overall!==null&&surface!==null?
+    overall+(minSurfacePriorMatches/(minSurfacePriorMatches+k))*(surface-overall):null;
    features.set(pairKey(date,p1,p2,row.surface),{
-    serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
-    returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
-    surfaceServeDiff:surfaceKnown&&surfaceReady?a.surface.serveRate-b.surface.serveRate:null,
-    surfaceReturnDiff:surfaceKnown&&surfaceReady?a.surface.returnRate-b.surface.returnRate:null,
+    serveDiff,returnDiff,surfaceServeDiff,surfaceReturnDiff,
+    surfaceServeResidual:serveDiff!==null&&surfaceServeDiff!==null?surfaceServeDiff-serveDiff:null,
+    surfaceReturnResidual:returnDiff!==null&&surfaceReturnDiff!==null?surfaceReturnDiff-returnDiff:null,
+    surfaceServeDiffShrink5:shrink(serveDiff,surfaceServeDiff,5),
+    surfaceReturnDiffShrink5:shrink(returnDiff,surfaceReturnDiff,5),
+    surfaceServeDiffShrink10:shrink(serveDiff,surfaceServeDiff,10),
+    surfaceReturnDiffShrink10:shrink(returnDiff,surfaceReturnDiff,10),
+    surfaceServeDiffShrink20:shrink(serveDiff,surfaceServeDiff,20),
+    surfaceReturnDiffShrink20:shrink(returnDiff,surfaceReturnDiff,20),
     minOverallPriorMatches:Math.min(a.overall.matches,b.overall.matches),
-    minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0
+    minSurfacePriorMatches
    });
   }
   // Same-date matches are all scored before any same-date stats enter player histories.
@@ -192,7 +210,7 @@ export function evaluateFixedHoldout(rows,names,{holdoutStartYear=2025,featureSt
   standardizedCoefficients:Object.fromEntries(names.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))
  };
 }
-export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025}={}){
+export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025,includeSurfaceShrinkage=false}={}){
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
@@ -215,7 +233,8 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     outcome:prediction.winnerId===prediction.player1Id?1:0,features});
   }
   const bySpec={};
-  for(const spec of SPECS){
+  const specsToRun=includeSurfaceShrinkage?[...SPECS,...SURFACE_SHRINKAGE_SPECS]:SPECS;
+  for(const spec of specsToRun){
    const eligible=matched.filter(row=>spec.features.every(name=>Number.isFinite(row.features[name])));
    const outOfSample=[],annual=[];
    for(let year=firstEvaluationYear;year<=lastEvaluationYear;year++){
@@ -246,7 +265,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   archiveMirror:"https://github.com/Aneeshers/tennis-sackmann-archive",
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
-  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,fixedHoldoutProtocol:"Fit each feature specification once using eligible rows from featureStartYear through the year before holdoutStartYear; freeze coefficients and evaluate holdoutStartYear through lastEvaluationYear without refitting.",reports,
+  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,surfaceShrinkageResearch:includeSurfaceShrinkage?{shrinkageKValues:[5,10,20],weightFormula:"n/(n+k)",nDefinition:"minimum prior same-surface matches across the two players",residualDefinition:"same-surface feature difference minus overall feature difference"}:null,fixedHoldoutProtocol:"Fit each feature specification once using eligible rows from featureStartYear through the year before holdoutStartYear; freeze coefficients and evaluate holdoutStartYear through lastEvaluationYear without refitting.",reports,
   method:`For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous ${windowDays} days. Build overall and same-surface rates; require at least ${minOverallMatches} prior statistics-complete matches overall and ${minSurfaceMatches} same-surface matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.`,
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
@@ -269,7 +288,7 @@ async function main(){
   }else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
   else files.push(args[i]);
  }
- if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--holdout-start-year 2025] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
+ if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--holdout-start-year 2025] [--surface-shrinkage] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
  const inputs=[];for(const filename of files){inputs.push({filename,content:await readFile(filename,"utf8")});console.error("Loaded "+filename);}
  const report=runServeReturnResearch(inputs,options);await writeFile(output,JSON.stringify(report,null,2)+"\n");
  console.log("Wrote aggregate research report: "+output);console.error("Research only: no live probabilities, EV or recommendations are changed.");
