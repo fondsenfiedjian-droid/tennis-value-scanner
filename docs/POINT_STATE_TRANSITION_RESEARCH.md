@@ -167,3 +167,14 @@ Interpretation: a substantial number of rows appear to update game/set counters 
 ## Score-value vocabulary audit (2026-11-21)
 
 A new check counts the literal point-score values separately for normal-game states and tiebreak states, and flags values that do not fit the data dictionary's expected vocabulary. It also counts unexpected numeric values in normal-game states and states with an unknown tiebreak flag. This validates input semantics before interpreting transitions; it does not itself infer point outcomes.
+
+### First real-sample score vocabulary findings (2026-11-21)
+
+Successful run: GitHub Actions `44864969199`.
+
+- 929,956 states were flagged as normal-game and 21,108 as tiebreak; no unknown tiebreak flags.
+- Normal-game states: 5,872 had at least one unexpected value. Of these, 5,368 states had missing point-score fields and 504 had non-missing numeric values outside the normal-game vocabulary (values 1–9; 931 player-side value occurrences in total).
+- Tiebreak states: 385 had non-numeric values; 342 had missing point-score fields and 43 had `A`/`AD` values despite the tiebreak flag.
+- Normal-game values observed and accepted: 0, 15, 30, 40, A and AD. Tiebreak scores are numeric and can exceed 9 (the sample includes values through 40).
+
+Interpretation: a small number of states have a tiebreak flag/score-vocabulary mismatch, in addition to missing values. The 504 numeric normal-flag states may be tiebreak-like states with a delayed or incorrect flag; the 43 non-numeric tiebreak-flag states may be the reverse. Keep them excluded from point-outcome inference until state-level flag alignment is understood. Missing point scores remain ambiguous.
