@@ -990,3 +990,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PFE serve/return input validation (2026-11-21)
 - Tightened Sackmann serve-stat validation: second-serve points won must not exceed second-serve opportunities (`svpt - 1stIn`), in addition to the existing total bounds. This prevents impossible rows from entering ATP/WTA player histories.
 - Added tests for impossible second-serve wins and valid matches with zero second-serve opportunities. The full ATP/WTA chronological research run is required before using the changed validator's aggregate impact.
+- Added aggregate-only per-tour counts of valid/invalid winner-side and loser-side serve-stat rows, split by rejection reason. The upcoming ATP/WTA walk-forward run will quantify how many source rows are excluded by the stricter second-serve opportunity check; no player-level records are emitted.
