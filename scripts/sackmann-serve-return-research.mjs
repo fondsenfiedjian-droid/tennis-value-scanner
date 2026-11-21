@@ -200,17 +200,33 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
      profileFeatures[shrunkName]=shrunkA-shrunkB;
     }else profileFeatures[shrunkName]=null;
    }
-   const directP1=a.overall.serveRate,crossP1=1-b.overall.returnRate;
-   const directP2=b.overall.serveRate,crossP2=1-a.overall.returnRate;
-   const disagreementP1=Number.isFinite(directP1)&&Number.isFinite(crossP1)?Math.abs(directP1-crossP1):null;
-   const disagreementP2=Number.isFinite(directP2)&&Number.isFinite(crossP2)?Math.abs(directP2-crossP2):null;
-   const servicePointP1=overallReady&&disagreementP1!==null&&disagreementP1<=0.08?(directP1+crossP1)/2:null;
-   const servicePointP2=overallReady&&disagreementP2!==null&&disagreementP2<=0.08?(directP2+crossP2)/2:null;
+   const toPfeProfile=(id,stats)=>{
+    const definitions={
+     firstServeIn:"firstServeIn",firstServePointsWon:"firstServeWon",
+     secondServePointsWon:"secondServeWon",firstServeReturnPointsWon:"firstServeReturn",
+     secondServeReturnPointsWon:"secondServeReturn"
+    };
+    const metrics={};
+    let ready=true;
+    for(const [pfeName,key] of Object.entries(definitions)){
+     const item=stats.profile[key];
+     if(item.matches<minOverallMatches||item.rate===null){ready=false;continue;}
+     metrics[pfeName]={pct:item.rate*100};
+    }
+    return {status:ready?"ready_for_modeling":"insufficient_sample",playerId:Number(id),metrics};
+   };
+   const pfeInputs=overallReady?PFE.deriveServeReturnMatchInputs(
+    toPfeProfile(p1,a.overall),toPfeProfile(p2,b.overall),{maxDisagreement:0.08}
+   ):null;
+   const servicePointP1=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerA.servicePointWin:null;
+   const servicePointP2=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerB.servicePointWin:null;
+   const disagreementP1=pfeInputs?.playerA?.disagreement??null;
+   const disagreementP2=pfeInputs?.playerB?.disagreement??null;
    const bestOf=Number(row.best_of);
    features.set(pairKey(date,p1,p2,row.surface),{
     player1Id:p1,player2Id:p2,bestOf:[3,5].includes(bestOf)?bestOf:null,
-    servicePointP1,servicePointP2,servicePointDisagreementP1:disagreementP1,
-    servicePointDisagreementP2:disagreementP2,
+    servicePointP1,servicePointP2,pfePointInputStatus:pfeInputs?.status??"insufficient_data",
+    servicePointDisagreementP1:disagreementP1,servicePointDisagreementP2:disagreementP2,
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
     returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
     surfaceServeDiff:surfaceReadyWithOverall?a.surface.serveRate-b.surface.serveRate:null,
