@@ -1070,3 +1070,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Assessment filters by exact player and target match and independently rejects publication/capture after match start.
 - Added tests in `tests/tournament-intent-registry.test.mjs` and workflow documentation in `docs/tournament-intent-evidence-registry.md`.
 - Manual/reviewed evidence only. No automated crawler, live UI, probability adjustment, EV change or bet-selection change.
+
+- Added `scripts/import-tournament-intent-evidence.mjs`: local JSON/JSONL import utility with dry-run, merge, duplicate detection, rejection reporting and atomic output. It performs no network or Production writes. Added CLI integration tests.
