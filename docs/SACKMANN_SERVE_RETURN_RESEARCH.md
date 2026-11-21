@@ -101,6 +101,6 @@ The reproducible CI sensitivity mode now compares:
 - Rolling windows of 180, 365 and 730 days.
 - Minimum prior history of 3, 5 and 10 statistics-complete matches for both overall and same-surface rates.
 - Raw same-surface rates versus shrinkage toward each player's overall rate, with prior weights of 10 and 20 matches.
-- Residualized surface effects (same-surface rate minus overall rate), also shrunk with prior weights of 10 and 20 matches.
+- Residualized surface effects (same-surface rate minus overall rate), also shrunk with prior weights of 10 and 20 matches at 365 days, plus 730-day shrinkage and residualized variants with prior weights of 3, 5 and 10 matches.
 
 ATP and WTA remain separate. All variants use the same chronological K=32 Elo baseline and same-day exclusion. This is an exploratory sensitivity grid on the previously inspected 2020–2026 period, not an independent confirmation. The 2025–2026 frozen-coefficient holdout is also reported for every configuration; it is a temporal stability check, not blind, because annual results have already been inspected. Results pending fresh CI.
