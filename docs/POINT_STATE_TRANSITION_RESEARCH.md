@@ -115,3 +115,9 @@ Successful run: GitHub Actions `44863667707`.
 - `no-score-change`: 7,405 cases, median 5.02 s; 87.0% within 15 s.
 
 Interpretation: long gaps increase ambiguity in some categories, but many ambiguous transitions occur quickly. The next parser work should focus on score-field semantics, update/correction rows and counter consistency, not simply relax a time-gap threshold. Never infer a point outcome just because the time gap is short.
+
+## Official server-field semantics and tiebreak switch matrix (2026-11-21)
+
+The dataset's [official data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) defines `server` as the player serving at that score state. Therefore the next-point-server interpretation is the documented meaning; the last-point-server variant is only a diagnostic alternative, not an equally supported interpretation.
+
+The current tiebreak report only gives overall agreement. A new matrix will split transitions where the tiebreak service schedule predicts a switch (after point 1, then every two points) from transitions where it predicts the same server. This will show whether the near-50% agreement comes from both cases failing equally or from one phase being systematically offset. Even a strong aggregate pattern is not sufficient by itself to enable serve attribution; boundary and source-quality validation remain required.
