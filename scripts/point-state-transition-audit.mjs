@@ -388,6 +388,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     totalMatches: groups.size,
     byTour: {},
     overall: {
+      totalMatches: groups.size,
       firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
       firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
       normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
