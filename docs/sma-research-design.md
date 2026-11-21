@@ -47,6 +47,15 @@ Each feature has its own valid-observation count, reported separately for overal
 
 **Important limitation:** these are rolling player-level rates, not yet opponent-adjusted serve-vs-return matchup estimates. Opponent-strength residualization, tour/surface priors for each submetric, and direct PFE point-probability integration remain separate research tasks. Do not describe this branch as a finished matchup model or enable it in production.
 
+## PFE point-engine bridge (research-only)
+The archival evaluator now has a separate diagnostic path that:
+1. estimates each player's pre-match service-point win rate from their own prior service history;
+2. cross-checks it against one minus the opponent's prior return-points-won rate;
+3. averages the two only when their disagreement is at most 8 percentage points;
+4. passes the two service-point probabilities and the source `best_of` value to PFE's existing `calculateMatchWinProbability()` function.
+
+This is a deliberately conservative bridge test, not a validated opponent-adjusted estimator. It does not change PFE's live model registry, Worker endpoints, or betting recommendations. A missing format, insufficient prior history, or disagreement above the threshold excludes the point-model prediction rather than inventing an input. The report also compares the existing core surface-residual model and the detailed extended-profile model on an identical common sample to avoid confusing model changes with coverage changes.
+
 ## Candidate matchup calculation
 For player A serving against player B returning, estimate expected service-point win probability from:
 1. the tournament/tour/surface baseline;
