@@ -142,7 +142,7 @@ export function auditPointStateTransitions(rows, matchRows = []) {
   for (const match of matchRows) {
     const id = String(match.match_id ?? "").trim();
     const round = String(match.round ?? "").trim();
-    const tourMatch = round.match(/^(ATP|WTA)\\b/i);
+    const tourMatch = round.match(/^(ATP|WTA)\b/i);
     if (id) metadata.set(id, {
       tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
       tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified"
