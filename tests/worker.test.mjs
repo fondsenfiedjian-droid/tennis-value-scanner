@@ -3276,7 +3276,7 @@ test("preferred bookmaker mode defaults safely and never silently mixes books", 
   const start=frontendSource.indexOf("function normalizePreferredBookmaker(");
   const end=frontendSource.indexOf("\n  function normalizeRefreshRate(",start);
   assert.ok(start>=0&&end>start);
-  const sandbox={String,Number,Array};
+  const sandbox={String,Number,Array,Date};
   vm.runInNewContext(frontendSource.slice(start,end)+"\nglobalThis.api={normalizePreferredBookmaker,selectPreferredBookmakerPair};",sandbox);
   const {normalizePreferredBookmaker,selectPreferredBookmakerPair}=sandbox.api;
   assert.equal(normalizePreferredBookmaker(undefined),"winamax");
