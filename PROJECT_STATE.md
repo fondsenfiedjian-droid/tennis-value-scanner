@@ -1077,3 +1077,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Raw 14/28-day cumulative workload features produced small additional gains but unstable coefficients because windows overlap. Added non-overlapping workload bands (1–3, 4–7, 8–14, 15–28 days) for match counts and distinct playing days; the research runner compares banded load-only and banded ACE against the fixed core and cumulative 14/28 model. Regression tests cover band cutoffs and same-day exclusion. CI pending.
+
+
+- 14/28-day and non-overlapping band ACE tests completed. The 14/28 extension adds a small Brier gain over core ACE for ATP on all three chronological holdouts (paired CIs exclude zero); WTA is inconsistent (no clear gain in 2025 or Jul–Nov 2026, small gain in full 2026). Non-overlapping bands perform essentially the same as cumulative windows. Keep 3/7-day load + rest core as shared candidate; keep 14/28 ATP-only research and do not add to WTA. Next ACE study: age×load and nonlinear thresholds after age-map coverage audit.
