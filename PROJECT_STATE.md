@@ -990,3 +990,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ### PFE normal-game server boundary timing audit (2026-11-21)
 - Added aggregate diagnostics for normal-game boundaries split by consecutive capture timestamp gap and whether the after-state point score reset to 0-0.
 - Added synthetic regression coverage; real-sample results pending. This is diagnostic only and does not enable server-based inference.
+- Real-sample server-boundary gap audit `44866428352`: expected server switch observed in 31.9% of boundaries with <5s capture gap, 31.2% at 5–15s, 40.3% at 15–30s, 66.1% at 30–60s, 84.2% at 60–180s and 85.6% at 180s+. 95.1% of after-states had 0-0 point-score reset. Pattern is consistent with asynchronous/delayed server-field updates, but gap alone cannot identify serve ownership; no server-based point labels or production feature enabled.
