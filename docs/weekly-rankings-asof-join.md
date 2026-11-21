@@ -15,7 +15,7 @@ Optional `--report PATH` sets the JSON report path; by default it is derived fro
 
 - ATP and WTA are processed separately.
 - Exact player IDs only; no name matching or cross-tour joins.
-- For match date D, use the most recent ranking snapshot with `ranking_date <= D`. A later weekly ranking is never used.
+- For match date D, use the most recent ranking snapshot with `ranking_date < D`. Same-day snapshots are excluded because publication time and exact match time are unavailable; this avoids possible look-ahead leakage.
 - The match archive must be sorted chronologically. The script reports any date regressions; canonical Sackmann imports are already sorted.
 - The script streams the inputs and retains only the latest known ranking per player, rather than loading millions of ranking rows into memory.
 - It writes a new research CSV and JSON report; it never modifies input archives or production data.
