@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout } from "../scripts/sackmann-serve-return-research.mjs";
+import PFE from "../pfe.js";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
- tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
+ tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,best_of:3,
  ...Object.fromEntries(["w","l"].flatMap((prefix,i)=>{
   const stats=i===0?winnerStats:loserStats;return Object.entries(stats).map(([key,value])=>[prefix+"_"+key,value]);
  }))
@@ -238,4 +239,19 @@ test("unknown target surfaces keep overall profile rates and leave surface profi
  assert.ok(Number.isFinite(f.firstServeWonDiff));
  assert.equal(f.surfaceFirstServeWonDiff,null);
  assert.equal(f.shrunkSurfaceFirstServeWonDiff,null);
+});
+
+
+test("SMA historical serve and opponent-return inputs can feed PFE's exact match engine",()=>{
+ const rows=[
+  row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20)),
+  row("20250102",2,1,2,stats(100,60,40,20),stats(100,60,30,20))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.equal(f.bestOf,3);
+ assert.ok(Math.abs(f.servicePointP1-0.6)<1e-12);
+ assert.ok(Math.abs(f.servicePointP2-0.5)<1e-12);
+ const result=PFE.calculateMatchWinProbability(f.servicePointP1,f.servicePointP2,{bestOf:f.bestOf});
+ assert.equal(result.status,"provisional");
+ assert.ok(result.probabilityA>0.5&&result.probabilityA<1);
 });
