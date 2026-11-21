@@ -53,6 +53,13 @@ test("walk-forward layoff model is research-only and evaluates only with prior-y
   assert.ok(Number.isFinite(report.summary.delta.brier));
   assert.ok(report.byYear["2003"].trainingMatches>0);
   assert.match(report.featureDefinitions.inactivity,/not a diagnosis/);
+  assert.deepEqual(Object.keys(report.cohorts.layoffDays),["30_59","60_89","90_179","180_364","365_plus"].filter(key=>key in report.cohorts.layoffDays));
+  assert.deepEqual(Object.keys(report.cohorts.firstMatchesAfterReturn),["1","2","3"].filter(key=>key in report.cohorts.firstMatchesAfterReturn));
+  for(const cohort of Object.values(report.cohorts.layoffDays)){
+    assert.equal(cohort.baseline.matches,cohort.playerMatchObservations);
+    assert.equal(cohort.candidate.matches,cohort.playerMatchObservations);
+    assert.ok(Number.isFinite(cohort.delta.brier));
+  }
 });
 
 test("future seasons cannot change an earlier evaluation year",()=>{
