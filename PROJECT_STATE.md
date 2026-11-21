@@ -1121,3 +1121,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added four more retrospective cases (Alcaraz/Paris, Svitolina/WTA Finals, Rybakina withdrawal, Sabalenka/WTA Finals) to the case log. They remain non-predictive and are not imported into the pre-match registry.
 - The WTA draw extraction and pre-event ranking joins are still incomplete. Do not report a completed denominator or prevalence estimate. ATP official draw extraction and separate Challenger/WTA125/ITF strata remain outstanding.
 - No model weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
+
+
+## WTA draw extraction audit — Seoul and Singapore (2026-11-21)
+- Added `docs/tournament-intent-wta-draw-extraction-audit-seoul-singapore-2026.md` after inspecting the official singles-draw pages for Seoul and Singapore.
+- Seoul page view exposes 24 score-bearing singles rows (16 R32 + 8 R16); the 7 later bracket slots are blank in the accessible rendering.
+- Singapore page view exposes 24 score-bearing rows (12 R32 + 7 R16 + 4 QF + 1 SF), explicitly marks two walkovers (Mertens in R16 and Gibson in SF), and leaves the final score blank. Four first-round BYEs are not matches.
+- These are page-view extraction observations only, not certified played-match counts. The pages do not expose a complete date/status/ranking join in the inspected rendering.
+- No top-150 player–match denominator is claimed. Obtain official match-level records and pre-event ranking snapshots before freezing the sample. Do not count walkovers or BYEs as played matches.
+- No model, probability, EV, bet-selection, live UI or Production changes.
