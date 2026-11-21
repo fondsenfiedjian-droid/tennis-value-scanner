@@ -67,10 +67,17 @@ function aggregate(history,today,surface=null,windowDays=365){
  }
  return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,returnRate:matches&&returnTotal?returnWon/returnTotal:null};
 }
-export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365}={}){
- if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
- if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
- if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
+export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365,surfaceMode="raw",surfaceShrinkagePrior=10}={}){
+ if(![180,365,730].includes(windowDays))throw new Error("windowDays must be 180, 365 or 730");
+ if(!["raw","shrinkage","residualized"].includes(surfaceMode))throw new Error("surfaceMode must be raw, shrinkage or residualized");
+ if(!Number.isFinite(surfaceShrinkagePrior)||surfaceShrinkagePrior<0)throw new Error("surfaceShrinkagePrior must be non-negative");
+ const surfaceValue=(overall,surface,key)=>{
+  if(!Number.isFinite(overall[key])||!Number.isFinite(surface[key]))return null;
+  if(surfaceMode==="raw")return surface[key];
+  const weight=surface.matches/(surface.matches+surfaceShrinkagePrior);
+  const residual=surface[key]-overall[key];
+  return surfaceMode==="residualized"?residual*weight:overall[key]+residual*weight;
+ };
  const clean=rows.filter(row=>
   /^\d{8}$/.test(String(row.tourney_date??""))&&/^\d+$/.test(String(row.winner_id??""))&&
   /^\d+$/.test(String(row.loser_id??""))&&String(row.winner_id)!==String(row.loser_id)&&
@@ -99,8 +106,8 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
    features.set(pairKey(date,p1,p2,row.surface),{
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
     returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
-    surfaceServeDiff:surfaceKnown&&surfaceReady?a.surface.serveRate-b.surface.serveRate:null,
-    surfaceReturnDiff:surfaceKnown&&surfaceReady?a.surface.returnRate-b.surface.returnRate:null,
+    surfaceServeDiff:surfaceKnown&&surfaceReady?surfaceValue(a.overall,a.surface,"serveRate")-surfaceValue(b.overall,b.surface,"serveRate"):null,
+    surfaceReturnDiff:surfaceKnown&&surfaceReady?surfaceValue(a.overall,a.surface,"returnRate")-surfaceValue(b.overall,b.surface,"returnRate"):null,
     minOverallPriorMatches:Math.min(a.overall.matches,b.overall.matches),
     minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0
    });
@@ -172,10 +179,7 @@ function aggregatePredictions(rows){
   }
  };
 }
-export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5}={}){
- if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
- if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
- if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
+export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,featureConfig={},specificationNames=null}={}){
  const allRows={ATP:[],WTA:[]};
  for(const input of fileInputs){
   const match=String(input.filename).match(/(?:^|\/)(atp|wta)_matches_(\d{4})\.csv$/i);
@@ -185,7 +189,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
  const reports={};
  for(const tour of ["ATP","WTA"]){
   const rows=allRows[tour];if(!rows.length)continue;
-  const featureMap=buildPreMatchServeReturn(rows,{windowDays,minOverallMatches,minSurfaceMatches});
+  const featureMap=buildPreMatchServeReturn(rows,featureConfig);
   const backtest=runBacktest(rows,{evaluationStart:featureStartYear+"0101",evaluationEnd:lastEvaluationYear+"1231",includePredictions:true});
   const matched=[];let missingFeatures=0;
   for(const prediction of backtest.predictions??[]){
@@ -195,7 +199,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     outcome:prediction.winnerId===prediction.player1Id?1:0,features});
   }
   const bySpec={};
-  for(const spec of SPECS){
+  for(const spec of SPECS.filter(item=>!specificationNames||specificationNames.includes(item.name))){
    const eligible=matched.filter(row=>spec.features.every(name=>Number.isFinite(row.features[name])));
    const outOfSample=[],annual=[];
    for(let year=firstEvaluationYear;year<=lastEvaluationYear;year++){
@@ -214,7 +218,8 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample)};
   }
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
-   featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},
+   featureWindowDays:featureConfig.windowDays??365,minimumPriorMatches:{overall:featureConfig.minOverallMatches??5,surface:featureConfig.minSurfaceMatches??5},
+   surfaceMode:featureConfig.surfaceMode??"raw",surfaceShrinkagePrior:featureConfig.surfaceShrinkagePrior??10,
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
    baseline:"Chronological K=32 Elo from the existing backtest engine; earlier match results are warm-up only.",
    specifications:bySpec};
@@ -226,7 +231,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
   evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,reports,
-  method:`For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous ${windowDays} days. Build overall and same-surface rates; require at least ${minOverallMatches} prior statistics-complete matches overall and ${minSurfaceMatches} same-surface matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.`,
+  method:"For each player, aggregate serve points won / serve points played and return points won / return points faced over the configured rolling window. Build overall and same-surface rates; require configured minimum prior statistics-complete matches. SurfaceMode can be raw, shrinkage toward overall rates, or a shrinkage-weighted surface residual. Compare player1-minus-player2 features as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.",
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
    "Match statistics are observed after each match and are used only in future-date histories. All same-day matches are scored before that date's statistics are added.",
@@ -235,22 +240,43 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   ]
  };
 }
-async function main(){
- const args=process.argv.slice(2),files=[];let output="sackmann-serve-return-report.json";
- const options={};
- for(let i=0;i<args.length;i++){
-  if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing output path");output=args[++i];}
-  else if(["--window-days","--min-overall-matches","--min-surface-matches"].includes(args[i])){
-   if(!args[i+1])throw new Error("Missing value for "+args[i]);
-   const key={"--window-days":"windowDays","--min-overall-matches":"minOverallMatches","--min-surface-matches":"minSurfaceMatches"}[args[i]];
-   options[key]=Number(args[++i]);
-   if(!Number.isInteger(options[key])||options[key]<1)throw new Error(args[i-1]+" must be a positive integer");
-  }else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
-  else files.push(args[i]);
+export function runServeReturnSensitivity(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016}={}){
+ const configs=[];
+ for(const windowDays of [180,365,730]){
+  for(const minMatches of [3,5,10]){
+   configs.push({name:`window${windowDays}_min${minMatches}`,windowDays,minOverallMatches:minMatches,minSurfaceMatches:minMatches,surfaceMode:"raw",surfaceShrinkagePrior:10});
+  }
  }
- if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
+ for(const surfaceMode of ["shrinkage","residualized"]){
+  for(const surfaceShrinkagePrior of [10,20]){
+   configs.push({name:`${surfaceMode}_alpha${surfaceShrinkagePrior}`,windowDays:365,minOverallMatches:5,minSurfaceMatches:5,surfaceMode,surfaceShrinkagePrior});
+  }
+ }
+ const results=[];
+ for(const config of configs){
+  const report=runServeReturnResearch(fileInputs,{firstEvaluationYear,lastEvaluationYear,featureStartYear,featureConfig:config,specificationNames:["overall_plus_surface"]});
+  const tours={};
+  for(const [tour,data] of Object.entries(report.reports)){
+   const spec=data.specifications.overall_plus_surface;
+   tours[tour]={eligibleMatches:spec.eligibleMatches,outOfSample:spec.outOfSample,annual:spec.annual.map(row=>({
+    year:row.year,matches:row.evaluation?.matches??row.evaluationMatches??0,
+    brierDifference:row.evaluation?.pairedDifference?.brier??null,
+    brierCI95:row.evaluation?.pairedDifference?.brierCI95??null,
+    logLossDifference:row.evaluation?.pairedDifference?.logLoss??null,
+    logLossCI95:row.evaluation?.pairedDifference?.logLossCI95??null
+   }))};
+  }
+  results.push({name:config.name,config,tours});
+ }
+ return {schemaVersion:1,source:"Jeff Sackmann / Tennis Abstract ATP and WTA match datasets",dataLicense:"CC BY-NC-SA 4.0",evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,method:"Sensitivity grid for pre-match serve/return feature windows, history thresholds and surface shrinkage. All variants use the same chronological Elo baseline and strict same-day exclusion. This is research-only and not an independent holdout.",configurations:results};
+}
+
+async function main(){
+ const args=process.argv.slice(2),files=[];let output="sackmann-serve-return-report.json",sensitivity=false;
+ for(let i=0;i<args.length;i++){if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing output path");output=args[++i];}else if(args[i]==="--sensitivity")sensitivity=true;else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);else files.push(args[i]);}
+ if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
  const inputs=[];for(const filename of files){inputs.push({filename,content:await readFile(filename,"utf8")});console.error("Loaded "+filename);}
- const report=runServeReturnResearch(inputs,options);await writeFile(output,JSON.stringify(report,null,2)+"\n");
- console.log("Wrote aggregate research report: "+output);console.error("Research only: no live probabilities, EV or recommendations are changed.");
+ const report=sensitivity?runServeReturnSensitivity(inputs):runServeReturnResearch(inputs);await writeFile(output,JSON.stringify(report,null,2)+"\n");
+ console.log(JSON.stringify(report,null,2));console.error("Research only: no live probabilities, EV or recommendations are changed.");
 }
 if(process.argv[1]&&import.meta.url.endsWith(process.argv[1]))await main();
