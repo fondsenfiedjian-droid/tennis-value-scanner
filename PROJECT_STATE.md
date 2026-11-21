@@ -1130,3 +1130,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - These are page-view extraction observations only, not certified played-match counts. The pages do not expose a complete date/status/ranking join in the inspected rendering.
 - No top-150 player–match denominator is claimed. Obtain official match-level records and pre-event ranking snapshots before freezing the sample. Do not count walkovers or BYEs as played matches.
 - No model, probability, EV, bet-selection, live UI or Production changes.
+
+
+## Match-level data source discovery (2026-11-21)
+- Added `docs/tournament-intent-match-data-source-discovery-2026-11-21.md`.
+- Compared documented ESPN-based Apify actor, AcesAPI, secondary Flashscore draw snapshots and public tour pages. The Apify actor provides match IDs, UTC dates, player IDs, draw/round, statuses (including retirement and walkover) and scores; its documented ranking output is current top-150 only, not historical pre-event snapshots. Challenger/ITF are not covered.
+- AcesAPI documents match-level IDs/dates/status/results and charges 2 credits per match query; no API key connected or credits consumed.
+- Secondary TennisRaptor draw snapshots explicitly may be partial; use only for discrepancy checks, not as the denominator.
+- Seoul discrepancy: WTA official page confirms a 32-player singles draw; a secondary tracker reports 43 singles records (31 main draw + 12 qualifying), showing the earlier official draw-page rendering with 24 score-bearing rows was incomplete. Singapore official pages confirm 28-player draw and Fernandez title; draw-page rendering alone also missed final status.
+- No data actor/API was run, no credits spent, no new source connected to Production. A paid/credit-gated extraction requires explicit approval and a historical pre-event ranking source. Final denominator remains unestablished.
+- No intent labels, classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed.
