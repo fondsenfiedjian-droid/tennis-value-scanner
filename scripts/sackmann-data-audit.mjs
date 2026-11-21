@@ -62,8 +62,14 @@ function addRow(summary, row) {
     "w_ace","w_df","w_SvGms","w_bpSaved","w_bpFaced",
     "l_ace","l_df","l_SvGms","l_bpSaved","l_bpFaced"
   ].every(field => validCount(row[field])) &&
-    number(row.w_bpSaved)<=number(row.w_bpFaced) &&
-    number(row.l_bpSaved)<=number(row.l_bpFaced);
+    ["w","l"].every(prefix => {
+      const svpt=number(row[prefix+"_svpt"]);
+      const ace=number(row[prefix+"_ace"]),df=number(row[prefix+"_df"]);
+      const bpSaved=number(row[prefix+"_bpSaved"]),bpFaced=number(row[prefix+"_bpFaced"]);
+      // Aces and double faults are distinct service points; break points faced
+      // are a subset of service points. Reject impossible denominators.
+      return ace+df<=svpt && bpSaved<=bpFaced && bpFaced<=svpt;
+    });
   if (fullStats) summary.statsBothSides++;
   for (const field of COUNT_FIELDS) if (validCount(row[field])) summary.columns[field]++;
 }

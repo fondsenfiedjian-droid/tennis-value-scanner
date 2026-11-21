@@ -5,7 +5,13 @@ on:
     branches: [main]
     paths:
       - "scripts/workload-research.mjs"
+      - "scripts/winner-formula-research.mjs"
       - "scripts/valuebetennis-backtest.mjs"
+      - "scripts/backtest.mjs"
+      - "scripts/sackmann-rank-age-research.mjs"
+      - "scripts/sackmann-import.mjs"
+      - "scripts/sackmann-age-link-audit.mjs"
+      - "tests/sackmann-age-link-audit.test.mjs"
       - ".github/workflows/workload-research.yml"
   workflow_dispatch:
 
@@ -44,6 +50,76 @@ jobs:
             research-data/valuebetennis-matchs-2024.csv \
             research-data/valuebetennis-matchs-2025.csv \
             research-data/valuebetennis-matchs-2026.csv
+      - name: Run PFE-combined ACE walk-forward research
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20251231 \
+            --from 20260101 \
+            --to 20261121 \
+            --out ace-pfe-research-report.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Run earlier-year PFE-combined ACE holdout
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20241231 \
+            --from 20250101 \
+            --to 20251231 \
+            --out ace-pfe-2025-holdout.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Run second-half 2026 PFE-combined ACE holdout
+        run: |
+          node scripts/winner-formula-research.mjs \
+            --train-through 20260630 \
+            --from 20260701 \
+            --to 20261121 \
+            --out ace-pfe-2026-second-half.json \
+            research-data/valuebetennis-matchs-2024.csv \
+            research-data/valuebetennis-matchs-2025.csv \
+            research-data/valuebetennis-matchs-2026.csv
+      - name: Upload PFE-combined ACE reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ace-pfe-research-reports
+          path: ace-pfe-*.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Download recent Sackmann match ages
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p research-age-data
+          for tour in atp wta; do
+            for year in $(seq 2021 2026); do
+              url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${tour}_matches_${year}.csv"
+              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" \
+                --output "research-age-data/${tour}_matches_${year}.csv"
+              test -s "research-age-data/${tour}_matches_${year}.csv"
+            done
+          done
+          node scripts/sackmann-import.mjs --tour atp --input-dir research-age-data --output "$RUNNER_TEMP/atp-age-normalized.csv"
+          node scripts/sackmann-import.mjs --tour wta --input-dir research-age-data --output "$RUNNER_TEMP/wta-age-normalized.csv"
+      - name: Audit historical player-age identity links
+        continue-on-error: true
+        run: |
+          node scripts/sackmann-age-link-audit.mjs \
+            --atp "$RUNNER_TEMP/atp-age-normalized.csv" \
+            --wta "$RUNNER_TEMP/wta-age-normalized.csv" \
+            --valuebetennis research-data/valuebetennis-matchs-2024.csv \
+            --valuebetennis research-data/valuebetennis-matchs-2025.csv \
+            --valuebetennis research-data/valuebetennis-matchs-2026.csv \
+            --out sackmann-age-link-audit.json
+      - name: Upload age-link coverage audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-age-link-audit
+          path: sackmann-age-link-audit.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:

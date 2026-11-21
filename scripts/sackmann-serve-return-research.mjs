@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { parseCsv, runBacktest } from "./backtest.mjs";
+import PFE from "../pfe.js";
 
 const OVERALL=["serveDiff","returnDiff"], SURFACE=["surfaceServeDiff","surfaceReturnDiff"];
 const SURFACE_RESIDUAL=["surfaceServeResidualDiff","surfaceReturnResidualDiff"];
 const SURFACE_SHRUNK=["shrunkSurfaceServeDiff","shrunkSurfaceReturnDiff"];
+const PROFILE=[
+ "firstServeInDiff","firstServeWonDiff","secondServeWonDiff","aceRateDiff",
+ "doubleFaultRateDiff","breakPointSaveDiff","firstServeReturnDiff",
+ "secondServeReturnDiff","breakPointConvertDiff"
+];
+const SURFACE_PROFILE=PROFILE.map(name=>"surface"+name[0].toUpperCase()+name.slice(1));
+const SHRUNK_SURFACE_PROFILE=PROFILE.map(name=>"shrunkSurface"+name[0].toUpperCase()+name.slice(1));
 const SPECS=[
  {name:"overall_serve_only",features:["serveDiff"]},
  {name:"overall_return_only",features:["returnDiff"]},
@@ -16,7 +24,18 @@ const SPECS=[
  {name:"surface_residual_only",features:SURFACE_RESIDUAL},
  {name:"overall_plus_surface_residual",features:[...OVERALL,...SURFACE_RESIDUAL]},
  {name:"surface_shrunk_only",features:SURFACE_SHRUNK},
- {name:"overall_plus_surface_shrunk",features:[...OVERALL,...SURFACE_SHRUNK]}
+ {name:"overall_plus_surface_shrunk",features:[...OVERALL,...SURFACE_SHRUNK]},
+ {name:"serve_profile_only",features:PROFILE.slice(0,6)},
+ {name:"return_profile_only",features:PROFILE.slice(6)},
+ {name:"extended_serve_return_profile",features:PROFILE},
+ {name:"core_plus_extended_profile",features:[...OVERALL,...PROFILE]},
+ {name:"surface_profile_only",features:SURFACE_PROFILE},
+ {name:"shrunk_surface_profile_only",features:SHRUNK_SURFACE_PROFILE},
+ {name:"overall_plus_shrunk_surface_profile",features:[...PROFILE,...SHRUNK_SURFACE_PROFILE]},
+ {name:"core_residual_plus_extended_profile",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE]},
+ {name:"pfe_point_delta_only",features:["pfePointLogitDelta"]},
+ {name:"core_residual_plus_pfe_point_delta",features:[...OVERALL,...SURFACE_RESIDUAL,"pfePointLogitDelta"]},
+ {name:"core_extended_plus_pfe_point_delta",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE,"pfePointLogitDelta"]}
 ];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
@@ -53,25 +72,73 @@ export function auditServeReturnStats(rows){
  }
  return report;
 }
+const PROFILE_KEYS=[
+ "firstServeIn","firstServeWon","secondServeWon","aceRate","doubleFaultRate",
+ "breakPointSave","firstServeReturn","secondServeReturn","breakPointConvert"
+];
+function profileMetric(numerator,denominator){
+ return Number.isInteger(numerator)&&Number.isInteger(denominator)&&denominator>0&&
+  numerator>=0&&numerator<=denominator?[numerator,denominator]:null;
+}
+function extendedSideProfile(prefix,row,opponentPrefix){
+ const svpt=num(row[prefix+"_svpt"]),firstIn=num(row[prefix+"_1stIn"]);
+ const firstWon=num(row[prefix+"_1stWon"]),secondWon=num(row[prefix+"_2ndWon"]);
+ const oppSvpt=num(row[opponentPrefix+"_svpt"]),oppFirstIn=num(row[opponentPrefix+"_1stIn"]);
+ const oppFirstWon=num(row[opponentPrefix+"_1stWon"]),oppSecondWon=num(row[opponentPrefix+"_2ndWon"]);
+ const p={};
+ p.firstServeIn=profileMetric(firstIn,svpt);
+ p.firstServeWon=profileMetric(firstWon,firstIn);
+ p.secondServeWon=profileMetric(secondWon,svpt-firstIn);
+ const ace=num(row[prefix+"_ace"]),df=num(row[prefix+"_df"]);
+ if(Number.isInteger(ace)&&Number.isInteger(df)&&ace>=0&&df>=0&&ace+df<=svpt){
+  p.aceRate=profileMetric(ace,svpt);p.doubleFaultRate=profileMetric(df,svpt);
+ }
+ const saved=num(row[prefix+"_bpSaved"]),faced=num(row[prefix+"_bpFaced"]);
+ if(Number.isInteger(saved)&&Number.isInteger(faced)&&saved>=0&&saved<=faced&&faced<=svpt){
+  p.breakPointSave=profileMetric(saved,faced);
+ }
+ // Return metrics are derived from the opponent's service opportunities.
+ if(Number.isInteger(oppSvpt)&&Number.isInteger(oppFirstIn)&&Number.isInteger(oppFirstWon)&&Number.isInteger(oppSecondWon)){
+  const secondOpp=oppSvpt-oppFirstIn;
+  p.firstServeReturn=profileMetric(oppFirstIn-oppFirstWon,oppFirstIn);
+  p.secondServeReturn=profileMetric(secondOpp-oppSecondWon,secondOpp);
+ }
+ const oppSaved=num(row[opponentPrefix+"_bpSaved"]),oppFaced=num(row[opponentPrefix+"_bpFaced"]);
+ if(Number.isInteger(oppSaved)&&Number.isInteger(oppFaced)&&oppSaved>=0&&oppSaved<=oppFaced&&oppFaced<=oppSvpt){
+  p.breakPointConvert=profileMetric(oppFaced-oppSaved,oppFaced);
+ }
+ return p;
+}
 function statsForPlayers(row){
  if(!validServeSide("w",row)||!validServeSide("l",row))return null;
  const wTotal=num(row.w_svpt),lTotal=num(row.l_svpt);
  const wWon=num(row.w_1stWon)+num(row.w_2ndWon),lWon=num(row.l_1stWon)+num(row.l_2ndWon);
  return {
-  winner:{serveTotal:wTotal,serveWon:wWon,returnTotal:lTotal,returnWon:lTotal-lWon},
-  loser:{serveTotal:lTotal,serveWon:lWon,returnTotal:wTotal,returnWon:wTotal-wWon}
+  winner:{serveTotal:wTotal,serveWon:wWon,returnTotal:lTotal,returnWon:lTotal-lWon,
+   profile:extendedSideProfile("w",row,"l")},
+  loser:{serveTotal:lTotal,serveWon:lWon,returnTotal:wTotal,returnWon:wTotal-wWon,
+   profile:extendedSideProfile("l",row,"w")}
  };
 }
 function aggregate(history,today,surface=null,windowDays=365){
  let serveTotal=0,serveWon=0,returnTotal=0,returnWon=0,matches=0;
+ const profileSums=Object.fromEntries(PROFILE_KEYS.map(key=>[key,{numerator:0,denominator:0,matches:0}]));
  for(let i=history.length-1;i>=0;i--){
   const item=history[i],age=today-item.day;
   if(age>windowDays)break;
   if(age<1||(surface&&item.surface!==surface))continue;
   serveTotal+=item.serveTotal;serveWon+=item.serveWon;
   returnTotal+=item.returnTotal;returnWon+=item.returnWon;matches++;
+  for(const key of PROFILE_KEYS){
+   const pair=item.profile?.[key];if(!pair)continue;
+   profileSums[key].numerator+=pair[0];profileSums[key].denominator+=pair[1];profileSums[key].matches++;
+  }
  }
- return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,returnRate:matches&&returnTotal?returnWon/returnTotal:null};
+ const profile=Object.fromEntries(PROFILE_KEYS.map(key=>{
+  const x=profileSums[key];return [key,{rate:x.denominator?x.numerator/x.denominator:null,matches:x.matches}];
+ }));
+ return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,
+  returnRate:matches&&returnTotal?returnWon/returnTotal:null,profile};
 }
 export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365,surfaceShrinkageMatches=5}={}){
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
@@ -93,7 +160,7 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
   while(index<clean.length&&String(clean[index].tourney_date)===date)day.push(clean[index++]);
   const get=(id,surface)=>{
    const history=histories.get(id)??[],overall=aggregate(history,today,null,windowDays);
-   const surfaceStats=SURFACES.has(surface)?aggregate(history,today,surface,windowDays):{matches:0,serveRate:null,returnRate:null};
+   const surfaceStats=SURFACES.has(surface)?aggregate(history,today,surface,windowDays):aggregate([],today,null,windowDays);
    return {overall,surface:surfaceStats};
   };
   for(const row of day){
@@ -110,7 +177,65 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
    const shrunkServeB=surfaceReadyWithOverall?b.overall.serveRate+shrinkB*(b.surface.serveRate-b.overall.serveRate):null;
    const shrunkReturnA=surfaceReadyWithOverall?a.overall.returnRate+shrinkA*(a.surface.returnRate-a.overall.returnRate):null;
    const shrunkReturnB=surfaceReadyWithOverall?b.overall.returnRate+shrinkB*(b.surface.returnRate-b.overall.returnRate):null;
+   const profileNames={
+    firstServeIn:"firstServeInDiff",firstServeWon:"firstServeWonDiff",
+    secondServeWon:"secondServeWonDiff",aceRate:"aceRateDiff",
+    doubleFaultRate:"doubleFaultRateDiff",breakPointSave:"breakPointSaveDiff",
+    firstServeReturn:"firstServeReturnDiff",secondServeReturn:"secondServeReturnDiff",
+    breakPointConvert:"breakPointConvertDiff"
+   };
+   const profileFeatures={};
+   for(const [key,featureName] of Object.entries(profileNames)){
+    const av=a.overall.profile[key],bv=b.overall.profile[key];
+    const as=a.surface.profile[key],bs=b.surface.profile[key];
+    const overallReadyForMetric=av.matches>=minOverallMatches&&bv.matches>=minOverallMatches&&
+     av.rate!==null&&bv.rate!==null;
+    const surfaceReadyForMetric=surfaceReadyWithOverall&&
+     as.matches>=minSurfaceMatches&&bs.matches>=minSurfaceMatches&&as.rate!==null&&bs.rate!==null;
+    profileFeatures[featureName]=overallReadyForMetric?av.rate-bv.rate:null;
+    const surfaceName="surface"+featureName[0].toUpperCase()+featureName.slice(1);
+    const shrunkName="shrunkSurface"+featureName[0].toUpperCase()+featureName.slice(1);
+    profileFeatures[surfaceName]=surfaceReadyForMetric?as.rate-bs.rate:null;
+    if(overallReadyForMetric&&surfaceReadyForMetric){
+     const shrinkA=as.matches/(as.matches+surfaceShrinkageMatches);
+     const shrinkB=bs.matches/(bs.matches+surfaceShrinkageMatches);
+     const shrunkA=av.rate+shrinkA*(as.rate-av.rate);
+     const shrunkB=bv.rate+shrinkB*(bs.rate-bv.rate);
+     profileFeatures[shrunkName]=shrunkA-shrunkB;
+    }else profileFeatures[shrunkName]=null;
+   }
+   const toPfeProfile=(id,stats,surfaceStats)=>{
+    const definitions={
+     firstServeIn:"firstServeIn",firstServePointsWon:"firstServeWon",
+     secondServePointsWon:"secondServeWon",firstServeReturnPointsWon:"firstServeReturn",
+     secondServeReturnPointsWon:"secondServeReturn"
+    };
+    const metrics={};
+    let ready=true;
+    for(const [pfeName,key] of Object.entries(definitions)){
+     const item=stats.profile[key],surfaceItem=surfaceStats.profile[key];
+     if(item.matches<minOverallMatches||item.rate===null){ready=false;continue;}
+     let rate=item.rate;
+     if(SURFACES.has(row.surface)&&surfaceItem.matches>=minSurfaceMatches&&surfaceItem.rate!==null){
+      const shrink=surfaceItem.matches/(surfaceItem.matches+surfaceShrinkageMatches);
+      rate=item.rate+shrink*(surfaceItem.rate-item.rate);
+     }
+     metrics[pfeName]={pct:rate*100};
+    }
+    return {status:ready?"ready_for_modeling":"insufficient_sample",playerId:Number(id),metrics};
+   };
+   const pfeInputs=overallReady?PFE.deriveServeReturnMatchInputs(
+    toPfeProfile(p1,a.overall,a.surface),toPfeProfile(p2,b.overall,b.surface),{maxDisagreement:0.08}
+   ):null;
+   const servicePointP1=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerA.servicePointWin:null;
+   const servicePointP2=pfeInputs?.status==="ready_for_score_simulation"?pfeInputs.playerB.servicePointWin:null;
+   const disagreementP1=pfeInputs?.playerA?.disagreement??null;
+   const disagreementP2=pfeInputs?.playerB?.disagreement??null;
+   const bestOf=Number(row.best_of);
    features.set(pairKey(date,p1,p2,row.surface),{
+    player1Id:p1,player2Id:p2,bestOf:[3,5].includes(bestOf)?bestOf:null,
+    servicePointP1,servicePointP2,pfePointInputStatus:pfeInputs?.status??"insufficient_data",
+    servicePointDisagreementP1:disagreementP1,servicePointDisagreementP2:disagreementP2,
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
     returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
     surfaceServeDiff:surfaceReadyWithOverall?a.surface.serveRate-b.surface.serveRate:null,
@@ -119,8 +244,13 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
     surfaceReturnResidualDiff:surfaceReadyWithOverall?(a.surface.returnRate-a.overall.returnRate)-(b.surface.returnRate-b.overall.returnRate):null,
     shrunkSurfaceServeDiff:surfaceReadyWithOverall?shrunkServeA-shrunkServeB:null,
     shrunkSurfaceReturnDiff:surfaceReadyWithOverall?shrunkReturnA-shrunkReturnB:null,
+    ...profileFeatures,
     minOverallPriorMatches:Math.min(a.overall.matches,b.overall.matches),
-    minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0
+    minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0,
+    profilePriorMatches:Object.fromEntries(Object.keys(profileNames).map(key=>[key,
+     Math.min(a.overall.profile[key].matches,b.overall.profile[key].matches)])),
+    surfaceProfilePriorMatches:Object.fromEntries(Object.keys(profileNames).map(key=>[key,
+     Math.min(a.surface.profile[key].matches,b.surface.profile[key].matches)]))
    });
   }
   // Same-date matches are all scored before any same-date stats enter player histories.
@@ -174,16 +304,34 @@ function fitModel(rows,names,penalty=0.05){
 }
 function aggregatePredictions(rows){
  const n=rows.length;if(!n)return {matches:0,baseline:null,adjusted:null,pairedDifference:null};
- let b0=0,l0=0,b=0,l=0,db=0,db2=0,dl=0,dl2=0;
+ let b0=0,l0=0,b=0,l=0,db=0,db2=0,dl=0,dl2=0,correct0=0,correct=0;
+ const bins0=Array.from({length:10},()=>({count:0,predicted:0,observed:0}));
+ const bins=Array.from({length:10},()=>({count:0,predicted:0,observed:0}));
  for(const row of rows){
   const p0=clamp(row.baseProbability),p=clamp(row.adjustedProbability),y=row.outcome;
   const b0i=(p0-y)**2,bi=(p-y)**2,l0i=-y*Math.log(p0)-(1-y)*Math.log(1-p0),li=-y*Math.log(p)-(1-y)*Math.log(1-p);
   b0+=b0i;l0+=l0i;b+=bi;l+=li;db+=bi-b0i;db2+=(bi-b0i)**2;dl+=li-l0i;dl2+=(li-l0i)**2;
+  if((p0>=0.5?1:0)===y)correct0++;
+  if((p>=0.5?1:0)===y)correct++;
+  for(const [probability,target] of [[p0,bins0],[p,bins]]){
+   const bin=target[Math.min(9,Math.floor(probability*10))];
+   bin.count++;bin.predicted+=probability;bin.observed+=y;
+  }
  }
  const ci=(sum,sum2)=>n>1?1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n):null;
+ const calibration=source=>{
+  const populated=source.filter(bin=>bin.count>0);
+  return {
+   expectedCalibrationError:Number(populated.reduce((sum,bin)=>sum+bin.count/n*Math.abs(bin.predicted/bin.count-bin.observed/bin.count),0).toFixed(6)),
+   bins:source.map((bin,index)=>({lower:index/10,upper:(index+1)/10,matches:bin.count,
+    meanPredicted:bin.count?Number((bin.predicted/bin.count).toFixed(5)):null,
+    observedWinRate:bin.count?Number((bin.observed/bin.count).toFixed(5)):null}))
+  };
+ };
  return {
-  matches:n,baseline:{brier:Number((b0/n).toFixed(6)),logLoss:Number((l0/n).toFixed(6))},
-  adjusted:{brier:Number((b/n).toFixed(6)),logLoss:Number((l/n).toFixed(6))},
+  matches:n,
+  baseline:{brier:Number((b0/n).toFixed(6)),logLoss:Number((l0/n).toFixed(6)),accuracy:Number((100*correct0/n).toFixed(2)),calibration:calibration(bins0)},
+  adjusted:{brier:Number((b/n).toFixed(6)),logLoss:Number((l/n).toFixed(6)),accuracy:Number((100*correct/n).toFixed(2)),calibration:calibration(bins)},
   pairedDifference:{
    brier:Number((db/n).toFixed(6)),brierCI95:n>1?{lower:Number((db/n-ci(db,db2)).toFixed(6)),upper:Number((db/n+ci(db,db2)).toFixed(6))}:null,
    logLoss:Number((dl/n).toFixed(6)),logLossCI95:n>1?{lower:Number((dl/n-ci(dl,dl2)).toFixed(6)),upper:Number((dl/n+ci(dl,dl2)).toFixed(6))}:null
@@ -230,8 +378,18 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   for(const prediction of backtest.predictions??[]){
    const features=featureMap.get(pairKey(prediction.date,prediction.player1Id,prediction.player2Id,prediction.surface));
    if(!features){missingFeatures++;continue;}
+   const sameOrientation=String(prediction.player1Id)===String(features.player1Id);
+   const pointA=sameOrientation?features.servicePointP1:features.servicePointP2;
+   const pointB=sameOrientation?features.servicePointP2:features.servicePointP1;
+   const pointResult=features.bestOf&&Number.isFinite(pointA)&&Number.isFinite(pointB)
+    ?PFE.calculateMatchWinProbability(pointA,pointB,{bestOf:features.bestOf}):null;
+   const pointModelProbability=pointResult?.status==="provisional"&&Number.isFinite(pointResult.probabilityA)
+    ?pointResult.probabilityA:null;
+   const pfePointLogitDelta=pointModelProbability===null?null:logit(pointModelProbability)-logit(prediction.probabilities.elo);
+   const matchedFeatures={...features,pfePointLogitDelta};
    matched.push({year:Number(prediction.date.slice(0,4)),baseProbability:prediction.probabilities.elo,
-    outcome:prediction.winnerId===prediction.player1Id?1:0,features});
+    outcome:prediction.winnerId===prediction.player1Id?1:0,features:matchedFeatures,pointModelProbability,
+    surface:prediction.surface??"Unknown"});
   }
   const bySpec={};
   for(const spec of SPECS){
@@ -253,7 +411,41 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    const fixedHoldout=evaluateFixedHoldout(eligible,spec.features,{holdoutStartYear,featureStartYear,lastEvaluationYear});
    bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
+  const pointRows=matched.filter(row=>Number.isFinite(row.pointModelProbability)&&row.features.bestOf);
+  const pointInputStatusCounts=matched.reduce((counts,row)=>{
+   const key=row.features.pfePointInputStatus??"unknown";counts[key]=(counts[key]??0)+1;return counts;
+  },{});
+  const pointHoldout=pointRows.filter(row=>row.year>=holdoutStartYear&&row.year<=lastEvaluationYear)
+   .map(row=>({...row,adjustedProbability:row.pointModelProbability}));
+  const pointAnnual=[];
+  for(let year=firstEvaluationYear;year<=lastEvaluationYear;year++){
+   const part=pointRows.filter(row=>row.year===year).map(row=>({...row,adjustedProbability:row.pointModelProbability}));
+   pointAnnual.push({year,evaluation:aggregatePredictions(part)});
+  }
+  const commonNamesCore=[...OVERALL,...SURFACE_RESIDUAL];
+  const extendedNames=[...PROFILE,...SHRUNK_SURFACE_PROFILE];
+  const commonNamesExtended=[...commonNamesCore,...extendedNames];
+  const commonRows=matched.filter(row=>commonNamesExtended.every(name=>Number.isFinite(row.features[name])));
+  const commonSampleComparisons={
+   commonEligibleMatches:commonRows.length,
+   coreSurfaceResidual:evaluateFixedHoldout(commonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,extendedNames,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreResidualPlusExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
+  };
+  const pfeCommonNames=[...commonNamesExtended,"pfePointLogitDelta"];
+  const pfeCommonRows=matched.filter(row=>pfeCommonNames.every(name=>Number.isFinite(row.features[name])));
+  const pfeCommonSampleComparisons={
+   commonEligibleMatches:pfeCommonRows.length,
+   coreSurfaceResidual:evaluateFixedHoldout(pfeCommonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   pfePointDeltaOnly:evaluateFixedHoldout(pfeCommonRows,["pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreResidualPlusPfePointDelta:evaluateFixedHoldout(pfeCommonRows,[...commonNamesCore,"pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreExtendedPlusPfePointDelta:evaluateFixedHoldout(pfeCommonRows,[...commonNamesExtended,"pfePointLogitDelta"],{holdoutStartYear,featureStartYear,lastEvaluationYear})
+  };
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
+   pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,pointInputStatusCounts,
+    fixedHoldout:aggregatePredictions(pointHoldout),annual:pointAnnual,
+    method:"Feature-specific overall and surface-shrunk first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates pass through PFE.deriveServeReturnMatchInputs with an 8-percentage-point disagreement limit; PFE.calculateMatchWinProbability converts the resulting point inputs using source best_of. No production path is changed."},
+   commonSampleComparisons,pfeCommonSampleComparisons,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},surfaceShrinkageMatches,
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
    baseline:"Chronological K=32 Elo from the existing backtest engine; earlier match results are warm-up only.",

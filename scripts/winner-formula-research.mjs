@@ -6,41 +6,144 @@ import { runBacktest } from "./backtest.mjs";
 import { buildPreMatchWorkload } from "./workload-research.mjs";
 import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
-const FEATURES = ["baseLogit","matches3","matches7","playingDays7","minutes7","durationCoverage7","workloadAvailable"];
+const FEATURES = ["baseLogit","matches3","matches4to7","matches8to14","matches15to28","playingDays3","playingDays4to7","playingDays8to14","playingDays15to28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 
 function metrics(rows, model = null) {
-  if (!rows.length) return { matches:0,brier:null,logLoss:null,accuracy:null };
-  let brier=0,logLoss=0,correct=0;
+  if (!rows.length) return { matches:0,brier:null,logLoss:null,accuracy:null,calibration:null,pairedDifferenceVsBase:null };
+  let brier=0,logLoss=0,correct=0,baseBrier=0,baseLogLoss=0;
+  let deltaBrier=0,deltaBrier2=0,deltaLogLoss=0,deltaLogLoss2=0;
+  const bins=Array.from({length:10},()=>({matches:0,predicted:0,wins:0}));
   for (const row of rows) {
+    const base=clamp(row.baseProbability);
     const p=clamp(model ? predictLogistic(model,row.features) : row.baseProbability);
-    brier+=(p-row.outcome)**2;
-    logLoss-=row.outcome*Math.log(p)+(1-row.outcome)*Math.log(1-p);
-    correct+=p>0.5?row.outcome:p<0.5?1-row.outcome:0.5;
+    const y=row.outcome;
+    const bs=(p-y)**2,baseBs=(base-y)**2;
+    const ll=-y*Math.log(p)-(1-y)*Math.log(1-p);
+    const baseLl=-y*Math.log(base)-(1-y)*Math.log(1-base);
+    brier+=bs;logLoss+=ll;baseBrier+=baseBs;baseLogLoss+=baseLl;
+    const db=bs-baseBs,dl=ll-baseLl;
+    deltaBrier+=db;deltaBrier2+=db*db;deltaLogLoss+=dl;deltaLogLoss2+=dl*dl;
+    correct+=p>0.5?y:p<0.5?1-y:0.5;
+    const index=Math.min(9,Math.floor(p*10));
+    bins[index].matches++;bins[index].predicted+=p;bins[index].wins+=y;
   }
-  return {matches:rows.length,brier:+(brier/rows.length).toFixed(6),logLoss:+(logLoss/rows.length).toFixed(6),accuracy:+(100*correct/rows.length).toFixed(2)};
+  const n=rows.length;
+  const ci=(sum,sum2)=>1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n);
+  const meanBrier=deltaBrier/n,meanLogLoss=deltaLogLoss/n;
+  const calibrationBins=bins.map((bin,i)=>({
+    lower:i/10,upper:(i+1)/10,matches:bin.matches,
+    meanPredicted:bin.matches?+(bin.predicted/bin.matches).toFixed(5):null,
+    observedWinRate:bin.matches?+(bin.wins/bin.matches).toFixed(5):null
+  }));
+  const ece=bins.reduce((sum,bin)=>sum+(bin.matches/n)*Math.abs(bin.predicted/Math.max(1,bin.matches)-bin.wins/Math.max(1,bin.matches)),0);
+  return {
+    matches:n,brier:+(brier/n).toFixed(6),logLoss:+(logLoss/n).toFixed(6),
+    accuracy:+(100*correct/n).toFixed(2),
+    calibration:{expectedCalibrationError:+ece.toFixed(6),bins:calibrationBins},
+    pairedDifferenceVsBase:model?{
+      brier:+meanBrier.toFixed(6),
+      brierCI95:{lower:+(meanBrier-ci(deltaBrier,deltaBrier2)).toFixed(6),upper:+(meanBrier+ci(deltaBrier,deltaBrier2)).toFixed(6)},
+      logLoss:+meanLogLoss.toFixed(6),
+      logLossCI95:{lower:+(meanLogLoss-ci(deltaLogLoss,deltaLogLoss2)).toFixed(6),upper:+(meanLogLoss+ci(deltaLogLoss,deltaLogLoss2)).toFixed(6)}
+    }:null
+  };
+}
+
+function pairedModelDifference(rows, referenceModel, candidateModel) {
+  if(rows.length<2)return {matches:rows.length,brier:null,brierCI95:null,logLoss:null,logLossCI95:null};
+  let brier=0,brier2=0,logLoss=0,logLoss2=0;
+  for(const row of rows){
+    const y=row.outcome;
+    const a=clamp(predictLogistic(referenceModel,row.features));
+    const b=clamp(predictLogistic(candidateModel,row.features));
+    const db=(b-y)**2-(a-y)**2;
+    const dl=(-y*Math.log(b)-(1-y)*Math.log(1-b))-(-y*Math.log(a)-(1-y)*Math.log(1-a));
+    brier+=db;brier2+=db*db;logLoss+=dl;logLoss2+=dl*dl;
+  }
+  const n=rows.length;
+  const ci=(sum,sum2)=>1.96*Math.sqrt(Math.max(0,(sum2-sum*sum/n)/(n-1))/n);
+  const meanBrier=brier/n,meanLogLoss=logLoss/n;
+  return {
+    matches:n,
+    brier:+meanBrier.toFixed(6),
+    brierCI95:{lower:+(meanBrier-ci(brier,brier2)).toFixed(6),upper:+(meanBrier+ci(brier,brier2)).toFixed(6)},
+    logLoss:+meanLogLoss.toFixed(6),
+    logLossCI95:{lower:+(meanLogLoss-ci(logLoss,logLoss2)).toFixed(6),upper:+(meanLogLoss+ci(logLoss,logLoss2)).toFixed(6)}
+  };
 }
 
 function featureRow(prediction, workload) {
   const key=pairKey(prediction.date,prediction.player1Id,prediction.player2Id);
   const w=workload.get(key);
-  const available=Boolean(w && (w.priorMatchRecords7??0)>0);
+  const recentWorkloadAvailable=Boolean(w && (w.priorMatchRecords7??0)>0);
+  const workload14Available=Boolean(w && (w.priorMatchRecords14??0)>0);
+  const workload28Available=Boolean(w && (w.priorMatchRecords28??0)>0);
+  const restDaysAvailable=Boolean(w && w.restDaysAvailable===1);
   return {
     date:prediction.date,
     features:{
       baseLogit:logit(prediction.probabilities.combined),
-      matches3:available?w.matches3:0,
-      matches7:available?w.matches7:0,
-      playingDays7:available?w.playingDays7:0,
-      minutes7:available?w.minutes7:0,
-      durationCoverage7:available?w.durationCoverage7:0,
-      workloadAvailable:available?1:0
+      matches3:recentWorkloadAvailable?w.matches3:0,
+      matches7:recentWorkloadAvailable?w.matches7:0,
+      playingDays7:recentWorkloadAvailable?w.playingDays7:0,
+      matches14:workload14Available?w.matches14:0,
+      matches28:workload28Available?w.matches28:0,
+      playingDays14:workload14Available?w.playingDays14:0,
+      playingDays28:workload28Available?w.playingDays28:0,
+      matches4to7:recentWorkloadAvailable?w.matches4to7:0,
+      matches8to14:workload14Available?w.matches8to14:0,
+      matches15to28:workload28Available?w.matches15to28:0,
+      playingDays3:recentWorkloadAvailable?w.playingDays3:0,
+      playingDays4to7:recentWorkloadAvailable?w.playingDays4to7:0,
+      playingDays8to14:workload14Available?w.playingDays8to14:0,
+      playingDays15to28:workload28Available?w.playingDays15to28:0,
+      restDays:restDaysAvailable?w.restDays:0,
+      restDaysAvailable:restDaysAvailable?1:0,
+      workloadAvailable:recentWorkloadAvailable?1:0,
+      workloadAvailable14:workload14Available?1:0,
+      workloadAvailable28:workload28Available?1:0
+    },
+    workloadDiagnostics:{
+      priorMatchRecords7:w?.priorMatchRecords7??0,
+      priorMatchRecords14:w?.priorMatchRecords14??0,
+      priorMatchRecords28:w?.priorMatchRecords28??0,
+      knownDurationRecords7:w?.knownDurationRecords7??0,
+      bothPlayersHavePriorHistory:restDaysAvailable
     },
     baseProbability:prediction.probabilities.combined,
     outcome:prediction.winnerId===prediction.player1Id?1:0,
     surface:prediction.surface??"Unknown"
+  };
+}
+
+function workloadAvailability(rows) {
+  const total=rows.length;
+  const anyHistory=rows.filter(row=>row.features.workloadAvailable===1).length;
+  const anyHistory14=rows.filter(row=>row.features.workloadAvailable14===1).length;
+  const anyHistory28=rows.filter(row=>row.features.workloadAvailable28===1).length;
+  const bothHistory=rows.filter(row=>row.workloadDiagnostics.bothPlayersHavePriorHistory).length;
+  const priorRecords=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords7,0);
+  const priorRecords14=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords14,0);
+  const priorRecords28=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords28,0);
+  const knownDurations=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.knownDurationRecords7,0);
+  return {
+    matches:total,
+    anyRecentWorkloadMatches:anyHistory,
+    anyRecentWorkloadPct:total?+(100*anyHistory/total).toFixed(2):null,
+    any14DayWorkloadMatches:anyHistory14,
+    any14DayWorkloadPct:total?+(100*anyHistory14/total).toFixed(2):null,
+    any28DayWorkloadMatches:anyHistory28,
+    any28DayWorkloadPct:total?+(100*anyHistory28/total).toFixed(2):null,
+    bothPlayersRestDaysAvailableMatches:bothHistory,
+    bothPlayersRestDaysAvailablePct:total?+(100*bothHistory/total).toFixed(2):null,
+    priorPlayerMatchRecords7:priorRecords,
+    priorPlayerMatchRecords14:priorRecords14,
+    priorPlayerMatchRecords28:priorRecords28,
+    knownDurationPlayerMatchRecords7:knownDurations,
+    knownDurationCoveragePct:priorRecords?+(100*knownDurations/priorRecords).toFixed(2):null
   };
 }
 
@@ -64,9 +167,46 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
     const observations=backtest.predictions.map(p=>featureRow(p,workload));
     const training=observations.filter(row=>row.date<=trainEnd);
     const evaluation=observations.filter(row=>row.date>=evalStart&&row.date<=evalEnd);
-    const model=fitLogistic(training.map(row=>({...row.features,outcome:row.outcome})),FEATURES,{
-      minMatches:minTrainingMatches,maxRows:50000,seed:"winner-formula-"+tour+"-"+trainEnd,penalty:1
-    });
+    const trainingRows=training.map(row=>({...row.features,outcome:row.outcome}));
+    const fitOptions={minMatches:minTrainingMatches,maxRows:50000,seed:"winner-formula-"+tour+"-"+trainEnd,penalty:1};
+    const model=fitLogistic(trainingRows,FEATURES,fitOptions);
+    const calibrationFeatures=["baseLogit"];
+    const loadFeatures=["baseLogit","matches3","matches7","playingDays7","workloadAvailable"];
+    const restFeatures=["baseLogit","restDays","restDaysAvailable"];
+    const coreAceFeatures=["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","workloadAvailable"];
+    const extendedLoadFeatures=["baseLogit","matches14","matches28","playingDays14","playingDays28","workloadAvailable14","workloadAvailable28"];
+    const cumulativeExtendedAceFeatures=["baseLogit","matches3","matches7","playingDays7","matches14","matches28","playingDays14","playingDays28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
+    const bandedLoadFeatures=["baseLogit","matches3","matches4to7","matches8to14","matches15to28","playingDays3","playingDays4to7","playingDays8to14","playingDays15to28","workloadAvailable","workloadAvailable14","workloadAvailable28"];
+    const calibrationModel=fitLogistic(trainingRows,calibrationFeatures,fitOptions);
+    const loadModel=fitLogistic(trainingRows,loadFeatures,fitOptions);
+    const restModel=fitLogistic(trainingRows,restFeatures,fitOptions);
+    const coreAceModel=fitLogistic(trainingRows,coreAceFeatures,fitOptions);
+    const extendedLoadModel=fitLogistic(trainingRows,extendedLoadFeatures,fitOptions);
+    const cumulativeExtendedAceModel=fitLogistic(trainingRows,cumulativeExtendedAceFeatures,fitOptions);
+    const bandedLoadModel=fitLogistic(trainingRows,bandedLoadFeatures,fitOptions);
+    const specificationTests={
+      calibrationOnly:calibrationModel?{features:calibrationFeatures,metrics:metrics(evaluation,calibrationModel),coefficients:calibrationModel.coefficients}:null,
+      loadOnly:loadModel?{features:loadFeatures,metrics:metrics(evaluation,loadModel),coefficients:loadModel.coefficients}:null,
+      restOnly:restModel?{features:restFeatures,metrics:metrics(evaluation,restModel),coefficients:restModel.coefficients}:null,
+      coreAce:coreAceModel?{features:coreAceFeatures,metrics:metrics(evaluation,coreAceModel),coefficients:coreAceModel.coefficients}:null,
+      extendedLoadOnly:extendedLoadModel?{features:extendedLoadFeatures,metrics:metrics(evaluation,extendedLoadModel),coefficients:extendedLoadModel.coefficients}:null,
+      cumulativeExtendedAce:cumulativeExtendedAceModel?{features:cumulativeExtendedAceFeatures,metrics:metrics(evaluation,cumulativeExtendedAceModel),coefficients:cumulativeExtendedAceModel.coefficients}:null,
+      bandedLoadOnly:bandedLoadModel?{features:bandedLoadFeatures,metrics:metrics(evaluation,bandedLoadModel),coefficients:bandedLoadModel.coefficients}:null,
+      bandedExtendedAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
+    };
+    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel&&extendedLoadModel&&cumulativeExtendedAceModel&&bandedLoadModel?{
+      loadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,loadModel),
+      restOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,restModel),
+      coreAceVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,coreAceModel),
+      coreAceVsLoadOnly:pairedModelDifference(evaluation,loadModel,coreAceModel),
+      coreAceVsRestOnly:pairedModelDifference(evaluation,restModel,coreAceModel),
+      extendedLoadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,extendedLoadModel),
+      cumulativeExtendedAceVsCoreAce:pairedModelDifference(evaluation,coreAceModel,cumulativeExtendedAceModel),
+      bandedLoadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,bandedLoadModel),
+      bandedExtendedAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null,
+      bandedExtendedAceVsCumulativeExtendedAce:model?pairedModelDifference(evaluation,cumulativeExtendedAceModel,model):null,
+      bandedExtendedAceVsBandedLoadOnly:model?pairedModelDifference(evaluation,bandedLoadModel,model):null
+    }:null;
     reports[tour]={
       inputMatches:tourRows.length,
       trainingPeriod:"through "+trainEnd,
@@ -74,8 +214,14 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
       trainingMatches:training.length,
       evaluationMatches:evaluation.length,
       workloadCoveragePct:evaluation.length?+(100*evaluation.filter(x=>x.features.workloadAvailable===1).length/evaluation.length).toFixed(2):null,
+      featureAvailability:{
+        training:workloadAvailability(training),
+        evaluation:workloadAvailability(evaluation)
+      },
       baselineCombined:metrics(evaluation),
       winnerFormula:model?metrics(evaluation,model):null,
+      specificationTests,
+      incrementalComparisons,
       delta:model?{
         brier:+(metrics(evaluation,model).brier-metrics(evaluation).brier).toFixed(6),
         logLoss:+(metrics(evaluation,model).logLoss-metrics(evaluation).logLoss).toFixed(6),
@@ -87,16 +233,29 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
         baseLogit:"logit of existing combined Elo/surface/form/H2H probability",
         matches3:"A-minus-B prior matches in previous 3 calendar days",
         matches7:"A-minus-B prior matches in previous 7 calendar days",
-        playingDays7:"A-minus-B playing days in previous 7 calendar days",
-        minutes7:"A-minus-B known match minutes in previous 7 calendar days",
-        durationCoverage7:"A-minus-B share of prior matches with known duration",
-        workloadAvailable:"1 when at least one player's prior 7-day match record exists"
+        playingDays7:"A-minus-B distinct playing days in previous 7 calendar days",
+        matches14:"A-minus-B prior matches in previous 14 calendar days",
+        matches28:"A-minus-B prior matches in previous 28 calendar days",
+        playingDays14:"A-minus-B distinct playing days in previous 14 calendar days",
+        playingDays28:"A-minus-B distinct playing days in previous 28 calendar days",
+        matches4to7:"A-minus-B matches played 4–7 calendar days before prediction",
+        matches8to14:"A-minus-B matches played 8–14 calendar days before prediction",
+        matches15to28:"A-minus-B matches played 15–28 calendar days before prediction",
+        playingDays3:"A-minus-B distinct playing days 1–3 days before prediction",
+        playingDays4to7:"A-minus-B distinct playing days 4–7 days before prediction",
+        playingDays8to14:"A-minus-B distinct playing days 8–14 days before prediction",
+        playingDays15to28:"A-minus-B distinct playing days 15–28 days before prediction",
+        restDays:"A-minus-B days since most recent prior match, capped at 30; only when both players have prior history",
+        restDaysAvailable:"1 when both players have at least one prior match in the archive",
+        workloadAvailable:"1 when at least one player has a prior match in the previous 7 days",
+        workloadAvailable14:"1 when at least one player has a prior match in the previous 14 days",
+        workloadAvailable28:"1 when at least one player has a prior match in the previous 28 days"
       }
     };
   }
   return {
     source:"Valuebetennis open match data (CC BY 4.0)",
-    method:"Chronological Elo baseline plus regularized logistic workload correction; train strictly before evaluation window.",
+    method:"Chronological existing combined PFE probability plus regularized logistic workload correction; train strictly before evaluation window.",
     trainingEnd:trainEnd,evaluationStart:evalStart,evaluationEnd:evalEnd,
     reportsByTour:reports,
     importantLimit:"Research only. This first formula tests measurable workload/recovery inputs on top of the existing combined model. It does not yet include verified injuries, weather, serve/return point stats, style matchups, psychological or motivation claims, protected ranking, or complete tour-wide workload. Missing workload is flagged, not invented. No production model is changed and this is not betting ROI."

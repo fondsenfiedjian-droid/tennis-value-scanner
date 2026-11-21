@@ -21,6 +21,7 @@ test("Valuebetennis CSV maps source columns into chronological Elo rows", () => 
   assert.equal(parsed.rejectedByReason.winner_not_in_match, 1);
   assert.deepEqual(parsed.rows[0], {
     tourney_date: "20250102", tourney_id: "500", match_num: "1001",
+    player1Id: "11", player2Id: "22", player1Name: "", player2Name: "", category: "",
     winner_id: "11", loser_id: "22", score: "6-4 6-3", surface: "Hard", tour: "atp", durationMinutes: null, sourceOdds: { opening1: "1.80", opening2: "2.10", closing1: "1.75", closing2: "2.20", player1Id: "11", winnerId: "11" }
   });
   assert.equal(parsed.rows[1].surface, "Clay");
@@ -216,4 +217,18 @@ test("paired comparison reorients canonical model probabilities to source player
   assert.equal(comparison.matches, 1);
   assert.ok(comparison.models.elo.brier < 0.25);
   assert.ok(comparison.market.brier < 0.25);
+});
+
+test("Valuebetennis importer preserves player names and stable source IDs for age linking",()=>{
+  const csv=[
+    "match_id,date,tournoi_id,genre,categorie,surface,joueur1,joueur1_id,joueur2,joueur2_id,vainqueur_id,score",
+    "8801,2025-03-01,700,atp,Main tour,Hard,Novak Djokovic,1001,Carlos Alcaraz,1002,1001,6-4 6-4"
+  ].join("\n");
+  const parsed=parseValuebetennisCsv(csv);
+  assert.equal(parsed.rows.length,1);
+  assert.equal(parsed.rows[0].player1Id,"1001");
+  assert.equal(parsed.rows[0].player2Id,"1002");
+  assert.equal(parsed.rows[0].player1Name,"Novak Djokovic");
+  assert.equal(parsed.rows[0].player2Name,"Carlos Alcaraz");
+  assert.equal(parsed.rows[0].category,"Main tour");
 });

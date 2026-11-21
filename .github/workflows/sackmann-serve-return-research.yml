@@ -15,7 +15,7 @@ permissions:
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -34,9 +34,10 @@ jobs:
               test -s "research-data/${tour}_matches_${year}.csv"
             done
           done
-      - name: Run residualized and shrunk surface research with frozen holdout
+      - name: Run core and extended SMA profiles across rolling windows with frozen holdout
         run: |
           set -euo pipefail
+          # Long-window robustness: 730 days with three surface-shrinkage strengths.
           for shrinkage in 3 5 10; do
             node scripts/sackmann-serve-return-research.mjs \
               --window-days 730 \
@@ -45,6 +46,17 @@ jobs:
               --surface-shrinkage-matches "$shrinkage" \
               --holdout-start-year 2025 \
               --out "sackmann-serve-return-730d-5overall-5surface-shrink-${shrinkage}.json" \
+              research-data/*_matches_*.csv
+          done
+          # Compare 12-week and 52-week rolling histories using the primary shrinkage prior.
+          for window in 84 365; do
+            node scripts/sackmann-serve-return-research.mjs \
+              --window-days "$window" \
+              --min-overall-matches 5 \
+              --min-surface-matches 5 \
+              --surface-shrinkage-matches 5 \
+              --holdout-start-year 2025 \
+              --out "sackmann-serve-return-${window}d-5overall-5surface-shrink-5.json" \
               research-data/*_matches_*.csv
           done
       - name: Upload aggregate research report

@@ -3,8 +3,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
 import { runBacktest } from "./backtest.mjs";
 
-const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays"];
-const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "minutes7", "durationCoverage7"];
+const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "restDaysAvailable"];
+const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "matches14", "matches28", "playingDays3", "playingDays14", "playingDays28", "matches4to7", "matches8to14", "matches15to28", "playingDays4to7", "playingDays8to14", "playingDays15to28", "minutes7", "durationCoverage7"];
 const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
 const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
@@ -29,25 +29,41 @@ export function buildPreMatchWorkload(rows) {
     while (index < clean.length && clean[index].tourney_date === date) day.push(clean[index++]);
     const get = player => {
       const history = histories.get(player) ?? [];
-      const prior = [];
+      const prior28 = [];
       for (let i = history.length - 1; i >= 0; i--) {
         const age = today - history[i].day;
-        if (age > 7) break;
-        if (age >= 1) prior.push(history[i]);
+        if (age > 28) break;
+        if (age >= 1) prior28.push(history[i]);
       }
-      const prior3 = prior.filter(item => today - item.day <= 3);
-      const playingDays7 = new Set(prior.map(item => item.date)).size;
-      const knownDurations = prior.filter(item => Number.isFinite(item.durationMinutes));
-      const minutes7 = knownDurations.reduce((sum,item) => sum + item.durationMinutes, 0);
+      const prior3 = prior28.filter(item => today - item.day <= 3);
+      const prior7 = prior28.filter(item => today - item.day <= 7);
+      const prior14 = prior28.filter(item => today - item.day <= 14);
+      const playingDays3 = new Set(prior3.map(item => item.date)).size;
+      const playingDays7 = new Set(prior7.map(item => item.date)).size;
+      const playingDays14 = new Set(prior14.map(item => item.date)).size;
+      const playingDays28 = new Set(prior28.map(item => item.date)).size;
+      const knownDurations7 = prior7.filter(item => Number.isFinite(item.durationMinutes));
+      const minutes7 = knownDurations7.reduce((sum,item) => sum + item.durationMinutes, 0);
       const latest = history.at(-1);
       return {
         matches3: prior3.length,
-        matches7: prior.length,
+        matches7: prior7.length,
         playingDays7,
-        restDays: latest ? Math.min(30, today - latest.day) : 30,
+        matches14: prior14.length,
+        matches28: prior28.length,
+        playingDays3,
+        playingDays14,
+        playingDays28,
+        matches4to7: prior7.length - prior3.length,
+        matches8to14: prior14.length - prior7.length,
+        matches15to28: prior28.length - prior14.length,
+        playingDays4to7: playingDays7 - playingDays3,
+        playingDays8to14: playingDays14 - playingDays7,
+        playingDays15to28: playingDays28 - playingDays14,
+        restDays: latest ? Math.min(30, today - latest.day) : null,
         minutes7,
-        durationCoverage7: prior.length ? knownDurations.length / prior.length : 0,
-        knownDurationMatches7: knownDurations.length
+        durationCoverage7: prior7.length ? knownDurations7.length / prior7.length : 0,
+        knownDurationMatches7: knownDurations7.length
       };
     };
     for (const row of day) {
@@ -56,8 +72,10 @@ export function buildPreMatchWorkload(rows) {
       const p2 = p1 === winner ? loser : winner;
       const a = get(p1), b = get(p2);
       features.set(pairKey(date,p1,p2), {
-        ...Object.fromEntries(FEATURE_NAMES.map(name => [name, a[name] - b[name]])),
+        ...Object.fromEntries(FEATURE_NAMES.map(name => [name, name === "restDaysAvailable" ? (a.restDays !== null && b.restDays !== null ? 1 : 0) : name === "restDays" ? (a.restDays !== null && b.restDays !== null ? a.restDays - b.restDays : 0) : a[name] - b[name]])),
         priorMatchRecords7: a.matches7 + b.matches7,
+        priorMatchRecords14: a.matches14 + b.matches14,
+        priorMatchRecords28: a.matches28 + b.matches28,
         knownDurationRecords7: a.knownDurationMatches7 + b.knownDurationMatches7
       });
     }
@@ -203,7 +221,7 @@ export function runWorkloadResearch(csvTexts) {
     const featureSpecifications = [
       { name:"matches3_only", features:["matches3"] },
       { name:"matches7_only", features:["matches7"] },
-      { name:"playingDays7_and_restDays", features:["playingDays7","restDays"] },
+      { name:"playingDays7_and_restDays_with_availability", features:["playingDays7","restDays","restDaysAvailable"] },
       { name:"all_core_features", features:CORE_FEATURE_NAMES }
     ];
     const specificationTests = Object.fromEntries(featureSpecifications.map(spec => {
@@ -268,7 +286,7 @@ export function runWorkloadResearch(csvTexts) {
     tours,
     reports,
     citation:"Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm",
-    method:"Pre-match workload differences: previous 3/7 calendar days, distinct playing days in 7 days, rest days capped at 30, known prior 7-day minutes and duration coverage. Same-day matches excluded."
+    method:"Pre-match workload differences: previous 3/7 calendar days, distinct playing days in 7 days, rest days capped at 30 when both players have prior history; otherwise restDays is neutral and restDaysAvailable=0. Same-day matches excluded."
   };
 }
 

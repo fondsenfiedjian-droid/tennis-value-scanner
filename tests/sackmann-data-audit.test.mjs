@@ -47,3 +47,18 @@ test("Sackmann audit safely excludes impossible calendar dates",()=>{
 test("Sackmann audit rejects unexpected input filenames",()=>{
   assert.throws(()=>auditSackmannFiles([{filename:"players.csv",content:header+"\n"}]),/Unrecognized Sackmann match filename/);
 });
+
+test("Sackmann audit rejects impossible ace/double-fault and break-point denominators",()=>{
+  const columns=header.split(",");
+  for(const [field,value] of [["w_ace","60"],["w_bpFaced","61"]]){
+    const values=full.split(",");
+    values[columns.indexOf(field)]=value;
+    const report=auditSackmannFiles([{
+      filename:"atp_matches_2024.csv",
+      content:header+"\n"+values.join(",")+"\n"
+    }]);
+    const year=report.byTourYear[0];
+    assert.equal(year.statsCoreBothSides,1,field+" should not invalidate core point counts");
+    assert.equal(year.statsBothSides,0,field+" should fail full-stat integrity");
+  }
+});

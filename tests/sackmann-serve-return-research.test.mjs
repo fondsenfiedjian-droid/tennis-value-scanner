@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout } from "../scripts/sackmann-serve-return-research.mjs";
+import PFE from "../pfe.js";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
- tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
+ tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,best_of:3,
  ...Object.fromEntries(["w","l"].flatMap((prefix,i)=>{
   const stats=i===0?winnerStats:loserStats;return Object.entries(stats).map(([key,value])=>[prefix+"_"+key,value]);
  }))
@@ -121,6 +122,8 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  assert.equal(result.evaluationMatches,40);
  assert.equal(result.metrics.matches,40);
  assert.ok(Number.isFinite(result.metrics.adjusted.brier));
+ assert.ok(Number.isFinite(result.metrics.adjusted.accuracy));
+ assert.ok(Number.isFinite(result.metrics.adjusted.calibration.expectedCalibrationError));
  assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
  const changedHoldout=rows.map(row=>row.year>=2025?{...row,outcome:1-row.outcome}:row);
  const refit=evaluateFixedHoldout(changedHoldout,["serveDiff"],{
@@ -149,4 +152,120 @@ test("separates surface-relative residuals and shrinks surface rates toward over
 test("rejects invalid surface shrinkage strength",()=>{
  const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
  assert.throws(()=>buildPreMatchServeReturn(rows,{surfaceShrinkageMatches:0}),/surfaceShrinkageMatches/);
+});
+
+
+const fullStats=(svpt,firstIn,firstWon,secondWon,ace,df,bpSaved,bpFaced)=>({
+ ...stats(svpt,firstIn,firstWon,secondWon),ace,df,bpSaved,bpFaced
+});
+
+test("builds extended pre-match serve and return profiles from valid historical denominators",()=>{
+ const rows=[
+  row("20250101",1,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8)),
+  row("20250102",2,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.ok(Math.abs(f.firstServeInDiff)<1e-12);
+ assert.ok(Math.abs(f.firstServeWonDiff-(40/60-30/60))<1e-12);
+ assert.ok(Math.abs(f.secondServeWonDiff)<1e-12);
+ assert.ok(Math.abs(f.aceRateDiff-0.05)<1e-12);
+ assert.ok(Math.abs(f.doubleFaultRateDiff+0.01)<1e-12);
+ assert.ok(Math.abs(f.breakPointSaveDiff-(4/5-5/8))<1e-12);
+ assert.ok(Math.abs(f.firstServeReturnDiff-(0.5-1/3))<1e-12);
+ assert.ok(Math.abs(f.secondServeReturnDiff)<1e-12);
+ assert.ok(Math.abs(f.breakPointConvertDiff-(3/8-1/5))<1e-12);
+});
+
+test("extended profile features exclude invalid optional counters without discarding valid core serve points",()=>{
+ const invalid= row("20250101",1,1,2,
+  fullStats(100,60,40,20,90,20,4,5),
+  fullStats(100,60,30,20,5,4,5,8));
+ const target=row("20250102",2,1,2,
+  fullStats(100,60,40,20,10,3,4,5),
+  fullStats(100,60,30,20,5,4,5,8));
+ const f=buildPreMatchServeReturn([invalid,target],{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.ok(Number.isFinite(f.serveDiff));
+ assert.equal(f.aceRateDiff,null);
+ assert.equal(f.doubleFaultRateDiff,null);
+ assert.ok(Number.isFinite(f.firstServeReturnDiff));
+});
+
+
+test("extended serve and return features obey the strict same-day history cutoff",()=>{
+ const rows=[
+  row("20250101",1,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8)),
+  row("20250101",2,3,1,fullStats(100,60,50,20,12,2,3,4),fullStats(100,60,30,20,5,4,5,8)),
+  row("20250102",3,1,3,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8))
+ ];
+ const features=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1});
+ const sameDay=features.get("20250101:1:3:Hard");
+ assert.equal(sameDay.aceRateDiff,null);
+ const nextDay=features.get("20250102:1:3:Hard");
+ assert.ok(Number.isFinite(nextDay.aceRateDiff));
+ assert.equal(nextDay.profilePriorMatches.aceRate,1);
+});
+
+
+test("surface-specific extended profiles are shrunk toward each player's overall rates",()=>{
+ const rows=[
+  row("20250101",1,1,2,
+   fullStats(100,60,50,30,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8),"Clay"),
+  row("20250102",2,1,2,
+   fullStats(100,60,30,20,8,4,3,6),
+   fullStats(100,60,48,20,6,3,4,7),"Hard"),
+  row("20250103",3,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8),"Clay")
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,surfaceShrinkageMatches:1}).get("20250103:1:2:Clay");
+ assert.ok(Math.abs(f.surfaceFirstServeWonDiff-(50/60-30/60))<1e-12);
+ assert.ok(Number.isFinite(f.shrunkSurfaceFirstServeWonDiff));
+ assert.ok(f.shrunkSurfaceFirstServeWonDiff>f.firstServeWonDiff);
+ assert.ok(f.shrunkSurfaceFirstServeWonDiff<f.surfaceFirstServeWonDiff);
+});
+
+
+test("unknown target surfaces keep overall profile rates and leave surface profile features missing",()=>{
+ const rows=[
+  row("20250101",1,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8),"Hard"),
+  row("20250102",2,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8),"Unknown")
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Unknown");
+ assert.ok(Number.isFinite(f.firstServeWonDiff));
+ assert.equal(f.surfaceFirstServeWonDiff,null);
+ assert.equal(f.shrunkSurfaceFirstServeWonDiff,null);
+ assert.equal(f.pfePointInputStatus,"ready_for_score_simulation");
+});
+
+
+test("SMA historical serve and opponent-return inputs can feed PFE's exact match engine",()=>{
+ const rows=[
+  row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20)),
+  row("20250102",2,1,2,stats(100,60,40,20),stats(100,60,30,20))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.equal(f.bestOf,3);
+ assert.equal(f.pfePointInputStatus,"ready_for_score_simulation");
+ assert.ok(Math.abs(f.servicePointP1-0.6)<1e-12);
+ assert.ok(Math.abs(f.servicePointP2-0.5)<1e-12);
+ const result=PFE.calculateMatchWinProbability(f.servicePointP1,f.servicePointP2,{bestOf:f.bestOf});
+ assert.equal(result.status,"provisional");
+ assert.ok(result.probabilityA>0.5&&result.probabilityA<1);
+});
+
+test("PFE point bridge withholds match probabilities when serve and opponent-return evidence conflicts",()=>{
+ const rows=[
+  row("20250101",1,1,3,stats(100,60,30,20),stats(100,60,30,20)),
+  row("20250101",2,4,2,stats(100,60,20,20),stats(100,60,30,20)),
+  row("20250102",3,1,2,stats(100,60,30,20),stats(100,60,30,20))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.equal(f.pfePointInputStatus,"review");
+ assert.equal(f.servicePointP1,null);
+ assert.equal(f.servicePointP2,null);
 });

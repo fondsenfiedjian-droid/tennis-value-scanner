@@ -27,12 +27,37 @@ SMA is not a second vote that is averaged blindly with PFE. Its primary output i
 
 ### Context and matchup
 - tour (ATP/WTA), surface, indoor/outdoor where reliable;
-- rolling windows (initial candidates: 52 weeks and 12 weeks) plus surface-specific history;
+- rolling windows (84, 365 and 730 days in the current research grid) plus surface-specific history;
 - opponent-adjusted serve and return residuals to account for schedule strength;
 - shrinkage toward tour/surface averages when samples are small;
 - sample counts, coverage and uncertainty for every estimate.
 
 All player features must be computed strictly from matches completed before the target match. Same-day matches are excluded unless trustworthy completion timestamps establish ordering. Retirements, walkovers, missing denominators and malformed stats are explicitly excluded or flagged.
+
+## Implemented archival profile features (research branch)
+The current archival builder derives the following pre-match rates from prior match rows, preserving each numerator and denominator before aggregation:
+- first-serve-in, first-serve points won, and second-serve points won;
+- ace and double-fault rates per service point;
+- break points saved / faced;
+- first-serve and second-serve return points won / opportunities;
+- break-point conversion, derived as the opponent's break points faced minus break points saved;
+- surface-specific versions of each profile metric, plus feature-specific shrinkage toward each player's overall rate based on that metric's own sample count.
+
+Each feature has its own valid-observation count, reported separately for overall and surface-specific histories. Missing or invalid optional counters suppress only that feature; they do not discard otherwise valid core service-point history. Same-day matches remain excluded. The research evaluator now compares serve-profile-only, return-profile-only, combined extended-profile, and core-plus-extended specifications against the same chronological Elo baseline. Reports include Brier score, log loss, accuracy, ten-bin reliability tables and expected calibration error, plus paired confidence intervals for Brier and log-loss differences.
+
+**Important limitation:** these are rolling player-level rates, not yet opponent-adjusted serve-vs-return matchup estimates. Opponent-strength residualization, tour/surface priors for each submetric, and direct PFE point-probability integration remain separate research tasks. Do not describe this branch as a finished matchup model or enable it in production.
+
+## PFE point-engine bridge (research-only)
+The archival evaluator has a research-only PFE bridge that builds separate first-serve and second-serve estimates:
+1. use each player's pre-match first-serve-in, first-serve points-won and second-serve points-won rates;
+2. cross-check each serve component against the opponent's first-serve and second-serve return-points-won rates;
+3. reject the bridge for the match if either player's direct serve estimate and opponent-return cross-check disagree by more than 8 percentage points;
+4. shrink feature-specific same-surface rates toward each player's overall rate when same-surface history is sufficient;
+5. pass accepted point probabilities and the source `best_of` format into PFE's existing `calculateMatchWinProbability()` engine.
+
+The first raw point-to-match output was worse than Elo, especially for WTA, and is explicitly rejected as a standalone match probability. A separate correction experiment uses the PFE-vs-Elo match-logit difference as a feature in a regularized model trained only on earlier matches. That feature improved Brier and LogLoss on the 730-day common holdout for ATP and WTA, but it remains exploratory. This is not proof of betting profitability and does not change PFE's live model registry, Worker endpoints, or betting recommendations.
+
+The evaluator compares core surface-residual features, extended serve/return profiles, and the PFE point-logit feature on identical common samples. Missing format, insufficient prior history, or disagreement above the threshold excludes the raw point-model input rather than fabricating one. No production path is changed.
 
 ## Candidate matchup calculation
 For player A serving against player B returning, estimate expected service-point win probability from:
