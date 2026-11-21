@@ -275,6 +275,11 @@ export function runServeReturnSensitivity(fileInputs,{firstEvaluationYear=2020,l
    configs.push({name:`${surfaceMode}_alpha${surfaceShrinkagePrior}`,windowDays:365,minOverallMatches:5,minSurfaceMatches:5,surfaceMode,surfaceShrinkagePrior});
   }
  }
+ for(const surfaceMode of ["shrinkage","residualized"]){
+  for(const surfaceShrinkagePrior of [3,5,10]){
+   configs.push({name:`${surfaceMode}_window730_alpha${surfaceShrinkagePrior}`,windowDays:730,minOverallMatches:5,minSurfaceMatches:5,surfaceMode,surfaceShrinkagePrior});
+  }
+ }
  const results=[];
  for(const config of configs){
   const report=runServeReturnResearch(fileInputs,{firstEvaluationYear,lastEvaluationYear,featureStartYear,featureConfig:config,specificationNames:["overall_plus_surface"]});
@@ -291,7 +296,7 @@ export function runServeReturnSensitivity(fileInputs,{firstEvaluationYear=2020,l
   }
   results.push({name:config.name,config,tours});
  }
- return {schemaVersion:1,source:"Jeff Sackmann / Tennis Abstract ATP and WTA match datasets",dataLicense:"CC BY-NC-SA 4.0",evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,method:"Sensitivity grid for pre-match serve/return feature windows, history thresholds and surface shrinkage. All variants use the same chronological Elo baseline and strict same-day exclusion. This is research-only and not an independent holdout.",configurations:results};
+ return {schemaVersion:1,source:"Jeff Sackmann / Tennis Abstract ATP and WTA match datasets",dataLicense:"CC BY-NC-SA 4.0",evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,method:"Sensitivity grid for pre-match serve/return feature windows, history thresholds and surface shrinkage, including 730-day residualized/shrunk surface variants. All variants use the same chronological Elo baseline and strict same-day exclusion. This is research-only and not an independent holdout.",configurations:results};
 }
 
 async function main(){
