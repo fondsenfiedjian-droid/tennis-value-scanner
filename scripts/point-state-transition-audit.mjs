@@ -302,6 +302,7 @@ function auditScoreVocabulary(rows) {
 
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
+  const scoreVocabulary = auditScoreVocabulary(rows);
   const groups = new Map();
   const playerTours = new Map(playerRows.map(player => [String(player.player_id ?? "").trim(), String(player.tour ?? "").trim().toUpperCase()]));
   const metadata = new Map();
