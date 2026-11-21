@@ -212,7 +212,9 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
     minOverallPriorMatches:Math.min(a.overall.matches,b.overall.matches),
     minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0,
     profilePriorMatches:Object.fromEntries(Object.keys(profileNames).map(key=>[key,
-     Math.min(a.overall.profile[key].matches,b.overall.profile[key].matches)]))
+     Math.min(a.overall.profile[key].matches,b.overall.profile[key].matches)])),
+    surfaceProfilePriorMatches:Object.fromEntries(Object.keys(profileNames).map(key=>[key,
+     Math.min(a.surface.profile[key].matches,b.surface.profile[key].matches)]))
    });
   }
   // Same-date matches are all scored before any same-date stats enter player histories.
