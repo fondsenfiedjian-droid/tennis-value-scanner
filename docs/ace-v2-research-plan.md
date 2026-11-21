@@ -77,3 +77,28 @@ These repeated chronological evaluations strengthen the case that workload featu
 ### Corrective audit — rest-day availability
 
 A code review found that the first PFE-combined ACE feature row incorrectly gated restDays and restDaysAvailable on the presence of a match in the previous seven days. Rest days should instead be available whenever both players have any prior match history; only 3/7-day load and duration features should depend on recent-history records. The feature gating was corrected on 2026-11-21. All PFE+ACE figures above from the pre-correction implementation are provisional and superseded pending a full rerun. The updated report separately counts recent-week workload availability, both-player rest-history availability, and observed-duration coverage.
+
+
+## Corrected PFE+ACE results after rest-day availability fix — 2026-11-21
+
+The corrected feature gating has now completed all three chronological tests. The candidate used below is **core ACE**: PFE combined logit plus 3/7-day match counts, 7-day playing days, rest-day difference, restDaysAvailable and recent-workload availability. Minutes and duration-coverage features are excluded from core ACE.
+
+| Tour / holdout | n | PFE Brier | Core ACE Brier | Δ Brier (95% paired CI) | Δ LogLoss (95% paired CI) | Core ACE vs calibration-only Δ Brier (95% CI) |
+|---|---:|---:|---:|---:|---:|---:|
+| ATP 2025 (train through 2024) | 28,067 | 0.225298 | 0.219866 | -0.005432 (-0.006369, -0.004495) | -0.011892 (-0.013933, -0.009851) | -0.003627 (-0.004349, -0.002905) |
+| WTA 2025 (train through 2024) | 22,142 | 0.220108 | 0.213496 | -0.006613 (-0.007639, -0.005586) | -0.015318 (-0.017581, -0.013055) | -0.004068 (-0.004946, -0.003190) |
+| ATP 2026 (train through 2025) | 45,426 | 0.225234 | 0.215645 | -0.009589 (-0.010330, -0.008848) | -0.020998 (-0.022616, -0.019379) | -0.005559 (-0.006135, -0.004983) |
+| WTA 2026 (train through 2025) | 31,568 | 0.219093 | 0.210294 | -0.008799 (-0.009711, -0.007887) | -0.020213 (-0.022288, -0.018137) | -0.004782 (-0.005533, -0.004031) |
+| ATP Jul–Nov 2026 (train Jan–Jun) | 24,845 | 0.223173 | 0.212825 | -0.010347 (-0.011376, -0.009318) | -0.022678 (-0.024935, -0.020422) | -0.005613 (-0.006449, -0.004777) |
+| WTA Jul–Nov 2026 (train Jan–Jun) | 16,454 | 0.217516 | 0.207724 | -0.009791 (-0.011046, -0.008537) | -0.022400 (-0.025248, -0.019552) | -0.005096 (-0.006120, -0.004072) |
+
+All paired intervals above exclude zero. Crucially, the workload correction also beats a **calibration-only** logistic correction using only PFE logit on the same matches. This establishes incremental workload signal beyond simple probability recalibration in these chronological samples. It is not proof of profitability or an untouched prospective result.
+
+### Feature availability and ablation
+
+- Both players have prior history for rest-day calculation on 93.99–96.60% of the 2026/2025 evaluation matches; 78.76–83.91% have at least one prior match in the previous seven days.
+- Known-duration coverage of prior-week player-match records ranges only 0.03–7.32% across these evaluation samples.
+- Full ACE with minutes and duration-coverage features is statistically indistinguishable from core ACE on all three holdouts. Remove these duration features from the ACE v1 candidate; do not impute missing minutes.
+- ECE also improves materially, but calibration must continue to be assessed by probability band and on future data.
+
+**Decision:** core ACE is the strongest current research candidate to pair with PFE. Keep it in shadow/research only. Next, audit coefficient stability and run feature-group ablations (3/7-day load vs rest-days) before adding 14/28-day windows or age×load. Historical Winamax odds/CLV and future prospective predictions remain mandatory before production promotion.
