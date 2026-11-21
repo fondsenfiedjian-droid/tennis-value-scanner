@@ -112,3 +112,22 @@ test("CLI runs from repository root with a relative script path and writes aggre
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+
+test("reports timestamp ordering problems and separates aggregate coverage by source tier", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:10Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:20Z" }),
+    state({ points_p1: "30", timestamp_utc: "2026-06-01T10:00:15Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "atp" }
+  ]);
+  assert.equal(report.timestampStats.validStates, 3);
+  assert.equal(report.timestampStats.nonMonotonicTransitions, 1);
+  assert.equal(report.timestampStats.matchesWithTimestampOrderIssue, 1);
+  assert.equal(report.byTierKey.atp.matchesWithPoints, 1);
+  assert.equal(report.byTierKey.atp.transitions, 2);
+  assert.equal(report.byTierKey.atp.inferred, 2);
+  assert.equal(JSON.stringify(report).includes("m1"), false);
+});
