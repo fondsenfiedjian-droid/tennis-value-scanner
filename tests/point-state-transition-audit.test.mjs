@@ -425,3 +425,32 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     missingPointScoreStates: 0
   });
 });
+
+
+test("measures first and last observed states against match metadata without assuming full coverage", () => {
+  const rows = [
+    state({ match_id: "m1", sets_p1: "0", sets_p2: "0" }),
+    state({ match_id: "m1", sets_p1: "2", sets_p2: "0", games_p1: "[6,4]", games_p2: "[3,2]" }),
+    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]", points_p1: "", points_p2: "15" }),
+    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]" }),
+    state({ match_id: "m3", sets_p1: "0", sets_p2: "1", games_p1: "[2,0]", games_p2: "[6,0]", points_p1: "15", points_p2: "0" }),
+    state({ match_id: "m3", sets_p1: "1", sets_p2: "1", games_p1: "[2,6]", games_p2: "[6,4]" })
+  ];
+  const matches = [
+    { match_id: "m1", round: "ATP Paris - Final", best_of: "BO3", event_status: "" },
+    { match_id: "m2", round: "ATP Rome - QF", best_of: "BO3", event_status: "retired" },
+    { match_id: "m3", round: "WTA Rome - SF", best_of: "BO3", event_status: "" }
+  ];
+  const report = auditPointStateTransitions(rows, matches, []);
+  const coverage = report.captureBoundaryCoverage;
+  assert.equal(coverage.overall.totalMatches, 3);
+  assert.equal(coverage.overall.firstStateAtMatchStart, 1);
+  assert.equal(coverage.overall.firstStateNotAtMatchStart, 2);
+  assert.equal(coverage.overall.firstStateMissingPointScore, 1);
+  assert.equal(coverage.overall.normalCompletion, 2);
+  assert.equal(coverage.overall.nonNormalCompletion, 1);
+  assert.equal(coverage.overall.finalSetTargetReached, 1);
+  assert.equal(coverage.overall.finalSetTargetNotReached, 2);
+  assert.equal(coverage.byTour.ATP.totalMatches, 2);
+  assert.equal(coverage.byTour.WTA.totalMatches, 1);
+});
