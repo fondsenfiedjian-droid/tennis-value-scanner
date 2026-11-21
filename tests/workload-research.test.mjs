@@ -50,6 +50,7 @@ test("workload windows count calendar dates inclusively and cap long rest interv
   assert.deepEqual(features.get("20250108:1:3"),{
     matches3:0,matches7:1,playingDays7:1,restDays:0,restDaysAvailable:0,minutes7:100,durationCoverage7:1,priorMatchRecords7:1,knownDurationRecords7:1
   });
-  assert.equal(features.get("20250220:1:4").restDays,25);\n  assert.equal(features.get("20250220:1:4").restDaysAvailable,1);
+  assert.equal(features.get("20250220:1:4").restDays,25);
+  assert.equal(features.get("20250220:1:4").restDaysAvailable,1);
   assert.equal(features.get("20250220:1:4").matches7,-1);
 });
