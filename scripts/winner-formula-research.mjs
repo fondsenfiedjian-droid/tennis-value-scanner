@@ -6,7 +6,7 @@ import { runBacktest } from "./backtest.mjs";
 import { buildPreMatchWorkload } from "./workload-research.mjs";
 import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
-const FEATURES = ["baseLogit","matches3","matches7","playingDays7","matches14","matches28","playingDays14","playingDays28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
+const FEATURES = ["baseLogit","matches3","matches4to7","matches8to14","matches15to28","playingDays3","playingDays4to7","playingDays8to14","playingDays15to28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
@@ -93,6 +93,13 @@ function featureRow(prediction, workload) {
       matches28:workload28Available?w.matches28:0,
       playingDays14:workload14Available?w.playingDays14:0,
       playingDays28:workload28Available?w.playingDays28:0,
+      matches4to7:recentWorkloadAvailable?w.matches4to7:0,
+      matches8to14:workload14Available?w.matches8to14:0,
+      matches15to28:workload28Available?w.matches15to28:0,
+      playingDays3:recentWorkloadAvailable?w.playingDays3:0,
+      playingDays4to7:recentWorkloadAvailable?w.playingDays4to7:0,
+      playingDays8to14:workload14Available?w.playingDays8to14:0,
+      playingDays15to28:workload28Available?w.playingDays15to28:0,
       restDays:restDaysAvailable?w.restDays:0,
       restDaysAvailable:restDaysAvailable?1:0,
       workloadAvailable:recentWorkloadAvailable?1:0,
@@ -168,28 +175,37 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
     const restFeatures=["baseLogit","restDays","restDaysAvailable"];
     const coreAceFeatures=["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","workloadAvailable"];
     const extendedLoadFeatures=["baseLogit","matches14","matches28","playingDays14","playingDays28","workloadAvailable14","workloadAvailable28"];
+    const cumulativeExtendedAceFeatures=["baseLogit","matches3","matches7","playingDays7","matches14","matches28","playingDays14","playingDays28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
+    const bandedLoadFeatures=["baseLogit","matches3","matches4to7","matches8to14","matches15to28","playingDays3","playingDays4to7","playingDays8to14","playingDays15to28","workloadAvailable","workloadAvailable14","workloadAvailable28"];
     const calibrationModel=fitLogistic(trainingRows,calibrationFeatures,fitOptions);
     const loadModel=fitLogistic(trainingRows,loadFeatures,fitOptions);
     const restModel=fitLogistic(trainingRows,restFeatures,fitOptions);
     const coreAceModel=fitLogistic(trainingRows,coreAceFeatures,fitOptions);
     const extendedLoadModel=fitLogistic(trainingRows,extendedLoadFeatures,fitOptions);
+    const cumulativeExtendedAceModel=fitLogistic(trainingRows,cumulativeExtendedAceFeatures,fitOptions);
+    const bandedLoadModel=fitLogistic(trainingRows,bandedLoadFeatures,fitOptions);
     const specificationTests={
       calibrationOnly:calibrationModel?{features:calibrationFeatures,metrics:metrics(evaluation,calibrationModel),coefficients:calibrationModel.coefficients}:null,
       loadOnly:loadModel?{features:loadFeatures,metrics:metrics(evaluation,loadModel),coefficients:loadModel.coefficients}:null,
       restOnly:restModel?{features:restFeatures,metrics:metrics(evaluation,restModel),coefficients:restModel.coefficients}:null,
       coreAce:coreAceModel?{features:coreAceFeatures,metrics:metrics(evaluation,coreAceModel),coefficients:coreAceModel.coefficients}:null,
       extendedLoadOnly:extendedLoadModel?{features:extendedLoadFeatures,metrics:metrics(evaluation,extendedLoadModel),coefficients:extendedLoadModel.coefficients}:null,
-      extendedAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
+      cumulativeExtendedAce:cumulativeExtendedAceModel?{features:cumulativeExtendedAceFeatures,metrics:metrics(evaluation,cumulativeExtendedAceModel),coefficients:cumulativeExtendedAceModel.coefficients}:null,
+      bandedLoadOnly:bandedLoadModel?{features:bandedLoadFeatures,metrics:metrics(evaluation,bandedLoadModel),coefficients:bandedLoadModel.coefficients}:null,
+      bandedExtendedAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
     };
-    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel&&extendedLoadModel?{
+    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel&&extendedLoadModel&&cumulativeExtendedAceModel&&bandedLoadModel?{
       loadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,loadModel),
       restOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,restModel),
       coreAceVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,coreAceModel),
       coreAceVsLoadOnly:pairedModelDifference(evaluation,loadModel,coreAceModel),
       coreAceVsRestOnly:pairedModelDifference(evaluation,restModel,coreAceModel),
       extendedLoadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,extendedLoadModel),
-      extendedAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null,
-      extendedAceVsExtendedLoadOnly:model?pairedModelDifference(evaluation,extendedLoadModel,model):null
+      cumulativeExtendedAceVsCoreAce:pairedModelDifference(evaluation,coreAceModel,cumulativeExtendedAceModel),
+      bandedLoadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,bandedLoadModel),
+      bandedExtendedAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null,
+      bandedExtendedAceVsCumulativeExtendedAce:model?pairedModelDifference(evaluation,cumulativeExtendedAceModel,model):null,
+      bandedExtendedAceVsBandedLoadOnly:model?pairedModelDifference(evaluation,bandedLoadModel,model):null
     }:null;
     reports[tour]={
       inputMatches:tourRows.length,
