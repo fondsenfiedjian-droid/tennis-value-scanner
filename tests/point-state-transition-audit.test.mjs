@@ -323,3 +323,19 @@ test("splits tiebreak server switch matrix by primary player tour", () => {
   assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.checked, 1);
   assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.observedHold, 1);
 });
+
+
+test("diagnoses score-identical server updates and missing-point-score counter changes", () => {
+  const rows = [
+    state({ points_p1: "0", points_p2: "0", server: "1", is_tiebreak: "false" }),
+    state({ points_p1: "0", points_p2: "0", server: "2", is_tiebreak: "false" }),
+    state({ points_p1: "", points_p2: "", games_p1: "[1]", server: "2", is_tiebreak: "false" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.noScoreChange.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.noScoreChange.serverChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.noScoreChange.exactDuplicateExceptTimestamp, 0);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.afterMissing, 1);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.gameCounterChanged, 1);
+});
