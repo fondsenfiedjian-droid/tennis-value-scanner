@@ -237,6 +237,11 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   const tour = options.tour ?? "atp";
   if (!["atp", "wta"].includes(tour)) throw new RangeError("tour must be atp or wta");
   const kFactor = Number.isFinite(options.kFactor) ? options.kFactor : 32;
+  const evaluationSurface = options.evaluationSurface == null ? null : String(options.evaluationSurface).trim().toLowerCase();
+  const allowedSurfaces = new Set(["hard", "clay", "grass", "carpet"]);
+  if (evaluationSurface && !allowedSurfaces.has(evaluationSurface)) {
+    throw new RangeError("evaluationSurface must be hard, clay, grass, or carpet");
+  }
   const evaluationStart = validDate(options.evaluationStart ?? "20000101");
   const evaluationEnd = validDate(options.evaluationEnd ?? "20261231");
   if (!evaluationStart || !evaluationEnd || evaluationStart > evaluationEnd) {
@@ -250,7 +255,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   const history = [];
   const aggregate = Object.fromEntries(Object.keys(DEFINITIONS).map(name => [name, comparisonBucket(0, 0)]));
   const byYear = {};
-  let index = 0, evaluatedMatches = 0, yearsWithModels = 0;
+  let index = 0, evaluatedMatches = 0, surfaceEvaluationMatches = 0, yearsWithModels = 0;
   let currentYear = null, yearModels = null, yearReport = null;
 
   const buildModels = year => {
@@ -302,7 +307,9 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
       newHistory.push(observation);
       if (date >= evaluationStart && date <= evaluationEnd) {
         evaluatedMatches++;
-        for (const [name, definition] of Object.entries(DEFINITIONS)) {
+        const matchesSurface = !evaluationSurface || match.surface.trim().toLowerCase() === evaluationSurface;
+        if (matchesSurface) surfaceEvaluationMatches++;
+        if (matchesSurface) for (const [name, definition] of Object.entries(DEFINITIONS)) {
           const models = yearModels[name];
           if (!models || !definition.filter(observation)) continue;
           const baselineProbability = predictLogistic(models.baseline, observation);
@@ -352,6 +359,8 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     kFactor,
     evaluationStart,
     evaluationEnd,
+    evaluationSurface,
+    surfaceEvaluationMatches,
     sourceRows: prepared.sourceRows,
     eligibleMatches: matches.length,
     excludedRows: prepared.excludedRows,
@@ -381,7 +390,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
 async function main() {
   const args = process.argv.slice(2), options = {}, files = [];
   for (let i = 0; i < args.length; i++) {
-    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--out"].includes(args[i])) {
+    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--surface", "--out"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
       const key = args[i].slice(2), value = args[++i];
       if (key === "tour") options.tour = value;
@@ -390,6 +399,7 @@ async function main() {
       else if (key === "k") options.kFactor = Number(value);
       else if (key === "min-training") options.minTrainingMatches = Number(value);
       else if (key === "max-training") options.maxTrainingRows = Number(value);
+      else if (key === "surface") options.evaluationSurface = value;
       else if (key === "out") options.output = value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
