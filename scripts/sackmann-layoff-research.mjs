@@ -13,10 +13,10 @@ const FEATURES = [
 ];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
-const validId = v => /^\\d+$/.test(String(v ?? "")) && Number(v) > 0;
+const validId = v => /^\d+$/.test(String(v ?? "")) && Number(v) > 0;
 function validDate(value) {
   const s=String(value??"");
-  if(!/^\\d{8}$/.test(s)) return null;
+  if(!/^\d{8}$/.test(s)) return null;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8);
   const date=new Date(Date.UTC(y,m-1,d));
   return date.getUTCFullYear()===y && date.getUTCMonth()===m-1 && date.getUTCDate()===d ? s : null;
