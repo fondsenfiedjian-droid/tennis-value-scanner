@@ -69,9 +69,32 @@ function featureRow(prediction, workload) {
       durationCoverage7:available?w.durationCoverage7:0,
       workloadAvailable:available?1:0
     },
+    workloadDiagnostics:{
+      priorMatchRecords7:w?.priorMatchRecords7??0,
+      knownDurationRecords7:w?.knownDurationRecords7??0,
+      bothPlayersHavePriorHistory:Boolean(w?.restDaysAvailable===1)
+    },
     baseProbability:prediction.probabilities.combined,
     outcome:prediction.winnerId===prediction.player1Id?1:0,
     surface:prediction.surface??"Unknown"
+  };
+}
+
+function workloadAvailability(rows) {
+  const total=rows.length;
+  const anyHistory=rows.filter(row=>row.features.workloadAvailable===1).length;
+  const bothHistory=rows.filter(row=>row.workloadDiagnostics.bothPlayersHavePriorHistory).length;
+  const priorRecords=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords7,0);
+  const knownDurations=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.knownDurationRecords7,0);
+  return {
+    matches:total,
+    anyPriorHistoryMatches:anyHistory,
+    anyPriorHistoryPct:total?+(100*anyHistory/total).toFixed(2):null,
+    bothPlayersPriorHistoryMatches:bothHistory,
+    bothPlayersPriorHistoryPct:total?+(100*bothHistory/total).toFixed(2):null,
+    priorPlayerMatchRecords7:priorRecords,
+    knownDurationPlayerMatchRecords7:knownDurations,
+    knownDurationCoveragePct:priorRecords?+(100*knownDurations/priorRecords).toFixed(2):null
   };
 }
 
@@ -105,6 +128,10 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
       trainingMatches:training.length,
       evaluationMatches:evaluation.length,
       workloadCoveragePct:evaluation.length?+(100*evaluation.filter(x=>x.features.workloadAvailable===1).length/evaluation.length).toFixed(2):null,
+      featureAvailability:{
+        training:workloadAvailability(training),
+        evaluation:workloadAvailability(evaluation)
+      },
       baselineCombined:metrics(evaluation),
       winnerFormula:model?metrics(evaluation,model):null,
       delta:model?{
