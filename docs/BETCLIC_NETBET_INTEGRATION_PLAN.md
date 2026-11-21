@@ -1,6 +1,6 @@
 # Betclic + NetBet odds integration plan
 
-Status: implementation branch; no production changes, no credentials added, no paid service activated.
+Status: implementation branch; quota-free Odds API credential/sports-discovery check added on 2026-11-21. No production changes, no paid service activated.
 
 ## User decision
 
@@ -97,7 +97,7 @@ The separate Live Tennis API key is not an Odds API key and cannot authenticate 
 
 ## Immediate next steps
 
-1. Obtain a The Odds API key (separate from Live Tennis API) and call `GET /v4/sports` to discover current tennis competition keys; this call is quota-free.
+1. The user has created a separate The Odds API key and saved it as Cloudflare secret `ODDS_API_KEY`. The branch now provides `/odds-api/sports` to discover active tennis competition keys; this call is quota-free. After preview deploy, validate the key and inspect the discovered keys.
 2. Run minimal, date-appropriate ATP and WTA competition tests selecting only `betclic_fr,netbet_fr`, `h2h`, decimal odds.
 3. Record actual coverage, event counts, complete markets, timestamps and credit cost. Explicitly note that Challenger/ITF coverage is not established.
 4. If both sources are present and sufficiently complete for the competitions we need, implement the unified adapter. If one is absent/weak, evaluate the NetBet Apify actor for NetBet only and separately resolve Betclic permissions/source.
