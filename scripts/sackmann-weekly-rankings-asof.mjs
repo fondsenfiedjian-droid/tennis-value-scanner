@@ -108,7 +108,7 @@ async function main(){
   if(additions.some(x=>mh.includes(x)))throw new Error('Match archive already contains one or more weekly ranking output columns');
   const writer=fs.createWriteStream(out);
   await write(writer,csvLine([...mh,...additions]));
-  const stats={schemaVersion:1,readOnlyInputs:true,tour,matchRows:0,rankRowsConsumed:0,winnerRankMatched:0,loserRankMatched:0,missingWinnerRank:0,missingLoserRank:0,missingWinnerPoints:0,missingLoserPoints:0,matchDateRegressions:0,rankingDateRegressions:0,rankAgeDays:{under30:0,'30to89':0,90plus:0},rankAgeSamples:0};
+  const stats={schemaVersion:1,readOnlyInputs:true,tour,matchRows:0,rankRowsConsumed:0,winnerRankMatched:0,loserRankMatched:0,missingWinnerRank:0,missingLoserRank:0,missingWinnerPoints:0,missingLoserPoints:0,matchDateRegressions:0,rankingDateRegressions:0,rankAgeDays:{under30:0,'30to89':0,'90plus':0},rankAgeSamples:0};
   let lastMatchDate='';
   async function advanceRanks(date){
     while(pendingRank && String(pendingRank[ri.date]??'').trim()<=date){
