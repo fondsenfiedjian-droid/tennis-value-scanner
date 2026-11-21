@@ -41,6 +41,12 @@ test("rejects unverified or source-less evidence", () => {
   assert.ok(result.errors.includes("invalid_source_url"));
 });
 
+test("rejects unknown source provenance categories", () => {
+  const result = validateTournamentIntentRecord({ ...base, sourceType: "unverified_blog" });
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.includes("invalid_source_type"));
+});
+
 test("rejects publication or capture after target match start", () => {
   const published = validateTournamentIntentRecord({
     ...base, publishedAt: "2026-11-23T10:00:00Z", capturedAt: "2026-11-23T11:00:00Z"
