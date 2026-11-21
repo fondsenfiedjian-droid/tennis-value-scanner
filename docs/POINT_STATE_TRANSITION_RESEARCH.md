@@ -46,3 +46,7 @@ The parser and synthetic tests are implemented, but no public sample file has be
 ### Counter-inference safety gate (2026-11-21)
 
 The first real-sample run exposed a potential over-inference risk: the earlier parser accepted any one-game or one-set counter increment, even if the previous point score was not a terminal game-point state. Such a transition may conceal multiple missed points. Counter-based inference is now restricted to transitions where the prior score is one point from game completion (or one point from a two-point tiebreak finish) and the next state resets to 0-0. Other counter changes remain ambiguous. Dedicated tests cover ordinary game, set, tiebreak and skipped-score cases. The initial 84.38% figure is therefore a pre-gate diagnostic only and must not be treated as the validated parser rate; rerun the sample after this change.
+
+### Tour split
+
+The public match index uses numeric `tier_key` identifiers, so those identifiers are reported literally and not interpreted as ATP/WTA. The audit additionally classifies a match as ATP or WTA only when its `round` label begins explicitly with that tour name (for example, `ATP Miami - ...`). All other rows remain `unclassified`. This is a conservative reporting split, not an assumption based on tournament name or numeric tier ID.
