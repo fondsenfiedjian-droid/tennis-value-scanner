@@ -153,3 +153,13 @@ The audit distinguishes (a) identical point-score pairs, (b) a fully comparable 
 ### Same-point-score counter-change breakdown
 
 The aggregate report now distinguishes game-counter changes, set-counter changes and transitions where both change while the point-score pair remains identical. These transitions are not automatically point outcomes: they may represent delayed scoreboard counter updates or a state snapshot that has already reset its point score. The terminal-score gate continues to mark them ambiguous unless the previous state proves the final point of the game/set.
+
+### First real-sample score-state delta findings (2026-11-21)
+
+Successful run: GitHub Actions `44864476954`.
+
+- 37,531 transitions had an identical point-score pair. In 36,937 of these, game/set counters changed: game counters in 35,660, set counters in 4,502, with 3,225 transitions changing both (counts overlap). Only 594 had stable, fully comparable set/game counters.
+- Of those 594 fully comparable unchanged score states, 391 were exact duplicates except for timestamp, 199 also changed the server field, and 4 changed the tiebreak flag.
+- 10,793 transitions had at least one missing point-score field: before missing in 5,650, after missing in 5,279, both missing in 136. Game counters changed in 1,626 and set counters in 166 (overlap possible); server changed in 460.
+
+Interpretation: a substantial number of rows appear to update game/set counters while the point-score pair remains unchanged. This is consistent with asynchronous or delayed scoreboard field updates, not a single point outcome. Keep these transitions ambiguous; do not relax the terminal-score gate or treat same-score counter changes as point wins.
