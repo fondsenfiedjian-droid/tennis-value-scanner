@@ -172,7 +172,27 @@ function aggregatePredictions(rows){
   }
  };
 }
-export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5}={}){
+function scoreWithModel(row,model){
+ const z=model.standardization.reduce((sum,item,i)=>sum+((row.features[item.name]-item.mean)/item.sd)*model.beta[i],0);
+ return {...row,adjustedProbability:clamp(sigmoid(logit(row.baseProbability)+z))};
+}
+
+export function evaluateFixedHoldout(rows,names,{holdoutStartYear=2025,featureStartYear=2016,lastEvaluationYear=2026}={}){
+ const training=rows.filter(row=>row.year>=featureStartYear&&row.year<holdoutStartYear);
+ const evaluation=rows.filter(row=>row.year>=holdoutStartYear&&row.year<=lastEvaluationYear);
+ const model=fitModel(training,names);
+ if(!model)return {status:"insufficient_training",trainingMatches:training.length,evaluationMatches:evaluation.length,holdoutStartYear};
+ if(!evaluation.length)return {status:"no_holdout_matches",trainingMatches:training.length,evaluationMatches:0,holdoutStartYear};
+ const scored=evaluation.map(row=>scoreWithModel(row,model));
+ return {
+  status:"ok",trainingStartYear:featureStartYear,trainingEndYear:holdoutStartYear-1,
+  holdoutStartYear,holdoutEndYear:lastEvaluationYear,
+  trainingMatches:training.length,evaluationMatches:scored.length,
+  metrics:aggregatePredictions(scored),
+  standardizedCoefficients:Object.fromEntries(names.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))
+ };
+}
+export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025}={}){
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
@@ -211,7 +231,8 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
     annual.push({year,trainingMatches:training.length,evaluation:aggregatePredictions(yearRows),
      standardizedCoefficients:Object.fromEntries(spec.features.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))});
    }
-   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample)};
+   const fixedHoldout=evaluateFixedHoldout(eligible,spec.features,{holdoutStartYear,featureStartYear,lastEvaluationYear});
+   bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample),fixedHoldout};
   }
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    featureWindowDays:windowDays,minimumPriorMatches:{overall:minOverallMatches,surface:minSurfaceMatches},
@@ -225,7 +246,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   archiveMirror:"https://github.com/Aneeshers/tennis-sackmann-archive",
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
-  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,reports,
+  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,reports,
   method:`For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous ${windowDays} days. Build overall and same-surface rates; require at least ${minOverallMatches} prior statistics-complete matches overall and ${minSurfaceMatches} same-surface matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.`,
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
