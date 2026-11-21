@@ -425,9 +425,9 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     missingPointScoreStates: 0,
     normalFlagNumericValueCounts: { "5": 1, "50": 1 },
     normalFlagNumericPairCounts: { "5:0": 1, "50:0": 1 },
-    normalFlagNumericWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
     normalFlagNumericPreviousTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    normalFlagNumericNextTiebreakDistance: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericNextTiebreakDistance: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 1 },
     tiebreakFlagAlphaValueCounts: { AD: 2, "40": 1, A: 1 },
     tiebreakFlagAlphaPairCounts: { "AD:40": 1, "A:AD": 1 },
     tiebreakFlagAlphaWithinDistance: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0 }
@@ -448,6 +448,6 @@ test("measures score-flag anomaly proximity in either direction without reclassi
   assert.equal(report.normalFlagNumericWithinDistance[2], 1);
   assert.equal(report.normalFlagNumericNextTiebreakDistance[2], 1);
   assert.equal(report.tiebreakFlagAlphaWithinDistance[1], 1);
-  assert.deepEqual(report.normalFlagNumericValueCounts, { "5": 1 });
+  assert.deepEqual(report.normalFlagNumericValueCounts, { "4": 1, "5": 1 });
   assert.deepEqual(report.normalFlagNumericPairCounts, { "5:4": 1 });
 });
