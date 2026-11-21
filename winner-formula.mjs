@@ -8,6 +8,7 @@ const sigmoid = value => value >= 0 ? 1 / (1 + Math.exp(-value)) : Math.exp(valu
 const logit = value => Math.log(clamp(value) / (1 - clamp(value)));
 
 function finite(value) {
+  if (value === null || value === undefined || value === "") return null;
   return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
