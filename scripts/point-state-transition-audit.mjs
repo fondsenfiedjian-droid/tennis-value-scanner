@@ -387,12 +387,13 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   const captureBoundaryCoverage = {
     totalMatches: groups.size,
     byTour: {},
+    byPlayerTourAgreement: {},
     overall: {
       totalMatches: groups.size,
       firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
       firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
       normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-      finalSetTargetReached: 0, finalSetTargetNotReached: 0, unknownBestOf: 0
+      finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, unknownBestOf: 0
     }
   };
   const isMatchStart = state => integer(state.sets_p1) === 0 && integer(state.sets_p2) === 0 &&
@@ -410,16 +411,29 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
         firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
         normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-        finalSetTargetReached: 0, finalSetTargetNotReached: 0, unknownBestOf: 0
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, unknownBestOf: 0
       };
     }
     const bucket = captureBoundaryCoverage.byTour[tour];
     bucket.totalMatches++;
+    const playerTour = meta.playerTour || "unclassified";
+    if (!captureBoundaryCoverage.byPlayerTourAgreement[playerTour]) {
+      captureBoundaryCoverage.byPlayerTourAgreement[playerTour] = {
+        totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+        firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+        normalCompletion: 0, nonNormalCompletion: 0,
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0,
+        normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0,
+        nonNormalCompletionTargetReached: 0, unknownBestOf: 0
+      };
+    }
+    const playerBucket = captureBoundaryCoverage.byPlayerTourAgreement[playerTour];
+    playerBucket.totalMatches++;
     const first = states[0], last = states.at(-1);
     const atStart = isMatchStart(first);
     const firstMissing = pointScoreMissing(first), lastMissing = pointScoreMissing(last);
     const normalCompletion = !meta.eventStatus;
-    for (const target of [captureBoundaryCoverage.overall, bucket]) {
+    for (const target of [captureBoundaryCoverage.overall, bucket, playerBucket]) {
       target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
       if (firstMissing) target.firstStateMissingPointScore++;
       if (lastMissing) target.lastStateMissingPointScore++;
@@ -429,8 +443,14 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         const needed = meta.bestOf === "BO5" ? 3 : 2;
         const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
         const completedSets = lastSets1 !== null && lastSets2 !== null ? lastSets1 + lastSets2 : null;
-        if (completedSets !== null && completedSets >= needed) target.finalSetTargetReached++;
-        else target.finalSetTargetNotReached++;
+        if (completedSets !== null && completedSets >= needed) {
+          target.finalSetTargetReached++;
+          if (!meta.eventStatus) target.normalCompletionTargetReached++;
+          else target.nonNormalCompletionTargetReached++;
+        } else {
+          target.finalSetTargetNotReached++;
+          if (!meta.eventStatus) target.normalCompletionTargetNotReached++;
+        }
       } else target.unknownBestOf++;
     }
   }
