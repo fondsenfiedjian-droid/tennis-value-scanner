@@ -269,7 +269,7 @@ function auditScoreVocabulary(rows) {
   const report = {
     normalStates: 0, tiebreakStates: 0, unknownFlagStates: 0,
     normalUnexpectedStates: 0, tiebreakNonNumericStates: 0,
-    numericScoresOutsideTiebreak: 0,
+    unexpectedNumericNormalValues: 0,
     normalValueCounts: {}, tiebreakValueCounts: {}, unexpectedValueCounts: {}
   };
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
@@ -292,7 +292,7 @@ function auditScoreVocabulary(rows) {
         else add(report.unexpectedValueCounts, value || "<missing>");
       }
       if (normalScoreRank(p1) === null || normalScoreRank(p2) === null) report.normalUnexpectedStates++;
-      if (/^\d+$/.test(p1) || /^\d+$/.test(p2)) report.numericScoresOutsideTiebreak++;
+      if (/^\d+$/.test(p1) || /^\d+$/.test(p2)) report.unexpectedNumericNormalValues++;
     } else {
       report.unknownFlagStates++;
     }
