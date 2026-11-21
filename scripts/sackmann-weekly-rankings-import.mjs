@@ -113,15 +113,27 @@ async function main(){
         if(buffer.length>=chunkSize){
           const chunk=path.join(tempDir,'chunk-'+chunks.length+'.jsonl');
           await writeChunk(buffer,chunk); chunks.push(chunk); buffer=[];
+          if(inputRows%500000<chunkSize)console.log('Read progress:',inputRows.toLocaleString(),'rows; chunks:',chunks.length);
         }
       }
       sourceStats.push({file,rows:fileRows});
     }
     if(buffer.length){const chunk=path.join(tempDir,'chunk-'+chunks.length+'.jsonl');await writeChunk(buffer,chunk);chunks.push(chunk);buffer=[];}
     const writers=makeWriters(outDir,tour);
+    // Min-heap keeps k-way merge O(log k) per row instead of scanning every chunk.
     const iterators=chunks.map(file=>jsonRows(file)[Symbol.asyncIterator]());
-    const heads=await Promise.all(iterators.map(it=>it.next()));
-    let group=[],canonicalRows=0,quarantinedRows=0,exactDuplicateRows=0,filledPointsResolutions=0,conflictGroups=0;
+    const heap=[];
+    function heapPush(node){
+      let i=heap.length;heap.push(node);
+      while(i>0){const p=(i-1)>>1;if(compare(heap[p].value,node.value)<=0)break;heap[i]=heap[p];i=p;heap[i]=node;}
+    }
+    function heapPop(){
+      const first=heap[0],last=heap.pop();
+      if(heap.length){let i=0;heap[0]=last;while(true){let l=i*2+1,r=l+1,b=i;if(l<heap.length&&compare(heap[l].value,heap[b].value)<0)b=l;if(r<heap.length&&compare(heap[r].value,heap[b].value)<0)b=r;if(b===i)break;[heap[i],heap[b]]=[heap[b],heap[i]];i=b;}}
+      return first;
+    }
+    for(let i=0;i<iterators.length;i++){const n=await iterators[i].next();if(!n.done)heapPush({index:i,value:n.value});}
+    let group=[],canonicalRows=0,quarantinedRows=0,exactDuplicateRows=0,filledPointsResolutions=0,conflictGroups=0,mergedRows=0;
     async function flushGroup(){
       if(!group.length)return;
       const ranks=new Set(group.map(x=>x.rank));
@@ -144,14 +156,13 @@ async function main(){
       }
       group=[];
     }
-    while(true){
-      let best=-1;
-      for(let i=0;i<heads.length;i++) if(!heads[i].done&&(best<0||compare(heads[i].value,heads[best].value)<0))best=i;
-      if(best<0)break;
-      const current=heads[best].value;
+    while(heap.length){
+      const node=heapPop(),current=node.value;
       if(group.length&&(group[0].date!==current.date||group[0].playerId!==current.playerId))await flushGroup();
-      group.push(current);
-      heads[best]=await iterators[best].next();
+      group.push(current);mergedRows++;
+      const next=await iterators[node.index].next();
+      if(!next.done)heapPush({index:node.index,value:next.value});
+      if(mergedRows%250000===0)console.log('Merge progress:',mergedRows.toLocaleString(),'/',inputRows.toLocaleString());
     }
     await flushGroup();
     await finish(writers.c);await finish(writers.q);
