@@ -39,7 +39,7 @@ async function* rows(file){
 function arg(name){const i=process.argv.indexOf(name);return i>=0?process.argv[i+1]:null;}
 const tour=arg('--tour');
 const archive=arg('--archive');
-const files=process.argv.slice(2).filter(x=>!x.startsWith('--') && x!==archive);
+const files=[];\nfor(let i=2;i<process.argv.length;i++){\n  if(process.argv[i]==='--tour'||process.argv[i]==='--archive'){i++;continue;}\n  if(!process.argv[i].startsWith('--'))files.push(process.argv[i]);\n}
 if(!['atp','wta'].includes(tour)||!archive||!files.length){
   console.error('Usage: node scripts/sackmann-ranking-link-audit.mjs --tour atp|wta --archive normalized.csv ranking-files.csv [...]');
   process.exit(2);
@@ -61,7 +61,7 @@ for(const file of files){
   let rowsN=0,missingId=0,missingDate=0,missingPoints=0,matchedRows=0;
   let minDate=null,maxDate=null,lastDate=null,nonMonotonicDates=0,duplicatePlayerDate=0;
   let dateIds=new Set(),currentDate=null;
-  const uniqueIds=new Set();
+  const uniqueIds=new Set();\n  let matchedUniqueIds=0;
   for await(const row of rows(file)){
     if(!row.fields){header=row.header;dateIdx=header.indexOf('ranking_date');rankIdx=header.indexOf('rank');idIdx=header.indexOf('player');pointsIdx=header.indexOf('points');
       if([dateIdx,rankIdx,idIdx,pointsIdx].some(x=>x<0))throw new Error(file+': expected ranking_date, rank, player, points'); continue;}
@@ -72,7 +72,7 @@ for(const file of files){
       if(d!==currentDate){currentDate=d;dateIds=new Set();}
       if(id){if(dateIds.has(id))duplicatePlayerDate++;dateIds.add(id);}
     }
-    if(!id)missingId++; else {uniqueIds.add(id);if(archiveIds.has(id))matchedRows++;}
+    if(!id)missingId++; else {if(!uniqueIds.has(id)){uniqueIds.add(id);if(archiveIds.has(id))matchedUniqueIds++;}if(archiveIds.has(id))matchedRows++;}
     if(!p)missingPoints++;
   }
   reports.push({file,rows:rowsN,dateRange:{from:minDate,to:maxDate},uniqueRankingPlayerIds:uniqueIds.size,
