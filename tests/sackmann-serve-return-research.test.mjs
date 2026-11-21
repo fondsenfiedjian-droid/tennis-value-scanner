@@ -120,6 +120,8 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  assert.equal(result.trainingMatches,500);
  assert.equal(result.evaluationMatches,40);
  assert.equal(result.metrics.matches,40);
+ assert.equal(result.byYear[2025].matches,20);
+ assert.equal(result.byYear[2026].matches,20);
  assert.ok(Number.isFinite(result.metrics.adjusted.brier));
  assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
  const changedHoldout=rows.map(row=>row.year>=2025?{...row,outcome:1-row.outcome}:row);
