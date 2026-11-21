@@ -8,13 +8,13 @@ const dayNumber = key => Date.UTC(Number(key.slice(0,4)),Number(key.slice(4,6))-
 const validAge = value => Number.isFinite(Number(value)) && Number(value)>=14 && Number(value)<=65;
 
 export function normalizePlayerName(value) {
-  return String(value??"").normalize("NFKD").replace(/\\p{M}/gu,"").toLowerCase()
-    .replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim().replace(/\\s+/g," ");
+  return String(value??"").normalize("NFKD").replace(/\p{M}/gu,"").toLowerCase()
+    .replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
 }
 
 function addPlayerSide(nameToIds, ageHistory, name, id, date, age, tour) {
   const playerId=String(id??"").trim(), normalized=normalizePlayerName(name);
-  if(!playerId || !normalized || !/^\\d+$/.test(playerId)) return;
+  if(!playerId || !normalized || !/^\d+$/.test(playerId)) return;
   const key=tour+":"+normalized;
   if(!nameToIds.has(key)) nameToIds.set(key,new Set());
   nameToIds.get(key).add(playerId);
@@ -134,7 +134,7 @@ async function main(){
   for(const file of opts.valuebetennis) valuebetennisRows.push(...parseValuebetennisCsv(await readFile(file,"utf8")).rows);
   const atp=parseCsv(await readFile(opts.atp,"utf8")),wta=parseCsv(await readFile(opts.wta,"utf8"));
   const report=auditAgeLinks(valuebetennisRows,{atp,wta});
-  await writeFile(opts.out,JSON.stringify(report,null,2)+"\\n","utf8");
+  await writeFile(opts.out,JSON.stringify(report,null,2)+"\n","utf8");
   console.log(JSON.stringify({out:opts.out,totals:report.totals,byTourYear:report.byTourYear},null,2));
   console.error("Loaded age-link sources: "+basename(opts.atp)+", "+basename(opts.wta));
 }
