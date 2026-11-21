@@ -87,6 +87,8 @@ export function runPerformanceGapWalkForward(inputRows,options={}){
  if(!start||!end||start>end)throw new RangeError("evaluationStart/evaluationEnd must be valid ordered YYYYMMDD dates");
  const minTrainingMatches=Number.isInteger(options.minTrainingMatches)?options.minTrainingMatches:1000;
  const maxTrainingRows=Number.isInteger(options.maxTrainingRows)?options.maxTrainingRows:50000;
+ const excludedFeatures=new Set(options.excludedFeatures??[]);
+ const candidateFeatures=FEATURES.filter(feature=>!excludedFeatures.has(feature));
  const prepared=prepare(inputRows),matches=prepared.rows,ratings=new Map(),histories=new Map(),trainingHistory=[];
  const overall=comparison(),byYear={},bySurface={};let i=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBucket=null;
  while(i<matches.length){
@@ -95,7 +97,7 @@ export function runPerformanceGapWalkForward(inputRows,options={}){
    currentYear=year;
    models=year>=start.slice(0,4)&&year<=end.slice(0,4)?(()=>{
     const baseline=fitLogistic(trainingHistory,["eloScaled"],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"gap-base"});
-    const candidate=fitLogistic(trainingHistory,["eloScaled",...FEATURES],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"gap-candidate"});
+    const candidate=fitLogistic(trainingHistory,["eloScaled",...candidateFeatures],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"gap-candidate"});
     return baseline&&candidate?{baseline,candidate}:null;
    })():null;
    yearBucket=models?comparison():null;byYear[year]=yearBucket?null:{matches:0,reason:"insufficient prior training history"};
@@ -120,7 +122,7 @@ export function runPerformanceGapWalkForward(inputRows,options={}){
  return {schemaVersion:1,researchOnly:true,tour,kFactor:k,evaluationStart:start,evaluationEnd:end,
   sourceRows:prepared.sourceRows,eligibleMatches:matches.length,excludedRows:prepared.excludedRows,
   duplicateRows:prepared.duplicateRows,conflictingDuplicateMatches:prepared.conflictingDuplicateMatches,
-  conflictingDuplicateRows:prepared.conflictingDuplicateRows,evaluatedMatches,yearsWithModels,
+  conflictingDuplicateRows:prepared.conflictingDuplicateRows,evaluatedMatches,yearsWithModels,excludedFeatures:[...excludedFeatures],candidateFeatures:["eloScaled",...candidateFeatures],
   featureDefinitions:{
    eloScaled:"pre-date overall Elo difference (player 1 minus player 2), divided by 400",
    gapMean3Diff:"difference between players' mean performance residual over their last 3 matches",
@@ -146,13 +148,13 @@ export function runPerformanceGapWalkForward(inputRows,options={}){
 async function main(){
  const args=process.argv.slice(2),opts={},files=[];
  for(let i=0;i<args.length;i++){
-  if(["--tour","--from","--to","--k","--min-training","--max-training","--out"].includes(args[i])){
+  if(["--tour","--from","--to","--k","--min-training","--max-training","--exclude-features","--out"].includes(args[i])){
    if(!args[i+1])throw new Error("Missing value after "+args[i]);opts[args[i].slice(2)]=args[++i];
   }else if(args[i].startsWith("--"))throw new Error("Unknown option "+args[i]);else files.push(args[i]);
  }
- if(!opts.tour||!files.length)throw new Error("Usage: node scripts/sackmann-performance-gap-research.mjs --tour atp|wta [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--min-training 1000] [--max-training 50000] [--out report.json] normalized.csv");
+ if(!opts.tour||!files.length)throw new Error("Usage: node scripts/sackmann-performance-gap-research.mjs --tour atp|wta [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--min-training 1000] [--max-training 50000] [--exclude-features feature1,feature2] [--out report.json] normalized.csv");
  const all=[];for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));all.push(...rows);console.error("Loaded "+rows.length+" normalized rows from "+basename(file));}
- const report=runPerformanceGapWalkForward(all,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??50000)});
+ const report=runPerformanceGapWalkForward(all,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??50000),excludedFeatures:opts["exclude-features"]?opts["exclude-features"].split(",").filter(Boolean):[]});
  const json=JSON.stringify(report,null,2)+"\n";if(opts.out)await writeFile(opts.out,json,"utf8");console.log(json);
  console.error("Research only. Negative Brier/LogLoss delta means improvement; no production model changed.");
 }
