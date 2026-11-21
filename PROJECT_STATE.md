@@ -982,3 +982,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - User-selected operating mode: **combined** — improve the operational PFE core while independent research tracks proceed in parallel; do not delay safe core progress for research, and do not promote unvalidated research into production.
 - User-selected scope: **ATP and WTA simultaneously**, with separate tour-level evaluation and calibration.
 - Detailed execution order, validation protocol, parallel tracks and data guardrails are documented in `docs/PFE_RESEARCH_PLAN.md`.
+- Updated `docs/PFE_FEATURE_MAP.md` with measured server-field limitations: 98.16% within-game hold alignment, 67.62% game-boundary switch alignment and only 2.68% observed tiebreak server changes. Server-based point labels and tiebreak server/returner features remain blocked.
+- Corrected `docs/POINT_STATE_TRANSITION_RESEARCH.md` to reflect that the June 2026 public sample has now been audited in ephemeral CI; parser remains research-only.
