@@ -155,7 +155,7 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
   while(index<clean.length&&String(clean[index].tourney_date)===date)day.push(clean[index++]);
   const get=(id,surface)=>{
    const history=histories.get(id)??[],overall=aggregate(history,today,null,windowDays);
-   const surfaceStats=SURFACES.has(surface)?aggregate(history,today,surface,windowDays):{matches:0,serveRate:null,returnRate:null};
+   const surfaceStats=SURFACES.has(surface)?aggregate(history,today,surface,windowDays):aggregate([],today,null,windowDays);
    return {overall,surface:surfaceStats};
   };
   for(const row of day){
