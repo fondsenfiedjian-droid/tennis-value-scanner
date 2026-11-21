@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditServeReturnStats, buildPreMatchServeReturn } from "../scripts/sackmann-serve-return-research.mjs";
+import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout } from "../scripts/sackmann-serve-return-research.mjs";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
  tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
@@ -136,4 +136,30 @@ test("history window and minimum-history settings reject invalid values",()=>{
  assert.throws(()=>buildPreMatchServeReturn(rows,{windowDays:0}),/windowDays/);
  assert.throws(()=>buildPreMatchServeReturn(rows,{minOverallMatches:0}),/minOverallMatches/);
  assert.throws(()=>buildPreMatchServeReturn(rows,{minSurfaceMatches:0}),/minSurfaceMatches/);
+});
+
+
+test("fixed later-period holdout freezes coefficients before the holdout begins", () => {
+ const rows=Array.from({length:500},(_,i)=>({
+  year:2016+Math.floor(i/56),baseProbability:0.5,outcome:i%21>10?1:0,
+  features:{serveDiff:(i%21-10)/10}
+ }));
+ for(let i=0;i<40;i++)rows.push({
+  year:i<20?2025:2026,baseProbability:0.5,outcome:i%3===0?1:0,
+  features:{serveDiff:(i%11-5)/5}
+ });
+ rows.push({year:2027,baseProbability:0.5,outcome:1,features:{serveDiff:1}});
+ const result=evaluateFixedHoldout(rows,["serveDiff"],{
+  featureStartYear:2016,holdoutStartYear:2025,lastEvaluationYear:2026
+ });
+ assert.equal(result.status,"ok");
+ assert.equal(result.trainingStartYear,2016);
+ assert.equal(result.trainingEndYear,2024);
+ assert.equal(result.holdoutStartYear,2025);
+ assert.equal(result.holdoutEndYear,2026);
+ assert.equal(result.trainingMatches,500);
+ assert.equal(result.evaluationMatches,40);
+ assert.equal(result.metrics.matches,40);
+ assert.ok(Number.isFinite(result.metrics.adjusted.brier));
+ assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
 });
