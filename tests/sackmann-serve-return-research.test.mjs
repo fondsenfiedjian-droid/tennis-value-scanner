@@ -183,10 +183,10 @@ test("extended profile features exclude invalid optional counters without discar
  const invalid= row("20250101",1,1,2,
   fullStats(100,60,40,20,90,20,4,5),
   fullStats(100,60,30,20,5,4,5,8));
- const target=row("20250102",2,1,3,
+ const target=row("20250102",2,1,2,
   fullStats(100,60,40,20,10,3,4,5),
   fullStats(100,60,30,20,5,4,5,8));
- const f=buildPreMatchServeReturn([invalid,target],{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:3:Hard");
+ const f=buildPreMatchServeReturn([invalid,target],{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
  assert.ok(Number.isFinite(f.serveDiff));
  assert.equal(f.aceRateDiff,null);
  assert.equal(f.doubleFaultRateDiff,null);
