@@ -120,3 +120,5 @@ Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.00128
 Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
 
 Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.
+
+The frozen holdout also reports paired metrics separately for each calendar year (2025 and 2026) using the same 2016–2024 fitted coefficients. This reveals whether the combined holdout improvement is concentrated in one year or persists across both; 2026 remains partial through 2026-05-25.
