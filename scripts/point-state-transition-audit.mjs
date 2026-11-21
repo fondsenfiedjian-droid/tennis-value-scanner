@@ -153,7 +153,12 @@ function auditServerTransition(before, after) {
     }
     const nextPointNumber = c + d;
     const expected = nextPointNumber % 2 === 1 ? 3 - serverBefore : serverBefore;
-    return { status: serverAfter === expected ? "match" : "mismatch", kind: "tiebreak" };
+    const alternativeExpected = nextPointNumber % 2 === 0 ? 3 - serverBefore : serverBefore;
+    return {
+      status: serverAfter === expected ? "match" : "mismatch",
+      alternativeStatus: serverAfter === alternativeExpected ? "match" : "mismatch",
+      kind: "tiebreak"
+    };
   }
 
   const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
@@ -189,7 +194,21 @@ function auditServerTransition(before, after) {
   }
   if (setAdvanced && !gameAdvanced) return { status: "skipped", reason: "set-without-game-advance" };
   const expected = gameAdvanced ? 3 - serverBefore : serverBefore;
-  return { status: serverAfter === expected ? "match" : "mismatch", kind: "regular" };
+  const beforeP1 = String(before.points_p1 ?? "").trim().toUpperCase();
+  const beforeP2 = String(before.points_p2 ?? "").trim().toUpperCase();
+  const afterP1 = String(after.points_p1 ?? "").trim().toUpperCase();
+  const afterP2 = String(after.points_p2 ?? "").trim().toUpperCase();
+  const firstPointOfNewGame = !gameAdvanced && beforeP1 === "0" && beforeP2 === "0" &&
+    ((afterP1 === "15" && afterP2 === "0") || (afterP1 === "0" && afterP2 === "15"));
+  const alternativeExpected = gameAdvanced ? serverBefore :
+    firstPointOfNewGame ? 3 - serverBefore : serverBefore;
+  return {
+    status: serverAfter === expected ? "match" : "mismatch",
+    alternativeStatus: serverAfter === alternativeExpected ? "match" : "mismatch",
+    kind: "regular",
+    gameBoundary: gameAdvanced,
+    firstPointOfNewGame
+  };
 }
 
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
@@ -229,7 +248,11 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   if (!groups.size) throw new Error("No rows with match IDs supplied");
   const serverAlignment = {
     regularChecked: 0, regularMatches: 0, regularMismatches: 0,
+    regularAlternativeMatches: 0, regularAlternativeMismatches: 0,
+    regularGameBoundaryChecked: 0, regularGameBoundaryMatches: 0, regularGameBoundaryMismatches: 0,
+    regularWithinGameChecked: 0, regularWithinGameMatches: 0, regularWithinGameMismatches: 0,
     tiebreakChecked: 0, tiebreakMatches: 0, tiebreakMismatches: 0,
+    tiebreakAlternativeMatches: 0, tiebreakAlternativeMismatches: 0,
     skipped: 0, skippedReasons: {}
   };
   const totals = {
@@ -305,6 +328,14 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         serverAlignment[prefix + "Checked"]++;
         if (serverCheck.status === "match") serverAlignment[prefix + "Matches"]++;
         else serverAlignment[prefix + "Mismatches"]++;
+        if (serverCheck.alternativeStatus === "match") serverAlignment[prefix + "AlternativeMatches"]++;
+        else serverAlignment[prefix + "AlternativeMismatches"]++;
+        if (prefix === "regular") {
+          const bucket = serverCheck.gameBoundary ? "regularGameBoundary" : "regularWithinGame";
+          serverAlignment[bucket + "Checked"]++;
+          if (serverCheck.status === "match") serverAlignment[bucket + "Matches"]++;
+          else serverAlignment[bucket + "Mismatches"]++;
+        }
       }
       totals.transitions++;
       tierStats[tierKey].transitions++;
