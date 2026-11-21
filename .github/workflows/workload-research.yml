@@ -9,6 +9,9 @@ on:
       - "scripts/valuebetennis-backtest.mjs"
       - "scripts/backtest.mjs"
       - "scripts/sackmann-rank-age-research.mjs"
+      - "scripts/sackmann-import.mjs"
+      - "scripts/sackmann-age-link-audit.mjs"
+      - "tests/sackmann-age-link-audit.test.mjs"
       - ".github/workflows/workload-research.yml"
   workflow_dispatch:
 
@@ -47,6 +50,36 @@ jobs:
             research-data/valuebetennis-matchs-2024.csv \
             research-data/valuebetennis-matchs-2025.csv \
             research-data/valuebetennis-matchs-2026.csv
+      - name: Download recent Sackmann match ages
+        run: |
+          set -euo pipefail
+          mkdir -p research-age-data
+          for tour in atp wta; do
+            for year in $(seq 2021 2026); do
+              url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${tour}_matches_${year}.csv"
+              curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$url" \
+                --output "research-age-data/${tour}_matches_${year}.csv"
+              test -s "research-age-data/${tour}_matches_${year}.csv"
+            done
+          done
+          node scripts/sackmann-import.mjs --tour atp --input-dir research-age-data --output "$RUNNER_TEMP/atp-age-normalized.csv"
+          node scripts/sackmann-import.mjs --tour wta --input-dir research-age-data --output "$RUNNER_TEMP/wta-age-normalized.csv"
+      - name: Audit historical player-age identity links
+        run: |
+          node scripts/sackmann-age-link-audit.mjs \
+            --atp "$RUNNER_TEMP/atp-age-normalized.csv" \
+            --wta "$RUNNER_TEMP/wta-age-normalized.csv" \
+            --valuebetennis research-data/valuebetennis-matchs-2024.csv \
+            --valuebetennis research-data/valuebetennis-matchs-2025.csv \
+            --valuebetennis research-data/valuebetennis-matchs-2026.csv \
+            --out sackmann-age-link-audit.json
+      - name: Upload age-link coverage audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-age-link-audit
+          path: sackmann-age-link-audit.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Run PFE-combined ACE walk-forward research
         run: |
           node scripts/winner-formula-research.mjs \
