@@ -68,6 +68,8 @@ function aggregate(history,today,surface=null,windowDays=365){
  return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,returnRate:matches&&returnTotal?returnWon/returnTotal:null};
 }
 export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365,surfaceMode="raw",surfaceShrinkagePrior=10}={}){
+ if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
+ if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
  if(![180,365,730].includes(windowDays))throw new Error("windowDays must be 180, 365 or 730");
  if(!["raw","shrinkage","residualized"].includes(surfaceMode))throw new Error("surfaceMode must be raw, shrinkage or residualized");
  if(!Number.isFinite(surfaceShrinkagePrior)||surfaceShrinkagePrior<0)throw new Error("surfaceShrinkagePrior must be non-negative");
