@@ -165,6 +165,7 @@ test("reports calibration error and calibration slope for baseline and adjusted 
  assert.ok(Math.abs(report.calibration.baseline.calibrationIntercept)<0.001);
  assert.ok(Math.abs(report.calibration.baseline.calibrationSlope-1)<0.01);
  assert.equal(report.calibration.adjusted.ece,0.1);
+ assert.equal(report.calibration.adjusted.mce,0.1);
  assert.equal(report.calibration.adjusted.bins.length,2);
  assert.ok(report.calibration.adjusted.calibrationSlope<1);
 });
