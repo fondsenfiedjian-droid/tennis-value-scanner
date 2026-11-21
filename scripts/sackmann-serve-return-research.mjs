@@ -285,7 +285,8 @@ async function main(){
    const key={"--window-days":"windowDays","--min-overall-matches":"minOverallMatches","--min-surface-matches":"minSurfaceMatches","--holdout-start-year":"holdoutStartYear"}[args[i]];
    options[key]=Number(args[++i]);
    if(!Number.isInteger(options[key])||options[key]<1)throw new Error(args[i-1]+" must be a positive integer");
-  }else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
+  }else if(args[i]==="--surface-shrinkage")options.includeSurfaceShrinkage=true;
+  else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);
   else files.push(args[i]);
  }
  if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--window-days 365] [--min-overall-matches 5] [--min-surface-matches 5] [--holdout-start-year 2025] [--surface-shrinkage] [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
