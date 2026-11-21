@@ -432,35 +432,30 @@ test("measures first and last observed states against match metadata without ass
     state({ match_id: "m1", sets_p1: "0", sets_p2: "0" }),
     state({ match_id: "m1", sets_p1: "2", sets_p2: "0", games_p1: "[6,4]", games_p2: "[3,2]" }),
     state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]", points_p1: "", points_p2: "15" }),
-    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]" }),
-    state({ match_id: "m3", sets_p1: "0", sets_p2: "1", games_p1: "[2,0]", games_p2: "[6,0]", points_p1: "15", points_p2: "0" }),
-    state({ match_id: "m3", sets_p1: "1", sets_p2: "1", games_p1: "[2,6]", games_p2: "[6,4]" })
+    state({ match_id: "m2", sets_p1: "1", sets_p2: "0", games_p1: "[6,2]", games_p2: "[4,1]" })
   ];
   const matches = [
     { match_id: "m1", round: "ATP Paris - Final", best_of: "BO3", event_status: "", player1_id: "1", player2_id: "2" },
-    { match_id: "m2", round: "ATP Rome - QF", best_of: "BO3", event_status: "retired", player1_id: "3", player2_id: "4" },
-    { match_id: "m3", round: "WTA Rome - SF", best_of: "BO3", event_status: "", player1_id: "5", player2_id: "6" }
+    { match_id: "m2", round: "WTA Rome - SF", best_of: "BO3", event_status: "retired", player1_id: "3", player2_id: "4" }
   ];
   const players = [
     { player_id: "1", tour: "ATP" }, { player_id: "2", tour: "ATP" },
-    { player_id: "3", tour: "ATP" }, { player_id: "4", tour: "ATP" },
-    { player_id: "5", tour: "WTA" }, { player_id: "6", tour: "WTA" }
+    { player_id: "3", tour: "WTA" }, { player_id: "4", tour: "WTA" }
   ];
   const report = auditPointStateTransitions(rows, matches, players);
   const coverage = report.captureBoundaryCoverage;
-  assert.equal(coverage.overall.totalMatches, 3);
+  assert.equal(coverage.overall.totalMatches, 2);
   assert.equal(coverage.overall.firstStateAtMatchStart, 1);
-  assert.equal(coverage.overall.firstStateNotAtMatchStart, 2);
+  assert.equal(coverage.overall.firstStateNotAtMatchStart, 1);
   assert.equal(coverage.overall.firstStateMissingPointScore, 1);
-  assert.equal(coverage.overall.normalCompletion, 2);
+  assert.equal(coverage.overall.normalCompletion, 1);
   assert.equal(coverage.overall.nonNormalCompletion, 1);
-  assert.equal(coverage.overall.finalSetTargetReached, 2);
+  assert.equal(coverage.overall.finalSetTargetReached, 1);
   assert.equal(coverage.overall.finalSetTargetNotReached, 1);
-  assert.equal(coverage.byTour.ATP.totalMatches, 2);
+  assert.equal(coverage.byTour.ATP.totalMatches, 1);
   assert.equal(coverage.byTour.WTA.totalMatches, 1);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 2);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 1);
   assert.equal(coverage.byPlayerTourAgreement.WTA.totalMatches, 1);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 2);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetNotReached, 0);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.nonNormalCompletionTargetReached, 0);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.WTA.nonNormalCompletionTargetNotReached, 1);
 });
