@@ -139,3 +139,21 @@ All figures use one model fitted on 2016–2024 and frozen across both holdout y
 The residualized specification improves both metrics more than the raw overall-plus-surface specification in 2025 for both tours, with paired intervals excluding zero. In partial 2026, point estimates remain favorable but all listed confidence intervals cross zero. Therefore the combined 2025–2026 result is substantially supported by 2025; 2026 does not yet independently confirm the effect. This is not a blind test and must remain research-only.
 
 *2026 partial archive.
+
+## Expanded residualized-surface sensitivity and calibration diagnostics (2026-11-21)
+
+The expanded research grid compares raw, residualized and sample-size-shrunk same-surface effects across 180/365/730-day windows, 3/5/10 minimum prior-match thresholds, and shrinkage priors. The fixed-coefficient 2025–2026 holdout uses coefficients fitted on 2016–2024. No variant is selected on the basis of a single best point estimate; the grid is exploratory and has no multiplicity correction.
+
+### 730-day / five-match residualized holdout
+
+| Surface residual prior | ATP ΔBrier (95% CI) | ATP ΔLogLoss (95% CI) | WTA ΔBrier (95% CI) | WTA ΔLogLoss (95% CI) |
+|---:|---:|---:|---:|---:|
+| 3 | -0.001350 (-0.002507, -0.000193) | -0.003928 (-0.006650, -0.001206) | -0.001170 (-0.002032, -0.000307) | -0.003353 (-0.005443, -0.001264) |
+| 5 | -0.001326 (-0.002496, -0.000155) | -0.003873 (-0.006625, -0.001121) | -0.001142 (-0.002010, -0.000273) | -0.003297 (-0.005399, -0.001195) |
+| 10 | -0.001255 (-0.002438, -0.000073) | -0.003714 (-0.006494, -0.000934) | -0.001077 (-0.001950, -0.000203) | -0.003162 (-0.005274, -0.001049) |
+
+All four paired intervals exclude zero for both tours at 730d/5 across priors 3/5/10. At 365 days, residualized intervals cross zero; at 180 days raw-rate gains are mostly negligible. This suggests the 730-day history and residualized surface effect are worth further study, not that the feature is production-ready. The per-year frozen holdout remains important: 2025 improvements are significant, while partial 2026 estimates are favorable but uncertain.
+
+### Calibration diagnostics
+
+Every baseline and adjusted probability report now includes ten-bin reliability data, expected calibration error (ECE), maximum calibration error (MCE), and logistic calibration intercept/slope. These diagnostics are reported for walk-forward and frozen holdout samples. Calibration is assessed alongside Brier and LogLoss, not used as a stand-alone selection rule. Fresh ATP/WTA calibration results pending.
