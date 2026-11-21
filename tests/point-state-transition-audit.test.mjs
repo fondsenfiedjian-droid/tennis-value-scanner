@@ -269,3 +269,21 @@ test("compares last-point-server phase alternative against next-point-server pha
   assert.equal(report.serverAlignment.tiebreakAlternativeMatches, 3);
   assert.equal(report.serverAlignment.tiebreakMatches, 0);
 });
+
+
+test("summarizes timestamp gaps separately for inferred and ambiguous transitions", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:10Z" }),
+    state({ points_p1: "30", timestamp_utc: "2026-06-01T10:00:30Z" }),
+    state({ points_p1: "30", points_p2: "30", timestamp_utc: "2026-06-01T10:02:30Z" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.timestampGapStats.all.count, 3);
+  assert.equal(report.timestampGapStats.all.p50Seconds, 20);
+  assert.equal(report.timestampGapStats.inferred.count, 2);
+  assert.equal(report.timestampGapStats.inferred.p50Seconds, 10);
+  assert.equal(report.timestampGapStats.ambiguous.count, 1);
+  assert.equal(report.timestampGapStats.ambiguous.p50Seconds, 120);
+  assert.equal(report.timestampGapStats.ambiguous.bins["60-180s"], 1);
+});
