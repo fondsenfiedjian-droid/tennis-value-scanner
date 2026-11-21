@@ -6,12 +6,12 @@ import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
 const validDate = value => {
   const s=String(value??"");
-  if(!/^\\d{8}$/.test(s)) return null;
+  if(!/^\d{8}$/.test(s)) return null;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8);
   const dt=new Date(Date.UTC(y,m-1,d));
   return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?s:null;
 };
-const validId = value => /^\\d+$/.test(String(value??"")) && Number(value)>0;
+const validId = value => /^\d+$/.test(String(value??"")) && Number(value)>0;
 const clamp = p => Math.min(1-1e-9,Math.max(1e-9,p));
 const FEATURES = ["gapMean3Diff","gapMean5Diff","gapMean10Diff","lossRate5Diff","lossRate10Diff","lossStreakDiff","historyCountDiff"];
 
@@ -153,7 +153,7 @@ async function main(){
  if(!opts.tour||!files.length)throw new Error("Usage: node scripts/sackmann-performance-gap-research.mjs --tour atp|wta [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--min-training 1000] [--max-training 50000] [--out report.json] normalized.csv");
  const all=[];for(const file of files){const rows=parseCsv(await readFile(file,"utf8"));all.push(...rows);console.error("Loaded "+rows.length+" normalized rows from "+basename(file));}
  const report=runPerformanceGapWalkForward(all,{tour:opts.tour,evaluationStart:opts.from??"20000101",evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??50000)});
- const json=JSON.stringify(report,null,2)+"\\n";if(opts.out)await writeFile(opts.out,json,"utf8");console.log(json);
+ const json=JSON.stringify(report,null,2)+"\n";if(opts.out)await writeFile(opts.out,json,"utf8");console.log(json);
  console.error("Research only. Negative Brier/LogLoss delta means improvement; no production model changed.");
 }
 if(import.meta.url==="file://"+process.argv[1])await main();
