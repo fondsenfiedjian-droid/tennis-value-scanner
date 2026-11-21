@@ -150,7 +150,7 @@ node scripts/sackmann-layoff-research.mjs --tour atp --from 20000101 --to 202605
 node scripts/sackmann-layoff-research.mjs --tour wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out wta-layoff-report.json wta-normalized.csv
 ```
 
-The baseline uses pre-date overall Elo. The candidate adds relative log inactivity, maximum inactivity, separate 90-day and 180-day indicators for each player, and a count of players with no prior match in the archive. These thresholds are exploratory bins, not medical classifications or automatic Elo adjustments. A missing prior match is explicitly marked as unknown rather than treated as a confirmed long injury layoff.
+The baseline uses pre-date overall Elo. The candidate adds relative log inactivity, maximum inactivity, separate 90-day and 180-day indicators for each player, return-episode flags, and the number of matches completed since the latest 90+ day break. This lets the model test whether uncertainty/impact changes over the first matches after a return rather than treating every return identically. It also includes a count of players with no prior match in the archive. These thresholds are exploratory bins, not medical classifications or automatic Elo adjustments. A new 90+ day gap starts a new return episode at zero completed post-break matches; subsequent completed matches increment that count, allowing the model to test gradual return-to-play stabilization. A missing prior match is explicitly marked as unknown rather than treated as a confirmed long injury layoff.
 
 Timing safeguards:
 - Only completed matches strictly earlier than the prediction date establish prior activity.
