@@ -118,7 +118,8 @@ function indexStatRows(statFiles) {
 
 function newTourReport(minPriorMatches) {
   return {
-    linkedMatches: 0, validChronologyMatches: 0, mainTourTargets: 0,
+    inputLinkedRows: 0, linkedMatches: 0, validChronologyMatches: 0, mainTourTargets: 0,
+    excludedDuplicateRows: 0, excludedInvalidDates: 0, excludedDateOffsetAnomalies: 0, excludedMissingPlayerIds: 0,
     targetsWithAllFeatures: 0,
     featureMatchCoverage: Object.fromEntries(FEATURES.map(feature => [feature, 0])),
     priorHistoryCoverage: Object.fromEntries(FEATURES.map(feature => [feature, {
@@ -142,14 +143,20 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
   const byId = new Set();
   for (const link of linkedRows) {
     const matchId = text(link.matchId), tour = text(link.tour);
-    const day = dateNumber(link.date);
-    if (!matchId || !["ATP", "WTA"].includes(tour) || byId.has(tour + ":" + matchId)) continue;
+    if (!["ATP", "WTA"].includes(tour)) continue;
+    const report = tours[tour];
+    report.inputLinkedRows++;
+    if (!matchId) { report.excludedMissingPlayerIds++; continue; }
+    if (byId.has(tour + ":" + matchId)) { report.excludedDuplicateRows++; continue; }
     byId.add(tour + ":" + matchId);
+    const day = dateNumber(link.date);
     const surface = text(link.surface);
     const datePlausible = link.dateOffsetDays !== null && link.dateOffsetDays !== undefined && text(link.dateOffsetDays) !== "" &&
       Number.isFinite(Number(link.dateOffsetDays)) && Number(link.dateOffsetDays) >= -7 && Number(link.dateOffsetDays) <= 21;
     const idsValid = text(link.player1Id) && text(link.player2Id) && text(link.player1Id) !== text(link.player2Id);
-    if (day === null || !datePlausible || !idsValid) continue;
+    if (day === null) { report.excludedInvalidDates++; continue; }
+    if (!datePlausible) { report.excludedDateOffsetAnomalies++; continue; }
+    if (!idsValid) { report.excludedMissingPlayerIds++; continue; }
     const features = buildPlayerMatchFeatures({ ...link, matchId }, statRows[tour + ":" + matchId] || {});
     const record = {
       matchId, tour, day, surface, sourceTier: text(link.sourceTier),
