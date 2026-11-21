@@ -15,9 +15,9 @@ const [archiveText,obsText]=await Promise.all([
   readFile(opts.input,"utf8"),readFile(opts.observations,"utf8")
 ]);
 const archive=parseCsv(archiveText),observations=parseCsv(obsText);
-const validId=v=>/^\\d+$/.test(String(v??""))&&Number(v)>0;
-const norm=s=>String(s??"").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-const rows=archive.filter(r=>/^\\d{8}$/.test(String(r.tourney_date??""))&&validId(r.winner_id)&&validId(r.loser_id));
+const validId=v=>/^\d+$/.test(String(v??""))&&Number(v)>0;
+const norm=s=>String(s??"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const rows=archive.filter(r=>/^\d{8}$/.test(String(r.tourney_date??""))&&validId(r.winner_id)&&validId(r.loser_id));
 const report=[];
 for(const obs of observations.filter(r=>String(r.tour).toLowerCase()===opts.tour)){
   const id=String(obs.player_id??"").trim();
@@ -66,6 +66,6 @@ const summary={
 const output={summary,players:report};
 if(opts.out){
   const {writeFile}=await import("node:fs/promises");
-  await writeFile(opts.out,JSON.stringify(output,null,2)+"\\n","utf8");
+  await writeFile(opts.out,JSON.stringify(output,null,2)+"\n","utf8");
 }
 console.log(JSON.stringify(output,null,2));
