@@ -244,7 +244,9 @@ async function main() {
   if (!input) throw new Error("Missing --input");
   const raw = await readFile(input);
   const csv = input.endsWith(".gz") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
-  const matchRows = matchesInput ? parseCsv((await readFile(matchesInput)).toString("utf8")) : [];
+  const matchRaw = matchesInput ? await readFile(matchesInput) : null;
+  const matchCsv = matchRaw ? (matchesInput.endsWith(".gz") ? gunzipSync(matchRaw).toString("utf8") : matchRaw.toString("utf8")) : "";
+  const matchRows = matchCsv ? parseCsv(matchCsv) : [];
   const report = auditPointStateTransitions(parseCsv(csv), matchRows);
   await writeFile(out, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report.totals));
