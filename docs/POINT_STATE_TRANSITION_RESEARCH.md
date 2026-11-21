@@ -32,7 +32,7 @@ The server field is preserved only as before/after availability and change count
 
 ## Current status
 
-The parser and synthetic tests are implemented, but no public sample file has been downloaded or imported in this pass. The parser is not production-connected and does not create player-level features. The dataset has no serve speed, serve direction or shot-level information.
+The parser and synthetic tests are implemented and the June 2026 public sample has been audited in ephemeral CI. Aggregate findings are recorded below. The parser remains research-only, is not production-connected and does not create player-level features. The dataset has no serve speed, serve direction or shot-level information.
 
 ## Real public-sample audit harness (2026-11-21)
 
