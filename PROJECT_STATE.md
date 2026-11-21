@@ -1026,3 +1026,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Betclic fallback: unofficial public gRPC-web client exists but its disclaimer restricts use to personal/educational/research and warns against automated/commercial use without explicit permission. Not approved as production source absent rights review.
 - CI on PR head `2e3ba57ea86990f5b28af6077c76f23fbd985aa5`: Regression tests run #1971 and Project state documentation guard #536 were queued/in progress at the time of this note; results must be checked before considering validation complete.
 - Model rule: PFE/ACE/SMA probability remains common across books; calculate EV independently for each bookmaker's quote. Do not create bookmaker-specific models or feed odds back into the probability model.
+
+
+## 2026-11-21 — Odds API credential validation groundwork
+- User reports that the separate The Odds API key has been saved in Cloudflare Worker secrets as `ODDS_API_KEY`; the value is never stored in repository files or logs.
+- Added `oddsApiConfigured` to `GET /health` and added `GET /odds-api/sports` on branch `feature/betclic-netbet-odds-sources` (commit `c720601f049c2c24199163b8bba8ef38be412863`). The endpoint calls The Odds API's quota-exempt `/v4/sports` using the `x-api-key` header, returns tennis sport keys and quota headers, and caches for 15 minutes.
+- Existing production `GET /odds` and Apify Winamax task remain unchanged. No production deploy, merge, or paid plan activation performed.
+- Next gate: wait for branch CI/preview deployment, then test `/health` and `/odds-api/sports`. Only after discovering current tennis sport keys should a minimal ATP/WTA odds request be made for `betclic_fr,netbet_fr` and `h2h`, checking actual credits and coverage.
