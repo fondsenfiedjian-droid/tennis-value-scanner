@@ -19,6 +19,7 @@ test('weekly rankings join as-of match date without future leakage',()=>{
       'atp,20200106,101,10,1000\n'+
       'atp,20200106,102,20,800\n'+
       'atp,20200113,101,8,1100\n'+
+      'atp,20200115,101,1,1500\n'+
       'atp,20200120,103,30,600\n'+
       'atp,20200120,104,40,500\n');
     execFileSync(process.execPath,['scripts/sackmann-weekly-rankings-asof.mjs','--tour','atp','--matches',matches,'--rankings',rankings,'--output',out],{cwd:process.cwd(),stdio:'pipe'});
