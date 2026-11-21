@@ -1327,35 +1327,47 @@
   }
 
   function archivePaperRoi(rows, stake=1){
-    const grouped=new Map();
-    const now=Date.now();
-    for(const row of rows){
-      if(String(row.bookmaker||'').trim().toLowerCase()!=='winamax')continue;
-      if(row.resultOutcome!=='completed'||![1,2].includes(Number(row.resultWinner))||row.resultSource!=='live_tennis_api')continue;
-      if(row.model!=='general-elo-v2'||String(row.modelVersion)!=='2')continue;
-      if(!['A','B'].includes(row.side))continue;
-      const odds=Number(row.odds),probability=Number(row.probability),ev=Number(row.ev);
-      const capturedAt=Number(row.capturedAt),matchStart=Date.parse(row.matchDate||'');
-      if(!Number.isFinite(odds)||odds<=1||!Number.isFinite(probability)||probability<0||probability>100||!Number.isFinite(ev)||ev<=0)continue;
-      if(!Number.isFinite(capturedAt)||capturedAt<=0||!Number.isFinite(matchStart)||capturedAt>=matchStart)continue;
-      if(row.captureStatus&&row.captureStatus!=='upcoming')continue;
-      const matchKey=String(row.matchId||row.matchKey||'');
+    const matchGroups=new Map();
+    const outcomes=new Set(['completed','retired','walkover','default','abandoned','unresolved','cancelled']);
+    for(const row of Array.isArray(rows)?rows:[]){
+      const matchKey=String(row?.matchId||row?.matchKey||'');
       if(!matchKey)continue;
-      const key=matchKey+'|'+String(row.bookmaker).toLowerCase();
-      if(!grouped.has(key))grouped.set(key,[]);
-      grouped.get(key).push(row);
+      if(!matchGroups.has(matchKey))matchGroups.set(matchKey,[]);
+      matchGroups.get(matchKey).push(row);
     }
     let bets=0,wins=0,losses=0,profit=0,ambiguous=0;
     const unit=Math.max(0.01,Number(stake)||1);
-    for(const candidates of grouped.values()){
+    for(const group of matchGroups.values()){
+      const resultRows=group.filter(row=>outcomes.has(row.resultOutcome));
+      if(!resultRows.length)continue;
+      const versions=resultRows.map(row=>Number.isSafeInteger(Number(row.resultVersion))&&Number(row.resultVersion)>=1?Number(row.resultVersion):0);
+      const latestVersion=Math.max(...versions);
+      const authoritative=resultRows.filter((row,index)=>versions[index]===latestVersion);
+      const resultOutcomes=new Set(authoritative.map(row=>row.resultOutcome));
+      const winners=new Set(authoritative.map(row=>Number(row.resultWinner)));
+      const sources=new Set(authoritative.map(row=>row.resultSource||''));
+      if(resultOutcomes.size!==1||!resultOutcomes.has('completed')||winners.size!==1||![1,2].includes(Number(authoritative[0]?.resultWinner))||sources.size!==1||!sources.has('live_tennis_api'))continue;
+      const matchStart=group.map(row=>Date.parse(row.matchDate||'')).filter(value=>Number.isFinite(value)&&value>0).reduce((min,value)=>Math.min(min,value),Infinity);
+      if(!Number.isFinite(matchStart))continue;
+      const candidates=group.filter(row=>{
+        if(String(row.bookmaker||'').trim().toLowerCase()!=='winamax')return false;
+        if(row.model!=='general-elo-v2'||String(row.modelVersion)!=='2'||!['A','B'].includes(row.side))return false;
+        if(row.captureStatus&&row.captureStatus!=='upcoming')return false;
+        const odds=Number(row.odds),probability=Number(row.probability),ev=Number(row.ev),capturedAt=Number(row.capturedAt);
+        return Number.isFinite(odds)&&odds>1&&Number.isFinite(probability)&&probability>=0&&probability<=100&&
+          Number.isFinite(ev)&&Number.isFinite(capturedAt)&&capturedAt>0&&capturedAt<matchStart;
+      });
+      if(!candidates.length)continue;
       const latestAt=Math.max(...candidates.map(row=>Number(row.capturedAt)));
       const latest=candidates.filter(row=>Number(row.capturedAt)===latestAt);
-      const bestEv=Math.max(...latest.map(row=>Number(row.ev)));
-      const best=latest.filter(row=>Math.abs(Number(row.ev)-bestEv)<0.000001);
+      const positive=latest.filter(row=>Number(row.ev)>0);
+      if(!positive.length)continue;
+      const bestEv=Math.max(...positive.map(row=>Number(row.ev)));
+      const best=positive.filter(row=>Math.abs(Number(row.ev)-bestEv)<0.000001);
       const sides=new Set(best.map(row=>row.side));
       if(sides.size!==1){ambiguous++;continue;}
-      const pick=best[0];
-      const won=(pick.side==='A'?1:2)===Number(pick.resultWinner);
+      const pick=best.reduce((selected,row)=>Number(row.odds)>Number(selected.odds)?row:selected,best[0]);
+      const won=(pick.side==='A'?1:2)===Number(authoritative[0].resultWinner);
       bets++;if(won)wins++;else losses++;
       profit+=won?unit*(Number(pick.odds)-1):-unit;
     }
