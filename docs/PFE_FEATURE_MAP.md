@@ -212,3 +212,16 @@ Of 10,690 linked matches with date offsets, 10,667 fall within the -7 to +21 day
 The workflow retains aggregate counts only: no player names, match IDs or player-level linked records are uploaded. Raw source files exist only on ephemeral CI runners. Both sources declare CC BY-NC-SA 4.0; attribution, non-commercial use and share-alike obligations apply.
 
 No linked MCP feature is production-enabled. Before rolling pre-match PFE features are considered, the 23 date anomalies must be reviewed and same-event match chronology must be independently established. The charted sample is selective and must not be treated as representative of all tour matches.
+
+
+## Sackmann serve/return walk-forward research (2026-11-21)
+
+A research-only expanding walk-forward evaluation compares a chronological K=32 Elo baseline with regularized logistic corrections from each player's prior 365-day serve/return rates. It requires at least five prior statistics-complete matches for both players; overall and same-surface rates are tested separately. Same-day match results are added only after all matches on that date have been scored, preventing same-day leakage. ATP and WTA are evaluated independently over 2020–2026; the 2026 source archive is partial through 2026-05-25.
+
+The report contains aggregate input-quality counts. ATP source rows: 112,768; valid winner-side records 101,899 and valid loser-side 101,876. One winner-side record failed the stricter second-serve opportunity bound. WTA source rows: 97,614; valid winner-side and loser-side records 47,748 each; nearly all excluded rows lack complete integer serve statistics. The denominator guard did not create a broad exclusion increase; the WTA limitation is primarily source coverage.
+
+Best aggregate specification, overall plus surface rates:
+- ATP, 13,641 out-of-sample matches: Brier delta (adjusted minus Elo) -0.000105, 95% CI [-0.000315, 0.000106]; LogLoss delta -0.000556, CI [-0.001089, -0.000023].
+- WTA, 8,886 out-of-sample matches: Brier delta -0.000196, CI [-0.000524, 0.000133]; LogLoss delta -0.000688, CI [-0.001461, 0.000085].
+
+Only the ATP LogLoss confidence interval excludes zero. WTA's intervals and both Brier intervals include zero. Standalone overall or surface serve/return specifications are mostly neutral or degrade aggregate scores. Annual effects vary, so the combined feature remains a research candidate only; it is not production-enabled. Require an untouched later-period holdout and calibration/stability review before any integration. This evaluation measures probability scores, not betting ROI, closing-line value or profitability.
