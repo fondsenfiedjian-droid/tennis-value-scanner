@@ -1033,3 +1033,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `oddsApiConfigured` to `GET /health` and added `GET /odds-api/sports` on branch `feature/betclic-netbet-odds-sources` (commit `c720601f049c2c24199163b8bba8ef38be412863`). The endpoint calls The Odds API's quota-exempt `/v4/sports` using the `x-api-key` header, returns tennis sport keys and quota headers, and caches for 15 minutes.
 - Existing production `GET /odds` and Apify Winamax task remain unchanged. No production deploy, merge, or paid plan activation performed.
 - Next gate: wait for branch CI/preview deployment, then test `/health` and `/odds-api/sports`. Only after discovering current tennis sport keys should a minimal ATP/WTA odds request be made for `betclic_fr,netbet_fr` and `h2h`, checking actual credits and coverage.
+
+
+## 2026-11-21 — Betclic / NetBet live odds smoke-test route
+- Added isolated GET /odds-api/test?sport=<tennis_sport_key> on the Betclic/NetBet feature branch.
+- The route requests only The Odds API h2h decimal market and only bookmaker keys betclic_fr,netbet_fr; it does not alter the existing Apify Winamax /odds endpoint.
+- Response reports event count, per-bookmaker event counts, complete two-outcome h2h market counts, quote counts, retrieval time, and provider quota headers. Results are cached for three minutes.
+- Default sport key is tennis_atp_finals; other keys must use the tennis_ prefix and should be selected from /odds-api/sports.
+- Validation remains Preview-only. Do not merge PR #149 or deploy Production without explicit user approval. Check actual returned events and quota headers before proceeding with the full adapter.
