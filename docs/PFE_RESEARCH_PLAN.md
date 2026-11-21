@@ -55,3 +55,9 @@
 - Match Charting Project coverage is selective, not representative of the full tour.
 - Point-state observations can begin mid-match or stop before the final point. Missing rows are not point outcomes.
 - No server/tiebreak-dependent feature is production-approved until its source semantics reconcile at match level.
+
+## Calibration and residualized-surface follow-up
+
+- Compare 10-bin reliability, ECE/MCE and logistic calibration intercept/slope for baseline and adjusted probabilities on ATP and WTA separately.
+- Treat the 730-day residualized surface effect as a research candidate only; verify year-specific holdout behavior and calibration before considering any shadow integration.
+- Do not select a prior/window solely by the most favorable point estimate across the exploratory grid; no multiplicity correction has been applied.
