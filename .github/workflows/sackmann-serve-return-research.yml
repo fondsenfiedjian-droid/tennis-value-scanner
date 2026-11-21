@@ -34,13 +34,22 @@ jobs:
               test -s "research-data/${tour}_matches_${year}.csv"
             done
           done
-      - name: Run pre-match serve and return walk-forward research
+      - name: Run pre-match serve and return sensitivity grid
         run: |
-          node scripts/sackmann-serve-return-research.mjs --out sackmann-serve-return-report.json research-data/*_matches_*.csv
+          set -euo pipefail
+          for spec in "180 5 5" "365 3 3" "365 10 10" "730 5 5"; do
+            read -r window overall surface <<< "$spec"
+            node scripts/sackmann-serve-return-research.mjs \
+              --window-days "$window" \
+              --min-overall-matches "$overall" \
+              --min-surface-matches "$surface" \
+              --out "sackmann-serve-return-${window}d-${overall}overall-${surface}surface.json" \
+              research-data/*_matches_*.csv
+          done
       - name: Upload aggregate research report
         uses: actions/upload-artifact@v4
         with:
           name: sackmann-serve-return-walkforward
-          path: sackmann-serve-return-report.json
+          path: sackmann-serve-return-*.json
           if-no-files-found: error
           retention-days: 30
