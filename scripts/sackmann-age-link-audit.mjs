@@ -130,7 +130,8 @@ async function main(){
     else throw new Error("Unknown option: "+key);
   }
   if(!opts.atp||!opts.wta||!opts.valuebetennis.length)throw new Error("Usage: node scripts/sackmann-age-link-audit.mjs --atp atp-normalized.csv --wta wta-normalized.csv --valuebetennis file.csv [--valuebetennis file.csv] --out report.json");
-  const valuebetennisRows=opts.valuebetennis.flatMap(file=>parseValuebetennisCsv(await readFile(file,"utf8")).rows);
+  const valuebetennisRows=[];
+  for(const file of opts.valuebetennis) valuebetennisRows.push(...parseValuebetennisCsv(await readFile(file,"utf8")).rows);
   const atp=parseCsv(await readFile(opts.atp,"utf8")),wta=parseCsv(await readFile(opts.wta,"utf8"));
   const report=auditAgeLinks(valuebetennisRows,{atp,wta});
   await writeFile(opts.out,JSON.stringify(report,null,2)+"\\n","utf8");
