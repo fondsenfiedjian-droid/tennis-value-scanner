@@ -193,6 +193,9 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const elo=new Map(),lastPlayed=new Map(),returnEpisode=new Map(),returnMatches=new Map(),history=[];
   const captureWorstErrors=options.captureWorstErrors===true;
   const symmetricTraining=options.symmetricTraining===true;
+  const excludedFeatures=new Set(options.excludedFeatures??[]);
+  const candidateFeatures=FEATURES.filter(name=>!excludedFeatures.has(name));
+  if(candidateFeatures.length===0) throw new RangeError("At least one candidate feature must remain");
   const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),returnCohorts=new Map();
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
@@ -205,7 +208,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
         const candidateHistory=symmetricTraining
           ? history.flatMap(row=>[row,{...orientedFeatureRow(row,1),outcome:1-row.outcome}])
           : history;
-        const candidate=fitLogistic(candidateHistory,["eloScaled",...FEATURES],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"layoff-candidate"});
+        const candidate=fitLogistic(candidateHistory,["eloScaled",...candidateFeatures],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"layoff-candidate"});
         if(baseline&&candidate) {
           models={baseline,candidate,trainingMatches:history.length};
           yearsWithModels++;
@@ -328,6 +331,8 @@ export function runLayoffWalkForward(inputRows, options={}) {
     },
     worstErrorsIncluded:captureWorstErrors,
     symmetricTraining,
+    candidateFeatures,
+    excludedFeatures:[...excludedFeatures],
     cohorts:{layoffDays:finishCohorts(layoffCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
     byYear
   };
@@ -338,7 +343,7 @@ async function main(){
   for(let i=0;i<args.length;i++){
     if(args[i]==="--worst-errors"){opts["worst-errors"]="true";continue;}
     if(args[i]==="--symmetric-training"){opts["symmetric-training"]="true";continue;}
-    if(["--tour","--from","--to","--k","--min-training","--max-training","--out"].includes(args[i])){
+    if(["--tour","--from","--to","--k","--min-training","--max-training","--out","--exclude-features"].includes(args[i])){
       const key=args[i].slice(2),value=args[++i];if(!value)throw new Error("Missing value for --"+key);opts[key]=value;
     } else if(args[i].startsWith("--")) throw new Error("Unknown option "+args[i]);
     else files.push(args[i]);
@@ -350,7 +355,8 @@ async function main(){
   const report=runLayoffWalkForward(rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",
     evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),
     minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000),
-    captureWorstErrors:opts["worst-errors"]==="true",symmetricTraining:opts["symmetric-training"]==="true"});
+    captureWorstErrors:opts["worst-errors"]==="true",symmetricTraining:opts["symmetric-training"]==="true",
+    excludedFeatures:opts["exclude-features"]?opts["exclude-features"].split(",").filter(Boolean):[]});
   const json=JSON.stringify(report,null,2)+"\n";
   if(opts.out)await writeFile(opts.out,json,"utf8");
   console.log(json);
