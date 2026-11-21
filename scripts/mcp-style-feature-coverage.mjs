@@ -134,6 +134,8 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
   minPriorMatches = MIN_PRIOR_DEFAULT
 } = {}) {
   if (!Array.isArray(linkedRows) || !Array.isArray(statFiles)) throw new Error("Linked rows and stat files are required");
+  if (!Number.isInteger(windowDays) || windowDays < 1) throw new Error("windowDays must be a positive integer");
+  if (!Array.isArray(minPriorMatches) || !minPriorMatches.length || minPriorMatches.some(value => !Number.isInteger(value) || value < 1)) throw new Error("minPriorMatches must contain positive integers");
   const statRows = indexStatRows(statFiles);
   const records = [];
   const tours = { ATP: newTourReport(minPriorMatches), WTA: newTourReport(minPriorMatches) };
@@ -144,8 +146,8 @@ export function auditMcpStyleFeatureCoverage(linkedRows, statFiles, {
     if (!matchId || !["ATP", "WTA"].includes(tour) || byId.has(tour + ":" + matchId)) continue;
     byId.add(tour + ":" + matchId);
     const surface = text(link.surface);
-    const datePlausible = Number.isFinite(Number(link.dateOffsetDays)) &&
-      Number(link.dateOffsetDays) >= -7 && Number(link.dateOffsetDays) <= 21;
+    const datePlausible = link.dateOffsetDays !== null && link.dateOffsetDays !== undefined && text(link.dateOffsetDays) !== "" &&
+      Number.isFinite(Number(link.dateOffsetDays)) && Number(link.dateOffsetDays) >= -7 && Number(link.dateOffsetDays) <= 21;
     const idsValid = text(link.player1Id) && text(link.player2Id) && text(link.player1Id) !== text(link.player2Id);
     if (day === null || !datePlausible || !idsValid) continue;
     const features = buildPlayerMatchFeatures({ ...link, matchId }, statRows[tour + ":" + matchId] || {});
