@@ -120,3 +120,22 @@ Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.00128
 Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
 
 Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.
+
+### Frozen holdout by calendar year (run 44868165328)
+
+All figures use one model fitted on 2016–2024 and frozen across both holdout years. 2025 is a complete calendar year; 2026 is partial through 2026-05-25.
+
+| Tour / year | Specification | n | Δ Brier (95% CI) | Δ LogLoss (95% CI) |
+|---|---|---:|---:|---:|
+| ATP 2025 | Overall + surface | 1,999 | -0.000773 (-0.001356, -0.000191) | -0.002207 (-0.003673, -0.000741) |
+| ATP 2025 | Overall + surface residual | 1,999 | -0.001614 (-0.002987, -0.000240) | -0.004132 (-0.007350, -0.000913) |
+| ATP 2026* | Overall + surface | 1,072 | -0.000425 (-0.001227, 0.000376) | -0.001996 (-0.004068, 0.000077) |
+| ATP 2026* | Overall + surface residual | 1,072 | -0.000886 (-0.002787, 0.001015) | -0.003588 (-0.008118, 0.000942) |
+| WTA 2025 | Overall + surface | 1,827 | -0.000863 (-0.001509, -0.000217) | -0.002721 (-0.004383, -0.001059) |
+| WTA 2025 | Overall + surface residual | 1,827 | -0.001592 (-0.002617, -0.000567) | -0.004525 (-0.007033, -0.002016) |
+| WTA 2026* | Overall + surface | 980 | -0.000179 (-0.001066, 0.000708) | -0.000648 (-0.002815, 0.001519) |
+| WTA 2026* | Overall + surface residual | 980 | -0.000463 (-0.001920, 0.000994) | -0.001316 (-0.004828, 0.002195) |
+
+The residualized specification improves both metrics more than the raw overall-plus-surface specification in 2025 for both tours, with paired intervals excluding zero. In partial 2026, point estimates remain favorable but all listed confidence intervals cross zero. Therefore the combined 2025–2026 result is substantially supported by 2025; 2026 does not yet independently confirm the effect. This is not a blind test and must remain research-only.
+
+*2026 partial archive.
