@@ -114,6 +114,7 @@ if (predictionCandidates.length) {
           ratings: [prediction.ratingA ?? null, prediction.ratingB ?? null],
           ratingTypes: [prediction.ratingTypeA ?? null, prediction.ratingTypeB ?? null],
           profileKeys: [prediction.diagnostic?.profileKeysA || [], prediction.diagnostic?.profileKeysB || []],
+          profileIdentity: [prediction.diagnostic?.profileIdentityA || null, prediction.diagnostic?.profileIdentityB || null],
           eloFields: [prediction.diagnostic?.eloFieldsA || [], prediction.diagnostic?.eloFieldsB || []]
         }));
         continue;
