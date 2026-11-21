@@ -468,26 +468,28 @@
   function renderOddsStatus(){
     const node=$('#oddsStatus');
     if(!node)return;
+    const now=Date.now();
+    const providers=['winamax','betclic','netbet'];
+    const counts=Object.fromEntries(providers.map(provider=>{
+      const rows=cachedOdds.filter(item=>String(item?.bookmaker||'').toLowerCase()===provider);
+      const fresh=rows.filter(item=>{
+        const stamp=Date.parse(item?.scrapedAt||'');
+        return Number.isFinite(stamp)&&stamp<=now+5*60*1000&&now-stamp<=ODDS_FRESHNESS_MAX_AGE_MS;
+      }).length;
+      return [provider,{total:rows.length,fresh}];
+    }));
     const summary=oddsFreshnessSummary();
-    const lastSeen=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
-    const retrievedTimestamp=Date.parse(oddsRetrievedAt||'');
+    const latest=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
+    const labels={winamax:'Winamax',betclic:'Betclic',netbet:'NetBet'};
+    const providerSummary=providers.map(provider=>labels[provider]+': '+counts[provider].fresh+'/'+counts[provider].total).join(' · ');
     const runTimestamp=Date.parse(oddsTaskRun?.finishedAt||oddsTaskRun?.startedAt||'');
     const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
     const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
-    const sourceSeen=(Number.isFinite(retrievedTimestamp)?' · источник получен '+new Date(retrievedTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно')+taskRunSeen;
     if(oddsLoadError){
-      node.textContent=(cachedOdds.length
-        ?'Ошибка обновления · сохранено '+cachedOdds.length+' котировок, актуальных по времени выгрузки: '+summary.fresh
-        :'Не удалось загрузить коэффициенты Winamax')+' · '+oddsLoadError+sourceSeen+oddsDiagnosticsText();
+      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · всего свежих '+summary.fresh+' из '+cachedOdds.length+' · '+oddsLoadError+taskRunSeen+oddsDiagnosticsText();
       return;
     }
-    if(cachedOdds.length){
-      node.textContent=summary.fresh
-        ?'Winamax: '+summary.fresh+' котировок не старше 6 ч из '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen
-        :'Котировки получены, но свежих нет · всего '+cachedOdds.length+' · последняя выгрузка '+lastSeen+sourceSeen;
-      return;
-    }
-    node.textContent='Источник Winamax ответил без котировок'+sourceSeen+'. Проверь доступность источника и расписание.'+oddsDiagnosticsText();
+    node.textContent=providerSummary+' · всего свежих '+summary.fresh+' из '+cachedOdds.length+' · последняя котировка '+latest+taskRunSeen+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
