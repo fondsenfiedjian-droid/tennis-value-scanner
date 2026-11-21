@@ -58,3 +58,17 @@ Ten-bin ECE changed ATP 0.063435→0.014484 and WTA 0.058591→0.009872. These a
 2. Audit per-feature availability, especially whether both players have prior histories for restDays, rather than relying on the broad workload-available flag.
 3. Only if stable, test one feature group at a time: nonlinear short-recovery / excess-load hinges, then 14/28-day accumulated load, then age×load.
 4. Keep duration features optional until source coverage improves. No production promotion until independent origins and Winamax odds validation pass.
+
+
+### Additional chronological PFE holdouts — 2026-11-21
+
+The follow-up workflow also completed two additional PFE-combined ACE evaluations:
+
+| Tour / holdout | n | Δ Brier (95% paired CI) | Δ LogLoss (95% paired CI) | Accuracy change |
+|---|---:|---:|---:|---:|
+| ATP 2025 (train through 2024) | 28,067 | -0.004738 (-0.005686, -0.003790) | -0.010438 (-0.012500, -0.008376) | +1.24 pp |
+| WTA 2025 (train through 2024) | 22,142 | -0.005755 (-0.006804, -0.004706) | -0.013500 (-0.015809, -0.011191) | +1.68 pp |
+| ATP Jul–Nov 2026 (train Jan–Jun 2026) | 24,845 | -0.009702 (-0.010700, -0.008704) | -0.021406 (-0.023599, -0.019213) | +2.53 pp |
+| WTA Jul–Nov 2026 (train Jan–Jun 2026) | 16,454 | -0.009165 (-0.010388, -0.007942) | -0.021125 (-0.023909, -0.018341) | +2.18 pp |
+
+These repeated chronological evaluations strengthen the case that workload features add predictive information to PFE. They are still exploratory: Valuebetennis data and overlapping research windows are not a substitute for a future untouched live-forward sample or historical Winamax odds/CLV test. A new feature-availability audit is being added to report separately (a) any prior history, (b) both players having prior history for restDays, and (c) actual known-duration coverage.
