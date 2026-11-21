@@ -1074,3 +1074,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Added 14/28-calendar-day match-count and distinct-playing-day features to the pre-match workload builder, with independent availability flags and same-day exclusion preserved. Added inclusive-boundary regression tests and extended the PFE research runner to compare 14/28-day load and combined extended ACE against the validated 3/7-day+rest core. CI results pending; research-only.
+
+
+- Raw 14/28-day cumulative workload features produced small additional gains but unstable coefficients because windows overlap. Added non-overlapping workload bands (1–3, 4–7, 8–14, 15–28 days) for match counts and distinct playing days; the research runner compares banded load-only and banded ACE against the fixed core and cumulative 14/28 model. Regression tests cover band cutoffs and same-day exclusion. CI pending.
