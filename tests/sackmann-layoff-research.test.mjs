@@ -55,6 +55,10 @@ test("walk-forward layoff model is research-only and evaluates only with prior-y
   assert.match(report.featureDefinitions.inactivity,/not a diagnosis/);
   assert.deepEqual(Object.keys(report.cohorts.layoffDays),["30_59","60_89","90_179","180_364","365_plus"].filter(key=>key in report.cohorts.layoffDays));
   assert.deepEqual(Object.keys(report.cohorts.firstMatchesAfterReturn),["1","2","3"].filter(key=>key in report.cohorts.firstMatchesAfterReturn));
+  const roleCohorts=report.cohorts.layoff180_364ByEloRole;
+  const roleObservations=Object.values(roleCohorts).reduce((sum,cohort)=>sum+cohort.playerMatchObservations,0);
+  assert.equal(roleObservations,report.cohorts.layoffDays["180_364"]?.playerMatchObservations??0);
+  assert.ok(Object.keys(roleCohorts).every(key=>["elo_favorite","elo_underdog"].includes(key)));
   for(const cohort of Object.values(report.cohorts.layoffDays)){
     assert.equal(cohort.baseline.matches,cohort.playerMatchObservations);
     assert.equal(cohort.candidate.matches,cohort.playerMatchObservations);
