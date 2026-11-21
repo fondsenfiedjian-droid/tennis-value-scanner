@@ -211,6 +211,27 @@ function auditServerTransition(before, after) {
   };
 }
 
+function summarizeTimestampGaps(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const percentile = p => sorted.length ? Number(sorted[Math.min(sorted.length - 1, Math.ceil(p * sorted.length) - 1)].toFixed(2)) : null;
+  const bins = { "<5s": 0, "5-15s": 0, "15-30s": 0, "30-60s": 0, "60-180s": 0, "180s+": 0 };
+  let sum = 0;
+  for (const seconds of sorted) {
+    sum += seconds;
+    const key = seconds < 5 ? "<5s" : seconds < 15 ? "5-15s" : seconds < 30 ? "15-30s" :
+      seconds < 60 ? "30-60s" : seconds < 180 ? "60-180s" : "180s+";
+    bins[key]++;
+  }
+  return {
+    count: sorted.length,
+    meanSeconds: sorted.length ? Number((sum / sorted.length).toFixed(2)) : null,
+    p50Seconds: percentile(0.50), p90Seconds: percentile(0.90),
+    p95Seconds: percentile(0.95), p99Seconds: percentile(0.99),
+    maxSeconds: sorted.length ? Number(sorted.at(-1).toFixed(2)) : null,
+    bins
+  };
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
@@ -268,6 +289,10 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   };
   let totalObservedTransitions = 0;
   let totalInferredTransitions = 0;
+  const allTimestampGaps = [];
+  const inferredTimestampGaps = [];
+  const ambiguousTimestampGaps = [];
+  const timestampGapsByReason = {};
   for (const states of groups.values()) {
     const transitions = Math.max(0, states.length - 1);
     let inferred = 0;
@@ -322,6 +347,19 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     for (let i = 0; i + 1 < states.length; i++) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
       const serverCheck = auditServerTransition(states[i], states[i + 1]);
+      const beforeMs = Date.parse(String(states[i].timestamp_utc ?? ""));
+      const afterMs = Date.parse(String(states[i + 1].timestamp_utc ?? ""));
+      if (Number.isFinite(beforeMs) && Number.isFinite(afterMs) && afterMs >= beforeMs) {
+        const gapSeconds = (afterMs - beforeMs) / 1000;
+        allTimestampGaps.push(gapSeconds);
+        if (result.status === "inferred") inferredTimestampGaps.push(gapSeconds);
+        else {
+          ambiguousTimestampGaps.push(gapSeconds);
+          const reason = result.reason || "unknown";
+          if (!timestampGapsByReason[reason]) timestampGapsByReason[reason] = [];
+          timestampGapsByReason[reason].push(gapSeconds);
+        }
+      }
       if (serverCheck.status === "skipped") {
         serverAlignment.skipped++;
         serverAlignment.skippedReasons[serverCheck.reason] = (serverAlignment.skippedReasons[serverCheck.reason] || 0) + 1;
@@ -382,6 +420,13 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
+    timestampGapStats: {
+      all: summarizeTimestampGaps(allTimestampGaps),
+      inferred: summarizeTimestampGaps(inferredTimestampGaps),
+      ambiguous: summarizeTimestampGaps(ambiguousTimestampGaps),
+      byAmbiguousReason: Object.fromEntries(Object.entries(timestampGapsByReason)
+        .map(([reason, values]) => [reason, summarizeTimestampGaps(values)]))
+    },
     serverAlignment,
     byTierKey: tierStats,
     byTour: tourStats,
