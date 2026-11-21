@@ -1083,3 +1083,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Added a research-only age identity feasibility audit: exact normalized full-name + tour matching from Valuebetennis to Sackmann player identities, with age taken only from the latest prior-date completed match. Same-day/future age records are excluded; ambiguous names are not guessed. The workflow downloads 2021–2026 Sackmann match ages and reports unique-player and match-level age coverage by tour/year. Awaiting CI; no age×load feature is added yet. Sackmann data is non-commercial (CC BY-NC-SA 4.0), so it cannot be the production age source without separate permission.
+
+
+- Initial strict full-name age audit mapped only 10.02% of unique players and found both ages in 19.92% of matches; insufficient. Expanded the audit to report tournament category and use safe token-order/initial+surname aliases, with exact full-name matches taking priority and ambiguous mappings rejected. Preliminary coverage is superseded pending the expanded run.
