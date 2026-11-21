@@ -19,7 +19,7 @@ test("workload features use only earlier UTC calendar days and exclude same-day 
   const features=buildPreMatchWorkload(rows);
   const target=features.get("20250105:1:5");
   assert.deepEqual(target,{
-    matches3:1,matches7:3,playingDays7:2,matches14:3,matches28:3,playingDays14:2,playingDays28:2,restDays:0,restDaysAvailable:0,minutes7:270,durationCoverage7:1,priorMatchRecords7:3,priorMatchRecords14:3,priorMatchRecords28:3,knownDurationRecords7:3
+    matches3:1,matches7:3,playingDays7:2,matches14:3,matches28:3,playingDays3:1,playingDays14:2,playingDays28:2,matches4to7:2,matches8to14:0,matches15to28:0,playingDays4to7:1,playingDays8to14:0,playingDays15to28:0,restDays:0,restDaysAvailable:0,minutes7:270,durationCoverage7:1,priorMatchRecords7:3,priorMatchRecords14:3,priorMatchRecords28:3,knownDurationRecords7:3
   });
   assert.deepEqual(features.get("20250105:1:6"),target);
 });
@@ -50,7 +50,7 @@ test("workload windows count calendar dates inclusively and cap long rest interv
   ];
   const features=buildPreMatchWorkload(rows);
   assert.deepEqual(features.get("20250108:1:3"),{
-    matches3:0,matches7:1,playingDays7:1,matches14:1,matches28:1,playingDays14:1,playingDays28:1,restDays:0,restDaysAvailable:0,minutes7:100,durationCoverage7:1,priorMatchRecords7:1,priorMatchRecords14:1,priorMatchRecords28:1,knownDurationRecords7:1
+    matches3:0,matches7:1,playingDays7:1,matches14:1,matches28:1,playingDays3:0,playingDays14:1,playingDays28:1,matches4to7:1,matches8to14:0,matches15to28:0,playingDays4to7:1,playingDays8to14:0,playingDays15to28:0,restDays:0,restDaysAvailable:0,minutes7:100,durationCoverage7:1,priorMatchRecords7:1,priorMatchRecords14:1,priorMatchRecords28:1,knownDurationRecords7:1
   });
   assert.equal(features.get("20250220:1:4").restDays,25);
   assert.equal(features.get("20250220:1:4").restDaysAvailable,1);
