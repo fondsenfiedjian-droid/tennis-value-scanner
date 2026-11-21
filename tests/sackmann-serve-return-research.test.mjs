@@ -227,3 +227,15 @@ test("surface-specific extended profiles are shrunk toward each player's overall
  assert.ok(f.shrunkSurfaceFirstServeWonDiff>f.firstServeWonDiff);
  assert.ok(f.shrunkSurfaceFirstServeWonDiff<f.surfaceFirstServeWonDiff);
 });
+
+
+test("unknown target surfaces keep overall profile rates and leave surface profile features missing",()=>{
+ const rows=[
+  row("20250101",1,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8),"Hard"),
+  row("20250102",2,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8),"Unknown")
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Unknown");
+ assert.ok(Number.isFinite(f.firstServeWonDiff));
+ assert.equal(f.surfaceFirstServeWonDiff,null);
+ assert.equal(f.shrunkSurfaceFirstServeWonDiff,null);
+});
