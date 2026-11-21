@@ -223,7 +223,7 @@ test("Valuebetennis importer preserves player names and stable source IDs for ag
   const csv=[
     "match_id,date,tournoi_id,genre,surface,joueur1,joueur1_id,joueur2,joueur2_id,vainqueur_id,score",
     "8801,2025-03-01,700,atp,Hard,Novak Djokovic,1001,Carlos Alcaraz,1002,1001,6-4 6-4"
-  ].join("\\n");
+  ].join("\n");
   const parsed=parseValuebetennisCsv(csv);
   assert.equal(parsed.rows.length,1);
   assert.equal(parsed.rows[0].player1Id,"1001");
