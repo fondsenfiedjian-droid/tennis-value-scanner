@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { auditMcpMatchLinkage } from "../scripts/mcp-match-linkage-audit.mjs";
 
 const metaHeader="match_id,Player 1,Player 2,Date,Tournament,Round";
-const resultHeader="tourney_id,tourney_name,tourney_date,match_num,winner_name,loser_name,round";
+const resultHeader="tourney_id,tourney_name,tourney_date,match_num,winner_name,loser_name,round,winner_id,loser_id,score,surface,best_of";
 const atpMeta="20240710-M-Wimbledon-QF-Novak_Djokovic-Carlos_Alcaraz,Novak Djokovic,Carlos Alcaraz,20240710,Wimbledon,QF";
 const wtaMeta="20240711-W-Roland_Garros-SF-Iga_Swiatek-Coco_Gauff,Iga Swiatek,Coco Gauff,20240711,Roland Garros,SF";
 
@@ -11,8 +11,8 @@ test("links unique exact player pairs by tour, year, event and round",()=>{
  const report=auditMcpMatchLinkage([
   {filename:"charting-m-matches.csv",content:[metaHeader,atpMeta].join("\n")},
   {filename:"charting-w-matches.csv",content:[metaHeader,wtaMeta].join("\n")},
-  {filename:"atp_matches_2024.csv",content:[resultHeader,"2024-0451,Wimbledon,20240708,120,Novak Djokovic,Carlos Alcaraz,QF"].join("\n")},
-  {filename:"wta_matches_2024.csv",content:[resultHeader,"2024-9032,French Open,20240603,120,Iga Swiatek,Coco Gauff,SF"].join("\n")}
+  {filename:"atp_matches_2024.csv",content:[resultHeader,"2024-0451,Wimbledon,20240708,120,Novak Djokovic,Carlos Alcaraz,QF,104925,207989,6-7 7-6 7-6 6-3,Grass,5"].join("\n")},
+  {filename:"wta_matches_2024.csv",content:[resultHeader,"2024-9032,French Open,20240603,120,Iga Swiatek,Coco Gauff,SF,201520,200001,6-4 6-2,Clay,3"].join("\n")}
  ]);
  assert.equal(report.totals.uniqueMatchIds,2);
  assert.equal(report.totals.linkedUnique,2);
