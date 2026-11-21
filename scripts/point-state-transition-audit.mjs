@@ -284,7 +284,7 @@ function auditScoreVocabulary(rows) {
       report.tiebreakStates++;
       for (const value of [p1, p2]) {
         if (/^\d+$/.test(value)) add(report.tiebreakValueCounts, value);
-        else add(report.unexpectedValueCounts, value || "<missing>");
+        else add(report.tiebreakUnexpectedValueCounts, value || "<missing>");
       }
       if (!/^\d+$/.test(p1) || !/^\d+$/.test(p2)) report.tiebreakNonNumericStates++;
     } else if (isFalse(row.is_tiebreak)) {
