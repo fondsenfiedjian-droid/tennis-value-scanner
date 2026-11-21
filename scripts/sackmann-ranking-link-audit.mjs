@@ -77,8 +77,8 @@ for(const file of files){
   const uniqueIds=new Set();
   let matchedUniqueIds=0;
   for await(const row of rows(file)){
-    if(!row.fields){header=row.header;dateIdx=header.indexOf('ranking_date');rankIdx=header.indexOf('rank');idIdx=header.indexOf('player');pointsIdx=header.indexOf('points');
-      if([dateIdx,rankIdx,idIdx,pointsIdx].some(x=>x<0))throw new Error(file+': expected ranking_date, rank, player, points'); continue;}
+    if(!row.fields){header=row.header;dateIdx=header.indexOf('ranking_date');rankIdx=header.indexOf('rank');idIdx=header.indexOf('player_id');if(idIdx<0)idIdx=header.indexOf('player');pointsIdx=header.indexOf('points');
+      if([dateIdx,rankIdx,idIdx,pointsIdx].some(x=>x<0))throw new Error(file+': expected ranking_date, rank, player_id (or player), points'); continue;}
     rowsN++;
     const d=String(row.fields[dateIdx]??'').trim(),id=String(row.fields[idIdx]??'').trim(),p=String(row.fields[pointsIdx]??'').trim();
     if(!d)missingDate++; else {
