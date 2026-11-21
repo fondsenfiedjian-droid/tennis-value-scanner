@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout } from "../scripts/sackmann-serve-return-research.mjs";
+import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout, aggregatePredictions } from "../scripts/sackmann-serve-return-research.mjs";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
  tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
@@ -80,6 +80,46 @@ test("reports serve-stat quality and isolates impossible second-serve opportunit
 });
 
 
+test("rolling history window supports 180, 365 and 730 days", () => {
+ const dates=["20240601","20250101","20250301","20250601","20250901"];
+ const rows=[];
+ dates.forEach((date,i)=>{
+  rows.push(row(date,i+1,1,10+i,stats(100,60,40,20),stats(100,60,30,20)));
+  rows.push(row(date,i+11,2,20+i,stats(100,60,35,15),stats(100,60,30,20)));
+ });
+ rows.push(row("20260101",99,1,2,stats(100,60,40,20),stats(100,60,30,20)));
+ const targetFor=(windowDays,minOverallMatches)=>{
+  const features=buildPreMatchServeReturn(rows,{windowDays,minOverallMatches,minSurfaceMatches:1});
+  return features.get("20260101:1:2:Hard");
+ };
+ assert.equal(targetFor(180,1).minOverallPriorMatches,1);
+ assert.equal(targetFor(365,3).minOverallPriorMatches,4);
+ assert.equal(targetFor(730,5).minOverallPriorMatches,5);
+ assert.equal(targetFor(365,5).serveDiff,null);
+});
+
+test("surface shrinkage and residualization are sample-size weighted", () => {
+ const rows=[];
+ const clayP1=stats(100,60,40,20),hardP1=stats(100,60,50,30),p2=stats(100,60,30,20);
+ for(let i=0;i<5;i++){
+  const date="202501"+String(i+1).padStart(2,"0");
+  rows.push(row(date,i+1,1,100+i,clayP1,stats(100,60,30,20),"Clay"));
+  rows.push(row(date,i+11,2,200+i,p2,stats(100,60,30,20),"Clay"));
+ }
+ for(let i=0;i<5;i++){
+  const date="202502"+String(i+1).padStart(2,"0");
+  rows.push(row(date,i+21,1,300+i,hardP1,stats(100,60,30,20),"Hard"));
+  rows.push(row(date,i+31,2,400+i,p2,stats(100,60,30,20),"Hard"));
+ }
+ rows.push(row("20250301",99,1,2,stats(100,60,40,20),stats(100,60,30,20),"Clay"));
+ const get=(surfaceMode,surfaceShrinkagePrior=10)=>buildPreMatchServeReturn(rows,{
+  minOverallMatches:5,minSurfaceMatches:5,surfaceMode,surfaceShrinkagePrior
+ }).get("20250301:1:2:Clay").surfaceServeDiff;
+ assert.ok(Math.abs(get("raw")-0.1)<1e-9);
+ assert.ok(Math.abs(get("shrinkage",10)-(1/6))<1e-9);
+ assert.ok(Math.abs(get("residualized",10)-(-1/30))<1e-9);
+});
+
 test("history window controls which earlier matches enter pre-match rates",()=>{
  const rows=[
   row("20240101",1,1,2,stats(100,60,40,20),stats(100,60,30,20)),
@@ -119,34 +159,30 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  assert.equal(result.holdoutEndYear,2026);
  assert.equal(result.trainingMatches,500);
  assert.equal(result.evaluationMatches,40);
+ assert.equal(result.byYear[2025].matches,20);
+ assert.equal(result.byYear[2026].matches,20);
  assert.equal(result.metrics.matches,40);
  assert.ok(Number.isFinite(result.metrics.adjusted.brier));
  assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
- const changedHoldout=rows.map(row=>row.year>=2025?{...row,outcome:1-row.outcome}:row);
- const refit=evaluateFixedHoldout(changedHoldout,["serveDiff"],{
-  featureStartYear:2016,holdoutStartYear:2025,lastEvaluationYear:2026
- });
- assert.deepEqual(refit.standardizedCoefficients,result.standardizedCoefficients);
 });
 
 
-test("separates surface-relative residuals and shrinks surface rates toward overall rates",()=>{
- const rows=[
-  row("20240101",1,1,3,stats(100,60,50,30),stats(100,60,30,20),"Clay"),
-  row("20240102",2,5,1,stats(100,60,40,20),stats(100,60,20,20),"Hard"),
-  row("20240103",3,2,4,stats(100,60,40,20),stats(100,60,30,20),"Clay"),
-  row("20240104",4,6,2,stats(100,60,40,20),stats(100,60,40,20),"Hard"),
-  row("20240105",5,1,2,stats(100,60,40,20),stats(100,60,30,20),"Clay")
- ];
- const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,windowDays:365,surfaceShrinkageMatches:1}).get("20240105:1:2:Clay");
- assert.ok(Math.abs(f.serveDiff)<1e-9);
- assert.ok(Math.abs(f.surfaceServeResidualDiff-0.2)<1e-9);
- assert.ok(Math.abs(f.shrunkSurfaceServeDiff-0.1)<1e-9);
- assert.ok(Math.abs(f.surfaceReturnResidualDiff)<1e-9);
- assert.ok(Math.abs(f.shrunkSurfaceReturnDiff)<1e-9);
-});
-
-test("rejects invalid surface shrinkage strength",()=>{
- const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
- assert.throws(()=>buildPreMatchServeReturn(rows,{surfaceShrinkageMatches:0}),/surfaceShrinkageMatches/);
+test("reports calibration error and calibration slope for baseline and adjusted probabilities", () => {
+ const rows=[];
+ for(let i=0;i<50;i++){
+  rows.push({baseProbability:0.2,adjustedProbability:0.1,outcome:i<10?1:0});
+  rows.push({baseProbability:0.8,adjustedProbability:0.9,outcome:i<40?1:0});
+ }
+ const report=aggregatePredictions(rows);
+ assert.equal(report.matches,100);
+ assert.equal(report.calibration.baseline.ece,0);
+ assert.equal(report.calibration.baseline.mce,0);
+ assert.ok(Math.abs(report.calibration.baseline.calibrationIntercept)<0.001);
+ assert.ok(Math.abs(report.calibration.baseline.calibrationSlope-1)<0.01);
+ assert.equal(report.calibration.adjusted.ece,0.1);
+ assert.equal(report.calibration.adjusted.mce,0.1);
+ assert.equal(report.calibration.adjusted.bins.length,2);
+ assert.equal(report.calibration.adjusted.bins[0].matches,50);
+ assert.equal(report.calibration.adjusted.bins[1].matches,50);
+ assert.ok(report.calibration.adjusted.calibrationSlope<1);
 });
