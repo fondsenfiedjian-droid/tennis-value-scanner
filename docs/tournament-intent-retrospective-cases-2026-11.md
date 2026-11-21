@@ -125,3 +125,46 @@ The following additional official/public sources were identified in the two-mont
 - **Unknown:** no reliable public evidence. Absence of evidence is not evidence of low motivation.
 
 These cases are not a statistically representative sample and have no denominator. They must not be used to infer prevalence or alter model probabilities. The next phase should collect a systematic list of completed matches in the window, then search both players symmetrically rather than selecting only players with interesting statements.
+
+
+## Additional audit cases — source review on 21 November 2026
+
+These cases were added after a further search of official tour/tournament sources. They remain retrospective discoveries: no claim is made that the scanner captured the material before the event.
+
+### Case 12 — Carlos Alcaraz, Paris Masters, 2–8 November 2026
+
+- Pre-event interview published by TNT Sports: https://www.tntsports.co.uk/tennis/atp-paris/2026/carlos-alcaraz-jannik-sinner-alex-michelsen_sto23351921/story.shtml
+- Before the event Alcaraz said he was arriving fresh physically and mentally, motivated, and eager to keep improving and perform as well as possible. This is a positive competitive claim, not a preparation/low-priority claim.
+- He won the Paris Masters, defeating Ben Shelton in the final 7-6(5), 7-5. Official tournament retrospective: https://www.rolandgarros.com/en-us/article/atp-carlos-alcaraz-rolex-paris-masters-victory-first-title
+- Candidate audit result: consistent with claim at the broad descriptive level, but this single result cannot validate the truthfulness or predictive value of the statement.
+- Interpretation: positive statements can align with a title, but they still receive zero direct model weight.
+
+### Case 13 — Elina Svitolina, WTA Finals, 8–15 November 2026
+
+- Pre-event press conference: 6 November 2026, https://asaptext.com/asap_media/media/1004/1345/browse_file.php?browse_file_name=transcripts%2F172665.html
+- Svitolina described resting and training after Wuhan, then preparing specifically for the Finals. She said she felt good and could not wait to start; she also said her match mentality and routines were broadly the same at WTA 250 and the Finals.
+- She reached the final and lost to Mirra Andreeva 5-7, 3-6. The official draw records the final: https://www.wtatennis.com/tournaments/808/wta-finals/2026/draws/
+- Candidate audit result: consistent with claim / mixed or ambiguous; recovery before the event coexisted with a runner-up finish. The result does not prove what her private intent was.
+- Interpretation: a rest period before an event is not evidence that the event is low priority.
+
+### Case 14 — Elena Rybakina, WTA Finals, withdrawal on 7 November 2026
+
+- Official WTA announcement: https://www.wtatennis.com/news/4606105
+- Rybakina withdrew before the event began, citing a viral illness and stating that her body was not physically ready to compete. The statement was published before the tournament start.
+- Target-event participation outcome: withdrawn before start, not an on-court tournament stage.
+- Interpretation: this is evidence of physical unavailability and a withdrawal decision, not evidence of low competitive motivation. Do not label her as having entered the event without intent; she did not play it.
+
+### Case 15 — Aryna Sabalenka, WTA Finals media day, 6 November 2026
+
+- Official press conference: https://asaptext.com/asap_media/media/1004/1345/browse_file.php?browse_file_name=transcripts%2F172667.html
+- Sabalenka said she was focusing on winning every match and giving her best each time; she also described body work and physical/mental training after Wuhan.
+- This is a clear public competitive-commitment statement, but it is still only a statement. It must not be treated as verified intent or as a predictor.
+- Tournament-stage audit is intentionally not coded in this entry until the official singles draw/results are checked against the relevant match schedule; do not infer it from the quote.
+
+## What this additional search changes — and does not change
+
+- It adds two useful contrasts: Alcaraz's positive pre-event language followed by a title, and Svitolina's recovery/preparation language followed by a final.
+- It adds a clearly documented health-based withdrawal (Rybakina) that belongs in physical availability, not tournament motivation.
+- It does not establish that public statements are generally honest or dishonest. The cases are selected discoveries, not a random or complete sample.
+- No prevalence estimate, classifier weight, probability adjustment, EV rule, or bet-selection change is justified.
+- The next quantitative task remains constructing the complete event → official singles draw/results → pre-event top-150 ranking join. Until that denominator exists, this remains source-led qualitative audit work.
