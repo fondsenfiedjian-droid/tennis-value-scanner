@@ -68,3 +68,17 @@ Run: GitHub Actions `44862908490` (successful). The public June 2026 sample cont
 - 57 matches had every observed transition inferred; most tapes still contain at least one ambiguous transition.
 
 Conclusion: the public sample is technically usable for further parser validation, but not ready for feature engineering. Next steps are manual source-level validation of stratified ordinary-game, advantage, tiebreak, game-boundary and set-boundary transitions; resolve the 25,406 counter transitions and major ambiguity groups; validate server alignment; and improve exact event-tour mapping. Keep ATP and WTA separate, and do not build rolling pre-match features until those checks pass.
+
+## Server-rotation alignment audit (research-only, 2026-11-21)
+
+A new diagnostic compares the server field on consecutive scoreboard states against two hypotheses: (1) in ordinary games the server remains the same until a game counter advances, then switches; (2) during a tiebreak, the server switches after the first point and then after every two points. Transitions into/out of tiebreaks, missing server values, counter jumps and unclassifiable states are skipped and counted separately. This checks consistency of the server field with expected rotation; it does not independently prove whether the before-state or after-state server owns the point. Treat match/mismatch rates as a diagnostic, not as validated point attribution.
+
+### First server-alignment sample result (2026-11-21)
+
+Successful run: GitHub Actions `44863117235`.
+
+- Ordinary-game hypothesis checked 831,264 transitions: 788,443 matched (94.85%), 42,821 mismatched (5.15%).
+- Tiebreak hypothesis checked 13,252 transitions: 6,839 matched (51.61%), 6,413 mismatched (48.39%).
+- 101,168 transitions were skipped, mostly due to missing server (46,031), game-counter jumps (28,562), set-array boundaries (12,896) or tiebreak entry/exit (7,319).
+
+Interpretation: ordinary-game rotation is broadly consistent with the “current/next server” hypothesis, but the mismatch rate is non-zero and needs stratified review. Tiebreak alignment is effectively inconclusive; the near-50/50 result means the assumed state-to-point timing or tiebreak server semantics are not established. Do not assign serve ownership to point transitions or derive serve/return features from this field yet. Next investigate alternative one-state phase alignment and manually validate examples from the source documentation/data before any feature work.

@@ -135,6 +135,63 @@ export function inferPointStateTransition(before, after) {
   };
 }
 
+function auditServerTransition(before, after) {
+  const serverBefore = serverValue(before?.server);
+  const serverAfter = serverValue(after?.server);
+  if (!serverBefore || !serverAfter) return { status: "skipped", reason: "missing-server" };
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  const beforeTiebreak = isTrue(before?.is_tiebreak);
+  const afterTiebreak = isTrue(after?.is_tiebreak);
+  if (beforeTiebreak || afterTiebreak) {
+    if (!beforeTiebreak || !afterTiebreak) return { status: "skipped", reason: "tiebreak-boundary" };
+    const a = integer(before.points_p1), b = integer(before.points_p2);
+    const c = integer(after.points_p1), d = integer(after.points_p2);
+    if ([a, b, c, d].some(value => value === null)) return { status: "skipped", reason: "invalid-tiebreak-score" };
+    const d1 = c - a, d2 = d - b;
+    if (!((d1 === 1 && d2 === 0) || (d2 === 1 && d1 === 0))) {
+      return { status: "skipped", reason: "non-single-tiebreak-step" };
+    }
+    const nextPointNumber = c + d;
+    const expected = nextPointNumber % 2 === 1 ? 3 - serverBefore : serverBefore;
+    return { status: serverAfter === expected ? "match" : "mismatch", kind: "tiebreak" };
+  }
+
+  const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
+  const t1 = integer(after.sets_p1), t2 = integer(after.sets_p2);
+  let setAdvanced = false;
+  if ([s1, s2, t1, t2].every(value => value !== null)) {
+    const ds1 = t1 - s1, ds2 = t2 - s2;
+    if (ds1 === 1 && ds2 === 0) setAdvanced = true;
+    else if (ds2 === 1 && ds1 === 0) setAdvanced = true;
+    else if (ds1 !== 0 || ds2 !== 0) return { status: "skipped", reason: "set-counter-jump" };
+  }
+  const g1 = gameArray(before.games_p1), g2 = gameArray(before.games_p2);
+  const h1 = gameArray(after.games_p1), h2 = gameArray(after.games_p2);
+  if (!g1 || !g2 || !h1 || !h2 || g1.length !== g2.length || h1.length !== h2.length) {
+    return { status: "skipped", reason: "missing-game-counter" };
+  }
+  let gameAdvanced = false;
+  if (g1.length === h1.length) {
+    if (g1.slice(0, -1).some((value, index) => value !== h1[index]) ||
+        g2.slice(0, -1).some((value, index) => value !== h2[index])) {
+      return { status: "skipped", reason: "prior-set-score-mutated" };
+    }
+    const d1 = h1.at(-1) - g1.at(-1), d2 = h2.at(-1) - g2.at(-1);
+    if ((d1 === 1 && d2 === 0) || (d2 === 1 && d1 === 0)) gameAdvanced = true;
+    else if (d1 !== 0 || d2 !== 0) return { status: "skipped", reason: "game-counter-jump" };
+  } else if (setAdvanced && h1.length === g1.length + 1 &&
+      g1.every((value, index) => value === h1[index]) &&
+      g2.every((value, index) => value === h2[index]) &&
+      h1.at(-1) === 0 && h2.at(-1) === 0) {
+    gameAdvanced = true;
+  } else {
+    return { status: "skipped", reason: "set-array-boundary" };
+  }
+  if (setAdvanced && !gameAdvanced) return { status: "skipped", reason: "set-without-game-advance" };
+  const expected = gameAdvanced ? 3 - serverBefore : serverBefore;
+  return { status: serverAfter === expected ? "match" : "mismatch", kind: "regular" };
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
@@ -170,6 +227,11 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     groups.get(id).push(row);
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
+  const serverAlignment = {
+    regularChecked: 0, regularMatches: 0, regularMismatches: 0,
+    tiebreakChecked: 0, tiebreakMatches: 0, tiebreakMismatches: 0,
+    skipped: 0, skippedReasons: {}
+  };
   const totals = {
     matches: groups.size, rowsWithoutMatchId, transitions: 0, inferred: 0, ambiguous: 0,
     byMethod: {}, byReason: {}, transitionsWithServerBefore: 0,
@@ -234,6 +296,16 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     if (transitions > 0) totals.matchesWithAtLeastOneTransition++;
     for (let i = 0; i + 1 < states.length; i++) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
+      const serverCheck = auditServerTransition(states[i], states[i + 1]);
+      if (serverCheck.status === "skipped") {
+        serverAlignment.skipped++;
+        serverAlignment.skippedReasons[serverCheck.reason] = (serverAlignment.skippedReasons[serverCheck.reason] || 0) + 1;
+      } else {
+        const prefix = serverCheck.kind === "tiebreak" ? "tiebreak" : "regular";
+        serverAlignment[prefix + "Checked"]++;
+        if (serverCheck.status === "match") serverAlignment[prefix + "Matches"]++;
+        else serverAlignment[prefix + "Mismatches"]++;
+      }
       totals.transitions++;
       tierStats[tierKey].transitions++;
       tourStats[tour].transitions++;
@@ -275,6 +347,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
+    serverAlignment,
     byTierKey: tierStats,
     byTour: tourStats,
     byPlayerTourAgreement: playerTourAgreementStats,

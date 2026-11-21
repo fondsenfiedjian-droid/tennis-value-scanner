@@ -196,3 +196,40 @@ test("keeps player-primary-tour agreement separate from explicit event-tour labe
   assert.equal(report.byPlayerTourAgreement.ATP.matchesWithPoints, 1);
   assert.equal(report.byPlayerTourAgreement.ATP.inferred, 1);
 });
+
+
+test("audits regular-game and tiebreak server rotation without assuming unverified transitions", () => {
+  const rows = [
+    state({
+      points_p1: "40", points_p2: "30", server: "1",
+      games_p1: "[0]", games_p2: "[0]"
+    }),
+    state({
+      points_p1: "0", points_p2: "0", server: "2",
+      games_p1: "[1]", games_p2: "[0]"
+    }),
+    state({
+      match_id: "m2", points_p1: "0", points_p2: "0",
+      server: "1", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "1", points_p2: "0",
+      server: "2", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "1", points_p2: "1",
+      server: "2", is_tiebreak: "true"
+    }),
+    state({
+      match_id: "m2", points_p1: "2", points_p2: "1",
+      server: "1", is_tiebreak: "true"
+    })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.serverAlignment.regularChecked, 1);
+  assert.equal(report.serverAlignment.regularMatches, 1);
+  assert.equal(report.serverAlignment.tiebreakChecked, 3);
+  assert.equal(report.serverAlignment.tiebreakMatches, 3);
+  assert.equal(report.serverAlignment.regularMismatches, 0);
+  assert.equal(report.serverAlignment.tiebreakMismatches, 0);
+});
