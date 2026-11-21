@@ -973,3 +973,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Real-sample score vocabulary run `44864969199`: 929,956 normal-flag states and 21,108 tiebreak-flag states; zero unknown flags. 5,368 normal states had missing scores and 504 had unexpected numeric values 1–9; 342 tiebreak states had missing scores and 43 had A/AD values. Tiebreak flag/score-vocabulary mismatches remain research-only and excluded from inference.
 - Added adjacent-state diagnostics for score/flag mismatches: count numeric scores under normal-game flags and non-numeric tokens under tiebreak flags, then measure whether an opposite-flag state with the expected score shape is immediately adjacent. Diagnostic only; no automatic reclassification.
 - Real-sample adjacent tiebreak-flag run `44865468673`: of 504 numeric score anomalies under normal flags, 112 (22.2%) touched a neighboring numeric tiebreak-flag state; of 43 A/AD tokens under tiebreak flags, 37 (86.0%) touched a neighboring recognized normal-score state. 5,710 states had missing score fields. Adjacency suggests possible boundary/flag lag for some cases but does not prove cause; all 547 non-missing mismatches remain ambiguous and excluded from point-outcome inference.
+
+### PFE server-field validation (2026-11-21)
+- Real sample: within normal games, 727,555/741,219 server transitions matched expected hold (98.16%); at game boundaries, 60,888/90,045 matched expected switch (67.62%). In tiebreaks, only 355/13,252 single-point transitions changed the server field (2.68%); 6,293/6,528 expected switches did not occur.
+- Current Live Tennis API reference explicitly warns tiebreak server rows are not settled and server-dependent tiebreak analysis should be withheld unless encoding reconciles per match. Therefore no tiebreak serve/return feature, no server-based point labeling, and no production activation. Normal-game server field remains research-only pending hand-check of boundary cases.
+
+## PFE working-plan decisions (2026-11-21)
+- User-selected operating mode: **combined** — improve the operational PFE core while independent research tracks proceed in parallel; do not delay safe core progress for research, and do not promote unvalidated research into production.
+- User-selected scope: **ATP and WTA simultaneously**, with separate tour-level evaluation and calibration.
+- Detailed execution order, validation protocol, parallel tracks and data guardrails are documented in `docs/PFE_RESEARCH_PLAN.md`.

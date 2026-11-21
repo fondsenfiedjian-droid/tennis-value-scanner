@@ -192,3 +192,15 @@ Successful run: GitHub Actions `44865468673`.
 - 5,710 states had at least one missing point-score field.
 
 Interpretation: many A/AD-under-tiebreak cases occur at a normal/tiebreak boundary and may reflect a one-row flag lag or boundary snapshot. Most numeric-under-normal anomalies do not have an immediately adjacent tiebreak state, so they cannot be explained by simple one-row flag lag alone. This test is only adjacency in source row order; it does not prove the exact cause. Keep all 547 non-missing mismatch states ambiguous and do not rewrite their flags or infer point winners from them.
+
+## Server-field alignment audit (2026-11-21)
+
+Successful real-sample run: GitHub Actions `44865563966`.
+
+- Within normal games, 727,555 of 741,219 checked transitions (98.16%) matched the expected same-server state; 13,664 did not.
+- At normal game boundaries, 60,888 of 90,045 transitions (67.62%) matched the expected server change; 29,157 did not. The alternative interpretation matched only those 29,157.
+- In tiebreaks, only 355 of 13,252 checked single-point transitions (2.68%) showed any server-field change. For the 6,528 transitions where standard tiebreak rotation predicts a change, 6,293 (96.4%) showed no change. For the 6,724 transitions where rotation predicts a hold, 6,604 (98.2%) showed a hold.
+
+The public sample data dictionary describes `server` as the player serving at a state. The current API reference further warns that tiebreak server rows are not settled and that tiebreak serving rotation cannot be reconstructed reliably from sampled rows when points are skipped; it explicitly says to withhold server-dependent tiebreak analysis unless the encoding reconciles for the match. See [Live Tennis API data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) and [Live Tennis API full reference, HistoryTapeRow.server](https://docs.livetennisapi.com/reference.html#historytaperow).
+
+Interpretation: the sample supports server continuity inside ordinary games, but game-boundary alignment is materially weaker and the tiebreak server field fails the expected rotation check. Do not use this field as a tiebreak server/returner feature, do not infer serve ownership from it, and do not use it to label point winners. Normal-game server use also remains research-only until game-boundary exceptions and the exact before/after state convention are hand-checked against source matches. No production feature is enabled.
