@@ -34,6 +34,18 @@ SMA is not a second vote that is averaged blindly with PFE. Its primary output i
 
 All player features must be computed strictly from matches completed before the target match. Same-day matches are excluded unless trustworthy completion timestamps establish ordering. Retirements, walkovers, missing denominators and malformed stats are explicitly excluded or flagged.
 
+## Implemented archival profile features (research branch)
+The current archival builder derives the following pre-match rates from prior match rows, preserving each numerator and denominator before aggregation:
+- first-serve-in, first-serve points won, and second-serve points won;
+- ace and double-fault rates per service point;
+- break points saved / faced;
+- first-serve and second-serve return points won / opportunities;
+- break-point conversion, derived as the opponent's break points faced minus break points saved.
+
+Each feature has its own valid-observation count. Missing or invalid optional counters suppress only that feature; they do not discard otherwise valid core service-point history. Same-day matches remain excluded. The research evaluator now compares serve-profile-only, return-profile-only, combined extended-profile, and core-plus-extended specifications against the same chronological Elo baseline.
+
+**Important limitation:** these are rolling player-level rates, not yet opponent-adjusted serve-vs-return matchup estimates. Opponent-strength residualization, tour/surface priors for each submetric, and direct PFE point-probability integration remain separate research tasks. Do not describe this branch as a finished matchup model or enable it in production.
+
 ## Candidate matchup calculation
 For player A serving against player B returning, estimate expected service-point win probability from:
 1. the tournament/tour/surface baseline;
