@@ -226,7 +226,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
   evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,reports,
-  method:"For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous 365 days. Build overall and same-surface rates; require at least five prior statistics-complete matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.",
+  method:`For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous ${windowDays} days. Build overall and same-surface rates; require at least ${minOverallMatches} prior statistics-complete matches overall and ${minSurfaceMatches} same-surface matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.`,
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
    "Match statistics are observed after each match and are used only in future-date histories. All same-day matches are scored before that date's statistics are added.",
