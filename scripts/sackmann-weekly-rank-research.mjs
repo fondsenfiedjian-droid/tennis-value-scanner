@@ -24,9 +24,10 @@ async function main() {
   const to = arg("--to", "20261231");
   const k = Number(arg("--k", "32"));
   const surface = arg("--surface");
+  const trainingSurface = arg("--training-surface");
   const out = arg("--out");
   if (!["atp","wta"].includes(tour) || !input || input.startsWith("--")) {
-    throw new Error("Usage: node scripts/sackmann-weekly-rank-research.mjs --tour atp|wta [--max-rank-age-days 45] [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--surface hard|clay|grass|carpet] [--out report.json] enriched-matches.csv");
+    throw new Error("Usage: node scripts/sackmann-weekly-rank-research.mjs --tour atp|wta [--max-rank-age-days 45] [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--surface hard|clay|grass|carpet] [--training-surface hard|clay|grass|carpet] [--out report.json] enriched-matches.csv");
   }
   if (!Number.isInteger(maxAge) || maxAge < 0) throw new Error("--max-rank-age-days must be a non-negative integer");
   if (surface && !["hard", "clay", "grass", "carpet"].includes(surface.toLowerCase())) {
@@ -59,11 +60,13 @@ async function main() {
   });
   const report = runRankAgeWalkForward(prepared, {
     tour, evaluationStart: from, evaluationEnd: to, kFactor: k,
-    evaluationSurface: surface ? surface.toLowerCase() : null
+    evaluationSurface: surface ? surface.toLowerCase() : null,
+    trainingSurface: trainingSurface ? trainingSurface.toLowerCase() : null
   });
   report.rankSource = "weekly rankings joined by exact ID; strictly earlier than tournament date";
   report.maxRankAgeDays = maxAge;
   report.surfaceEvaluation = surface ? surface.toLowerCase() : "all";
+  report.surfaceTraining = trainingSurface ? trainingSurface.toLowerCase() : "all";
   report.sameDayPlayerSnapshotsExcluded = sameDayExcluded;
   report.stalePlayerSnapshotsExcluded = stalePlayerSnapshots;
   report.missingRankPlayerObservations = missingRankPlayers;
