@@ -281,7 +281,7 @@ export function runServeReturnSensitivity(fileInputs,{firstEvaluationYear=2020,l
   const tours={};
   for(const [tour,data] of Object.entries(report.reports)){
    const spec=data.specifications.overall_plus_surface;
-   tours[tour]={eligibleMatches:spec.eligibleMatches,outOfSample:spec.outOfSample,annual:spec.annual.map(row=>({
+   tours[tour]={eligibleMatches:spec.eligibleMatches,outOfSample:spec.outOfSample,fixedHoldout:spec.fixedHoldout,annual:spec.annual.map(row=>({
     year:row.year,matches:row.evaluation?.matches??row.evaluationMatches??0,
     brierDifference:row.evaluation?.pairedDifference?.brier??null,
     brierCI95:row.evaluation?.pairedDifference?.brierCI95??null,
