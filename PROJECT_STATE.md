@@ -1046,3 +1046,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The same CI batch completed the separate rank-age archive audit: broad historical rank+age correction improved Brier vs Elo by 0.002004 ATP (n=74,556) and 0.002295 WTA (n=66,820). Annual performance is not uniform (notably WTA 2022/partial 2026). Treat rank+age as a separate research candidate; first test its incremental contribution against PFE and SMA on a common strict pre-match sample, not as an assumed addition.
 - Latest report: `docs/sma-research-results-2026-11-21.md`. Winamax historical odds remain the next betting validation gate; no representative archive has yet been located.
 
+### ACE v2 research direction
+- Added `docs/ace-v2-research-plan.md` with a predeclared sequence: first audit history completeness and test restDays as a single ablation; then 14/28-day accumulated load; then nonlinear fatigue and age×load interaction; surface interactions last.
+- Key distinction: the current ACE winner-formula feature vector does not use restDays, although the separate workload research builder calculates it. The addition must be tested explicitly and must not be silently described as already part of ACE.
+- Age is treated as a potential moderator of workload/recovery, not as a direct fatigue measurement. All additions stay research-only until multiple rolling origins, paired probability metrics, calibration, coverage and Winamax market tests support them.
+
