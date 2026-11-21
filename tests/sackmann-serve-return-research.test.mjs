@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout } from "../scripts/sackmann-serve-return-research.mjs";
+import { auditServeReturnStats, buildPreMatchServeReturn, evaluateFixedHoldout, aggregatePredictions } from "../scripts/sackmann-serve-return-research.mjs";
 
 const row=(date,match,winner,loser,winnerStats,loserStats,surface="Hard")=>({
  tourney_date:date,tourney_id:"T",match_num:String(match),winner_id:String(winner),loser_id:String(loser),score:"6-4 6-4",surface,
@@ -149,4 +149,22 @@ test("separates surface-relative residuals and shrinks surface rates toward over
 test("rejects invalid surface shrinkage strength",()=>{
  const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
  assert.throws(()=>buildPreMatchServeReturn(rows,{surfaceShrinkageMatches:0}),/surfaceShrinkageMatches/);
+});
+
+
+test("reports calibration error and calibration slope for baseline and adjusted probabilities", () => {
+ const rows=[];
+ for(let i=0;i<50;i++){
+  rows.push({baseProbability:0.2,adjustedProbability:0.1,outcome:i<10?1:0});
+  rows.push({baseProbability:0.8,adjustedProbability:0.9,outcome:i<40?1:0});
+ }
+ const report=aggregatePredictions(rows);
+ assert.equal(report.matches,100);
+ assert.equal(report.calibration.baseline.ece,0);
+ assert.equal(report.calibration.baseline.mce,0);
+ assert.ok(Math.abs(report.calibration.baseline.calibrationIntercept)<0.001);
+ assert.ok(Math.abs(report.calibration.baseline.calibrationSlope-1)<0.01);
+ assert.equal(report.calibration.adjusted.ece,0.1);
+ assert.equal(report.calibration.adjusted.bins.length,2);
+ assert.ok(report.calibration.adjusted.calibrationSlope<1);
 });
