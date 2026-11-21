@@ -292,6 +292,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   const allTimestampGaps = [];
   const inferredTimestampGaps = [];
   const ambiguousTimestampGaps = [];
+  const timestampGapsByReason = {};
   for (const states of groups.values()) {
     const transitions = Math.max(0, states.length - 1);
     let inferred = 0;
@@ -352,7 +353,12 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         const gapSeconds = (afterMs - beforeMs) / 1000;
         allTimestampGaps.push(gapSeconds);
         if (result.status === "inferred") inferredTimestampGaps.push(gapSeconds);
-        else ambiguousTimestampGaps.push(gapSeconds);
+        else {
+          ambiguousTimestampGaps.push(gapSeconds);
+          const reason = result.reason || "unknown";
+          if (!timestampGapsByReason[reason]) timestampGapsByReason[reason] = [];
+          timestampGapsByReason[reason].push(gapSeconds);
+        }
       }
       if (serverCheck.status === "skipped") {
         serverAlignment.skipped++;
@@ -417,7 +423,9 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
       inferred: summarizeTimestampGaps(inferredTimestampGaps),
-      ambiguous: summarizeTimestampGaps(ambiguousTimestampGaps)
+      ambiguous: summarizeTimestampGaps(ambiguousTimestampGaps),
+      byAmbiguousReason: Object.fromEntries(Object.entries(timestampGapsByReason)
+        .map(([reason, values]) => [reason, summarizeTimestampGaps(values)]))
     },
     serverAlignment,
     byTierKey: tierStats,
