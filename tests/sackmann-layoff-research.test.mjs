@@ -91,6 +91,19 @@ test("optional worst-error audit records player context and candidate feature co
   assert.ok(worst.candidateFeatureContributions.features.every(item=>Number.isFinite(item.logitContribution)));
 });
 
+test("feature ablation excludes only the requested candidate features",()=>{
+  const rows=[...season("2000"),...season("2001"),...season("2002"),...season("2003")];
+  const report=runLayoffWalkForward(rows,{tour:"atp",evaluationStart:"20030101",evaluationEnd:"20031231",
+    minTrainingMatches:100,maxTrainingRows:250,symmetricTraining:true,
+    excludedFeatures:["unknownPriorCount","layoffMaxLog"]});
+  assert.equal(report.symmetricTraining,true);
+  assert.deepEqual(report.excludedFeatures,["unknownPriorCount","layoffMaxLog"]);
+  assert.ok(!report.candidateFeatures.includes("unknownPriorCount"));
+  assert.ok(!report.candidateFeatures.includes("layoffMaxLog"));
+  assert.ok(report.candidateFeatures.includes("layoffDiffLog"));
+  assert.ok(Number.isFinite(report.summary.candidate.brier));
+});
+
 test("future seasons cannot change an earlier evaluation year",()=>{
   const past=[...season("2000"),...season("2001"),...season("2002"),...season("2003")];
   const options={tour:"wta",evaluationStart:"20030101",evaluationEnd:"20031231",
