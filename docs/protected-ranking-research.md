@@ -8,6 +8,13 @@ The current Sackmann normalized archive contains tournament-date ordinary rankin
 
 Player matching must use the exact archive player ID. No fuzzy name-only joins.
 
+Official tournament entry-list articles are a practical public source for observed protected-ranking use:
+- ATP reported four players using protected rankings at Roland-Garros 2025 (Reilly Opelka, Jenson Brooksby, Sebastian Ofner and Emil Ruusuvuori): https://www.atptour.com/en/news/roland-garros-2025-entry-list
+- ATP reported Rafael Nadal entering Roland-Garros 2024 with protected ranking No. 9, and named four other protected-ranking entrants: https://www.atptour.com/en/news/roland-garros-2024-entry-list
+- WTA reported three Australian Open 2026 entrants using Special Rankings and published the values: Karolina Pliskova No. 40, Wang Yafan No. 71 and Mananchaya Sawangkaew No. 100: https://www.wtatennis.com/news/4416794/sabalenka-swiatek-head-australian-open-entry-list-101-of-top-103-entered
+
+These are event-specific observations, not a complete official registry and not proof of the full validity period.
+
 ## 2. Separate concepts
 
 Keep these values distinct:
@@ -17,33 +24,55 @@ Keep these values distinct:
 - `protected_rank`: official protected/special ranking and its basis date, when independently verified.
 - `protection_status_at_match`: whether the official protection is documented as active on the match date.
 - `return_date` and `matches_since_return`: observed competition history, not a diagnosis.
+- `observed_entry_use`: an official entry list explicitly says that the player used a protected/special ranking for a particular tournament.
 
 Protected ranking is a proxy for prior level, not proof of current strength. Do not replace Elo or current ranking with it.
 
-## 3. Proposed input file
+## 3. Proposed input files
 
-Keep the source file outside the public repository, e.g. `~/tennis-data/protected-rankings.csv`.
+Keep source files outside the public repository.
 
-CSV columns:
+### A. Event-specific observations
+
+Start with `~/tennis-data/protected-ranking-observations.csv`. One row represents one documented tournament entry using a protected/special ranking.
 
 | Column | Meaning |
 |---|---|
 | `tour` | `atp` or `wta` |
 | `player_id` | Exact Sackmann / archive numeric player ID |
-| `discipline` | `singles` or `doubles`; this project initially uses singles only |
+| `discipline` | `singles` or `doubles`; initially singles only |
 | `protection_type` | `atp_entry_protection` or `wta_special_ranking` |
-| `protected_rank` | Official protected/special ranking position |
+| `protected_rank` | Published protected/special ranking position |
+| `observed_date` | Date the official entry-list report was published, YYYYMMDD |
+| `tournament_name` | Tournament for which the player used the ranking |
+| `tournament_year` | Four-digit year |
+| `source_url` | Official tour source |
+| `verified_at` | Date checked, YYYYMMDD |
+
+Only enter an observation when the official source explicitly identifies protected-ranking use. If the source names a player but gives no protected-rank number, leave the rank blank or record it in a separate notes field; do not infer it.
+
+### B. Player-level protection details (only when documented)
+
+Optional `~/tennis-data/protected-rankings.csv` columns:
+
+| Column | Meaning |
+|---|---|
+| `tour` | `atp` or `wta` |
+| `player_id` | Exact archive player ID |
+| `discipline` | `singles` or `doubles` |
+| `protection_type` | `atp_entry_protection` or `wta_special_ranking` |
+| `protected_rank` | Official protected/special ranking |
 | `ranking_basis_date` | Date used by the tour to determine the protected rank, YYYYMMDD |
 | `absence_start_date` | Documented start of out-of-competition period, YYYYMMDD |
-| `last_event_date` | Last tennis event before the absence, YYYYMMDD |
+| `last_event_date` | Last tennis event before absence, YYYYMMDD |
 | `return_date` | First documented event after absence, YYYYMMDD |
-| `active_from` | First date on which the documented protection can be used, YYYYMMDD |
-| `active_to` | Last verified date of the protection window, YYYYMMDD; blank if not known |
+| `active_from` | First documented date protection can be used, YYYYMMDD |
+| `active_to` | Last verified date of protection, YYYYMMDD; blank if unknown |
 | `source_url` | Official tour source or primary document |
-| `verified_at` | Date the record was checked, YYYYMMDD |
-| `evidence_note` | Short explanation; never include private medical details |
+| `verified_at` | Date checked, YYYYMMDD |
+| `evidence_note` | Short public-evidence note; no private medical details |
 
-Unknown values stay blank. Do not infer an active period or protected rank from ordinary rankings.
+Unknown values stay blank. Do not infer an active period or protected rank from ordinary rankings. An event-specific observation must not be expanded into a player-level validity window without evidence.
 
 ## 4. Tour-rule distinctions
 
@@ -64,19 +93,20 @@ Official source:
 
 ## 5. Research protocol
 
-1. Build a small manually verified seed dataset first; record the primary source URL and verification date for every row.
+1. Build a manually verified seed dataset from official entry-list articles and primary documents; retain source URL and verification date for every row.
 2. Audit exact player-ID matches and duplicate/conflicting records before any modeling.
 3. Join records only when `tour`, `player_id`, discipline and dates agree. No name-only fallback.
-4. Evaluate separately for ATP and WTA with annual walk-forward training. For each evaluation year, fit only on earlier years and freeze coefficients for the full year.
-5. Compare on identical eligible matches:
+4. Treat an event-specific entry observation as evidence of use at that tournament only. Do not backfill an active period.
+5. Evaluate separately for ATP and WTA with annual walk-forward training. For each evaluation year, fit only on earlier years and freeze coefficients for the full year.
+6. Compare on identical eligible matches:
    - baseline: pre-date Elo;
    - candidate A: Elo + ordinary rank information;
    - candidate B: Elo + protected rank / pre-absence rank;
    - candidate C: Elo + protected rank + verified protection/return status;
    - candidate D: Elo + protected rank + existing layoff features (research diagnostic only).
-6. Report overall metrics and separate cohorts: protected-ranking observations, first return match, matches 2–3 after return, Elo favorite/underdog, and time since return.
-7. Test data coverage and recent-year robustness. A tiny hand-collected sample is a feasibility audit, not evidence of predictive value.
-8. Do not ship any feature unless it improves out-of-sample Brier and LogLoss without material subgroup regressions and has adequate verified coverage.
+7. Report overall metrics and separate cohorts: documented protected-ranking observations, first return match, matches 2–3 after return, Elo favorite/underdog, and time since return.
+8. Test data coverage and recent-year robustness. A tiny hand-collected sample is a feasibility audit, not evidence of predictive value.
+9. Do not ship any feature unless it improves out-of-sample Brier and LogLoss without material subgroup regressions and has adequate verified coverage.
 
 ## 6. Known limitations
 
