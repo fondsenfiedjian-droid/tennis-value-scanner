@@ -163,3 +163,7 @@ Successful run: GitHub Actions `44864476954`.
 - 10,793 transitions had at least one missing point-score field: before missing in 5,650, after missing in 5,279, both missing in 136. Game counters changed in 1,626 and set counters in 166 (overlap possible); server changed in 460.
 
 Interpretation: a substantial number of rows appear to update game/set counters while the point-score pair remains unchanged. This is consistent with asynchronous or delayed scoreboard field updates, not a single point outcome. Keep these transitions ambiguous; do not relax the terminal-score gate or treat same-score counter changes as point wins.
+
+## Score-value vocabulary audit (2026-11-21)
+
+A new check counts the literal point-score values separately for normal-game states and tiebreak states, and flags values that do not fit the data dictionary's expected vocabulary. It also counts numeric scores outside tiebreaks and states with an unknown tiebreak flag. This validates input semantics before interpreting transitions; it does not itself infer point outcomes.
