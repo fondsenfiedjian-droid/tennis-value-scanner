@@ -136,3 +136,27 @@ Coverage over the complete imported archive after the 45-day rule:
 - ATP rank+age improved both Brier and LogLoss in all 27 evaluation-year cohorts. WTA retains small year-level regressions: 2017 worsened on both metrics; 2022 Brier improved slightly but LogLoss worsened slightly. The aggregate WTA result remains positive.
 
 Interpretation: the rank and age signal survives a conservative pre-tournament ranking availability rule and a 45-day freshness ceiling. This is stronger evidence than using tournament-date rank fields, but not yet sufficient for production activation. The WTA year-level exceptions, snapshot publication timing, and an independent recent holdout still require review. These are prediction-quality metrics, not betting-profit evidence.
+
+
+
+## Historical inactivity / return-from-break research
+
+A separate research-only walk-forward study tests whether the time since each player's previous completed match adds predictive information beyond overall Elo. It does **not** infer that an absence was caused by injury. The archive records match dates, not reliable medical reasons for absence.
+
+Run ATP and WTA separately after creating the normalized match CSV:
+
+```sh
+node scripts/sackmann-layoff-research.mjs --tour atp --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out atp-layoff-report.json atp-normalized.csv
+node scripts/sackmann-layoff-research.mjs --tour wta --from 20000101 --to 20260525 --k 32 --min-training 1000 --max-training 20000 --out wta-layoff-report.json wta-normalized.csv
+```
+
+The baseline uses pre-date overall Elo. The candidate adds relative log inactivity, maximum inactivity, separate 90-day and 180-day indicators for each player, and a count of players with no prior match in the archive. These thresholds are exploratory bins, not medical classifications or automatic Elo adjustments. A missing prior match is explicitly marked as unknown rather than treated as a confirmed long injury layoff.
+
+Timing safeguards:
+- Only completed matches strictly earlier than the prediction date establish prior activity.
+- Every match on the same calendar date uses the same pre-date Elo and last-played state.
+- Elo and last-played dates are updated only after all matches on that date have been evaluated.
+- Each annual model is fitted only on earlier calendar years and frozen during its evaluation year.
+- The report compares baseline and candidate on the same evaluated match set and includes yearly metrics.
+
+A negative candidate-minus-baseline Brier or LogLoss delta indicates improvement. Aggregate improvement alone is insufficient: inspect annual regressions and repeat the comparison across K factors and an independent recent holdout. This feature is not enabled in production. Do not describe a long gap as an injury unless a separate trustworthy source confirms the reason. All source-derived research remains subject to the non-commercial CC BY-NC-SA 4.0 restriction described above.
