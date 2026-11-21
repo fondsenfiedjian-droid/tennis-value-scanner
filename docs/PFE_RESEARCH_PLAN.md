@@ -55,3 +55,4 @@
 - Match Charting Project coverage is selective, not representative of the full tour.
 - Point-state observations can begin mid-match or stop before the final point. Missing rows are not point outcomes.
 - No server/tiebreak-dependent feature is production-approved until its source semantics reconcile at match level.
+- Evaluate calibration alongside Brier and LogLoss: inspect 10-bin reliability, ECE/MCE, and logistic calibration intercept/slope for baseline and candidate models on ATP/WTA holdouts. Calibration is diagnostic, not a stand-alone selection rule.
