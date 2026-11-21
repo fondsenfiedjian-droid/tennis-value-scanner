@@ -1041,3 +1041,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Response reports event count, per-bookmaker event counts, complete two-outcome h2h market counts, quote counts, retrieval time, and provider quota headers. Results are cached for three minutes.
 - Default sport key is tennis_atp_finals; other keys must use the tennis_ prefix and should be selected from /odds-api/sports.
 - Validation remains Preview-only. Do not merge PR #149 or deploy Production without explicit user approval. Check actual returned events and quota headers before proceeding with the full adapter.
+
+
+## 2026-11-21 — Betclic / NetBet live quote integration (PR #150)
+- Added the production-code path `GET /odds-api/quotes?sport=tennis_atp_finals` on the feature branch. It requests The Odds API `h2h` decimal prices for French bookmaker keys `betclic_fr` and `netbet_fr`, then normalizes each outcome into the scanner's common quote schema.
+- Frontend now keeps Winamax /odds independent and merges Betclic/NetBet quotes from the separate endpoint. A third-party feed failure does not discard Winamax quotes. Existing model probabilities remain common across bookmakers; expected value is computed separately from each bookmaker's own price.
+- The match list now accepts complete quote pairs from more than one bookmaker. Freshness is calculated from each quote's source `scrapedAt` timestamp, not the local fetch time; the status line shows separate fresh/total counts for Winamax, Betclic and NetBet.
+- Confirmed The Odds API catalogue currently exposes only `tennis_atp_finals` among tennis sports (as checked 2026-11-21). Therefore current Betclic/NetBet coverage is limited to this one ATP Finals market; do not imply WTA, Challenger or ITF coverage.
+- Production smoke test on 2026-11-21 returned one ATP Finals event (Alexander Zverev vs Daniil Medvedev) with complete two-outcome markets from both Betclic and NetBet. The response showed 474 requests remaining and 26 used. This validates the provider endpoint, not broad event coverage.
+- PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
+- Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
+- Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.

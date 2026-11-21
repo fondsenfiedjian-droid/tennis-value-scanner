@@ -124,7 +124,7 @@ test("odds status distinguishes quote scrape time from upstream dataset retrieva
   assert.match(html, /retrievedAt:oddsRetrievedAt/);
   assert.match(html, /источник получен/);
   assert.match(html, /время ответа источника неизвестно/);
-  assert.equal((html.match(/\+sourceSeen/g)||[]).length, 4);
+  assert.equal((html.match(/\+sourceSeen/g)||[]).length, 2);
   assert.match(html, /let oddsTaskRun = null/);
   assert.match(html, /taskRun:oddsTaskRun/);
   assert.match(html, /запуск Apify/);
@@ -476,12 +476,12 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows only pairs with a complete fresh Winamax winner-odds pair", () => {
+test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length===2\):\[\]/);
+  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
   assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов Winamax/);
+  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
