@@ -6,7 +6,7 @@ import { runBacktest } from "./backtest.mjs";
 import { buildPreMatchWorkload } from "./workload-research.mjs";
 import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
-const FEATURES = ["baseLogit","matches3","matches7","playingDays7","restDays","minutes7","durationCoverage7","workloadAvailable"];
+const FEATURES = ["baseLogit","matches3","matches7","playingDays7","minutes7","durationCoverage7","workloadAvailable"];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
@@ -34,7 +34,6 @@ function featureRow(prediction, workload) {
       matches3:available?w.matches3:0,
       matches7:available?w.matches7:0,
       playingDays7:available?w.playingDays7:0,
-      restDays:available?w.restDays:0,
       minutes7:available?w.minutes7:0,
       durationCoverage7:available?w.durationCoverage7:0,
       workloadAvailable:available?1:0
@@ -89,7 +88,6 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
         matches3:"A-minus-B prior matches in previous 3 calendar days",
         matches7:"A-minus-B prior matches in previous 7 calendar days",
         playingDays7:"A-minus-B playing days in previous 7 calendar days",
-        restDays:"A-minus-B rest days; positive means A rested longer",
         minutes7:"A-minus-B known match minutes in previous 7 calendar days",
         durationCoverage7:"A-minus-B share of prior matches with known duration",
         workloadAvailable:"1 when at least one player's prior 7-day match record exists"
@@ -108,7 +106,8 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
 async function main(){
   const args=process.argv.slice(2),files=[],options={};
   for(let i=0;i<args.length;i++){
-    if(["--train-through","--from","--to"].includes(args[i])){
+    if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing path after --out");options.out=args[++i];}
+    else if(["--train-through","--from","--to"].includes(args[i])){
       const key=args[i]==="--train-through"?"trainingEnd":args[i]==="--from"?"evaluationStart":"evaluationEnd";
       if(!args[i+1])throw new Error("Missing date after "+args[i]);
       options[key]=args[++i];
