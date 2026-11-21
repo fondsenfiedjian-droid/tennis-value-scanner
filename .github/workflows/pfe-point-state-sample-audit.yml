@@ -55,7 +55,7 @@ jobs:
           console.log("\nSource: Live Tennis API public sample, CC BY-NC 4.0. Raw files remain ephemeral and are not published.\n");
           console.log("## Overall");
           console.log("```json");
-          console.log(JSON.stringify({ totals: report.totals, timestampStats: report.timestampStats, timestampGapStats: report.timestampGapStats, serverAlignment: report.serverAlignment }, null, 2));
+          console.log(JSON.stringify({ totals: report.totals, timestampStats: report.timestampStats, timestampGapStats: report.timestampGapStats, serverAlignment: report.serverAlignment, tiebreakServerByPlayerTour: report.tiebreakServerByPlayerTour }, null, 2));
           console.log("```");
           console.log("\n## Coverage by explicit ATP/WTA round prefix");
           console.log("```json");
