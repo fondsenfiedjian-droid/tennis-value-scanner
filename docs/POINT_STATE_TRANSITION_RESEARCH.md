@@ -204,3 +204,18 @@ Successful real-sample run: GitHub Actions `44865563966`.
 The public sample data dictionary describes `server` as the player serving at a state. The current API reference further warns that tiebreak server rows are not settled and that tiebreak serving rotation cannot be reconstructed reliably from sampled rows when points are skipped; it explicitly says to withhold server-dependent tiebreak analysis unless the encoding reconciles for the match. See [Live Tennis API data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) and [Live Tennis API full reference, HistoryTapeRow.server](https://docs.livetennisapi.com/reference.html#historytaperow).
 
 Interpretation: the sample supports server continuity inside ordinary games, but game-boundary alignment is materially weaker and the tiebreak server field fails the expected rotation check. Do not use this field as a tiebreak server/returner feature, do not infer serve ownership from it, and do not use it to label point winners. Normal-game server use also remains research-only until game-boundary exceptions and the exact before/after state convention are hand-checked against source matches. No production feature is enabled.
+
+## Score/flag anomaly proximity and value-pattern audit (2026-11-21)
+
+The adjacent-state check is extended to measure distances 1–5 in both directions within each match's observed row order. It reports separate previous/next tiebreak proximity for numeric scores carrying a normal-game flag, and proximity to a normal-game state for alphabetic scores carrying a tiebreak flag. Aggregate score-value and score-pair frequencies are also retained. These are diagnostic counts only: no flags or score values are rewritten, and proximity is not proof of a flag delay or of a point outcome.
+
+### First real-sample proximity results (2026-11-21)
+
+Successful run: GitHub Actions `44866399882` on the 951,064-state June 2026 public sample.
+
+- The 504 normal-flag numeric anomalies contained 931 numeric player-side values: 1 (150), 2 (145), 3 (145), 4 (153), 5 (147), 6 (83), 7 (43), 8 (43), 9 (22).
+- Opposite-flag numeric tiebreak states appeared exactly 1, 2, 3, 4 or 5 rows away from 112, 99, 130, 120 and 155 anomalous states respectively. These counts can overlap when a state has qualifying neighbors on both sides. At distance 1, 65 were preceded by a tiebreak state and 93 were followed by one.
+- The 43 alphabetic tiebreak-flag anomalies consisted of 29 `A` and 14 `AD` player-side values; score pairs were `40:A` (11), `A:40` (18), `AD:40` (9), and `40:AD` (5).
+- A recognized normal-game state appeared exactly 1–5 rows away from 37, 38, 38, 43 and 41 of these alphabetic anomalies respectively.
+
+Interpretation: anomaly patterns are not confined to a single adjacent row. Some are near plausible game/tiebreak boundaries, but row proximity alone cannot distinguish delayed flag updates from malformed or partial snapshots. No automatic correction is justified. Keep all non-missing mismatches excluded from point-winner inference until individual match sequences can be validated against a trustworthy complete source.
