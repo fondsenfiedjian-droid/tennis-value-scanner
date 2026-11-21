@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "betclic-netbet-odds-smoke-test-2026-11-21-1";
+const WORKER_BUILD_ID = "betclic-netbet-live-quotes-2026-11-21-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
