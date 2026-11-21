@@ -72,3 +72,8 @@ The follow-up workflow also completed two additional PFE-combined ACE evaluation
 | WTA Jul–Nov 2026 (train Jan–Jun 2026) | 16,454 | -0.009165 (-0.010388, -0.007942) | -0.021125 (-0.023909, -0.018341) | +2.18 pp |
 
 These repeated chronological evaluations strengthen the case that workload features add predictive information to PFE. They are still exploratory: Valuebetennis data and overlapping research windows are not a substitute for a future untouched live-forward sample or historical Winamax odds/CLV test. A new feature-availability audit is being added to report separately (a) any prior history, (b) both players having prior history for restDays, and (c) actual known-duration coverage.
+
+
+### Corrective audit — rest-day availability
+
+A code review found that the first PFE-combined ACE feature row incorrectly gated restDays and restDaysAvailable on the presence of a match in the previous seven days. Rest days should instead be available whenever both players have any prior match history; only 3/7-day load and duration features should depend on recent-history records. The feature gating was corrected on 2026-11-21. All PFE+ACE figures above from the pre-correction implementation are provisional and superseded pending a full rerun. The updated report separately counts recent-week workload availability, both-player rest-history availability, and observed-duration coverage.
