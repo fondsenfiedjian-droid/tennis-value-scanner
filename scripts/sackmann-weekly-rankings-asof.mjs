@@ -83,22 +83,21 @@ async function main(){
 
   const rankIter=csvRows(inputFiles[1])[Symbol.asyncIterator]();
   const rankHead=await rankIter.next();
-  if(rankHead.done||!rankHead.value.fields===false)throw new Error('Ranking file is empty');
+  if(rankHead.done||rankHead.value.fields!==null)throw new Error('Ranking file is empty or has no header');
   const rh=rankHead.value.header;
   const ri={date:rh.indexOf('ranking_date'),id:rh.indexOf('player_id'),rank:rh.indexOf('rank'),points:rh.indexOf('points')};
   if(Object.values(ri).some(x=>x<0))throw new Error('Rankings require ranking_date, player_id, rank, points');
-  let nextRank=await rankIter.next(),rankRows=0,rankDateLast='',rankDateRegressions=0;
+  let nextRank=await rankIter.next(),rankDateLast='';
   const latest=new Map();
   function consumeRanking(row){
     const date=String(row[ri.date]??'').trim(),id=String(row[ri.id]??'').trim();
     if(!/^\d{8}$/.test(date)||!id)return;
-    if(rankDateLast&&date<rankDateLast)rankDateRegressions++;
-    rankDateLast=date;latest.set(id,{date,rank:String(row[ri.rank]??'').trim(),points:String(row[ri.points]??'').trim()});rankRows++;
+    if(rankDateLast&&date<rankDateLast)throw new Error('Ranking file is not chronological: '+date+' follows '+rankDateLast);
+    rankDateLast=date;latest.set(id,{date,rank:String(row[ri.rank]??'').trim(),points:String(row[ri.points]??'').trim()});
   }
   if(nextRank.done)throw new Error('Ranking file has no data rows');
   const rankFirst=nextRank.value;
   let pendingRank=rankFirst.fields;
-  const rankDataHeader=rankFirst.header;
   const miIter=csvRows(inputFiles[0])[Symbol.asyncIterator]();
   const matchHead=await miIter.next();
   if(matchHead.done||matchHead.value.fields!==null)throw new Error('Match archive is empty');
@@ -123,7 +122,7 @@ async function main(){
       const row=item.value.fields;
       const date=String(row[mi.date]??'').trim(),winner=String(row[mi.winner]??'').trim(),loser=String(row[mi.loser]??'').trim();
       if(!/^\d{8}$/.test(date))throw new Error('Invalid match date at row '+(stats.matchRows+2)+': '+date);
-      if(lastMatchDate&&date<lastMatchDate)stats.matchDateRegressions++;
+      if(lastMatchDate&&date<lastMatchDate)throw new Error('Match archive is not chronological: '+date+' follows '+lastMatchDate);
       lastMatchDate=date;
       await advanceRanks(date);
       const w=latest.get(winner),l=latest.get(loser);
@@ -136,7 +135,7 @@ async function main(){
     }
     await finish(writer);
   }catch(error){writer.destroy();throw error;}
-  stats.rankingDateRegressions=rankDateRegressions;
+  stats.rankingDateRegressions=0;
   stats.winnerRankCoverage=stats.matchRows?Number((stats.winnerRankMatched/stats.matchRows).toFixed(6)):null;
   stats.loserRankCoverage=stats.matchRows?Number((stats.loserRankMatched/stats.matchRows).toFixed(6)):null;
   stats.output=out;stats.report=report;stats.createdAt=new Date().toISOString();
