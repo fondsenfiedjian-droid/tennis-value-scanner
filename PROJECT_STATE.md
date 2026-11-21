@@ -961,3 +961,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Keep server-to-point attribution blocked until matrix and source-quality checks are reviewed.
 - Tiebreak server matrix run `44863861215`: of 6,528 transitions where service should switch, server changed only 235 (3.60%) and held 6,293 (96.40%). Of 6,724 expected-hold transitions, server held 6,604 (98.22%). This indicates the sample's server field is almost never refreshed during tiebreaks. Tiebreak serve/return ownership remains blocked. Added ATP/WTA player-tour proxy split, pending validation.
 - ATP/WTA proxy split from run `44863980944`: ATP expected-switch states changed server 3.00%, expected-hold states held 97.99%; WTA expected-switch states changed 1.57%, expected-hold states held 99.24%. The tiebreak server-field staleness appears in both tours. Player-tour grouping is a proxy, not event-tour ground truth. Keep tiebreak serve/return attribution blocked.
+
+### PFE score-state delta diagnostics (2026-11-21)
+- Added aggregate checks for score-identical transitions (server/tiebreak metadata changes vs exact duplicates) and missing point-score transitions (before/after missing, game/set counter changes, server changes).
+- Added synthetic tests and included the aggregate report in the ephemeral sample audit workflow. Real-sample findings pending.
