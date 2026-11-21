@@ -17,6 +17,7 @@ const base = {
   type: "explicit_preparation",
   publishedAt: "2026-11-20T10:00:00Z",
   capturedAt: "2026-11-20T11:00:00Z",
+  sourceType: "official_tournament",
   sourceName: "Official tournament interview",
   sourceUrl: "https://example.org/interview",
   quote: "I am here to get match practice.",
