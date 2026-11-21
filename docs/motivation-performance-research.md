@@ -76,3 +76,24 @@ A feature is promising only if it improves probability quality consistently acro
 ## First implementation milestone
 
 Build a read-only Performance Gap walk-forward script and unit tests. Initial version uses only the existing normalized ATP/WTA archives and pre-date Elo. No new downloads required. After validating chronology and leakage tests, run both tours and inspect overall, annual and surface results before adding workload features.
+
+## Phase 1 implementation — v1
+
+Script: `scripts/sackmann-performance-gap-research.mjs`
+
+Tests: `tests/sackmann-performance-gap-research.test.mjs`
+
+Run locally after pulling the latest `main`:
+
+```sh
+node --check scripts/sackmann-performance-gap-research.mjs
+node --test tests/sackmann-performance-gap-research.test.mjs
+node scripts/sackmann-performance-gap-research.mjs --tour atp --from 20000101 --to 20261231 --out ~/tennis-data/atp-performance-gap-report.json ~/tennis-data/atp-normalized.csv
+node scripts/sackmann-performance-gap-research.mjs --tour wta --from 20000101 --to 20261231 --out ~/tennis-data/wta-performance-gap-report.json ~/tennis-data/wta-normalized.csv
+```
+
+The v1 candidate compares Elo-only logistic regression against Elo plus differences between the players' recent residual means (last 3/5/10), recent loss rates (last 5/10), current losing streak and prior archive-match counts. Residuals are calculated from the pre-date overall Elo probability. ATP and WTA are separate; model coefficients are trained on earlier calendar years and frozen during each evaluation year. The report includes overall, year and surface comparisons.
+
+V1 deliberately does not yet include cumulative residual totals, losses specifically to lower-Elo opponents, workload or tournament-context variables. These should be added only after inspecting the first reports. The archive is incomplete below the main tours; zero or low archive activity must not be interpreted as proof of inactivity or lack of motivation.
+
+Validation: GitHub Actions regression suite passed 463/463 tests after the implementation and stream-writer repair. Research only; no production model changed.
