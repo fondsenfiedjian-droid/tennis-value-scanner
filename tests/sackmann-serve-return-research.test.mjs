@@ -121,6 +121,8 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  assert.equal(result.evaluationMatches,40);
  assert.equal(result.metrics.matches,40);
  assert.ok(Number.isFinite(result.metrics.adjusted.brier));
+ assert.ok(Number.isFinite(result.metrics.adjusted.accuracy));
+ assert.ok(Number.isFinite(result.metrics.adjusted.calibration.expectedCalibrationError));
  assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
  const changedHoldout=rows.map(row=>row.year>=2025?{...row,outcome:1-row.outcome}:row);
  const refit=evaluateFixedHoldout(changedHoldout,["serveDiff"],{
@@ -189,4 +191,19 @@ test("extended profile features exclude invalid optional counters without discar
  assert.equal(f.aceRateDiff,null);
  assert.equal(f.doubleFaultRateDiff,null);
  assert.ok(Number.isFinite(f.firstServeReturnDiff));
+});
+
+
+test("extended serve and return features obey the strict same-day history cutoff",()=>{
+ const rows=[
+  row("20250101",1,1,2,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8)),
+  row("20250101",2,3,1,fullStats(100,60,50,20,12,2,3,4),fullStats(100,60,30,20,5,4,5,8)),
+  row("20250102",3,1,3,fullStats(100,60,40,20,10,3,4,5),fullStats(100,60,30,20,5,4,5,8))
+ ];
+ const features=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1});
+ const sameDay=features.get("20250101:1:3:Hard");
+ assert.equal(sameDay.aceRateDiff,null);
+ const nextDay=features.get("20250102:1:3:Hard");
+ assert.ok(Number.isFinite(nextDay.aceRateDiff));
+ assert.equal(nextDay.profilePriorMatches.aceRate,1);
 });
