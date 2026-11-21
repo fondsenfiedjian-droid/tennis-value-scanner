@@ -189,7 +189,7 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
      as.matches>=minSurfaceMatches&&bs.matches>=minSurfaceMatches&&as.rate!==null&&bs.rate!==null;
     profileFeatures[featureName]=overallReadyForMetric?av.rate-bv.rate:null;
     const surfaceName="surface"+featureName[0].toUpperCase()+featureName.slice(1);
-    const shrunkName="shrunk"+featureName[0].toUpperCase()+featureName.slice(1);
+    const shrunkName="shrunkSurface"+featureName[0].toUpperCase()+featureName.slice(1);
     profileFeatures[surfaceName]=surfaceReadyForMetric?as.rate-bs.rate:null;
     if(overallReadyForMetric&&surfaceReadyForMetric){
      const shrinkA=as.matches/(as.matches+surfaceShrinkageMatches);
