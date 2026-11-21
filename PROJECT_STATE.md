@@ -1080,3 +1080,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - 14/28-day and non-overlapping band ACE tests completed. The 14/28 extension adds a small Brier gain over core ACE for ATP on all three chronological holdouts (paired CIs exclude zero); WTA is inconsistent (no clear gain in 2025 or Jul–Nov 2026, small gain in full 2026). Non-overlapping bands perform essentially the same as cumulative windows. Keep 3/7-day load + rest core as shared candidate; keep 14/28 ATP-only research and do not add to WTA. Next ACE study: age×load and nonlinear thresholds after age-map coverage audit.
+
+
+- Added a research-only age identity feasibility audit: exact normalized full-name + tour matching from Valuebetennis to Sackmann player identities, with age taken only from the latest prior-date completed match. Same-day/future age records are excluded; ambiguous names are not guessed. The workflow downloads 2021–2026 Sackmann match ages and reports unique-player and match-level age coverage by tour/year. Awaiting CI; no age×load feature is added yet. Sackmann data is non-commercial (CC BY-NC-SA 4.0), so it cannot be the production age source without separate permission.
