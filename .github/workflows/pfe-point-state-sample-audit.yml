@@ -31,7 +31,7 @@ jobs:
           curl --fail --silent --show-error --location --retry 4 \
             "https://zenodo.org/api/records/22048730" \
             --output "$RUNNER_TEMP/zenodo-record.json"
-          for name in matches.csv.gz points_sample_2026-06.csv.gz; do
+          for name in matches.csv.gz players.csv.gz points_sample_2026-06.csv.gz; do
             url="$(jq -r --arg name "$name" '.files[] | select(.key == $name) | .links.self' "$RUNNER_TEMP/zenodo-record.json")"
             test -n "$url" && test "$url" != "null"
             curl --fail --silent --show-error --location --retry 4 "$url" --output "research-data/$name"
@@ -59,6 +59,10 @@ jobs:
           console.log("\n## Coverage by explicit ATP/WTA round prefix");
           console.log("```json");
           console.log(JSON.stringify(report.byTour, null, 2));
+          console.log("```");
+          console.log("\n## Coverage by player-primary-tour agreement (secondary proxy)");
+          console.log("```json");
+          console.log(JSON.stringify(report.byPlayerTourAgreement, null, 2));
           console.log("```");
           console.log("\n## Coverage by source tier_key");
           console.log("```json");
