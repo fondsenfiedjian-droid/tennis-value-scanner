@@ -426,8 +426,9 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       else target.nonNormalCompletion++;
       if (meta.bestOf === "BO3" || meta.bestOf === "BO5") {
         const needed = meta.bestOf === "BO5" ? 3 : 2;
-        const completedSets = integer(last.sets_p1) + integer(last.sets_p2);
-        if (Number.isFinite(completedSets) && completedSets >= needed) target.finalSetTargetReached++;
+        const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
+        const completedSets = lastSets1 !== null && lastSets2 !== null ? lastSets1 + lastSets2 : null;
+        if (completedSets !== null && completedSets >= needed) target.finalSetTargetReached++;
         else target.finalSetTargetNotReached++;
       } else target.unknownBestOf++;
     }
