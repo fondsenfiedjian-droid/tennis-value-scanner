@@ -172,6 +172,26 @@ function aggregatePredictions(rows){
   }
  };
 }
+function scoreWithModel(row,model){
+ const z=model.standardization.reduce((sum,item,i)=>sum+((row.features[item.name]-item.mean)/item.sd)*model.beta[i],0);
+ return {...row,adjustedProbability:clamp(sigmoid(logit(row.baseProbability)+z))};
+}
+
+export function evaluateFixedHoldout(rows,names,{holdoutStartYear=2025,featureStartYear=2016,lastEvaluationYear=2026}={}){
+ const training=rows.filter(row=>row.year>=featureStartYear&&row.year<holdoutStartYear);
+ const evaluation=rows.filter(row=>row.year>=holdoutStartYear&&row.year<=lastEvaluationYear);
+ const model=fitModel(training,names);
+ if(!model)return {status:"insufficient_training",trainingMatches:training.length,evaluationMatches:evaluation.length,holdoutStartYear};
+ if(!evaluation.length)return {status:"no_holdout_matches",trainingMatches:training.length,evaluationMatches:0,holdoutStartYear};
+ const scored=evaluation.map(row=>scoreWithModel(row,model));
+ return {
+  status:"ok",trainingStartYear:featureStartYear,trainingEndYear:holdoutStartYear-1,
+  holdoutStartYear,holdoutEndYear:lastEvaluationYear,
+  trainingMatches:training.length,evaluationMatches:scored.length,
+  metrics:aggregatePredictions(scored),
+  standardizedCoefficients:Object.fromEntries(names.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))
+ };
+}
 export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,lastEvaluationYear=2026,featureStartYear=2016,windowDays=365,minOverallMatches=5,minSurfaceMatches=5,holdoutStartYear=2025}={}){
  if(!Number.isInteger(holdoutStartYear)||holdoutStartYear<=featureStartYear||holdoutStartYear>lastEvaluationYear)throw new Error("holdoutStartYear must be after featureStartYear and not after lastEvaluationYear");
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
