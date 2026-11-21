@@ -202,11 +202,13 @@ export function evaluateFixedHoldout(rows,names,{holdoutStartYear=2025,featureSt
  if(!model)return {status:"insufficient_training",trainingMatches:training.length,evaluationMatches:evaluation.length,holdoutStartYear};
  if(!evaluation.length)return {status:"no_holdout_matches",trainingMatches:training.length,evaluationMatches:0,holdoutStartYear};
  const scored=evaluation.map(row=>scoreWithModel(row,model));
+ const byYear=Object.fromEntries([...new Set(scored.map(row=>row.year))].sort((a,b)=>a-b)
+  .map(year=>[year,aggregatePredictions(scored.filter(row=>row.year===year))]));
  return {
   status:"ok",trainingStartYear:featureStartYear,trainingEndYear:holdoutStartYear-1,
   holdoutStartYear,holdoutEndYear:lastEvaluationYear,
   trainingMatches:training.length,evaluationMatches:scored.length,
-  metrics:aggregatePredictions(scored),
+  metrics:aggregatePredictions(scored),byYear,
   standardizedCoefficients:Object.fromEntries(names.map((name,i)=>[name,Number(model.beta[i].toFixed(5))]))
  };
 }
