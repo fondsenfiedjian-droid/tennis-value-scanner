@@ -121,3 +121,13 @@ Interpretation: long gaps increase ambiguity in some categories, but many ambigu
 The dataset's [official data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) defines `server` as the player serving at that score state. Therefore the next-point-server interpretation is the documented meaning; the last-point-server variant is only a diagnostic alternative, not an equally supported interpretation.
 
 The current tiebreak report only gives overall agreement. A new matrix will split transitions where the tiebreak service schedule predicts a switch (after point 1, then every two points) from transitions where it predicts the same server. This will show whether the near-50% agreement comes from both cases failing equally or from one phase being systematically offset. Even a strong aggregate pattern is not sufficient by itself to enable serve attribution; boundary and source-quality validation remain required.
+
+### Tiebreak expected-switch matrix — first real result (2026-11-21)
+
+Successful run: GitHub Actions `44863861215`.
+
+The official dictionary defines `server` as the player serving at that score state. Under the standard tiebreak rotation:
+- When the next point should use the other server (6,528 transitions), the field changed only 235 times (3.60%) and stayed the same 6,293 times (96.40%).
+- When the next point should use the same server (6,724 transitions), the field stayed the same 6,604 times (98.22%) and changed 120 times (1.78%).
+
+This shows the near-50% overall agreement is not random noise: the server field is almost always held constant through tiebreak score transitions, even where service should rotate. It appears not to be refreshed point-by-point during tiebreaks in this sample. Do not derive tiebreak serve/return ownership from it. A further breakdown by the players' primary-tour agreement (ATP/WTA proxy) is being added to check whether this affects both groups similarly; it is not event-tour ground truth.
