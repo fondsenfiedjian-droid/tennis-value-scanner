@@ -179,3 +179,20 @@ test("separates ATP and WTA only when the match index has an explicit tour prefi
   assert.equal(report.byTour.ATP.inferred, 1);
   assert.equal(report.byTour.WTA.inferred, 1);
 });
+
+
+test("keeps player-primary-tour agreement separate from explicit event-tour labels", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:10Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "265", round: "R32", player1_id: "p1", player2_id: "p2" }
+  ], [
+    { player_id: "p1", tour: "ATP" },
+    { player_id: "p2", tour: "ATP" }
+  ]);
+  assert.equal(report.byTour.unclassified.matchesWithPoints, 1);
+  assert.equal(report.byPlayerTourAgreement.ATP.matchesWithPoints, 1);
+  assert.equal(report.byPlayerTourAgreement.ATP.inferred, 1);
+});
