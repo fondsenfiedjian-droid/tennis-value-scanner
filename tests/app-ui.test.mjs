@@ -522,3 +522,12 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+
+test("PFE fused probability is labelled diagnostic while displayed EV probability is explicitly Elo", () => {
+  assert.match(html, /PFE · объединённая оценка \(диагностика\)/);
+  assert.match(html, /· Elo '\+best\.probability\.toFixed\(1\)\+'% · EV \+'/);
+  assert.match(html, /вероятность Elo-модели '\+highest\.probability\.toFixed\(2\)\+'%/);
+  assert.match(html, /const pfeAssessment=TVSPFE\.fusePredictions\(pfeModels\)/);
+  assert.doesNotMatch(html, /result\.evA=\(\(pfeAssessment\.probability/);
+});
