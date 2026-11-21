@@ -93,8 +93,8 @@ test("matches events by unordered player pair and bounded start-time difference,
 });
 
 test("calculates bookmaker-specific EV from the same model probability", () => {
-  assert.equal(calculateBookmakerEv(0.55, 2), 10.000000000000009);
-  assert.equal(calculateBookmakerEv(0.55, 1.8), -0.9999999999999898);
+  assert.ok(Math.abs(calculateBookmakerEv(0.55, 2) - 10) < 1e-9);
+  assert.ok(Math.abs(calculateBookmakerEv(0.55, 1.8) - (-1)) < 1e-9);
   assert.equal(calculateBookmakerEv(0.55, 1), null);
   assert.equal(calculateBookmakerEv(1, 2), null);
 });
