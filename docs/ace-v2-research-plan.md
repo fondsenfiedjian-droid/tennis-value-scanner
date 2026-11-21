@@ -120,3 +120,8 @@ The corrected PFE experiment compared a calibration-only model, a short-term loa
 All intervals exclude zero. Load features carry the larger standalone contribution; rest-day information adds a smaller but consistent improvement. The combined model is consistently stronger than either alone. Minutes/duration features remain neutral beyond core ACE.
 
 Next experiment: add 14/28-day match counts and distinct playing days, keeping the existing 3/7-day and rest-day core fixed. Test the longer windows as a separate feature group before considering nonlinear thresholds or age×load.
+
+
+### 14/28-day workload extension — implementation pending validation
+
+The pre-match workload builder now calculates 14- and 28-calendar-day match counts and distinct playing days, with separate availability flags. Same-day matches remain excluded; the 3/7-day and rest-day core remains unchanged. Regression fixtures cover inclusive date boundaries. The PFE workflow now compares an extended 14/28-day load-only model and an extended ACE model against the fixed core ACE on the same chronological holdouts. Results are pending CI; no production path changes.
