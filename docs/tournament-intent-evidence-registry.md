@@ -6,7 +6,7 @@ Status: second-stage data-capture foundation; manual/reviewed records only. No l
 
 Each record is tied to a player, event and exact target match. It requires:
 - recognized evidence type;
-- public HTTPS source name and URL;
+- source category (`official_tour`, `official_tournament`, `player_or_team`, `verified_social`, `reputable_media` or `official_schedule`), plus public HTTPS source name and URL;
 - source publication time and capture time;
 - target match start time;
 - explicit `verified: true` and reviewer identity;
@@ -16,7 +16,7 @@ Publication and capture must both precede the target match start. Default freshn
 
 ## Workflow
 
-1. Find a public interview, official player/team statement, tournament announcement or reputable report.
+1. Prefer official tour/tournament material or a direct player/team statement. Verified player social posts and reputable media are secondary; record the source category explicitly.
 2. Record the exact player and target match, source URL, publication timestamp and capture timestamp.
 3. Assign an evidence type only when the source directly supports it. Do not infer intent from rank, odds, a loss, body language or speculation.
 4. Have a reviewer verify the source and classification.
