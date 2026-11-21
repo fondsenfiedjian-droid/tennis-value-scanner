@@ -34,16 +34,17 @@ jobs:
               test -s "research-data/${tour}_matches_${year}.csv"
             done
           done
-      - name: Run pre-match serve and return sensitivity grid
+      - name: Run residualized and shrunk surface research with frozen holdout
         run: |
           set -euo pipefail
-          for spec in "180 5 5" "365 3 3" "365 10 10" "730 5 5"; do
-            read -r window overall surface <<< "$spec"
+          for shrinkage in 3 5 10; do
             node scripts/sackmann-serve-return-research.mjs \
-              --window-days "$window" \
-              --min-overall-matches "$overall" \
-              --min-surface-matches "$surface" \
-              --out "sackmann-serve-return-${window}d-${overall}overall-${surface}surface.json" \
+              --window-days 730 \
+              --min-overall-matches 5 \
+              --min-surface-matches 5 \
+              --surface-shrinkage-matches "$shrinkage" \
+              --holdout-start-year 2025 \
+              --out "sackmann-serve-return-730d-5overall-5surface-shrink-${shrinkage}.json" \
               research-data/*_matches_*.csv
           done
       - name: Upload aggregate research report
