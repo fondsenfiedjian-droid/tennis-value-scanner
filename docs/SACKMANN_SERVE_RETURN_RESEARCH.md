@@ -106,4 +106,17 @@ Definitions:
 - **Residualized surface effect:** for each player, same-surface rate minus overall rate; the model feature is player 1's residual minus player 2's residual. This separates surface-specific deviation from general serve/return level.
 - **Shrunk surface rate:** overall rate plus a sample-size weight times the surface-minus-overall difference, where weight = surface prior matches / (surface prior matches + shrinkage prior strength). This pulls sparse surface estimates toward the player's overall rate.
 
-The run compares four new specifications: residualized surface only; overall plus residualized surface; shrunk surface only; and overall plus shrunk surface. It also reports a fixed-coefficient 2025–2026 holdout trained on 2016–2024. Results pending; all variants remain research-only.
+The run compares four new specifications: residualized surface only; overall plus residualized surface; shrunk surface only; and overall plus shrunk surface. It also reports a fixed-coefficient 2025–2026 holdout trained on 2016–2024. ### Frozen 2025–2026 holdout results (run 44867801135)
+
+For the fixed 730-day / five-prior-match configuration, coefficients were fitted on eligible 2016–2024 rows and frozen for 2025–2026. The strongest result was **overall plus residualized surface effect**:
+
+| Tour | Holdout n | Δ Brier (95% CI) | Δ LogLoss (95% CI) |
+|---|---:|---:|---:|
+| ATP | 3,071 | -0.001360 (-0.002473, -0.000246) | -0.003942 (-0.006566, -0.001318) |
+| WTA | 2,807 | -0.001198 (-0.002037, -0.000359) | -0.003405 (-0.005447, -0.001362) |
+
+Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.001284 and ΔLogLoss -0.003074; WTA -0.000937 and -0.002199, with all paired 95% intervals excluding zero. The raw overall-plus-surface baseline was weaker (ATP -0.000652 / -0.002133; WTA -0.000624 / -0.001997).
+
+Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
+
+Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.
