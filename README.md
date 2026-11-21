@@ -38,7 +38,7 @@ Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ra
 - Winamax odds: Cloudflare cache for 5 minutes.
 - Player profiles: Cloudflare cache for 7 days.
 - Frontend match cache: 15 minutes.
-- Frontend odds cache: 10 minutes; odds records older than 90 minutes are rejected by the matcher.
+- Frontend odds cache: 10 minutes; the live matcher temporarily accepts Winamax odds up to six hours old to accommodate the current Apify refresh interval. This is a temporary availability allowance, not a guarantee that a quote remains executable. The strict historical odds backtest retains its separate 90-minute quote-age requirement.
 
 These are quota and resilience safeguards, not guarantees that a bookmaker price is still available at the moment a bet is placed.
 
