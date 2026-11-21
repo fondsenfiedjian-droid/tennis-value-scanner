@@ -4,7 +4,7 @@ import { parseValuebetennisCsv } from "./valuebetennis-backtest.mjs";
 import { runBacktest } from "./backtest.mjs";
 
 const CORE_FEATURE_NAMES = ["matches3", "matches7", "playingDays7", "restDays", "restDaysAvailable"];
-const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "minutes7", "durationCoverage7"];
+const FEATURE_NAMES = [...CORE_FEATURE_NAMES, "matches14", "matches28", "playingDays14", "playingDays28", "minutes7", "durationCoverage7"];
 const dayNumber = key => Date.UTC(Number(key.slice(0,4)), Number(key.slice(4,6))-1, Number(key.slice(6,8))) / 86400000;
 const pairKey = (date, a, b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
 const sigmoid = x => x >= 0 ? 1 / (1 + Math.exp(-x)) : Math.exp(x) / (1 + Math.exp(x));
@@ -29,25 +29,33 @@ export function buildPreMatchWorkload(rows) {
     while (index < clean.length && clean[index].tourney_date === date) day.push(clean[index++]);
     const get = player => {
       const history = histories.get(player) ?? [];
-      const prior = [];
+      const prior28 = [];
       for (let i = history.length - 1; i >= 0; i--) {
         const age = today - history[i].day;
-        if (age > 7) break;
-        if (age >= 1) prior.push(history[i]);
+        if (age > 28) break;
+        if (age >= 1) prior28.push(history[i]);
       }
-      const prior3 = prior.filter(item => today - item.day <= 3);
-      const playingDays7 = new Set(prior.map(item => item.date)).size;
-      const knownDurations = prior.filter(item => Number.isFinite(item.durationMinutes));
-      const minutes7 = knownDurations.reduce((sum,item) => sum + item.durationMinutes, 0);
+      const prior3 = prior28.filter(item => today - item.day <= 3);
+      const prior7 = prior28.filter(item => today - item.day <= 7);
+      const prior14 = prior28.filter(item => today - item.day <= 14);
+      const playingDays7 = new Set(prior7.map(item => item.date)).size;
+      const playingDays14 = new Set(prior14.map(item => item.date)).size;
+      const playingDays28 = new Set(prior28.map(item => item.date)).size;
+      const knownDurations7 = prior7.filter(item => Number.isFinite(item.durationMinutes));
+      const minutes7 = knownDurations7.reduce((sum,item) => sum + item.durationMinutes, 0);
       const latest = history.at(-1);
       return {
         matches3: prior3.length,
-        matches7: prior.length,
+        matches7: prior7.length,
         playingDays7,
+        matches14: prior14.length,
+        matches28: prior28.length,
+        playingDays14,
+        playingDays28,
         restDays: latest ? Math.min(30, today - latest.day) : null,
         minutes7,
-        durationCoverage7: prior.length ? knownDurations.length / prior.length : 0,
-        knownDurationMatches7: knownDurations.length
+        durationCoverage7: prior7.length ? knownDurations7.length / prior7.length : 0,
+        knownDurationMatches7: knownDurations7.length
       };
     };
     for (const row of day) {
@@ -58,6 +66,8 @@ export function buildPreMatchWorkload(rows) {
       features.set(pairKey(date,p1,p2), {
         ...Object.fromEntries(FEATURE_NAMES.map(name => [name, name === "restDaysAvailable" ? (a.restDays !== null && b.restDays !== null ? 1 : 0) : name === "restDays" ? (a.restDays !== null && b.restDays !== null ? a.restDays - b.restDays : 0) : a[name] - b[name]])),
         priorMatchRecords7: a.matches7 + b.matches7,
+        priorMatchRecords14: a.matches14 + b.matches14,
+        priorMatchRecords28: a.matches28 + b.matches28,
         knownDurationRecords7: a.knownDurationMatches7 + b.knownDurationMatches7
       });
     }
