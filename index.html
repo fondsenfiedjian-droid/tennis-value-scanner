@@ -299,12 +299,35 @@
   function normalizePreferredBookmaker(value){
     return ['winamax','betclic','netbet','best'].includes(String(value))?String(value):'winamax';
   }
-  function selectPreferredBookmakerPair(quotes,preference,sideForPlayer,playerName){
+  function selectPreferredBookmakerPair(quotes,preference,sideForPlayer,playerName,eventGroupKey){
     const mode=normalizePreferredBookmaker(preference);
-    const pool=mode==='best'?quotes:(Array.isArray(quotes)?quotes:[]).filter(quote=>String(quote?.bookmaker||'').trim().toLowerCase()===mode);
-    const best=(side)=>pool.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
-    const quoteA=best('1'),quoteB=best('2'),completePair=!!(quoteA&&quoteB);
-    return {mode,quotes:mode==='best'?pool:(completePair?pool:[]),quoteA:mode==='best'?quoteA:(completePair?quoteA:null),quoteB:mode==='best'?quoteB:(completePair?quoteB:null),completePair};
+    const all=Array.isArray(quotes)?quotes:[];
+    if(mode==='best'){
+      const best=(side)=>all.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
+      const quoteA=best('1'),quoteB=best('2');
+      return {mode,quotes:all,quoteA,quoteB,completePair:!!(quoteA&&quoteB)};
+    }
+    const providerQuotes=all.filter(quote=>String(quote?.bookmaker||'').trim().toLowerCase()===mode);
+    const groups=new Map();
+    for(const quote of providerQuotes){
+      const key=typeof eventGroupKey==='function'?eventGroupKey(quote):'';
+      if(!key)continue;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(quote);
+    }
+    const pairs=[];
+    for(const groupQuotes of groups.values()){
+      const best=(side)=>groupQuotes.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
+      const quoteA=best('1'),quoteB=best('2');
+      if(!quoteA||!quoteB)continue;
+      const oldestPairTime=Math.min(Date.parse(quoteA.scrapedAt)||0,Date.parse(quoteB.scrapedAt)||0);
+      pairs.push({quotes:groupQuotes,quoteA,quoteB,oldestPairTime,combinedOdds:Number(quoteA.oddsDecimal)+Number(quoteB.oddsDecimal)});
+    }
+    pairs.sort((a,b)=>b.oldestPairTime-a.oldestPairTime||b.combinedOdds-a.combinedOdds);
+    const selected=pairs[0];
+    return selected
+      ?{mode,quotes:selected.quotes,quoteA:selected.quoteA,quoteB:selected.quoteB,completePair:true}
+      :{mode,quotes:[],quoteA:null,quoteB:null,completePair:false};
   }
   function normalizeRefreshRate(value){
     const minutes=Number(value);
@@ -718,8 +741,8 @@
       const maxOdds=Number($('#maxOdds').value||5);
       const allMatched=oddsForMatch(m);
       const preferredBookmaker=normalizePreferredBookmaker(readSettings().preferredBookmaker);
-      const comparisonPair=selectPreferredBookmakerPair(allMatched,'best',oddsSideForPlayer,a);
-      const selectedPair=selectPreferredBookmakerPair(allMatched,preferredBookmaker,oddsSideForPlayer,a);
+      const comparisonPair=selectPreferredBookmakerPair(allMatched,'best',oddsSideForPlayer,a,oddsEventGroupKey);
+      const selectedPair=selectPreferredBookmakerPair(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey);
       const comparisonQuoteA=comparisonPair.quoteA,comparisonQuoteB=comparisonPair.quoteB;
       const completePreferredPair=preferredBookmaker==='best'||selectedPair.completePair;
       // A single-book mode requires a complete, fresh two-sided pair from that same bookmaker.
