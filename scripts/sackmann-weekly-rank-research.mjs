@@ -23,11 +23,15 @@ async function main() {
   const from = arg("--from", "20000101");
   const to = arg("--to", "20261231");
   const k = Number(arg("--k", "32"));
+  const surface = arg("--surface");
   const out = arg("--out");
   if (!["atp","wta"].includes(tour) || !input || input.startsWith("--")) {
-    throw new Error("Usage: node scripts/sackmann-weekly-rank-research.mjs --tour atp|wta [--max-rank-age-days 45] [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--out report.json] enriched-matches.csv");
+    throw new Error("Usage: node scripts/sackmann-weekly-rank-research.mjs --tour atp|wta [--max-rank-age-days 45] [--from YYYYMMDD] [--to YYYYMMDD] [--k 32] [--surface hard|clay|grass|carpet] [--out report.json] enriched-matches.csv");
   }
   if (!Number.isInteger(maxAge) || maxAge < 0) throw new Error("--max-rank-age-days must be a non-negative integer");
+  if (surface && !["hard", "clay", "grass", "carpet"].includes(surface.toLowerCase())) {
+    throw new Error("--surface must be hard, clay, grass, or carpet");
+  }
   const rows = parseCsv(await readFile(input, "utf8"));
   let sameDayExcluded = 0, stalePlayerSnapshots = 0, missingRankPlayers = 0;
   const prepared = rows.map(row => {
@@ -54,10 +58,12 @@ async function main() {
     return { ...row, winner_rank: rank("winner"), loser_rank: rank("loser") };
   });
   const report = runRankAgeWalkForward(prepared, {
-    tour, evaluationStart: from, evaluationEnd: to, kFactor: k
+    tour, evaluationStart: from, evaluationEnd: to, kFactor: k,
+    evaluationSurface: surface ? surface.toLowerCase() : null
   });
   report.rankSource = "weekly rankings joined by exact ID; strictly earlier than tournament date";
   report.maxRankAgeDays = maxAge;
+  report.surfaceEvaluation = surface ? surface.toLowerCase() : "all";
   report.sameDayPlayerSnapshotsExcluded = sameDayExcluded;
   report.stalePlayerSnapshotsExcluded = stalePlayerSnapshots;
   report.missingRankPlayerObservations = missingRankPlayers;
