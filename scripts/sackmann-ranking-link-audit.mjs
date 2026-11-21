@@ -65,6 +65,7 @@ for(const file of files){
   let rowsN=0,missingId=0,missingDate=0,missingPoints=0,matchedRows=0;
   let minDate=null,maxDate=null,lastDate=null,nonMonotonicDates=0,duplicatePlayerDate=0;
   const seenPlayerDates=new Map();
+  const conflictByPlayer=new Map();
   const dateRegressionSamples=[];
   const duplicateSamples=[];
   let exactDuplicateRows=0, conflictingRankRows=0, conflictingPointsRows=0;
@@ -93,7 +94,15 @@ for(const file of files){
           const sameRank=first.rank===rank;
           const samePoints=first.points===points;
           if(sameRank&&samePoints)exactDuplicateRows++;
-          if(!sameRank)conflictingRankRows++;
+          if(!sameRank){
+            conflictingRankRows++;
+            const item=conflictByPlayer.get(id)||{playerId:id,conflictRows:0,dates:[],rankPairs:{}};
+            item.conflictRows++;
+            if(item.dates.length<12&&!item.dates.includes(d))item.dates.push(d);
+            const pair=first.rank+' -> '+rank;
+            item.rankPairs[pair]=(item.rankPairs[pair]||0)+1;
+            conflictByPlayer.set(id,item);
+          }
           if(!samePoints)conflictingPointsRows++;
           if(duplicateSamples.length<12)duplicateSamples.push({date:d,playerId:id,first:{rank:first.rank,points:first.points,row:first.row},duplicate:{rank,points,row:rowsN},sameRank,samePoints});
         } else seenPlayerDates.set(key,{rank,points,row:rowsN});
@@ -109,6 +118,8 @@ for(const file of files){
     exactArchiveIdMatches:matchedUniqueIds,
     archiveIdMatchRate:uniqueIds.size?Number((matchedUniqueIds/uniqueIds.size).toFixed(6)):null,
     rankingRowsWithArchiveId:matchedRows,missingPlayerIdRows:missingId,missingDateRows:missingDate,
-    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,exactDuplicateRows,conflictingRankRows,conflictingPointsRows,duplicateSamples,dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
+    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,exactDuplicateRows,conflictingRankRows,conflictingPointsRows,duplicateSamples,
+    topConflictingPlayers:[...conflictByPlayer.values()].sort((a,b)=>b.conflictRows-a.conflictRows).slice(0,20),
+    dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
 }
 console.log(JSON.stringify({schemaVersion:1,readOnly:true,tour,archive,archiveRows,archiveUniquePlayerIds:archiveIds.size,files:reports},null,2));
