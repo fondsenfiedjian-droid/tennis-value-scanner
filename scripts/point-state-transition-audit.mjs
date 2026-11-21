@@ -37,7 +37,7 @@ function isTerminalPointBeforeBoundary(before, after) {
   if (afterP1 !== "0" || afterP2 !== "0") return false;
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
   if (isTrue(before.is_tiebreak)) {
-    if (!/^\\d+$/.test(beforeP1) || !/^\\d+$/.test(beforeP2)) return false;
+    if (!/^\d+$/.test(beforeP1) || !/^\d+$/.test(beforeP2)) return false;
     const a = Number(beforeP1), b = Number(beforeP2);
     return Math.max(a, b) >= 6 && Math.abs(a - b) === 1;
   }
