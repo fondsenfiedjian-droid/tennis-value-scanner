@@ -1074,3 +1074,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `scripts/import-tournament-intent-evidence.mjs`: local JSON/JSONL import utility with dry-run, merge, duplicate detection, rejection reporting and atomic output. It performs no network or Production writes. Added CLI integration tests.
 
 - Added `docs/tournament-intent-source-discovery.md`: official ATP/WTA source shortlist, evidence-type criteria, point-in-time review checklist and a manual pilot workflow. No scraper, API, production UI or probability adjustment enabled.
+
+
+## Tournament Intent pilot sampling protocol (2026-11-21)
+- Added `docs/tournament-intent-pilot-protocol.md` with a predeclared, consecutive-window sample design, fixed source-search budget, source-category logging and separate outcomes for no evidence, unavailable sources and incomplete searches.
+- The protocol requires pre-match-only evidence, independent review of positive records plus a random 20% of no-evidence observations, and reporting of coverage and reviewer agreement before any predictive study.
+- Any later predictive test must use chronological holdout data and compare against the unchanged baseline; no probability adjustment, EV change or bet-selection integration is authorised by this research step.
