@@ -51,7 +51,9 @@ test("rejects invalid odds, unknown outcomes, unsupported markets and non-French
       { key: "betclic", markets: [{ key: "h2h", outcomes: [{ name: "Player A", price: 2 }] }] }
     ]
   }], { retrievedAt });
-  assert.equal(rows.length, 0);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].outcome, "away");
+  assert.equal(rows[0].oddsDecimal, 2);
 });
 
 test("keeps a one-sided market visible but marks it incomplete", () => {
