@@ -99,4 +99,4 @@ The next-point-server interpretation is substantially more consistent for ordina
 
 ## Timestamp-gap audit (2026-11-21)
 
-The parser now measures elapsed seconds between consecutive observed states and reports distributions separately for inferred and ambiguous transitions: count, mean, median, p90/p95/p99, maximum and broad time-gap bins. This is intended to test whether ambiguous transitions are concentrated in long capture gaps or also occur at short intervals. A long gap is not automatically a missed point; timestamps are observed capture times and require cautious interpretation.
+The parser now measures elapsed seconds between consecutive observed states and reports distributions separately for inferred and ambiguous transitions: count, mean, median, p90/p95/p99, maximum and broad time-gap bins. Ambiguous transitions are also broken down by parser reason. This is intended to test whether ambiguous transitions are concentrated in long capture gaps or also occur at short intervals. A long gap is not automatically a missed point; timestamps are observed capture times and require cautious interpretation.
