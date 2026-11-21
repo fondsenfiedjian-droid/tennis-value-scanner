@@ -6,7 +6,7 @@ import { runBacktest } from "./backtest.mjs";
 import { buildPreMatchWorkload } from "./workload-research.mjs";
 import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
-const FEATURES = ["baseLogit","matches3","matches7","playingDays7","minutes7","durationCoverage7","workloadAvailable"];
+const FEATURES = ["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","minutes7","durationCoverage7","workloadAvailable"];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
