@@ -944,3 +944,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added synthetic regression tests and included aggregate alignment counts in the ephemeral sample workflow. This tests rotation consistency only; it does not yet establish whether server-before or server-after owns the point.
 - No production feature enabled; real-sample alignment results pending CI.
 - Server-rotation audit run `44863117235` passed technically. Ordinary-game rotation hypothesis: 788,443/831,264 matches (94.85%), 42,821 mismatches. Tiebreak rotation: 6,839/13,252 matches (51.61%), 6,413 mismatches; 101,168 transitions skipped. Tiebreak alignment is inconclusive and server-to-point ownership remains blocked; no serve/return feature enabled.
+
+### Alternative server-field phase comparison (2026-11-21)
+- Added a second diagnostic hypothesis: server field may identify the most recent point's server rather than the next point's server. It compares both hypotheses and splits ordinary transitions into game-boundary vs within-game.
+- Added synthetic tests for both phase conventions. Real-sample comparison pending; neither convention is authoritative until source semantics are verified.
