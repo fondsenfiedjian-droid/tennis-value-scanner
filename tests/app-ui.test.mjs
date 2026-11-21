@@ -93,7 +93,7 @@ test("match cards expose selected bookmaker EV quotes and comparison alternative
 test("EV calculation uses the selected bookmaker pair and keeps the odds range as a separate candidate filter", () => {
   assert.match(html, /const matched=selectedBookQuotes\.filter\(o=>/);
   assert.match(html, /value>=minOdds&&value<=maxOdds/);
-  assert.match(html, /const selectedPair=selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a\)/);
+  assert.match(html, /const selectedPair=selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey\)/);
   assert.match(html, /const displayQuoteA=selectedPair\.quoteA,displayQuoteB=selectedPair\.quoteB/);
   assert.match(html, /const oddsA=displayQuoteA\?Number\(displayQuoteA\.oddsDecimal\):null,oddsB=displayQuoteB\?Number\(displayQuoteB\.oddsDecimal\):null/);
   assert.match(html, /const selectedQuotes=\[displayQuoteA,displayQuoteB\]\.filter\(Boolean\)/);
