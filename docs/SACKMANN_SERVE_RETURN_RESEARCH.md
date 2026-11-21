@@ -91,3 +91,9 @@ A reproducible CI sensitivity mode now tests:
 - Residualized surface effects (same-surface rate minus overall rate), shrunk with prior weights of 10 and 20 matches.
 
 The grid keeps ATP and WTA separate and uses the same chronological K=32 Elo correction and same-day exclusion. It is a robustness analysis on the existing 2020–2026 walk-forward period, not a fresh untouched holdout; feature selection across this grid must not be presented as independent confirmation. Results pending fresh CI.
+
+## Frozen-coefficient later-period holdout
+
+The report now adds a fixed-coefficient 2025–2026 holdout for every model specification and each feature configuration. Coefficients are fitted once using eligible pre-match rows from 2016 through 2024, then frozen through the holdout. Player rolling serve/return features still use only matches completed before each target match; same-day rows remain excluded. The 2026 archive is partial through 2026-05-25. This is a temporal stability check, not a blind test, because annual 2025–2026 results were already inspected. The JSON report records the training window, holdout match count, baseline/adjusted Brier and LogLoss, paired confidence intervals and frozen coefficients.
+
+Results pending CI.
