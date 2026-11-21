@@ -141,3 +141,25 @@ Successful run: GitHub Actions `44863980944`. The player-tour grouping is a seco
 - Unclassified proxy group shows the same pattern: 5.97% observed switches when expected and 97.85% holds when expected.
 
 The stale-server pattern appears in both ATP and WTA player-affiliation groups, so it is not a tour-specific quirk in this sample. Do not use tiebreak `server` for point ownership or serve/return features. Ordinary-game boundary mismatches remain a separate unresolved issue.
+
+## Score-state delta audit (2026-11-21)
+
+The next diagnostic separates transitions where the full score state is unchanged from transitions where point-score fields are missing. It records whether the server or tiebreak flag changed despite an unchanged score, and whether missing point scores coincide with game/set counter changes. This helps distinguish duplicate/update rows from incomplete score states without exposing match IDs or player-level records.
+
+### Diagnostic refinement
+
+The audit distinguishes (a) identical point-score pairs, (b) a fully comparable unchanged score state (sets, game arrays and point scores all parse and match), and (c) unchanged point scores where set/game counters changed or could not be parsed. This avoids treating an unchanged point score as proof that the entire scoreboard state was an exact duplicate. Numeric set/game values are normalized before comparison.
+
+### Same-point-score counter-change breakdown
+
+The aggregate report now distinguishes game-counter changes, set-counter changes and transitions where both change while the point-score pair remains identical. These transitions are not automatically point outcomes: they may represent delayed scoreboard counter updates or a state snapshot that has already reset its point score. The terminal-score gate continues to mark them ambiguous unless the previous state proves the final point of the game/set.
+
+### First real-sample score-state delta findings (2026-11-21)
+
+Successful run: GitHub Actions `44864476954`.
+
+- 37,531 transitions had an identical point-score pair. In 36,937 of these, game/set counters changed: game counters in 35,660, set counters in 4,502, with 3,225 transitions changing both (counts overlap). Only 594 had stable, fully comparable set/game counters.
+- Of those 594 fully comparable unchanged score states, 391 were exact duplicates except for timestamp, 199 also changed the server field, and 4 changed the tiebreak flag.
+- 10,793 transitions had at least one missing point-score field: before missing in 5,650, after missing in 5,279, both missing in 136. Game counters changed in 1,626 and set counters in 166 (overlap possible); server changed in 460.
+
+Interpretation: a substantial number of rows appear to update game/set counters while the point-score pair remains unchanged. This is consistent with asynchronous or delayed scoreboard field updates, not a single point outcome. Keep these transitions ambiguous; do not relax the terminal-score gate or treat same-score counter changes as point wins.

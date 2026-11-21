@@ -323,3 +323,59 @@ test("splits tiebreak server switch matrix by primary player tour", () => {
   assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.checked, 1);
   assert.equal(report.tiebreakServerByPlayerTour.ATP.expectedHold.observedHold, 1);
 });
+
+
+test("diagnoses score-identical server updates and missing-point-score counter changes", () => {
+  const rows = [
+    state({ points_p1: "0", points_p2: "0", server: "1", is_tiebreak: "false" }),
+    state({ points_p1: "0", points_p2: "0", server: "2", is_tiebreak: "false" }),
+    state({ points_p1: "", points_p2: "", games_p1: "[1]", server: "2", is_tiebreak: "false" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.serverChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.exactDuplicateExceptTimestamp, 0);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.serverChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.countersStable, 1);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.afterMissing, 1);
+  assert.equal(report.stateDeltaDiagnostics.missingPointScore.gameCounterChanged, 1);
+});
+
+
+test("treats numerically equivalent score counters as an unchanged score state", () => {
+  const rows = [
+    state({ sets_p1: "0", sets_p2: "0", games_p1: "[0]", games_p2: "[0]" }),
+    state({ sets_p1: "0.0", sets_p2: "0", games_p1: "[0.0]", games_p2: "[0]" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 1);
+  assert.equal(report.totals.byReason["no-score-change"], 1);
+});
+
+
+test("separates same point scores from unparseable game counters", () => {
+  const rows = [
+    state({ points_p1: "15", points_p2: "0", games_p1: "[0]", games_p2: "[0]" }),
+    state({ points_p1: "15", points_p2: "0", games_p1: "not-json", games_p2: "[0]" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.countersUnparseable, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 0);
+});
+
+
+test("separates game and set counter changes when point scores are identical", () => {
+  const rows = [
+    state({ sets_p1: "0", sets_p2: "0", games_p1: "[5]", games_p2: "[3]", points_p1: "0", points_p2: "0" }),
+    state({ sets_p1: "1", sets_p2: "0", games_p1: "[5,0]", games_p2: "[3,0]", points_p1: "0", points_p2: "0" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.gameCounterChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.setCounterChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.bothCountersChanged, 1);
+  assert.equal(report.totals.byReason["counter-change-without-terminal-score"], 1);
+});

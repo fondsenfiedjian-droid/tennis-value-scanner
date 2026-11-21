@@ -236,6 +236,35 @@ function summarizeTimestampGaps(values) {
   };
 }
 
+function scoreStateIsEqual(a, b) {
+  const sets = [integer(a.sets_p1), integer(a.sets_p2), integer(b.sets_p1), integer(b.sets_p2)];
+  const games = [gameArray(a.games_p1), gameArray(a.games_p2), gameArray(b.games_p1), gameArray(b.games_p2)];
+  if (sets.some(value => value === null) || games.some(value => value === null)) return false;
+  const sameGames = (left, right) => {
+    if (left === null || right === null) return left === right;
+    return left.length === right.length && left.every((value, index) => value === right[index]);
+  };
+  return integer(a.sets_p1) === integer(b.sets_p1) &&
+    integer(a.sets_p2) === integer(b.sets_p2) &&
+    sameGames(gameArray(a.games_p1), gameArray(b.games_p1)) &&
+    sameGames(gameArray(a.games_p2), gameArray(b.games_p2)) &&
+    String(a.points_p1 ?? "").trim().toUpperCase() === String(b.points_p1 ?? "").trim().toUpperCase() &&
+    String(a.points_p2 ?? "").trim().toUpperCase() === String(b.points_p2 ?? "").trim().toUpperCase();
+}
+
+function transitionCounterChanges(before, after) {
+  const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
+  const t1 = integer(after.sets_p1), t2 = integer(after.sets_p2);
+  const setsComparable = [s1, s2, t1, t2].every(value => value !== null);
+  const setChanged = setsComparable && (s1 !== t1 || s2 !== t2);
+  const g1 = gameArray(before.games_p1), g2 = gameArray(before.games_p2);
+  const h1 = gameArray(after.games_p1), h2 = gameArray(after.games_p2);
+  const gamesComparable = !!(g1 && g2 && h1 && h2);
+  const gameChanged = gamesComparable &&
+    (JSON.stringify(g1) !== JSON.stringify(h1) || JSON.stringify(g2) !== JSON.stringify(h2));
+  return { setChanged, gameChanged, setsComparable, gamesComparable };
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
@@ -272,6 +301,11 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
   const tiebreakServerByPlayerTour = {};
+  const stateDeltaDiagnostics = {
+    fullScoreStateUnchanged: { total: 0, serverChanged: 0, tiebreakChanged: 0, bothChanged: 0, exactDuplicateExceptTimestamp: 0 },
+    samePointScore: { total: 0, countersChanged: 0, gameCounterChanged: 0, setCounterChanged: 0, bothCountersChanged: 0, countersUnparseable: 0, countersStable: 0, serverChanged: 0, tiebreakChanged: 0 },
+    missingPointScore: { total: 0, beforeMissing: 0, afterMissing: 0, bothMissing: 0, gameCounterChanged: 0, setCounterChanged: 0, serverChanged: 0 }
+  };
   const serverAlignment = {
     regularChecked: 0, regularMatches: 0, regularMismatches: 0,
     regularAlternativeMatches: 0, regularAlternativeMismatches: 0,
@@ -352,8 +386,49 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     }
     if (transitions > 0) totals.matchesWithAtLeastOneTransition++;
     for (let i = 0; i + 1 < states.length; i++) {
-      const result = inferPointStateTransition(states[i], states[i + 1]);
-      const serverCheck = auditServerTransition(states[i], states[i + 1]);
+      const before = states[i], after = states[i + 1];
+      const result = inferPointStateTransition(before, after);
+      const serverCheck = auditServerTransition(before, after);
+      const sameScore = scoreStateIsEqual(before, after);
+      const samePointScore = String(before.points_p1 ?? "").trim().toUpperCase() === String(after.points_p1 ?? "").trim().toUpperCase() &&
+        String(before.points_p2 ?? "").trim().toUpperCase() === String(after.points_p2 ?? "").trim().toUpperCase();
+      const serverChanged = serverValue(before.server) && serverValue(after.server) &&
+        serverValue(before.server) !== serverValue(after.server);
+      const tiebreakChanged = String(before.is_tiebreak ?? "") !== String(after.is_tiebreak ?? "");
+      if (sameScore) {
+        stateDeltaDiagnostics.fullScoreStateUnchanged.total++;
+        if (serverChanged) stateDeltaDiagnostics.fullScoreStateUnchanged.serverChanged++;
+        if (tiebreakChanged) stateDeltaDiagnostics.fullScoreStateUnchanged.tiebreakChanged++;
+        if (serverChanged && tiebreakChanged) stateDeltaDiagnostics.fullScoreStateUnchanged.bothChanged++;
+        if (!serverChanged && !tiebreakChanged) stateDeltaDiagnostics.fullScoreStateUnchanged.exactDuplicateExceptTimestamp++;
+      }
+      if (samePointScore) {
+        const diag = stateDeltaDiagnostics.samePointScore;
+        diag.total++;
+        if (serverChanged) diag.serverChanged++;
+        if (tiebreakChanged) diag.tiebreakChanged++;
+        const counters = transitionCounterChanges(before, after);
+        if (counters.setChanged || counters.gameChanged) {
+          diag.countersChanged++;
+          if (counters.gameChanged) diag.gameCounterChanged++;
+          if (counters.setChanged) diag.setCounterChanged++;
+          if (counters.gameChanged && counters.setChanged) diag.bothCountersChanged++;
+        } else if (!counters.setsComparable || !counters.gamesComparable) diag.countersUnparseable++;
+        else diag.countersStable++;
+      }
+      const beforeMissing = !String(before.points_p1 ?? "").trim() || !String(before.points_p2 ?? "").trim();
+      const afterMissing = !String(after.points_p1 ?? "").trim() || !String(after.points_p2 ?? "").trim();
+      if (beforeMissing || afterMissing) {
+        const diag = stateDeltaDiagnostics.missingPointScore;
+        diag.total++;
+        if (beforeMissing) diag.beforeMissing++;
+        if (afterMissing) diag.afterMissing++;
+        if (beforeMissing && afterMissing) diag.bothMissing++;
+        const counters = transitionCounterChanges(before, after);
+        if (counters.gameChanged) diag.gameCounterChanged++;
+        if (counters.setChanged) diag.setCounterChanged++;
+        if (serverChanged) diag.serverChanged++;
+      }
       const beforeMs = Date.parse(String(states[i].timestamp_utc ?? ""));
       const afterMs = Date.parse(String(states[i + 1].timestamp_utc ?? ""));
       if (Number.isFinite(beforeMs) && Number.isFinite(afterMs) && afterMs >= beforeMs) {
@@ -453,6 +528,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         .map(([reason, values]) => [reason, summarizeTimestampGaps(values)]))
     },
     serverAlignment,
+    stateDeltaDiagnostics,
     tiebreakServerByPlayerTour,
     byTierKey: tierStats,
     byTour: tourStats,
