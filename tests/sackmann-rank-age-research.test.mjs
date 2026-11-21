@@ -77,6 +77,28 @@ test("rank, age and combined models are evaluated on their own eligible match su
   assert.ok(report.byYear["2003"].rank.trainingMatches > 0);
 });
 
+test("surface-specific training uses only prior matches on the selected training surface", () => {
+  const rows = [
+    ...makeSeason("2000"),
+    ...makeSeason("2001"),
+    ...makeSeason("2002"),
+    ...makeSeason("2003")
+  ];
+  const options = {
+    tour: "atp",
+    evaluationStart: "20030101",
+    evaluationEnd: "20031231",
+    minTrainingMatches: 100,
+    maxTrainingRows: 5000
+  };
+  const pooled = runRankAgeWalkForward(rows, options);
+  const hardOnly = runRankAgeWalkForward(rows, { ...options, trainingSurface: "hard" });
+  assert.equal(hardOnly.trainingSurface, "hard");
+  assert.ok(hardOnly.summary.rank.trainingMatches < pooled.summary.rank.trainingMatches);
+  assert.ok(hardOnly.summary.rank.trainingMatches > 0);
+  assert.equal(hardOnly.summary.rank.matches, pooled.summary.rank.matches);
+});
+
 test("future seasons cannot change an earlier evaluation year", () => {
   const historical = [
     ...makeSeason("2000"),
