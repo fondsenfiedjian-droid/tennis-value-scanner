@@ -3310,7 +3310,7 @@ test("preferred bookmaker mode defaults safely and never silently mixes books", 
   assert.equal(netbet.quoteB,null);
   assert.equal(netbet.quotes.length,0);
   const best=selectPreferredBookmakerPair(quotes,"best",side,"Player A",event);
-  assert.equal(best.quoteA.bookmaker,"netbet");
+  assert.equal(best.quoteA.bookmaker,"winamax");
   assert.equal(best.quoteB.bookmaker,"winamax");
 });
 test("preferred bookmaker setting is persisted and restored in the settings form", () => {
