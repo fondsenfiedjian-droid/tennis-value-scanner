@@ -411,6 +411,7 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     state({ points_p1: "7", points_p2: "6", is_tiebreak: "true" }),
     state({ points_p1: "AD", points_p2: "40", is_tiebreak: "true" }),
     state({ points_p1: "40", points_p2: "40", is_tiebreak: "false" }),
+    state({ points_p1: "7", points_p2: "7", is_tiebreak: "true" }),
     state({ points_p1: "A", points_p2: "AD", is_tiebreak: "true" })
   ];
   const report = auditPointStateTransitions(rows);
