@@ -15,12 +15,12 @@ The unit is one **player–target-match** observation, not a tournament or a pla
 For each pilot batch:
 
 1. Freeze a consecutive calendar window before reviewing any sources (recommended: two complete tournament weeks).
-2. Include every singles match in the selected events that involves a player ranked in the top 50 on the ranking snapshot published before the event began. Keep ATP and WTA strata separate.
+2. Include every singles match in the selected events that involves a player ranked in the top 150 on the ranking snapshot published before the event began. Record ranking bands 1–50, 51–100 and 101–150 separately, and keep ATP and WTA strata separate.
 3. Select event weeks and tours before inspecting interviews or results. Do not select matches because a player later lost, retired or underperformed.
 4. Record the ranking snapshot date and the event/match list used to construct the sample.
 5. If the batch is too large, use a reproducible random sample with a recorded seed; never hand-pick only suspected cases.
 
-The first feasibility batch should target 100 player–match observations across ATP and WTA, with the exact counts reported rather than forced to balance.
+The first feasibility batch should target up to 100 player–match observations across ATP and WTA. Treat 100 as a target, not a quota: if the predeclared window yields fewer eligible observations, report the actual count and do not broaden the ranking cutoff after seeing the source evidence.
 
 ## 3. Standardised source search
 
