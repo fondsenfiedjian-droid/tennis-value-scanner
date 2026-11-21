@@ -84,7 +84,9 @@ The combined model's annual standardized coefficients consistently assign negati
 
 ## Frozen-coefficient later-period holdout
 
-A second evaluation protocol fits each feature specification once on eligible pre-match rows from 2016 through 2024, freezes its coefficients, then evaluates 2025–2026 without refitting. Player rolling serve/return features for each holdout match still use only matches completed before that match date; same-day rows remain excluded. The 2026 archive is partial through 2026-05-25. This fixed holdout is a temporal stability check, not a blind test, because annual 2025–2026 results were already inspected. Each specification's report includes the frozen training window, holdout match count, baseline/adjusted Brier and LogLoss, paired confidence intervals and frozen standardized coefficients. ### Frozen 2025–2026 holdout result (run 44867207484)
+A second evaluation protocol fits each feature specification once on eligible pre-match rows from 2016 through 2024, freezes its coefficients, then evaluates 2025–2026 without refitting. Player rolling serve/return features for each holdout match still use only matches completed before that match date; same-day rows remain excluded. The 2026 archive is partial through 2026-05-25. This fixed holdout is a temporal stability check, not a blind test, because annual 2025–2026 results were already inspected. Each specification's report includes the frozen training window, holdout match count, baseline/adjusted Brier and LogLoss, paired confidence intervals and frozen standardized coefficients.
+
+### Frozen 2025–2026 holdout result (run 44867207484)
 
 For the 730-day / five-prior-match configuration, the overall-plus-surface specification improved both metrics for both tours on the fixed-coefficient holdout. Coefficients were fitted once on eligible 2016–2024 records and then frozen:
 
@@ -94,3 +96,9 @@ For the 730-day / five-prior-match configuration, the overall-plus-surface speci
 | WTA | 2,807 | -0.000624 (-0.001146, -0.000102) | -0.001997 (-0.003317, -0.000677) |
 
 Both paired intervals exclude zero in the improving direction for both tours. This is encouraging temporal stability, but not a blind confirmation: 2025–2026 annual results had already been inspected, four rolling configurations and seven specifications were compared, and no multiple-comparison correction was applied. The 2026 archive is partial through 2026-05-25. Keep this research-only; next evaluate residualized surface effects and sample-size shrinkage before any shadow test.
+
+## Residualized surface effects and sample-size shrinkage (next research)
+
+The 730-day / five-prior-match combined specification showed positive paired improvements in the fixed 2025–2026 holdout for both tours. Its fitted coefficients assign negative weights to overall serve/return differences and positive weights to same-surface differences. This may reflect conditional effects under correlated predictors rather than a simple standalone effect. The next research pass therefore separates the same-surface residual (same-surface difference minus overall difference) and tests empirical shrinkage of same-surface rates toward overall rates.
+
+For shrinkage constant (k in {5,10,20}), the same-surface difference is blended with the overall difference using (w=n/(n+k)), where (n) is the minimum prior same-surface match count across the two players. Lower sample sizes therefore pull the surface estimate more strongly toward the overall estimate. The 730d/5 configuration is used for this focused comparison; all variants remain research-only, and the 2025–2026 holdout is not blind because those years have already been inspected.
