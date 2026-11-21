@@ -88,6 +88,29 @@ function prepare(rows) {
     duplicateRows,conflictingDuplicateRows,conflictingDuplicateMatches};
 }
 function metric(){return {n:0,brier:0,logLoss:0,correct:0};}
+const LAYOFF_BANDS=[
+  {key:"30_59",min:30,max:59},
+  {key:"60_89",min:60,max:89},
+  {key:"90_179",min:90,max:179},
+  {key:"180_364",min:180,max:364},
+  {key:"365_plus",min:365,max:Infinity}
+];
+function cohortBucket(map,key){
+  if(!map.has(key))map.set(key,{baseline:metric(),candidate:metric()});
+  return map.get(key);
+}
+function finishCohorts(map){
+  return Object.fromEntries([...map.entries()].map(([key,value])=>[key,{
+    playerMatchObservations:value.baseline.n,
+    baseline:finish(value.baseline),
+    candidate:finish(value.candidate),
+    delta:{
+      brier:value.baseline.n?+(finish(value.candidate).brier-finish(value.baseline).brier).toFixed(6):null,
+      logLoss:value.baseline.n?+(finish(value.candidate).logLoss-finish(value.baseline).logLoss).toFixed(6):null,
+      accuracy:value.baseline.n?+(finish(value.candidate).accuracy-finish(value.baseline).accuracy).toFixed(2):null
+    }
+  }]));
+}
 function add(bucket,p,y){
   p=clamp(p);bucket.n++;bucket.brier+=(p-y)**2;
   bucket.logLoss-=y*Math.log(p)+(1-y)*Math.log(1-p);
@@ -118,7 +141,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const maxTrainingRows=Number.isInteger(options.maxTrainingRows)?options.maxTrainingRows:20000;
   const prepared=prepare(inputRows), matches=prepared.rows;
   const elo=new Map(),lastPlayed=new Map(),returnEpisode=new Map(),returnMatches=new Map(),history=[];
-  const baseTotal=metric(),candidateTotal=metric(),byYear={};
+  const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),returnCohorts=new Map();
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
     const date=matches[index].date,year=date.slice(0,4);
@@ -156,6 +179,26 @@ export function runLayoffWalkForward(inputRows, options={}) {
           const p1=predictLogistic(models.candidate,observation);
           add(yearBase,p0,match.outcome);add(yearCandidate,p1,match.outcome);
           add(baseTotal,p0,match.outcome);add(candidateTotal,p1,match.outcome);
+          const playerViews=[
+            {id:match.player1,gap:gap.player1LayoffDays,episode:Boolean(returnEpisode.get(match.player1)),played:returnMatches.get(match.player1)??0,pBase:p0,pCandidate:p1,outcome:match.outcome},
+            {id:match.player2,gap:gap.player2LayoffDays,episode:Boolean(returnEpisode.get(match.player2)),played:returnMatches.get(match.player2)??0,pBase:1-p0,pCandidate:1-p1,outcome:1-match.outcome}
+          ];
+          for(const view of playerViews){
+            if(view.gap!=null){
+              const band=LAYOFF_BANDS.find(item=>view.gap>=item.min&&view.gap<=item.max);
+              if(band){
+                const bucket=cohortBucket(layoffCohorts,band.key);
+                add(bucket.baseline,view.pBase,view.outcome);
+                add(bucket.candidate,view.pCandidate,view.outcome);
+              }
+            }
+            const returnIndex=view.gap!=null&&view.gap>=90?1:(view.episode?view.played+1:0);
+            if(returnIndex>=1&&returnIndex<=3){
+              const bucket=cohortBucket(returnCohorts,String(returnIndex));
+              add(bucket.baseline,view.pBase,view.outcome);
+              add(bucket.candidate,view.pCandidate,view.outcome);
+            }
+          }
         }
       }
     }
@@ -213,6 +256,12 @@ export function runLayoffWalkForward(inputRows, options={}) {
       logLoss:baseline.logLoss==null||candidate.logLoss==null?null:+(candidate.logLoss-baseline.logLoss).toFixed(6),
       accuracy:baseline.accuracy==null||candidate.accuracy==null?null:+(candidate.accuracy-baseline.accuracy).toFixed(2)
     }},
+    cohortDefinitions:{
+      layoffBands:"Player-match observations grouped by days since the player's previous archived completed match; these are not injury labels.",
+      returnMatches:"Player-match observations for the first, second and third match after a gap of at least 90 calendar days.",
+      unit:"Each cohort observation is one player in one match; a match can contribute two observations if both players qualify."
+    },
+    cohorts:{layoffDays:finishCohorts(layoffCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
     byYear
   };
 }
