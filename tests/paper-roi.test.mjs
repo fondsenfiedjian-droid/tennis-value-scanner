@@ -38,7 +38,7 @@ test('excludes an EV tie across opposite sides as ambiguous',()=>{
   assert.equal(result.bets,0);assert.equal(result.ambiguous,1);
 });
 test('uses the latest authoritative result version, not an obsolete winner',()=>{
-  const result=archivePaperRoi([row({resultWinner:1,resultVersion:1}),row({side:'B',resultWinner:2,resultVersion:2})]);
+  const result=archivePaperRoi([row({resultWinner:2,resultVersion:1}),row({side:'B',resultWinner:1,resultVersion:2})]);
   assert.equal(result.bets,1);assert.equal(result.losses,1);
 });
 test('excludes conflicting outcomes in the latest result version',()=>{
