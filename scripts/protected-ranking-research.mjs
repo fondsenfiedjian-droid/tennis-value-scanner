@@ -60,6 +60,9 @@ export function prepareProtectedMatches(rows,protectionIndex){
   const protection2=protectionIndex.get([...keyBase,p2].join("|"))??null;
   const hasProtection=Boolean(protection1||protection2);
   clean.push({date,year:date.slice(0,4),winner,loser,p1,p2,
+   winnerName:String(r.winner_name??""),loserName:String(r.loser_name??""),
+   p1Name:winnerIsP1?String(r.winner_name??""):String(r.loser_name??""),
+   p2Name:winnerIsP1?String(r.loser_name??""):String(r.winner_name??""),
    outcome:winnerIsP1?1:0,eloScaled:0,rank1:ranksAvailable?rank1:null,rank2:ranksAvailable?rank2:null,
    rankAdv:ranksAvailable?Math.log(rank2)-Math.log(rank1):null,
    protectedRank1:protection1?.protectedRank??null,protectedRank2:protection2?.protectedRank??null,
@@ -86,7 +89,7 @@ export function runProtectedRankingResearch(matchRows,observations,options={}){
  const matches=prepareProtectedMatches(matchRows,built.index);
  const elo=new Map(),history=[],overall=comparison(),byYear={};
  let currentYear=null,models=null,index=0,yearsWithModels=0,evaluatedProtectedMatches=0;
- const yearSummaries={};
+ const yearSummaries={},matchDetails=[];
  while(index<matches.length){
   const date=matches[index].date,year=date.slice(0,4);
   if(year!==currentYear){
@@ -117,6 +120,13 @@ export function runProtectedRankingResearch(matchRows,observations,options={}){
       add(bucket.elo,pElo,m.outcome);add(bucket.ordinaryRank,pOrd,m.outcome);add(bucket.protectedRank,pProtected,m.outcome);
       bucket.probabilityShift+=pProtected-pOrd;bucket.shiftN++;
      }
+     matchDetails.push({date,tournament:m.tournament,tourneyId:m.tourneyId,round:m.round,surface:m.surface,
+      player1:{id:m.p1,name:m.p1Name,ordinaryRank:m.rank1,protectedRank:m.protectedRank1},
+      player2:{id:m.p2,name:m.p2Name,ordinaryRank:m.rank2,protectedRank:m.protectedRank2},
+      actualWinner:m.outcome===1?m.p1Name:m.p2Name,
+      probabilities:{elo:+pElo.toFixed(6),ordinaryRank:+pOrd.toFixed(6),protectedRank:+pProtected.toFixed(6)},
+      brier:{elo:+((pElo-m.outcome)**2).toFixed(6),ordinaryRank:+((pOrd-m.outcome)**2).toFixed(6),protectedRank:+((pProtected-m.outcome)**2).toFixed(6)}});
+     }
      evaluatedProtectedMatches++;
     }
    }
@@ -136,7 +146,7 @@ export function runProtectedRankingResearch(matchRows,observations,options={}){
   sourceMatchRows:matchRows.length,eligibleMatches:matches.length,observationKeys:built.observationKeys,
   matchedEventKeys:matchedObservationKeys.size,missingPlayerIds:built.missingIds.length,conflictingProtectedRankRecords:built.conflicts,
   yearsWithModels,evaluatedProtectedMatches,
-  summary:finishComparison(overall),byYear,
+  summary:finishComparison(overall),byYear,matchDetails,
   missingPlayerIds:built.missingIds,
   limitations:[
    "This evaluates only documented event-specific protected-ranking uses, not all players who may have received protection.",
