@@ -37,7 +37,23 @@ The MatchStats formulas verify these denominators for the workbook's own per-mat
 - Unforced errors include the unforced-error and double-fault flags for the player who lost the point.
 - Rally-length buckets use `AY`: 0–4 shots, 5–9 shots, and 10+ shots.
 
-The Instructions sheet defines shot-direction codes relative to the opponent's handedness: 1 = right-hander forehand/left-hander backhand side, 2 = middle, 3 = right-hander backhand/left-hander forehand side. Return-depth codes 7/8/9 distinguish shallow, medium and deep returns. These labels are not direct player-handedness features. The aggregate CSV files still require family-specific row-orientation and category validation before these formulas can be applied to them.
+The Instructions sheet defines shot-direction codes relative to the opponent's handedness: 1 = right-hander forehand/left-hander backhand side, 2 = middle, 3 = right-hander backhand/left-hander forehand side. Return-depth codes are optional and apply to the service return: 7 = return lands within the service boxes; 8 = behind the service line but closer to the service line than the baseline; 9 = closer to the baseline than the service line; 0 or omission = unknown. These labels are not direct player-handedness features. The aggregate CSV files still require family-specific row-orientation and category validation before these formulas can be applied to them.
+
+### Workbook instruction and formula review (2026-11-21)
+
+Reviewed the short-lived CI extraction of the pinned MatchChart 0.3.2 workbook (source commit `1813a1309b7ed7ebf1c7e884b32bf675d00e4edf`; artifact `match-charting-instructions`). The raw workbook and extracted codebook are not committed. Source terms remain CC BY-NC-SA 4.0, non-commercial and share-alike.
+
+Confirmed workbook semantics:
+- Player 1 is explicitly the player who serves first; Player 2 is the opponent. Each point row records `Svr`, `Ret`, `PtWinner` and whether the server won.
+- Serve direction: 4 = wide, 5 = body, 6 = down the T, 0 = unknown.
+- Rally shot type is a letter code; direction 1/2/3 is relative to the opponent's handedness (not an absolute court coordinate): right-hander forehand/left-hander backhand side, middle, right-hander backhand/left-hander forehand side.
+- Return depth is optional: 7 = inside the service boxes; 8 = beyond the service line but nearer the service line than the baseline; 9 = nearer the baseline than the service line; 0 or blank = unknown.
+- `+` marks serve-and-volley attempts or approach shots; `*` marks winners/aces in their relevant serve/rally context; `#` and `@` distinguish forced and unforced errors, with `#` also used for unreturnables on serves. Context matters: the same symbol cannot be decoded without its serve/rally position.
+- The workbook's MatchStats formulas define service points as rows with a server and a recorded first-serve entry. First-serve-in rate uses service points as denominator; first-serve points won uses first serves in; second-serve points won uses second-serve opportunities (service points minus first serves in); service points won is the sum of first- and second-serve points won.
+- **Placeholder warning:** the Instructions sheet permits `S`/`R` in the first-serve cell to award a missed point to the server/returner, and `P`/`Q` to record point penalties. The workbook's service-point denominator counts any nonblank first-serve cell, while its first-serve-in formula treats any one-character entry as not in. Thus these non-serve placeholders can be counted as service points and, by subtraction, as second-serve opportunities. For research features, exclude `S`, `R`, `P` and `Q` from serve-attempt denominators; retain their point outcomes only as separately flagged assigned outcomes.
+- Break-point opportunities are score-state flags on the returner's side; a break point is converted when the returner wins that point. Aces are assigned to the point winner; double faults are assigned to the server who lost the point. The workbook's total-winner figure adds aces and rally winners; its unforced-error figure adds unforced rally errors and double faults for the player who lost the point.
+
+These formulas describe the workbook's own per-match summary only. They do **not** prove that every exported aggregate CSV family uses the same player orientation, category partition or denominator. ReturnDepth, ReturnOutcomes, ServeDirection, ServeInfluence, ShotDirection and related families remain blocked until each exported family's row labels and totals reconcile independently.
 
 ## Candidate features and denominators
 
@@ -163,7 +179,7 @@ A research-only audit linked the 49 event metadata files (2011–2024) to ATP/WT
 
 ## Live Tennis API point-state feature candidates (research only)
 
-The Live Tennis API academic dataset records scoreboard states rather than strokes. A point outcome can be inferred from the transition between consecutive states in the same match, but the public sample may begin mid-match or stop before the final point. The `server` field is recorded at each state; its exact alignment to the transition must be validated before attributing the point to a server. The public sample does not contain the external Sackmann player-ID crosswalk in version 1.0.3.
+The Live Tennis API academic dataset records scoreboard states rather than strokes. A point outcome can be inferred from the transition between consecutive states in the same match, but the public sample may begin mid-match or stop before the final point. The `server` field is recorded at each state, but its reliability is not uniform. In the June 2026 public sample, 98.16% of checked within-game transitions matched expected server continuity, while only 67.62% of game-boundary transitions matched the expected server change. In tiebreaks, the field changed in only 2.68% of 13,252 checked single-point transitions, contradicting the expected serve rotation. The current API reference explicitly warns that tiebreak server rows are not settled and server-dependent tiebreak analysis must be withheld unless the encoding reconciles for the individual match. Do not use the field to label point winners or build tiebreak server/returner features; ordinary-game use remains research-only pending boundary validation. See [point-state transition research](POINT_STATE_TRANSITION_RESEARCH.md) and [Live Tennis API reference](https://docs.livetennisapi.com/reference.html#historytaperow). The public sample does not contain the external Sackmann player-ID crosswalk in version 1.0.3.
 
 Potential derived signals, after transition validation:
 - Serve-point win rate and return-point win rate, separately by tour and surface.
