@@ -332,9 +332,12 @@ test("diagnoses score-identical server updates and missing-point-score counter c
     state({ points_p1: "", points_p2: "", games_p1: "[1]", server: "2", is_tiebreak: "false" })
   ];
   const report = auditPointStateTransitions(rows);
-  assert.equal(report.stateDeltaDiagnostics.noScoreChange.total, 1);
-  assert.equal(report.stateDeltaDiagnostics.noScoreChange.serverChanged, 1);
-  assert.equal(report.stateDeltaDiagnostics.noScoreChange.exactDuplicateExceptTimestamp, 0);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.serverChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.exactDuplicateExceptTimestamp, 0);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.serverChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.countersStable, 1);
   assert.equal(report.stateDeltaDiagnostics.missingPointScore.total, 1);
   assert.equal(report.stateDeltaDiagnostics.missingPointScore.afterMissing, 1);
   assert.equal(report.stateDeltaDiagnostics.missingPointScore.gameCounterChanged, 1);
@@ -347,6 +350,18 @@ test("treats numerically equivalent score counters as an unchanged score state",
     state({ sets_p1: "0.0", sets_p2: "0", games_p1: "[0.0]", games_p2: "[0]" })
   ];
   const report = auditPointStateTransitions(rows);
-  assert.equal(report.stateDeltaDiagnostics.noScoreChange.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 1);
   assert.equal(report.totals.byReason["no-score-change"], 1);
+});
+
+
+test("separates same point scores from unparseable game counters", () => {
+  const rows = [
+    state({ points_p1: "15", points_p2: "0", games_p1: "[0]", games_p2: "[0]" }),
+    state({ points_p1: "15", points_p2: "0", games_p1: "not-json", games_p2: "[0]" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.countersUnparseable, 1);
+  assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 0);
 });
