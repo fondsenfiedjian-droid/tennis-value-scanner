@@ -42,3 +42,19 @@ The workflow is triggered by a pull request touching the audit files or can be m
 The completed field-coverage audit (run 44833318668) reports ATP metadata coverage: Tournament 100%, Round 99.99%, Time 54.11%, Court 74.13%, Surface 100%, Umpire 60.30%, Best of 99.56%, Final TB? 99.44%, Charted by 99.97%. WTA coverage: Tournament 99.60%, Round 99.72%, Time 41.49%, Court 66.98%, Surface 100%, Umpire 53.59%, Best of 99.58%, Final TB? 99.55%, Charted by 99.79%. Round labels mostly match the historical results codes (R128/R64/R32/R16/QF/SF/F/RR), so the event + round fields are usable for a conservative natural-identity linkage audit. The planned join is tour + year + tournament mapping + unordered player pair + round, with exact unique-only resolution and date as a consistency check. The metadata still has 1 invalid ATP date, 8 invalid WTA dates and 10 missing WTA dates; unexpected surface/hand categories are also present. These rows remain quarantined; no date/surface/hand feature is enabled from these rows.
 
 The audit artifact writer was corrected to end JSON with a real newline; a CLI integration test parses the generated report as JSON.
+
+## Pre-match style feature history coverage (research only)
+
+A new ephemeral workflow joins the exact-linked MCP metadata to its aggregate stat families and Sackmann result archive, then estimates how many main-tour target matches have enough prior charted history for both players. The internal player-ID link map exists only in runner memory as a non-enumerable property and is never serialized. The workflow uploads only aggregate coverage counts.
+
+Candidate descriptors from the stat families are:
+- forehand share of forehand/backhand winners (Overview);
+- unforced errors and winners per total point (Overview);
+- net-point rate (NetPoints);
+- deep/very-deep return share of returnable balls (ReturnDepth);
+- serve-and-volley share of SnV plus non-SnV points (SnV);
+- long-rally share among the mutually exclusive 1–3, 4–6, 7–9 and 10+ rally buckets (Rally).
+
+For each descriptor, the audit measures whether both players have at least 3, 5 or 10 prior charted matches in a 730-day window, overall and on the target surface. Only exact linked rows with valid MCP match dates, plausible -7 to +21 day offsets from the archive event-week date, distinct player IDs and known Hard/Clay/Grass surfaces for same-surface history are accepted. Lower-tier linked charted matches may contribute to prior histories; evaluation targets are main-tour matches. All matches on the same calendar date are withheld from one another's histories because within-day order is not established.
+
+This is a coverage audit, not a predictive backtest. The charted sample is selective, not representative; player-level history counts do not establish predictive value. No model is trained, no player-level features are retained, and no production feature is enabled. If coverage is sufficient, the next stage must evaluate each feature on identical eligible target matches against chronological Elo, with ATP/WTA separate and untouched later-period validation.
