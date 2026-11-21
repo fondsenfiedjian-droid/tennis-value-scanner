@@ -25,7 +25,7 @@ function validServeSide(prefix,row){
  const firstWon=num(row[prefix+"_1stWon"]),secondWon=num(row[prefix+"_2ndWon"]);
  return Number.isInteger(svpt)&&svpt>0&&Number.isInteger(firstIn)&&firstIn>=0&&firstIn<=svpt&&
   Number.isInteger(firstWon)&&firstWon>=0&&firstWon<=firstIn&&
-  Number.isInteger(secondWon)&&secondWon>=0&&firstWon+secondWon<=svpt;
+  Number.isInteger(secondWon)&&secondWon>=0&&secondWon<=svpt-firstIn&&firstWon+secondWon<=svpt;
 }
 function statsForPlayers(row){
  if(!validServeSide("w",row)||!validServeSide("l",row))return null;
