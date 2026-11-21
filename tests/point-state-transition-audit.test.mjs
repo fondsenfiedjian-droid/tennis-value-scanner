@@ -365,3 +365,17 @@ test("separates same point scores from unparseable game counters", () => {
   assert.equal(report.stateDeltaDiagnostics.samePointScore.countersUnparseable, 1);
   assert.equal(report.stateDeltaDiagnostics.fullScoreStateUnchanged.total, 0);
 });
+
+
+test("separates game and set counter changes when point scores are identical", () => {
+  const rows = [
+    state({ sets_p1: "0", sets_p2: "0", games_p1: "[5]", games_p2: "[3]", points_p1: "0", points_p2: "0" }),
+    state({ sets_p1: "1", sets_p2: "0", games_p1: "[5,0]", games_p2: "[3,0]", points_p1: "0", points_p2: "0" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.total, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.gameCounterChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.setCounterChanged, 1);
+  assert.equal(report.stateDeltaDiagnostics.samePointScore.bothCountersChanged, 1);
+  assert.equal(report.totals.byReason["counter-change-without-terminal-score"], 1);
+});
