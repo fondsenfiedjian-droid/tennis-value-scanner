@@ -5,6 +5,11 @@ import { parseCsv, runBacktest } from "./backtest.mjs";
 const OVERALL=["serveDiff","returnDiff"], SURFACE=["surfaceServeDiff","surfaceReturnDiff"];
 const SURFACE_RESIDUAL=["surfaceServeResidualDiff","surfaceReturnResidualDiff"];
 const SURFACE_SHRUNK=["shrunkSurfaceServeDiff","shrunkSurfaceReturnDiff"];
+const PROFILE=[
+ "firstServeInDiff","firstServeWonDiff","secondServeWonDiff","aceRateDiff",
+ "doubleFaultRateDiff","breakPointSaveDiff","firstServeReturnDiff",
+ "secondServeReturnDiff","breakPointConvertDiff"
+];
 const SPECS=[
  {name:"overall_serve_only",features:["serveDiff"]},
  {name:"overall_return_only",features:["returnDiff"]},
@@ -16,7 +21,11 @@ const SPECS=[
  {name:"surface_residual_only",features:SURFACE_RESIDUAL},
  {name:"overall_plus_surface_residual",features:[...OVERALL,...SURFACE_RESIDUAL]},
  {name:"surface_shrunk_only",features:SURFACE_SHRUNK},
- {name:"overall_plus_surface_shrunk",features:[...OVERALL,...SURFACE_SHRUNK]}
+ {name:"overall_plus_surface_shrunk",features:[...OVERALL,...SURFACE_SHRUNK]},
+ {name:"serve_profile_only",features:PROFILE.slice(0,6)},
+ {name:"return_profile_only",features:PROFILE.slice(6)},
+ {name:"extended_serve_return_profile",features:PROFILE},
+ {name:"core_plus_extended_profile",features:[...OVERALL,...PROFILE]}
 ];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
@@ -53,25 +62,73 @@ export function auditServeReturnStats(rows){
  }
  return report;
 }
+const PROFILE_KEYS=[
+ "firstServeIn","firstServeWon","secondServeWon","aceRate","doubleFaultRate",
+ "breakPointSave","firstServeReturn","secondServeReturn","breakPointConvert"
+];
+function profileMetric(numerator,denominator){
+ return Number.isInteger(numerator)&&Number.isInteger(denominator)&&denominator>0&&
+  numerator>=0&&numerator<=denominator?[numerator,denominator]:null;
+}
+function extendedSideProfile(prefix,row,opponentPrefix){
+ const svpt=num(row[prefix+"_svpt"]),firstIn=num(row[prefix+"_1stIn"]);
+ const firstWon=num(row[prefix+"_1stWon"]),secondWon=num(row[prefix+"_2ndWon"]);
+ const oppSvpt=num(row[opponentPrefix+"_svpt"]),oppFirstIn=num(row[opponentPrefix+"_1stIn"]);
+ const oppFirstWon=num(row[opponentPrefix+"_1stWon"]),oppSecondWon=num(row[opponentPrefix+"_2ndWon"]);
+ const p={};
+ p.firstServeIn=profileMetric(firstIn,svpt);
+ p.firstServeWon=profileMetric(firstWon,firstIn);
+ p.secondServeWon=profileMetric(secondWon,svpt-firstIn);
+ const ace=num(row[prefix+"_ace"]),df=num(row[prefix+"_df"]);
+ if(Number.isInteger(ace)&&Number.isInteger(df)&&ace>=0&&df>=0&&ace+df<=svpt){
+  p.aceRate=profileMetric(ace,svpt);p.doubleFaultRate=profileMetric(df,svpt);
+ }
+ const saved=num(row[prefix+"_bpSaved"]),faced=num(row[prefix+"_bpFaced"]);
+ if(Number.isInteger(saved)&&Number.isInteger(faced)&&saved>=0&&saved<=faced&&faced<=svpt){
+  p.breakPointSave=profileMetric(saved,faced);
+ }
+ // Return metrics are derived from the opponent's service opportunities.
+ if(Number.isInteger(oppSvpt)&&Number.isInteger(oppFirstIn)&&Number.isInteger(oppFirstWon)&&Number.isInteger(oppSecondWon)){
+  const secondOpp=oppSvpt-oppFirstIn;
+  p.firstServeReturn=profileMetric(oppFirstIn-oppFirstWon,oppFirstIn);
+  p.secondServeReturn=profileMetric(secondOpp-oppSecondWon,secondOpp);
+ }
+ const oppSaved=num(row[opponentPrefix+"_bpSaved"]),oppFaced=num(row[opponentPrefix+"_bpFaced"]);
+ if(Number.isInteger(oppSaved)&&Number.isInteger(oppFaced)&&oppSaved>=0&&oppSaved<=oppFaced&&oppFaced<=oppSvpt){
+  p.breakPointConvert=profileMetric(oppFaced-oppSaved,oppFaced);
+ }
+ return p;
+}
 function statsForPlayers(row){
  if(!validServeSide("w",row)||!validServeSide("l",row))return null;
  const wTotal=num(row.w_svpt),lTotal=num(row.l_svpt);
  const wWon=num(row.w_1stWon)+num(row.w_2ndWon),lWon=num(row.l_1stWon)+num(row.l_2ndWon);
  return {
-  winner:{serveTotal:wTotal,serveWon:wWon,returnTotal:lTotal,returnWon:lTotal-lWon},
-  loser:{serveTotal:lTotal,serveWon:lWon,returnTotal:wTotal,returnWon:wTotal-wWon}
+  winner:{serveTotal:wTotal,serveWon:wWon,returnTotal:lTotal,returnWon:lTotal-lWon,
+   profile:extendedSideProfile("w",row,"l")},
+  loser:{serveTotal:lTotal,serveWon:lWon,returnTotal:wTotal,returnWon:wTotal-wWon,
+   profile:extendedSideProfile("l",row,"w")}
  };
 }
 function aggregate(history,today,surface=null,windowDays=365){
  let serveTotal=0,serveWon=0,returnTotal=0,returnWon=0,matches=0;
+ const profileSums=Object.fromEntries(PROFILE_KEYS.map(key=>[key,{numerator:0,denominator:0,matches:0}]));
  for(let i=history.length-1;i>=0;i--){
   const item=history[i],age=today-item.day;
   if(age>windowDays)break;
   if(age<1||(surface&&item.surface!==surface))continue;
   serveTotal+=item.serveTotal;serveWon+=item.serveWon;
   returnTotal+=item.returnTotal;returnWon+=item.returnWon;matches++;
+  for(const key of PROFILE_KEYS){
+   const pair=item.profile?.[key];if(!pair)continue;
+   profileSums[key].numerator+=pair[0];profileSums[key].denominator+=pair[1];profileSums[key].matches++;
+  }
  }
- return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,returnRate:matches&&returnTotal?returnWon/returnTotal:null};
+ const profile=Object.fromEntries(PROFILE_KEYS.map(key=>{
+  const x=profileSums[key];return [key,{rate:x.denominator?x.numerator/x.denominator:null,matches:x.matches}];
+ }));
+ return {matches,serveRate:matches&&serveTotal?serveWon/serveTotal:null,
+  returnRate:matches&&returnTotal?returnWon/returnTotal:null,profile};
 }
 export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365,surfaceShrinkageMatches=5}={}){
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
@@ -110,6 +167,19 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
    const shrunkServeB=surfaceReadyWithOverall?b.overall.serveRate+shrinkB*(b.surface.serveRate-b.overall.serveRate):null;
    const shrunkReturnA=surfaceReadyWithOverall?a.overall.returnRate+shrinkA*(a.surface.returnRate-a.overall.returnRate):null;
    const shrunkReturnB=surfaceReadyWithOverall?b.overall.returnRate+shrinkB*(b.surface.returnRate-b.overall.returnRate):null;
+   const profileNames={
+    firstServeIn:"firstServeInDiff",firstServeWon:"firstServeWonDiff",
+    secondServeWon:"secondServeWonDiff",aceRate:"aceRateDiff",
+    doubleFaultRate:"doubleFaultRateDiff",breakPointSave:"breakPointSaveDiff",
+    firstServeReturn:"firstServeReturnDiff",secondServeReturn:"secondServeReturnDiff",
+    breakPointConvert:"breakPointConvertDiff"
+   };
+   const profileFeatures={};
+   for(const [key,featureName] of Object.entries(profileNames)){
+    const av=a.overall.profile[key],bv=b.overall.profile[key];
+    profileFeatures[featureName]=av.matches>=minOverallMatches&&bv.matches>=minOverallMatches&&
+     av.rate!==null&&bv.rate!==null?av.rate-bv.rate:null;
+   }
    features.set(pairKey(date,p1,p2,row.surface),{
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
     returnDiff:overallReady?a.overall.returnRate-b.overall.returnRate:null,
@@ -119,8 +189,11 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
     surfaceReturnResidualDiff:surfaceReadyWithOverall?(a.surface.returnRate-a.overall.returnRate)-(b.surface.returnRate-b.overall.returnRate):null,
     shrunkSurfaceServeDiff:surfaceReadyWithOverall?shrunkServeA-shrunkServeB:null,
     shrunkSurfaceReturnDiff:surfaceReadyWithOverall?shrunkReturnA-shrunkReturnB:null,
+    ...profileFeatures,
     minOverallPriorMatches:Math.min(a.overall.matches,b.overall.matches),
-    minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0
+    minSurfacePriorMatches:surfaceKnown?Math.min(a.surface.matches,b.surface.matches):0,
+    profilePriorMatches:Object.fromEntries(Object.keys(profileNames).map(key=>[key,
+     Math.min(a.overall.profile[key].matches,b.overall.profile[key].matches)]))
    });
   }
   // Same-date matches are all scored before any same-date stats enter player histories.
