@@ -1105,3 +1105,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Core lesson: preparation or recovery goals do not imply low intent to win. Apply schedule decisions only to matches after the public announcement. Never backfill post-match announcements into earlier match records.
 - This is a curated discovery set, not a systematic or representative sample; no denominator or prevalence estimate. Next phase must build a complete match list and search both players symmetrically.
 - All material in this expanded document is retrospective research. It is excluded from the pre-match registry; no probability, EV, bet-selection, live UI or Production changes.
+
+
+## Two-month retrospective sampling frame (2026-11-21)
+- Added `docs/tournament-intent-retrospective-sampling-frame-2026-09-21_to_11-21.md` on the Tournament Intent research branch.
+- Predeclared the ATP/WTA event frame for 21 Sep–21 Nov 2026, including eligible singles-only observations, top-150 ranking snapshot rule, 1–50/51–100/101–150 strata, symmetric review of both players, team-event exclusions and the 21 Nov ATP Finals cutoff.
+- The document explicitly distinguishes an event frame from an extracted match sample. Official draws/results and pre-event ranking snapshots must be collected and counts published before source review; no denominator or prevalence estimate is claimed yet.
+- Retrospective publications discovered now remain separate from prospective evidence capture. No classifier weights, probability, EV, bet selection, live UI or Production behavior changed.
