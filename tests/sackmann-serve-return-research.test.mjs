@@ -46,3 +46,18 @@ test("matches with incomplete serve statistics do not enter player histories",()
  const features=buildPreMatchServeReturn([incomplete,target],{minOverallMatches:1,minSurfaceMatches:1});
  assert.equal(features.get("20250102:1:3:Hard").serveDiff,null);
 });
+
+
+test("rejects impossible second-serve wins beyond second-serve opportunities", () => {
+ const impossible=row("20250101",1,1,2,stats(10,8,2,3),stats(10,8,2,0));
+ const target=row("20250102",2,1,3,stats(10,8,2,0),stats(10,8,2,0));
+ const features=buildPreMatchServeReturn([impossible,target],{minOverallMatches:1,minSurfaceMatches:1});
+ assert.equal(features.get("20250102:1:3:Hard").serveDiff,null);
+});
+
+test("accepts valid zero-second-serve opportunity matches without fabricating second-serve wins", () => {
+ const valid=row("20250101",1,1,2,stats(10,10,8,0),stats(10,10,7,0));
+ const target=row("20250102",2,1,3,stats(10,10,8,0),stats(10,10,7,0));
+ const features=buildPreMatchServeReturn([valid,target],{minOverallMatches:1,minSurfaceMatches:1});
+ assert.ok(Number.isFinite(features.get("20250102:1:3:Hard").serveDiff));
+});
