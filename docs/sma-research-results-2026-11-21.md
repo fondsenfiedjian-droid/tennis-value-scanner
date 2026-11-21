@@ -149,3 +149,25 @@ The 365-day core-only correction is weak and its Brier interval crosses zero for
 
 The same CI run also completed the separate ranking/age archive audit. On its broad historical evaluation, rank+age corrections improved Brier versus Elo by 0.002004 ATP (n=74,556) and 0.002295 WTA (n=66,820). Annual results vary, notably WTA in 2022 and partial 2026; this is a separate candidate signal, not evidence that it should be merged with SMA/PFE or ACE. It needs a clean same-sample incremental ablation against the current PFE stack before adoption.
 
+
+
+## Latest full workflow rerun — 730-day / shrinkage-5 — 2026-11-21
+
+The latest completed GitHub Actions run repeated the full serve/return walk-forward grid, including 84-, 365- and 730-day windows and shrinkage priors 3, 5 and 10. The 730-day / prior-5 PFE common-sample results are:
+
+| Tour / specification | n | Δ Brier (95% paired CI vs Elo) | Δ LogLoss (95% paired CI vs Elo) | Accuracy: Elo → corrected |
+|---|---:|---:|---:|---:|
+| ATP core surface residual | 2,740 | -0.001142 (-0.002379, +0.000095) | -0.003487 (-0.006378, -0.000596) | 64.27% → 64.12% |
+| ATP PFE point-logit delta only | 2,740 | -0.003217 (-0.004855, -0.001579) | -0.008840 (-0.013101, -0.004579) | 64.27% → 64.60% |
+| ATP core residual + PFE point delta | 2,740 | -0.003414 (-0.005274, -0.001554) | -0.009282 (-0.013894, -0.004669) | 64.27% → 64.64% |
+| ATP core + extended + PFE point delta | 2,740 | -0.003503 (-0.005469, -0.001536) | -0.009609 (-0.014434, -0.004785) | 64.27% → 64.64% |
+| WTA core surface residual | 2,509 | -0.001221 (-0.002142, -0.000299) | -0.003447 (-0.005704, -0.001190) | 65.72% → 64.89% |
+| WTA PFE point-logit delta only | 2,509 | -0.001537 (-0.002701, -0.000373) | -0.004369 (-0.007540, -0.001198) | 65.72% → 65.56% |
+| WTA core residual + PFE point delta | 2,509 | -0.002115 (-0.003438, -0.000793) | -0.005685 (-0.009186, -0.002184) | 65.72% → 65.48% |
+| WTA core + extended + PFE point delta | 2,509 | -0.002009 (-0.003375, -0.000644) | -0.005460 (-0.009051, -0.001869) | 65.72% → 64.93% |
+
+The point-logit delta remains the strongest simple incremental signal in this common sample. Adding core SMA residuals improves the error metrics further on both tours, but the incremental comparison between point-delta-only and point-delta-plus-core has not been established with a direct paired confidence interval. Extended features add little or no dependable value beyond the simpler combined specification. WTA accuracy falls slightly despite better Brier and LogLoss; calibration and ranking quality must not be conflated.
+
+The direction of the 730-day results was stable across shrinkage priors 3, 5 and 10. The shorter 84- and 365-day windows remain less dependable. This is still exploratory evidence from an inspected historical holdout, not a prospective test or betting-profit result.
+
+**Decision:** carry forward only the compact candidate PFE point-logit delta + core SMA residual for further shadow evaluation, with separate ATP/WTA calibration and strict missing-data controls. Do not activate it in production. The raw point-model probability remains rejected as a standalone forecast. The source archive is CC BY-NC-SA 4.0 and is not approved for commercial production use.
