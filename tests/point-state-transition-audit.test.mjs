@@ -232,6 +232,12 @@ test("audits regular-game and tiebreak server rotation without assuming unverifi
   assert.equal(report.serverAlignment.tiebreakMatches, 3);
   assert.equal(report.serverAlignment.regularMismatches, 0);
   assert.equal(report.serverAlignment.tiebreakMismatches, 0);
+  assert.deepEqual(report.serverAlignment.tiebreakExpectedSwitch, {
+    checked: 2, observedSwitch: 2, observedHold: 0
+  });
+  assert.deepEqual(report.serverAlignment.tiebreakExpectedHold, {
+    checked: 1, observedSwitch: 0, observedHold: 1
+  });
   assert.equal(report.serverAlignment.regularAlternativeMismatches, 1);
   assert.equal(report.serverAlignment.tiebreakAlternativeMismatches, 3);
 });
