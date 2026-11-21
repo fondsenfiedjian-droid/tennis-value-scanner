@@ -917,3 +917,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Rebased the point-state audit CLI entrypoint correction onto current main in an isolated follow-up branch; added a synthetic end-to-end test for relative-path invocation and aggregate-only output. This is a research tooling fix only; no source data, player-level output, model weights, or production behavior changed.
+
+## PFE working plan — user-confirmed 2026-11-21
+
+- Operating mode: combined. Continue the core PFE engine and independent factor research in parallel where dependencies permit.
+- Tour scope: ATP and WTA simultaneously. Keep datasets, model evaluation, calibration, sample-size checks and conclusions separately reportable by tour; do not assume a factor transfers equally between tours.
+- Research gate: no candidate feature enters production solely because it is available or intuitively plausible. Verify data definitions, player perspective, denominators, timestamp availability and leakage controls; test chronologically on independent holdouts and compare against the appropriate baseline.
+- Development sequence: maintain the usable scanner while expanding the historical archive and research modules; validate each factor independently, then combinations; preserve aggregate-only reporting and source-license restrictions.
+- Current immediate task: repair and pass the point-state audit CLI regression test, then continue point-state sample completeness and server-transition alignment validation. Point-state and Match Charting candidates remain research-only until their chronology and data-quality gates are satisfied.
