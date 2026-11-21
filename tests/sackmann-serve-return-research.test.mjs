@@ -150,3 +150,43 @@ test("rejects invalid surface shrinkage strength",()=>{
  const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
  assert.throws(()=>buildPreMatchServeReturn(rows,{surfaceShrinkageMatches:0}),/surfaceShrinkageMatches/);
 });
+
+
+const fullStats=(svpt,firstIn,firstWon,secondWon,ace,df,bpSaved,bpFaced)=>({
+ ...stats(svpt,firstIn,firstWon,secondWon),ace,df,bpSaved,bpFaced
+});
+
+test("builds extended pre-match serve and return profiles from valid historical denominators",()=>{
+ const rows=[
+  row("20250101",1,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8)),
+  row("20250102",2,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.ok(Math.abs(f.firstServeInDiff)<1e-12);
+ assert.ok(Math.abs(f.firstServeWonDiff-(40/60-30/60))<1e-12);
+ assert.ok(Math.abs(f.secondServeWonDiff)<1e-12);
+ assert.ok(Math.abs(f.aceRateDiff-0.05)<1e-12);
+ assert.ok(Math.abs(f.doubleFaultRateDiff+0.01)<1e-12);
+ assert.ok(Math.abs(f.breakPointSaveDiff-(4/5-5/8))<1e-12);
+ assert.ok(Math.abs(f.firstServeReturnDiff-(0.5-1/3))<1e-12);
+ assert.ok(Math.abs(f.secondServeReturnDiff)<1e-12);
+ assert.ok(Math.abs(f.breakPointConvertDiff-(3/8-1/5))<1e-12);
+});
+
+test("extended profile features exclude invalid optional counters without discarding valid core serve points",()=>{
+ const invalid= row("20250101",1,1,2,
+  fullStats(100,60,40,20,90,20,4,5),
+  fullStats(100,60,30,20,5,4,5,8));
+ const target=row("20250102",2,1,3,
+  fullStats(100,60,40,20,10,3,4,5),
+  fullStats(100,60,30,20,5,4,5,8));
+ const f=buildPreMatchServeReturn([invalid,target],{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:3:Hard");
+ assert.ok(Number.isFinite(f.serveDiff));
+ assert.equal(f.aceRateDiff,null);
+ assert.equal(f.doubleFaultRateDiff,null);
+ assert.ok(Number.isFinite(f.firstServeReturnDiff));
+});
