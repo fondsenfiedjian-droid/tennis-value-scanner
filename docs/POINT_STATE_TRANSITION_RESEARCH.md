@@ -166,4 +166,4 @@ Interpretation: a substantial number of rows appear to update game/set counters 
 
 ## Score-value vocabulary audit (2026-11-21)
 
-A new check counts the literal point-score values separately for normal-game states and tiebreak states, and flags values that do not fit the data dictionary's expected vocabulary. It also counts numeric scores outside tiebreaks and states with an unknown tiebreak flag. This validates input semantics before interpreting transitions; it does not itself infer point outcomes.
+A new check counts the literal point-score values separately for normal-game states and tiebreak states, and flags values that do not fit the data dictionary's expected vocabulary. It also counts unexpected numeric values in normal-game states and states with an unknown tiebreak flag. This validates input semantics before interpreting transitions; it does not itself infer point outcomes.
