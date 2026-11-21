@@ -27,7 +27,7 @@ SMA is not a second vote that is averaged blindly with PFE. Its primary output i
 
 ### Context and matchup
 - tour (ATP/WTA), surface, indoor/outdoor where reliable;
-- rolling windows (initial candidates: 52 weeks and 12 weeks) plus surface-specific history;
+- rolling windows (84, 365 and 730 days in the current research grid) plus surface-specific history;
 - opponent-adjusted serve and return residuals to account for schedule strength;
 - shrinkage toward tour/surface averages when samples are small;
 - sample counts, coverage and uncertainty for every estimate.
