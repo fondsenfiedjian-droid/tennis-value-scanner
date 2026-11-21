@@ -265,8 +265,53 @@ function transitionCounterChanges(before, after) {
   return { setChanged, gameChanged, setsComparable, gamesComparable };
 }
 
+function auditScoreVocabulary(rows) {
+  const report = {
+    normalStates: 0, tiebreakStates: 0, unknownFlagStates: 0,
+    normalUnexpectedStates: 0, normalMissingStates: 0, normalUnexpectedNonMissingStates: 0,
+    tiebreakNonNumericStates: 0, tiebreakMissingStates: 0,
+    unexpectedNumericNormalValues: 0,
+    normalValueCounts: {}, tiebreakValueCounts: {},
+    normalUnexpectedValueCounts: {}, tiebreakUnexpectedValueCounts: {}
+  };
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
+  const add = (map, value) => { map[value] = (map[value] || 0) + 1; };
+  for (const row of rows) {
+    const p1 = String(row.points_p1 ?? "").trim().toUpperCase();
+    const p2 = String(row.points_p2 ?? "").trim().toUpperCase();
+    if (isTrue(row.is_tiebreak)) {
+      report.tiebreakStates++;
+      for (const value of [p1, p2]) {
+        if (/^\d+$/.test(value)) add(report.tiebreakValueCounts, value);
+        else add(report.tiebreakUnexpectedValueCounts, value || "<missing>");
+      }
+      if (!/^\d+$/.test(p1) || !/^\d+$/.test(p2)) {
+        report.tiebreakNonNumericStates++;
+        if (!p1 || !p2) report.tiebreakMissingStates++;
+      }
+    } else if (isFalse(row.is_tiebreak)) {
+      report.normalStates++;
+      for (const value of [p1, p2]) {
+        if (normalScoreRank(value) !== null) add(report.normalValueCounts, value);
+        else add(report.normalUnexpectedValueCounts, value || "<missing>");
+      }
+      if (normalScoreRank(p1) === null || normalScoreRank(p2) === null) {
+        report.normalUnexpectedStates++;
+        if (!p1 || !p2) report.normalMissingStates++;
+        else report.normalUnexpectedNonMissingStates++;
+      }
+      if ((/^\d+$/.test(p1) && normalScoreRank(p1) === null) || (/^\d+$/.test(p2) && normalScoreRank(p2) === null)) report.unexpectedNumericNormalValues++;
+    } else {
+      report.unknownFlagStates++;
+    }
+  }
+  return report;
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
+  const scoreVocabulary = auditScoreVocabulary(rows);
   const groups = new Map();
   const playerTours = new Map(playerRows.map(player => [String(player.player_id ?? "").trim(), String(player.tour ?? "").trim().toUpperCase()]));
   const metadata = new Map();
@@ -520,6 +565,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
+    scoreVocabulary,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
       inferred: summarizeTimestampGaps(inferredTimestampGaps),
