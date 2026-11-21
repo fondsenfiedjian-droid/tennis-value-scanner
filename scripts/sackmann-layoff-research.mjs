@@ -201,7 +201,7 @@ async function main(){
   const report=runLayoffWalkForward(rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",
     evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),
     minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000)});
-  const json=JSON.stringify(report,null,2)+"\\n";
+  const json=JSON.stringify(report,null,2)+"\n";
   if(opts.out)await writeFile(opts.out,json,"utf8");
   console.log(json);
 }
