@@ -126,8 +126,8 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
     bothMappedPct:b.matches?Number((100*b.mappedBoth/b.matches).toFixed(2)):null
   });
   return {
-    source:"Valuebetennis match identities joined to Jeff Sackmann match-age records by exact normalized full name and tour",
-    method:"Only unique name-to-player-id mappings are accepted. Age is taken from the latest Sackmann match strictly before the target match date, then advanced by elapsed calendar days. Same-day and future age records are excluded.",
+    source:"Valuebetennis match identities joined to Jeff Sackmann match-age records by normalized name and tour",
+    method:"Exact normalized full-name or token-order matches are preferred; first-initial plus final-token aliases are fallback only. Only unique name-to-player-id mappings are accepted. Age is taken from the latest Sackmann match strictly before the target match date, then advanced by elapsed calendar days. Same-day and future age records are excluded.",
     licenseWarning:"Sackmann source data is CC BY-NC-SA 4.0 and non-commercial. This audit is research-only; do not use the derived age feature commercially without separate permission or a separately licensed age source.",
     totals:{
       valuebetennisMatches:valuebetennisRows.length,
@@ -151,7 +151,7 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
     byTourCategory:Object.fromEntries([...byTourCategory.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key,b])=>[key,formatBucket(b)])),
     unmatchedNameSamples,
     ambiguousNameSamples,
-    limits:["Name aliases are limited to token-order normalization and first-initial + final-token variants; candidates that resolve to multiple Sackmann ids remain ambiguous.",""Name matching is exact after Unicode/accent/punctuation normalization; aliases and initials are not guessed.","Same-name people that map to multiple Sackmann ids are marked ambiguous and excluded.","Age is sourced from completed historical matches and is not a birth-date lookup."]
+    limits:["Name aliases are limited to token-order normalization and first-initial + final-token variants; candidates that resolve to multiple Sackmann IDs remain ambiguous.","Same-name people that map to multiple Sackmann IDs are marked ambiguous and excluded.","Age is sourced from completed historical matches and is not a birth-date lookup."]
   };
 }
 
