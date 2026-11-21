@@ -339,3 +339,14 @@ test("diagnoses score-identical server updates and missing-point-score counter c
   assert.equal(report.stateDeltaDiagnostics.missingPointScore.afterMissing, 1);
   assert.equal(report.stateDeltaDiagnostics.missingPointScore.gameCounterChanged, 1);
 });
+
+
+test("treats numerically equivalent score counters as an unchanged score state", () => {
+  const rows = [
+    state({ sets_p1: "0", sets_p2: "0", games_p1: "[0]", games_p2: "[0]" }),
+    state({ sets_p1: "0.0", sets_p2: "0", games_p1: "[0.0]", games_p2: "[0]" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.stateDeltaDiagnostics.noScoreChange.total, 1);
+  assert.equal(report.totals.byReason["no-score-change"], 1);
+});
