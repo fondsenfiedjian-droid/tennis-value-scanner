@@ -504,3 +504,13 @@ test("measures score-flag anomaly proximity in either direction without reclassi
   assert.deepEqual(report.normalFlagNumericValueCounts, { "4": 1, "5": 1 });
   assert.deepEqual(report.normalFlagNumericPairCounts, { "5:4": 1 });
 });
+
+
+test("keeps missing match metadata separate from matches with no terminal event", () => {
+  const report = auditPointStateTransitions([
+    state({ match_id: "unindexed", sets_p1: "0", sets_p2: "0" })
+  ]);
+  assert.equal(report.captureBoundaryCoverage.overall.unknownCompletionStatus, 1);
+  assert.equal(report.captureBoundaryCoverage.overall.noRecordedTerminalEvent, 0);
+  assert.equal(report.captureBoundaryCoverage.overall.recordedTerminalEvent, 0);
+});
