@@ -145,3 +145,7 @@ The stale-server pattern appears in both ATP and WTA player-affiliation groups, 
 ## Score-state delta audit (2026-11-21)
 
 The next diagnostic separates transitions where the full score state is unchanged from transitions where point-score fields are missing. It records whether the server or tiebreak flag changed despite an unchanged score, and whether missing point scores coincide with game/set counter changes. This helps distinguish duplicate/update rows from incomplete score states without exposing match IDs or player-level records.
+
+### Diagnostic refinement
+
+The audit distinguishes (a) identical point-score pairs, (b) a fully comparable unchanged score state (sets, game arrays and point scores all parse and match), and (c) unchanged point scores where set/game counters changed or could not be parsed. This avoids treating an unchanged point score as proof that the entire scoreboard state was an exact duplicate. Numeric set/game values are normalized before comparison.
