@@ -848,7 +848,7 @@ export default {
         }
         if (!Array.isArray(events)) return response({ error: "The Odds API returned an unexpected odds payload", sportKey }, 502);
         const retrievedAt = new Date().toISOString();
-        const normalizeName = value => String(value || "").normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+        const normalizeName = value => String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
         const bookmakerNames = { betclic_fr: "betclic", netbet_fr: "netbet" };
         const items = [];
         for (const event of events) {
