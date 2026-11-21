@@ -125,3 +125,8 @@ Next experiment: add 14/28-day match counts and distinct playing days, keeping t
 ### 14/28-day workload extension — implementation pending validation
 
 The pre-match workload builder now calculates 14- and 28-calendar-day match counts and distinct playing days, with separate availability flags. Same-day matches remain excluded; the 3/7-day and rest-day core remains unchanged. Regression fixtures cover inclusive date boundaries. The PFE workflow now compares an extended 14/28-day load-only model and an extended ACE model against the fixed core ACE on the same chronological holdouts. Results are pending CI; no production path changes.
+
+
+### Non-overlapping workload bands — pending validation
+
+The raw cumulative 14/28-day extension produced modest additional gains but unstable coefficients, likely due overlapping windows. The workload builder now derives non-overlapping bands: 1–3, 4–7, 8–14 and 15–28 calendar days, for both match counts and distinct playing days. The PFE research runner compares banded load-only and banded ACE against core ACE and the cumulative-window model on the same chronological holdouts. Inclusive boundaries, same-day exclusion and band derivation have regression fixtures. Results pending CI.
