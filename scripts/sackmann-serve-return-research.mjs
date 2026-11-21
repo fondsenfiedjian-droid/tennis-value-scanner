@@ -10,6 +10,8 @@ const PROFILE=[
  "doubleFaultRateDiff","breakPointSaveDiff","firstServeReturnDiff",
  "secondServeReturnDiff","breakPointConvertDiff"
 ];
+const SURFACE_PROFILE=PROFILE.map(name=>"surface"+name[0].toUpperCase()+name.slice(1));
+const SHRUNK_SURFACE_PROFILE=PROFILE.map(name=>"shrunk"+name[0].toUpperCase()+name.slice(1));
 const SPECS=[
  {name:"overall_serve_only",features:["serveDiff"]},
  {name:"overall_return_only",features:["returnDiff"]},
@@ -25,7 +27,10 @@ const SPECS=[
  {name:"serve_profile_only",features:PROFILE.slice(0,6)},
  {name:"return_profile_only",features:PROFILE.slice(6)},
  {name:"extended_serve_return_profile",features:PROFILE},
- {name:"core_plus_extended_profile",features:[...OVERALL,...PROFILE]}
+ {name:"core_plus_extended_profile",features:[...OVERALL,...PROFILE]},
+ {name:"surface_profile_only",features:SURFACE_PROFILE},
+ {name:"shrunk_surface_profile_only",features:SHRUNK_SURFACE_PROFILE},
+ {name:"overall_plus_shrunk_surface_profile",features:[...PROFILE,...SHRUNK_SURFACE_PROFILE]}
 ];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
@@ -177,8 +182,22 @@ export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMat
    const profileFeatures={};
    for(const [key,featureName] of Object.entries(profileNames)){
     const av=a.overall.profile[key],bv=b.overall.profile[key];
-    profileFeatures[featureName]=av.matches>=minOverallMatches&&bv.matches>=minOverallMatches&&
-     av.rate!==null&&bv.rate!==null?av.rate-bv.rate:null;
+    const as=a.surface.profile[key],bs=b.surface.profile[key];
+    const overallReadyForMetric=av.matches>=minOverallMatches&&bv.matches>=minOverallMatches&&
+     av.rate!==null&&bv.rate!==null;
+    const surfaceReadyForMetric=surfaceReadyWithOverall&&
+     as.matches>=minSurfaceMatches&&bs.matches>=minSurfaceMatches&&as.rate!==null&&bs.rate!==null;
+    profileFeatures[featureName]=overallReadyForMetric?av.rate-bv.rate:null;
+    const surfaceName="surface"+featureName[0].toUpperCase()+featureName.slice(1);
+    const shrunkName="shrunk"+featureName[0].toUpperCase()+featureName.slice(1);
+    profileFeatures[surfaceName]=surfaceReadyForMetric?as.rate-bs.rate:null;
+    if(overallReadyForMetric&&surfaceReadyForMetric){
+     const shrinkA=as.matches/(as.matches+surfaceShrinkageMatches);
+     const shrinkB=bs.matches/(bs.matches+surfaceShrinkageMatches);
+     const shrunkA=av.rate+shrinkA*(as.rate-av.rate);
+     const shrunkB=bv.rate+shrinkB*(bs.rate-bv.rate);
+     profileFeatures[shrunkName]=shrunkA-shrunkB;
+    }else profileFeatures[shrunkName]=null;
    }
    features.set(pairKey(date,p1,p2,row.surface),{
     serveDiff:overallReady?a.overall.serveRate-b.overall.serveRate:null,
