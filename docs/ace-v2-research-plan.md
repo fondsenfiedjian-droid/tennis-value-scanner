@@ -102,3 +102,21 @@ All paired intervals above exclude zero. Crucially, the workload correction also
 - ECE also improves materially, but calibration must continue to be assessed by probability band and on future data.
 
 **Decision:** core ACE is the strongest current research candidate to pair with PFE. Keep it in shadow/research only. Next, audit coefficient stability and run feature-group ablations (3/7-day load vs rest-days) before adding 14/28-day windows or age×load. Historical Winamax odds/CLV and future prospective predictions remain mandatory before production promotion.
+
+
+### ACE component ablation — 2026-11-21
+
+The corrected PFE experiment compared a calibration-only model, a short-term load-only model, a rest-only model, and the combined core ACE model on identical matches. Both feature groups add value beyond recalibration, and their combination beats either group alone on every chronological holdout:
+
+| Tour / holdout | Load-only vs calibration ΔBrier (95% CI) | Rest-only vs calibration ΔBrier (95% CI) | Combined ACE vs load-only ΔBrier (95% CI) | Combined ACE vs rest-only ΔBrier (95% CI) |
+|---|---:|---:|---:|---:|
+| ATP 2025 | -0.002334 (-0.003018, -0.001650) | -0.001133 (-0.001333, -0.000933) | -0.001293 (-0.001536, -0.001049) | -0.002494 (-0.003182, -0.001806) |
+| WTA 2025 | -0.002740 (-0.003577, -0.001903) | -0.001052 (-0.001317, -0.000787) | -0.001328 (-0.001638, -0.001017) | -0.003016 (-0.003846, -0.002186) |
+| ATP 2026 full | -0.003922 (-0.004431, -0.003413) | -0.001926 (-0.002189, -0.001663) | -0.001637 (-0.001906, -0.001368) | -0.003633 (-0.004148, -0.003118) |
+| WTA 2026 full | -0.003378 (-0.004062, -0.002694) | -0.001672 (-0.001974, -0.001370) | -0.001404 (-0.001719, -0.001089) | -0.003110 (-0.003800, -0.002419) |
+| ATP Jul–Nov 2026 | -0.003918 (-0.004660, -0.003177) | -0.001921 (-0.002293, -0.001548) | -0.001694 (-0.002064, -0.001325) | -0.003692 (-0.004443, -0.002941) |
+| WTA Jul–Nov 2026 | -0.003769 (-0.004690, -0.002847) | -0.001606 (-0.002046, -0.001166) | -0.001328 (-0.001766, -0.000890) | -0.003490 (-0.004418, -0.002563) |
+
+All intervals exclude zero. Load features carry the larger standalone contribution; rest-day information adds a smaller but consistent improvement. The combined model is consistently stronger than either alone. Minutes/duration features remain neutral beyond core ACE.
+
+Next experiment: add 14/28-day match counts and distinct playing days, keeping the existing 3/7-day and rest-day core fixed. Test the longer windows as a separate feature group before considering nonlinear thresholds or age×load.
