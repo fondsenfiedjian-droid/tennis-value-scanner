@@ -263,6 +263,8 @@ test("compares last-point-server phase alternative against next-point-server pha
   assert.equal(report.serverAlignment.regularChecked, 2);
   assert.equal(report.serverAlignment.regularAlternativeMatches, 2);
   assert.equal(report.serverAlignment.regularMatches, 0);
+  assert.equal(report.serverAlignment.regularGameBoundaryAlternativeMatches, 1);
+  assert.equal(report.serverAlignment.regularWithinGameAlternativeMatches, 1);
   assert.equal(report.serverAlignment.tiebreakChecked, 3);
   assert.equal(report.serverAlignment.tiebreakAlternativeMatches, 3);
   assert.equal(report.serverAlignment.tiebreakMatches, 0);
