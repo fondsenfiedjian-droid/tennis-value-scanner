@@ -167,5 +167,7 @@ test("reports calibration error and calibration slope for baseline and adjusted 
  assert.equal(report.calibration.adjusted.ece,0.1);
  assert.equal(report.calibration.adjusted.mce,0.1);
  assert.equal(report.calibration.adjusted.bins.length,2);
+ assert.equal(report.calibration.adjusted.bins.reduce((sum,bin)=>sum+bin.matches,0),100);
+ assert.deepEqual(report.calibration.adjusted.bins.map(bin=>bin.matches),[50,50]);
  assert.ok(report.calibration.adjusted.calibrationSlope<1);
 });
