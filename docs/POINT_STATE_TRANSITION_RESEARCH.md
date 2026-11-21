@@ -33,3 +33,12 @@ The server field is preserved only as before/after availability and change count
 ## Current status
 
 The parser and synthetic tests are implemented, but no public sample file has been downloaded or imported in this pass. The parser is not production-connected and does not create player-level features. The dataset has no serve speed, serve direction or shot-level information.
+
+## Real public-sample audit harness (2026-11-21)
+
+- Added optional match-index input to the aggregate-only audit. It reports coverage by the source's literal `tier_key`; these values are preserved as source categories and are not silently relabelled as ATP/WTA tours.
+- Added timestamp integrity diagnostics: valid/missing timestamp counts, duplicate adjacent timestamps, non-monotonic adjacent timestamps, and affected match count. Input capture order remains authoritative; the audit flags timestamp inconsistencies rather than sorting away possible source defects.
+- Added an ephemeral GitHub Actions workflow that downloads only the public Zenodo sample files (`matches.csv.gz`, `points_sample_2026-06.csv.gz`), runs the audit, and publishes aggregate diagnostics only. Raw source files remain on the temporary runner and are not committed or uploaded as artifacts.
+- Source licence: CC BY-NC 4.0. Use for this non-commercial research only; cite the dataset and do not redistribute raw data.
+- Validation of the harness is pending the PR checks and a successful manual/workflow run against Zenodo. No real-sample result is claimed yet.
+- Next: inspect the resulting tier coverage and timestamp quality; then manually validate a stratified sample of transitions against source score sequences before drawing conclusions about server ownership or model features.
