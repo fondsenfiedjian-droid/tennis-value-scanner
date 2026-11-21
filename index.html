@@ -480,16 +480,17 @@
     }));
     const summary=oddsFreshnessSummary();
     const latest=summary.latest?new Date(summary.latest).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время неизвестно';
+    const sourceSeen=oddsRetrievedAt?' · источник получен '+new Date(oddsRetrievedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно';
     const labels={winamax:'Winamax',betclic:'Betclic',netbet:'NetBet'};
     const providerSummary=providers.map(provider=>labels[provider]+': '+counts[provider].fresh+'/'+counts[provider].total).join(' · ');
     const runTimestamp=Date.parse(oddsTaskRun?.finishedAt||oddsTaskRun?.startedAt||'');
     const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
     const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
     if(oddsLoadError){
-      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)+' · '+oddsLoadError+taskRunSeen+oddsDiagnosticsText();
+      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · '+oddsLoadError+taskRunSeen+sourceSeen+oddsDiagnosticsText();
       return;
     }
-    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)+' · последняя котировка '+latest+taskRunSeen+oddsDiagnosticsText();
+    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · последняя котировка '+latest+taskRunSeen+sourceSeen+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
