@@ -997,6 +997,22 @@ export default {
             diagnostic: {
               profileKeysA: profileA && typeof profileA === "object" ? Object.keys(profileA) : [],
               profileKeysB: profileB && typeof profileB === "object" ? Object.keys(profileB) : [],
+              profileIdentityA: profileA && typeof profileA === "object" ? {
+                archivePlayerId: profileA.archive_player_id ?? null,
+                name: profileA.name ?? null,
+                tour: profileA.tour ?? null,
+                ranking: profileA.ranking ?? null,
+                itfRanking: profileA.itf_ranking ?? null,
+                rankingPoints: profileA.ranking_points ?? null
+              } : null,
+              profileIdentityB: profileB && typeof profileB === "object" ? {
+                archivePlayerId: profileB.archive_player_id ?? null,
+                name: profileB.name ?? null,
+                tour: profileB.tour ?? null,
+                ranking: profileB.ranking ?? null,
+                itfRanking: profileB.itf_ranking ?? null,
+                rankingPoints: profileB.ranking_points ?? null
+              } : null,
               eloFieldsA: collectEloDiagnostics(profileA),
               eloFieldsB: collectEloDiagnostics(profileB)
             }
