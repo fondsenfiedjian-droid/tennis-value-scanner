@@ -20,12 +20,32 @@ const logit=p=>Math.log(clamp(p)/(1-clamp(p)));
 const pairKey=(date,a,b,surface)=>date+":"+(Number(a)<Number(b)?a+":"+b:b+":"+a)+":"+(SURFACES.has(surface)?surface:"Unknown");
 const num=v=>v===""||v==null?null:Number(v);
 
-function validServeSide(prefix,row){
+function serveSideInvalidReason(prefix,row){
  const svpt=num(row[prefix+"_svpt"]),firstIn=num(row[prefix+"_1stIn"]);
  const firstWon=num(row[prefix+"_1stWon"]),secondWon=num(row[prefix+"_2ndWon"]);
- return Number.isInteger(svpt)&&svpt>0&&Number.isInteger(firstIn)&&firstIn>=0&&firstIn<=svpt&&
-  Number.isInteger(firstWon)&&firstWon>=0&&firstWon<=firstIn&&
-  Number.isInteger(secondWon)&&secondWon>=0&&secondWon<=svpt-firstIn&&firstWon+secondWon<=svpt;
+ if (![svpt,firstIn,firstWon,secondWon].every(Number.isInteger)) return "missing_or_non_integer";
+ if (svpt<=0) return "non_positive_service_points";
+ if (firstIn<0||firstIn>svpt) return "first_in_out_of_range";
+ if (firstWon<0||firstWon>firstIn) return "first_won_out_of_range";
+ if (secondWon<0||secondWon>svpt-firstIn) return "second_won_exceeds_opportunities";
+ if (firstWon+secondWon>svpt) return "total_won_exceeds_service_points";
+ return null;
+}
+function validServeSide(prefix,row){return serveSideInvalidReason(prefix,row)===null;}
+
+export function auditServeReturnStats(rows){
+ const report={matches:rows.length,winner:{valid:0,invalid:0,reasons:{}},loser:{valid:0,invalid:0,reasons:{}}};
+ for(const row of rows){
+  for(const [prefix,side] of [["w","winner"],["l","loser"]]){
+   const reason=serveSideInvalidReason(prefix,row);
+   if(reason===null)report[side].valid++;
+   else{
+    report[side].invalid++;
+    report[side].reasons[reason]=(report[side].reasons[reason]||0)+1;
+   }
+  }
+ }
+ return report;
 }
 function statsForPlayers(row){
  if(!validServeSide("w",row)||!validServeSide("l",row))return null;
@@ -187,7 +207,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    }
    bySpec[spec.name]={features:spec.features,eligibleMatches:eligible.length,annual,outOfSample:aggregatePredictions(outOfSample)};
   }
-  reports[tour]={sourceRows:rows.length,featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
+  reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    featureWindowDays:365,minimumPriorMatches:{overall:5,surface:5},
    trainingProtocol:"Expanding walk-forward: each evaluation year is fitted only on eligible earlier years from 2016 onward; same-day results are excluded from all pre-match rolling features.",
    baseline:"Chronological K=32 Elo from the existing backtest engine; earlier match results are warm-up only.",
