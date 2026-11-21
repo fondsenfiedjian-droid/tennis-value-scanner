@@ -18,10 +18,14 @@ const archive=parseCsv(archiveText),observations=parseCsv(obsText);
 const validId=v=>/^\d+$/.test(String(v??""))&&Number(v)>0;
 const norm=s=>String(s??"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const rows=archive.filter(r=>/^\d{8}$/.test(String(r.tourney_date??""))&&validId(r.winner_id)&&validId(r.loser_id));
-const report=[];
-for(const obs of observations.filter(r=>String(r.tour).toLowerCase()===opts.tour)){
+const report=[],missingIds=[];
+const tourObservations=observations.filter(r=>String(r.tour).trim().toLowerCase()===opts.tour);
+for(const obs of tourObservations){
   const id=String(obs.player_id??"").trim();
-  if(!validId(id)) throw new Error("Missing/invalid player_id for "+obs.source_player_name);
+  if(!validId(id)){
+    missingIds.push({playerName:String(obs.source_player_name??""),targetTournament:String(obs.tournament_name??""),targetYear:String(obs.tournament_year??""),status:"MISSING_ARCHIVE_PLAYER_ID"});
+    continue;
+  }
   const name=String(obs.source_player_name??"").trim();
   const playerRows=rows.filter(r=>String(r.winner_id)===id||String(r.loser_id)===id)
     .sort((a,b)=>String(a.tourney_date).localeCompare(String(b.tourney_date))||
@@ -58,12 +62,12 @@ for(const obs of observations.filter(r=>String(r.tour).toLowerCase()===opts.tour
 }
 const summary={
   schemaVersion:1,researchOnly:true,tour:opts.tour,
-  archiveRows:archive.length,observations:report.length,
+  archiveRows:archive.length,observations:tourObservations.length,auditedWithId:report.length,missingPlayerId:missingIds.length,
   foundInTargetEvent:report.filter(r=>r.eventMatchCount>0).length,
   missingTargetEvent:report.filter(r=>r.eventMatchCount===0).length,
   limitation:"An absent target-event match may mean the player did not reach the main draw, the event name differs, or the archive lacks the match. Entry-list use does not prove a played match. The observed entry date is not treated as the protection start/end date."
 };
-const output={summary,players:report};
+const output={summary,players:report,missingIds};
 if(opts.out){
   const {writeFile}=await import("node:fs/promises");
   await writeFile(opts.out,JSON.stringify(output,null,2)+"\n","utf8");
