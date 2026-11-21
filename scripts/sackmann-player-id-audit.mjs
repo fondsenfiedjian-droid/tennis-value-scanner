@@ -2,12 +2,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { parseCsv } from "./backtest.mjs";
 
-const positiveId = value => /^\\d+$/.test(String(value ?? "").trim()) && Number(value) > 0;
+const positiveId = value => /^\d+$/.test(String(value ?? "").trim()) && Number(value) > 0;
 const normalizeName = value => String(value ?? "")
-  .normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
-  .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+  .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 const normalizeDate = value => {
-  const digits = String(value ?? "").replace(/\\D/g, "");
+  const digits = String(value ?? "").replace(/\D/g, "");
   return digits.length === 8 ? digits : "";
 };
 
@@ -76,12 +76,12 @@ async function main() {
   const profileText = await readFile(options.profiles, "utf8");
   let profiles;
   try { profiles = JSON.parse(profileText); }
-  catch { profiles = profileText.split(/\\r?\\n/).filter(Boolean).map(line => JSON.parse(line)); }
+  catch { profiles = profileText.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line)); }
   if (!Array.isArray(profiles)) profiles = profiles.profiles ?? profiles.results;
   if (!Array.isArray(profiles)) throw new TypeError("Profiles input must be a JSON array or an object containing profiles/results");
   const playerRows = parseCsv(await readFile(options.players, "utf8"));
   const report = auditSackmannPlayerIds(profiles, playerRows, options.tour);
-  const json = JSON.stringify(report, null, 2) + "\\n";
+  const json = JSON.stringify(report, null, 2) + "\n";
   if (options.out) await writeFile(options.out, json, "utf8");
   console.log(json);
 }
