@@ -57,9 +57,14 @@ test("rejects impossible second-serve wins beyond second-serve opportunities", (
 
 test("accepts valid zero-second-serve opportunity matches without fabricating second-serve wins", () => {
  const valid=row("20250101",1,1,2,stats(10,10,8,0),stats(10,10,7,0));
- const target=row("20250102",2,1,2,stats(10,10,8,0),stats(10,10,7,0));
- const features=buildPreMatchServeReturn([valid,target],{minOverallMatches:1,minSurfaceMatches:1});
- assert.ok(Number.isFinite(features.get("20250102:1:2:Hard").serveDiff));
+ const p5=row("20250101",2,3,5,stats(10,8,6,1),stats(10,8,5,1));
+ const p6=row("20250101",3,4,6,stats(10,8,6,1),stats(10,8,5,1));
+ const target=row("20250102",4,5,6,stats(10,10,8,0),stats(10,10,7,0));
+ const quality=auditServeReturnStats([valid]);
+ assert.deepEqual(quality.winner,{valid:1,invalid:0,reasons:{}});
+ assert.deepEqual(quality.loser,{valid:1,invalid:0,reasons:{}});
+ const features=buildPreMatchServeReturn([valid,p5,p6,target],{minOverallMatches:1,minSurfaceMatches:1});
+ assert.ok(Number.isFinite(features.get("20250102:5:6:Hard").serveDiff));
 });
 
 
