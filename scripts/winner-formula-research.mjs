@@ -146,16 +146,26 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
     const fitOptions={minMatches:minTrainingMatches,maxRows:50000,seed:"winner-formula-"+tour+"-"+trainEnd,penalty:1};
     const model=fitLogistic(trainingRows,FEATURES,fitOptions);
     const calibrationFeatures=["baseLogit"];
+    const loadFeatures=["baseLogit","matches3","matches7","playingDays7","workloadAvailable"];
+    const restFeatures=["baseLogit","restDays","restDaysAvailable"];
     const coreAceFeatures=["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","workloadAvailable"];
     const calibrationModel=fitLogistic(trainingRows,calibrationFeatures,fitOptions);
+    const loadModel=fitLogistic(trainingRows,loadFeatures,fitOptions);
+    const restModel=fitLogistic(trainingRows,restFeatures,fitOptions);
     const coreAceModel=fitLogistic(trainingRows,coreAceFeatures,fitOptions);
     const specificationTests={
       calibrationOnly:calibrationModel?{features:calibrationFeatures,metrics:metrics(evaluation,calibrationModel),coefficients:calibrationModel.coefficients}:null,
+      loadOnly:loadModel?{features:loadFeatures,metrics:metrics(evaluation,loadModel),coefficients:loadModel.coefficients}:null,
+      restOnly:restModel?{features:restFeatures,metrics:metrics(evaluation,restModel),coefficients:restModel.coefficients}:null,
       coreAce:coreAceModel?{features:coreAceFeatures,metrics:metrics(evaluation,coreAceModel),coefficients:coreAceModel.coefficients}:null,
       fullAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
     };
-    const incrementalComparisons=calibrationModel&&coreAceModel?{
+    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel?{
+      loadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,loadModel),
+      restOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,restModel),
       coreAceVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,coreAceModel),
+      coreAceVsLoadOnly:pairedModelDifference(evaluation,loadModel,coreAceModel),
+      coreAceVsRestOnly:pairedModelDifference(evaluation,restModel,coreAceModel),
       fullAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null
     }:null;
     reports[tour]={
