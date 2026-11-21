@@ -208,3 +208,18 @@ Interpretation: the sample supports server continuity inside ordinary games, but
 ## Normal-game server boundary gap audit (2026-11-21)
 
 Because the first sample audit found weaker server-field agreement at ordinary game boundaries than within games, the next diagnostic stratifies game-boundary transitions by capture-time gap (<5s, 5–15s, 15–30s, 30–60s, 60–180s, 180s+, or invalid). It also counts whether the after-state point score has reset to 0-0. This can test whether server holds correlate with long observation gaps or non-reset score snapshots. It remains descriptive: no server value is corrected, no point winner is inferred from it, and no feature is enabled. Real-sample findings pending.
+
+### Real-sample results (2026-11-21)
+
+Successful run: GitHub Actions `44866428352`.
+
+| Gap between consecutive captured states | Checked game boundaries | Server field switched | Switch rate |
+|---|---:|---:|---:|
+| Under 5 s | 4,185 | 1,333 | 31.9% |
+| 5–15 s | 6,215 | 1,940 | 31.2% |
+| 15–30 s | 10,205 | 4,116 | 40.3% |
+| 30–60 s | 27,763 | 18,351 | 66.1% |
+| 60–180 s | 36,910 | 31,065 | 84.2% |
+| 180 s or more | 4,767 | 4,083 | 85.6% |
+
+Across these 90,045 boundaries, 85,670 after-states (95.1%) had a 0-0 point-score reset. The rising switch rate with longer capture gaps is consistent with delayed/asynchronous updates to the server field, but the gap is only a proxy for elapsed match time and can also include unobserved points or interruptions. It does not establish which exact row owns the serve. Keep server-based point labeling and production features blocked; do not reinterpret the server field based on gap alone.
