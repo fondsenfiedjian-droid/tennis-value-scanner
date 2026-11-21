@@ -180,7 +180,7 @@ function calibrationMetrics(rows,key){
   let g0=0,g1=0,h00=0,h01=0,h11=0;
   for(const row of rows){
    const p=clamp(row[key]),x=logit(p),y=row.outcome,q=sigmoid(intercept+slope*x),w=q*(1-q);
-   if(iteration===0){const index=Math.min(9,Math.floor(p*10));bins[index].n++;bins[index].p+=p;bins[index].y+=y;}
+
    g0+=y-q;g1+=(y-q)*x;h00+=w;h01+=w*x;h11+=w*x*x;
   }
   const det=h00*h11-h01*h01;
