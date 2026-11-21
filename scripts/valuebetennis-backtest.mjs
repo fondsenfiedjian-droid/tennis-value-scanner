@@ -251,7 +251,7 @@ export function parseValuebetennisCsv(text){
     const rawDuration=String(row.duree_min??"").trim().replace(",", ".");
     const parsedDuration=rawDuration?Number(rawDuration):null;
     const durationMinutes=Number.isFinite(parsedDuration)&&parsedDuration>=1&&parsedDuration<=600?parsedDuration:null;
-    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,durationMinutes,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
+    normalized.push({tourney_date:date,tourney_id:String(row.tournoi_id??"").trim()||id,match_num:id,player1Id:p1,player2Id:p2,player1Name:String(row.joueur1??"").trim(),player2Name:String(row.joueur2??"").trim(),winner_id:winner,loser_id:winner===p1?p2:p1,score:String(row.score??"").trim(),surface:SURFACES.get(String(row.surface??"").trim().toLowerCase())??null,tour,durationMinutes,sourceOdds:{opening1:row.cote1_ouverture??"",opening2:row.cote2_ouverture??"",closing1:row.cote1_cloture??"",closing2:row.cote2_cloture??"",player1Id:p1,winnerId:winner}});
   }
   return{rows:normalized,inputRows:rows.length,rejectedRows:Object.values(rejectedByReason).reduce((a,b)=>a+b,0),rejectedByReason,delimiter};
 }
