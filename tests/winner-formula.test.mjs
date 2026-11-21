@@ -54,7 +54,7 @@ test("winner formula research trains before and evaluates on a later untouched w
     const a=1+(i%3),b=4+(i%3),winner=i%4===0?b:a;
     rows.push([String(2000+i),date,"E"+i,"atp","Hard",a,b,winner,"6-4 6-4"].join(","));
   }
-  const report=runWinnerFormulaResearch(rows.join("\\n"),{
+  const report=runWinnerFormulaResearch(rows.join("\n"),{
     trainingEnd:"20251231",evaluationStart:"20260101",evaluationEnd:"20260105",minTrainingMatches:1000
   });
   const atp=report.reportsByTour.atp;
