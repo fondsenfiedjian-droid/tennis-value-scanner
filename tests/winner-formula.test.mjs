@@ -38,3 +38,31 @@ test("winner formula research enforces chronological train/evaluation split",()=
     trainingEnd:"20260101",evaluationStart:"20260101",evaluationEnd:"20261231"
   }),/trainingEnd < evaluationStart/);
 });
+
+
+test("winner formula research trains before and evaluates on a later untouched window",()=>{
+  const header="match_id,date,tournoi_id,genre,surface,joueur1_id,joueur2_id,vainqueur_id,score";
+  const rows=[header];
+  for(let i=0;i<1020;i++){
+    const day=Math.floor(i/3);
+    const date=new Date(Date.UTC(2025,0,1+day)).toISOString().slice(0,10);
+    const a=1+(i%3),b=4+(i%3),winner=i%4===0?b:a;
+    rows.push([String(i+1),date,"T"+day,"atp","Hard",a,b,winner,"6-4 6-4"].join(","));
+  }
+  for(let i=0;i<15;i++){
+    const date=new Date(Date.UTC(2026,0,1+Math.floor(i/3))).toISOString().slice(0,10);
+    const a=1+(i%3),b=4+(i%3),winner=i%4===0?b:a;
+    rows.push([String(2000+i),date,"E"+i,"atp","Hard",a,b,winner,"6-4 6-4"].join(","));
+  }
+  const report=runWinnerFormulaResearch(rows.join("\\n"),{
+    trainingEnd:"20251231",evaluationStart:"20260101",evaluationEnd:"20260105",minTrainingMatches:1000
+  });
+  const atp=report.reportsByTour.atp;
+  assert.equal(atp.trainingMatches,1020);
+  assert.equal(atp.evaluationMatches,15);
+  assert.equal(atp.modelStatus,"trained_research_only");
+  assert.equal(atp.baselineCombined.matches,15);
+  assert.equal(atp.winnerFormula.matches,15);
+  assert.ok(Number.isFinite(atp.winnerFormula.brier));
+  assert.ok(atp.workloadCoveragePct>0);
+});
