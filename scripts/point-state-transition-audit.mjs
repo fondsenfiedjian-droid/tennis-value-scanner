@@ -265,6 +265,41 @@ function transitionCounterChanges(before, after) {
   return { setChanged, gameChanged, setsComparable, gamesComparable };
 }
 
+function auditScoreVocabulary(rows) {
+  const report = {
+    normalStates: 0, tiebreakStates: 0, unknownFlagStates: 0,
+    normalUnexpectedStates: 0, tiebreakNonNumericStates: 0,
+    numericScoresOutsideTiebreak: 0,
+    normalValueCounts: {}, tiebreakValueCounts: {}, unexpectedValueCounts: {}
+  };
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
+  const add = (map, value) => { map[value] = (map[value] || 0) + 1; };
+  for (const row of rows) {
+    const p1 = String(row.points_p1 ?? "").trim().toUpperCase();
+    const p2 = String(row.points_p2 ?? "").trim().toUpperCase();
+    if (isTrue(row.is_tiebreak)) {
+      report.tiebreakStates++;
+      for (const value of [p1, p2]) {
+        if (/^\\d+$/.test(value)) add(report.tiebreakValueCounts, value);
+        else add(report.unexpectedValueCounts, value || "<missing>");
+      }
+      if (!/^\\d+$/.test(p1) || !/^\\d+$/.test(p2)) report.tiebreakNonNumericStates++;
+    } else if (isFalse(row.is_tiebreak)) {
+      report.normalStates++;
+      for (const value of [p1, p2]) {
+        if (normalScoreRank(value) !== null) add(report.normalValueCounts, value);
+        else add(report.unexpectedValueCounts, value || "<missing>");
+      }
+      if (normalScoreRank(p1) === null || normalScoreRank(p2) === null) report.normalUnexpectedStates++;
+      if (/^\\d+$/.test(p1) || /^\\d+$/.test(p2)) report.numericScoresOutsideTiebreak++;
+    } else {
+      report.unknownFlagStates++;
+    }
+  }
+  return report;
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
@@ -520,6 +555,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     source: "Live Tennis API academic public point-state sample",
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
+    scoreVocabulary,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
       inferred: summarizeTimestampGaps(inferredTimestampGaps),
