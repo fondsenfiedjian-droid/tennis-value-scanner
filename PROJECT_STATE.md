@@ -1061,6 +1061,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Other providers' best side prices remain visible as explicitly labelled alternatives and are not used for EV in a single-book mode.
 - Best available mode retains the existing highest-price-per-side behavior; provider labels remain attached. PFE's existing same-bookmaker/same-event consensus checks remain unchanged.
 - Bumped static PWA cache from v133 to v134 so clients receive the updated settings UI.
-- Added regression tests for safe default, provider isolation, incomplete-pair suppression, best-available selection and settings persistence.
+- Added regression tests for safe default, provider isolation, same-event pair selection, incomplete-pair suppression, best-available selection and settings persistence.
 - No probability model, EV formula, provider API, secrets, paid services, production Worker or production deployment changed.
 - Initial CI exposed five outdated test expectations tied to the old all-books quote selector and cache version v133. Updated UI/worker regression tests for the selected bookmaker pair, alternative quotes, and cache v134. The new provider-isolation unit tests passed in the first full run (472/477); final CI rerun is pending. Keep this branch and its PR draft until checks pass and the user reviews it.
