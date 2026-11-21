@@ -481,7 +481,7 @@ test("match list shows matches with a complete fresh pair from any enabled bookm
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
   assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length===2\):\[\]/);
   assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов Winamax/);
+  assert.match(html, /нет матчей с полной актуальной парой коэффициентов подключённых букмекеров/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
