@@ -64,9 +64,10 @@ for(const file of files){
   let header=null, dateIdx=-1, rankIdx=-1, idIdx=-1, pointsIdx=-1;
   let rowsN=0,missingId=0,missingDate=0,missingPoints=0,matchedRows=0;
   let minDate=null,maxDate=null,lastDate=null,nonMonotonicDates=0,duplicatePlayerDate=0;
-  const seenPlayerDates=new Set();
+  const seenPlayerDates=new Map();
   const dateRegressionSamples=[];
   const duplicateSamples=[];
+  let exactDuplicateRows=0, conflictingRankRows=0, conflictingPointsRows=0;
   const uniqueIds=new Set();
   let matchedUniqueIds=0;
   for await(const row of rows(file)){
@@ -84,10 +85,18 @@ for(const file of files){
       lastDate=d;
       if(id){
         const key=d+'|'+id;
+        const rank=String(row.fields[rankIdx]??'').trim();
+        const points=String(row.fields[pointsIdx]??'').trim();
         if(seenPlayerDates.has(key)){
           duplicatePlayerDate++;
-          if(duplicateSamples.length<8)duplicateSamples.push({date:d,playerId:id,rank:String(row.fields[rankIdx]??'').trim(),row:rowsN});
-        } else seenPlayerDates.add(key);
+          const first=seenPlayerDates.get(key);
+          const sameRank=first.rank===rank;
+          const samePoints=first.points===points;
+          if(sameRank&&samePoints)exactDuplicateRows++;
+          if(!sameRank)conflictingRankRows++;
+          if(!samePoints)conflictingPointsRows++;
+          if(duplicateSamples.length<12)duplicateSamples.push({date:d,playerId:id,first:{rank:first.rank,points:first.points,row:first.row},duplicate:{rank,points,row:rowsN},sameRank,samePoints});
+        } else seenPlayerDates.set(key,{rank,points,row:rowsN});
       }
     }
     if(!id)missingId++; else {
@@ -100,6 +109,6 @@ for(const file of files){
     exactArchiveIdMatches:matchedUniqueIds,
     archiveIdMatchRate:uniqueIds.size?Number((matchedUniqueIds/uniqueIds.size).toFixed(6)):null,
     rankingRowsWithArchiveId:matchedRows,missingPlayerIdRows:missingId,missingDateRows:missingDate,
-    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,duplicateSamples,dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
+    missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,exactDuplicateRows,conflictingRankRows,conflictingPointsRows,duplicateSamples,dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
 }
 console.log(JSON.stringify({schemaVersion:1,readOnly:true,tour,archive,archiveRows,archiveUniquePlayerIds:archiveIds.size,files:reports},null,2));
