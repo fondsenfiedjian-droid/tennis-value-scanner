@@ -83,17 +83,23 @@ Do not ingest them until source, collection method, redistribution rights and in
 - [x] Identify high-value data gaps and prioritize sources.
 - [x] Add this plan and source register to the repository.
 - [x] Add a local read-only audit script for downloaded ranking and Live Tennis files.
-- [ ] Add download commands with resumable transfers and checksum capture.
+- [x] Add a resumable ATP/WTA weekly-ranking downloader with SHA-256 capture.
 - [ ] Review schemas and prepare ID crosswalk checks.
 
 ### Phase B — local download (one Termux run)
+
+The ranking downloader is available at `scripts/download-weekly-rankings.sh`. It downloads all ranking partitions present in the mirror (ATP 1970s–current; WTA 1980s–current), resumes interrupted transfers and records SHA-256 checksums plus source/licence metadata. Run it once:
+
+```sh
+cd ~/tennis-value-scanner
+bash scripts/download-weekly-rankings.sh
+```
 
 The audit utility is available at `scripts/tennis-dataset-audit.mjs`. After downloading files, run it with explicit paths; it streams `.csv.gz` files without extracting them and prints a JSON report. It does not modify inputs.
 
 ```sh
 node scripts/tennis-dataset-audit.mjs \\
-  ~/tennis-data/rankings/atp_rankings_*.csv \\
-  ~/tennis-data/rankings/wta_rankings_*.csv \\
+  ~/tennis-data/rankings/raw/*.csv \\
   ~/tennis-data/livetennis/raw/matches.csv.gz \\
   ~/tennis-data/livetennis/raw/players.csv.gz \\
   ~/tennis-data/livetennis/raw/points_sample_2026-06.csv.gz
