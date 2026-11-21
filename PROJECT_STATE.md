@@ -986,3 +986,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Corrected `docs/POINT_STATE_TRANSITION_RESEARCH.md` to reflect that the June 2026 public sample has now been audited in ephemeral CI; parser remains research-only.
 - Reviewed the ephemeral MatchChart 0.3.2 workbook codebook extraction. Confirmed Player1/Player2 orientation, serve/shot direction codes, return-depth meanings, forced/unforced/winner markers and MatchStats denominators. These definitions apply to the workbook's own per-match summary; exported aggregate families remain blocked until independently reconciled.
 - Codebook review found a denominator trap: MatchChart instructions allow `S`/`R` missed-point assignments and `P`/`Q` point penalties in the first-serve cell. The workbook counts any nonblank cell as a service point and one-character entries as first-serve-out, so placeholders can be misclassified as second-serve opportunities. Future serve-rate extraction must exclude these placeholders and preserve them as separately flagged point outcomes.
+
+### PFE serve/return input validation (2026-11-21)
+- Tightened Sackmann serve-stat validation: second-serve points won must not exceed second-serve opportunities (`svpt - 1stIn`), in addition to the existing total bounds. This prevents impossible rows from entering ATP/WTA player histories.
+- Added tests for impossible second-serve wins and valid matches with zero second-serve opportunities. The full ATP/WTA chronological research run is required before using the changed validator's aggregate impact.
