@@ -36,11 +36,11 @@ jobs:
           done
       - name: Run pre-match serve and return walk-forward research
         run: |
-          node scripts/sackmann-serve-return-research.mjs --out sackmann-serve-return-report.json research-data/*_matches_*.csv
+          node scripts/sackmann-serve-return-research.mjs --sensitivity --out sackmann-serve-return-sensitivity.json research-data/*_matches_*.csv
       - name: Upload aggregate research report
         uses: actions/upload-artifact@v4
         with:
-          name: sackmann-serve-return-walkforward
-          path: sackmann-serve-return-report.json
+          name: sackmann-serve-return-sensitivity
+          path: sackmann-serve-return-sensitivity.json
           if-no-files-found: error
           retention-days: 30
