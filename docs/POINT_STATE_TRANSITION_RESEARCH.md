@@ -54,3 +54,17 @@ The public match index uses numeric `tier_key` identifiers, so those identifiers
 ### ATP/WTA coverage limitation and secondary cross-check
 
 The first explicit round-prefix split classified only 659 of 5,380 matches (353 ATP, 306 WTA); 4,721 match rows had round labels without an explicit ATP/WTA prefix and remain unclassified by this strict event-label method. To improve visibility without silently treating player identity as event identity, the audit now also reports a separate `byPlayerTourAgreement` diagnostic: a match is assigned to ATP or WTA in this secondary view only when both player records in `players.csv` declare the same primary tour. This is a proxy for player affiliation, not proof of the event's tour; the two reports must remain separate. The workflow downloads `players.csv.gz` ephemerally and does not publish raw data.
+
+## First real public-sample audit results (2026-11-21)
+
+Run: GitHub Actions `44862908490` (successful). The public June 2026 sample contains 5,380 matches and 951,064 observed score states, yielding 945,684 adjacent transitions.
+
+- After the conservative terminal-score gate, 772,578 transitions were inferred (81.70%) and 173,106 remained ambiguous (18.30%). This is parser coverage, not winner-prediction accuracy and not a model-performance score.
+- The gate moved 25,406 counter-change transitions into the ambiguous category because the prior state did not prove the match was one point from completing that game/set. The earlier 84.38% result was pre-gate and is superseded.
+- Timestamp integrity was clean in this sample: all 951,064 states had parseable timestamps; zero adjacent timestamp reversals, zero duplicate adjacent timestamps, and zero matches with timestamp-order issues. This validates ordering consistency in this sample only, not the correctness of every point outcome.
+- Server was present before 906,319 transitions and after 907,569 transitions. It changed across 85,420 transitions. This is descriptive only; server-to-point ownership and rotation alignment remain unvalidated.
+- Only 212/5,380 tapes began at 0-0. This is not a completeness measure; tapes may legitimately attach mid-match or end early.
+- Strict explicit round-prefix classification covered 353 ATP and 306 WTA matches; 4,721 remained unclassified. A separate player-primary-tour agreement proxy classified 2,062 ATP and 1,684 WTA matches, leaving 1,634 unclassified. In that proxy view, transition inference was 83.73% ATP and 82.25% WTA (78.14% unclassified). Do not treat primary player affiliation as verified event-tour identity.
+- 57 matches had every observed transition inferred; most tapes still contain at least one ambiguous transition.
+
+Conclusion: the public sample is technically usable for further parser validation, but not ready for feature engineering. Next steps are manual source-level validation of stratified ordinary-game, advantage, tiebreak, game-boundary and set-boundary transitions; resolve the 25,406 counter transitions and major ambiguity groups; validate server alignment; and improve exact event-tour mapping. Keep ATP and WTA separate, and do not build rolling pre-match features until those checks pass.
