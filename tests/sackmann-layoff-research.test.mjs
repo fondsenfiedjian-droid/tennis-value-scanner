@@ -29,6 +29,20 @@ test("calculates relative inactivity and marks debut history as unknown",()=>{
   assert.throws(()=>calculateLayoffFeatures("20250501",null,"20250401"),/after matchDate/);
 });
 
+
+test("return episode starts at zero matches and records gradual post-return progress",()=>{
+  const first=calculateLayoffFeatures("20240101","20240301","20240719");
+  assert.equal(first.player1LayoffDays,200);
+  assert.equal(first.player1ReturnEpisode,1);
+  assert.equal(first.player1ReturnMatchesLog,0);
+  const afterOne=calculateLayoffFeatures("20240719","20240701","20240724",{
+    player1ReturnEpisode:true,player2ReturnEpisode:false,player1ReturnMatches:1
+  });
+  assert.equal(afterOne.player1ReturnEpisode,1);
+  assert.ok(afterOne.player1ReturnMatchesLog>0);
+  assert.equal(afterOne.player2ReturnEpisode,0);
+});
+
 test("walk-forward layoff model is research-only and evaluates only with prior-year training",()=>{
   const rows=[...season("2000"),...season("2001"),...season("2002"),...season("2003"),...season("2004")];
   const report=runLayoffWalkForward(rows,{tour:"atp",evaluationStart:"20030101",evaluationEnd:"20041231",
