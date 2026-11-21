@@ -11,7 +11,8 @@ Player matching must use the exact archive player ID. No fuzzy name-only joins.
 Official tournament entry-list articles are a practical public source for observed protected-ranking use:
 - ATP reported four players using protected rankings at Roland-Garros 2025 (Reilly Opelka, Jenson Brooksby, Sebastian Ofner and Emil Ruusuvuori): https://www.atptour.com/en/news/roland-garros-2025-entry-list
 - ATP reported Rafael Nadal entering Roland-Garros 2024 with protected ranking No. 9, and named four other protected-ranking entrants: https://www.atptour.com/en/news/roland-garros-2024-entry-list
-- WTA reported three Australian Open 2026 entrants using Special Rankings and published the values: Karolina Pliskova No. 40, Wang Yafan No. 71 and Mananchaya Sawangkaew No. 100: https://www.wtatennis.com/news/4416794/sabalenka-swiatek-head-australian-open-entry-list-101-of-top-103-entered
+- WTA reported three Australian Open 2026 entrants using Special Rankings and published the values: Karolina Pliskova No. 40, Wang Yafan No. 71 and Mananchaya Sawangkaew No. 100: https://www.wtatennis.com/news/4416794/sabalenka-swiatek-head-australian-open-entry-list
+- WTA reported five direct Wimbledon 2025 main-draw entrants using Special Rankings: Sorana Cirstea No. 38, Zhu Lin No. 52, Anastasija Sevastova No. 68, Caty McNally No. 75 and Yanina Wickmayer No. 96: https://www.wtatennis.com/news/4270347/2025-wimbledon-entries-sabalenka-gauff-seek-first-sw19-crown. These are new candidate observations; add them to the private CSV only after exact player IDs and corresponding event matches are verified against the local normalized archive.-101-of-top-103-entered
 
 These are event-specific observations, not a complete official registry and not proof of the full validity period.
 
