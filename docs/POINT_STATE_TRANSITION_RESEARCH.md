@@ -149,3 +149,7 @@ The next diagnostic separates transitions where the full score state is unchange
 ### Diagnostic refinement
 
 The audit distinguishes (a) identical point-score pairs, (b) a fully comparable unchanged score state (sets, game arrays and point scores all parse and match), and (c) unchanged point scores where set/game counters changed or could not be parsed. This avoids treating an unchanged point score as proof that the entire scoreboard state was an exact duplicate. Numeric set/game values are normalized before comparison.
+
+### Same-point-score counter-change breakdown
+
+The aggregate report now distinguishes game-counter changes, set-counter changes and transitions where both change while the point-score pair remains identical. These transitions are not automatically point outcomes: they may represent delayed scoreboard counter updates or a state snapshot that has already reset its point score. The terminal-score gate continues to mark them ambiguous unless the previous state proves the final point of the game/set.
