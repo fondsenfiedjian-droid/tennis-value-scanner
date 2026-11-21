@@ -271,6 +271,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     groups.get(id).push(row);
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
+  const tiebreakServerByPlayerTour = {};
   const serverAlignment = {
     regularChecked: 0, regularMatches: 0, regularMismatches: 0,
     regularAlternativeMatches: 0, regularAlternativeMismatches: 0,
@@ -381,6 +382,18 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
           group.checked++;
           if (serverCheck.actualChanged) group.observedSwitch++;
           else group.observedHold++;
+          if (!tiebreakServerByPlayerTour[playerTour]) {
+            tiebreakServerByPlayerTour[playerTour] = {
+              expectedSwitch: { checked: 0, observedSwitch: 0, observedHold: 0 },
+              expectedHold: { checked: 0, observedSwitch: 0, observedHold: 0 }
+            };
+          }
+          const tourGroup = serverCheck.expectedChange
+            ? tiebreakServerByPlayerTour[playerTour].expectedSwitch
+            : tiebreakServerByPlayerTour[playerTour].expectedHold;
+          tourGroup.checked++;
+          if (serverCheck.actualChanged) tourGroup.observedSwitch++;
+          else tourGroup.observedHold++;
         }
         if (prefix === "regular") {
           const bucket = serverCheck.gameBoundary ? "regularGameBoundary" : "regularWithinGame";
@@ -440,6 +453,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         .map(([reason, values]) => [reason, summarizeTimestampGaps(values)]))
     },
     serverAlignment,
+    tiebreakServerByPlayerTour,
     byTierKey: tierStats,
     byTour: tourStats,
     byPlayerTourAgreement: playerTourAgreementStats,
