@@ -31,8 +31,8 @@ test("unverified, stale, future and post-target evidence are rejected", () => {
     ev("explicit_preparation", { verified: false }),
     ev("major_event_soon", { observedAt: "2026-09-01T00:00:00Z" }),
     ev("official_return_cautious", { observedAt: "2026-11-22T00:00:00Z" }),
-    ev("explicit_title_focus", { observedAt: "2026-11-21T18:00:00Z" })
-  ], { asOf: AS_OF, targetDate: "2026-11-21T15:00:00Z", maxAgeDays: 30 });
+    ev("explicit_title_focus", { observedAt: "2026-11-21T16:00:00Z" })
+  ], { asOf: "2026-11-21T21:00:00Z", targetDate: "2026-11-21T15:00:00Z", maxAgeDays: 30 });
   assert.equal(result.evidenceCount, 0);
   assert.equal(result.rejected.unverified, 1);
   assert.equal(result.rejected.stale, 1);
