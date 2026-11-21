@@ -476,16 +476,16 @@ test("measures first and last observed states against match metadata without ass
   assert.equal(coverage.overall.firstStateNotAtMatchStart, 1);
   assert.equal(coverage.overall.firstStateMissingPointScore, 1);
   assert.equal(coverage.overall.lastStateMissingPointScore, 0);
-  assert.equal(coverage.overall.normalCompletion, 1);
-  assert.equal(coverage.overall.nonNormalCompletion, 1);
+  assert.equal(coverage.overall.noRecordedTerminalEvent, 1);
+  assert.equal(coverage.overall.recordedTerminalEvent, 1);
   assert.equal(coverage.overall.finalSetTargetReached, 1);
   assert.equal(coverage.overall.finalSetTargetNotReached, 1);
   assert.equal(coverage.byTour.ATP.totalMatches, 1);
   assert.equal(coverage.byTour.WTA.totalMatches, 1);
   assert.equal(coverage.byPlayerTourAgreement.ATP.totalMatches, 1);
   assert.equal(coverage.byPlayerTourAgreement.WTA.totalMatches, 1);
-  assert.equal(coverage.byPlayerTourAgreement.ATP.normalCompletionTargetReached, 1);
-  assert.equal(coverage.byPlayerTourAgreement.WTA.nonNormalCompletionTargetNotReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.ATP.noTerminalEventTargetReached, 1);
+  assert.equal(coverage.byPlayerTourAgreement.WTA.recordedTerminalEventTargetNotReached, 1);
 });
 
 test("measures score-flag anomaly proximity in either direction without reclassifying rows", () => {
