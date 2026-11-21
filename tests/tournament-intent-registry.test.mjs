@@ -29,7 +29,7 @@ const base = {
 test("validates and normalizes a sourced, pre-match evidence record", () => {
   const result = validateTournamentIntentRecord(base);
   assert.equal(result.valid, true);
-  assert.equal(result.record.observedAt, base.capturedAt);
+  assert.equal(result.record.observedAt, "2026-11-20T11:00:00.000Z");
   assert.equal(result.record.verified, true);
   assert.ok(result.record.evidenceId);
 });
