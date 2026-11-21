@@ -207,3 +207,23 @@ test("extended serve and return features obey the strict same-day history cutoff
  assert.ok(Number.isFinite(nextDay.aceRateDiff));
  assert.equal(nextDay.profilePriorMatches.aceRate,1);
 });
+
+
+test("surface-specific extended profiles are shrunk toward each player's overall rates",()=>{
+ const rows=[
+  row("20250101",1,1,2,
+   fullStats(100,60,50,30,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8),"Clay"),
+  row("20250102",2,1,2,
+   fullStats(100,60,30,20,8,4,3,6),
+   fullStats(100,60,48,20,6,3,4,7),"Hard"),
+  row("20250103",3,1,2,
+   fullStats(100,60,40,20,10,3,4,5),
+   fullStats(100,60,30,20,5,4,5,8),"Clay")
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,surfaceShrinkageMatches:1}).get("20250103:1:2:Clay");
+ assert.ok(Math.abs(f.surfaceFirstServeWonDiff-(50/60-30/60))<1e-12);
+ assert.ok(Number.isFinite(f.shrunkSurfaceFirstServeWonDiff));
+ assert.ok(f.shrunkSurfaceFirstServeWonDiff>f.firstServeWonDiff);
+ assert.ok(f.shrunkSurfaceFirstServeWonDiff<f.surfaceFirstServeWonDiff);
+});
