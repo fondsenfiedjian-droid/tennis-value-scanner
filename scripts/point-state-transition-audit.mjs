@@ -412,8 +412,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       totalMatches: groups.size,
       firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
       firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
-      normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-      finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+      noRecordedTerminalEvent: 0, recordedTerminalEvent: 0, unknownCompletionStatus: 0,
+      finalSetTargetReached: 0, finalSetTargetNotReached: 0, noTerminalEventTargetReached: 0, noTerminalEventTargetNotReached: 0, recordedTerminalEventTargetReached: 0, recordedTerminalEventTargetNotReached: 0, unknownBestOf: 0
     }
   };
   const isMatchStart = state => integer(state.sets_p1) === 0 && integer(state.sets_p2) === 0 &&
@@ -430,8 +430,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       captureBoundaryCoverage.byTour[tour] = {
         totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
         firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
-        normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-        finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+        noRecordedTerminalEvent: 0, recordedTerminalEvent: 0, unknownCompletionStatus: 0,
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0, noTerminalEventTargetReached: 0, noTerminalEventTargetNotReached: 0, recordedTerminalEventTargetReached: 0, recordedTerminalEventTargetNotReached: 0, unknownBestOf: 0
       };
     }
     const bucket = captureBoundaryCoverage.byTour[tour];
@@ -441,10 +441,10 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       captureBoundaryCoverage.byPlayerTourAgreement[playerTour] = {
         totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
         firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
-        normalCompletion: 0, nonNormalCompletion: 0,
+        noRecordedTerminalEvent: 0, recordedTerminalEvent: 0,
         finalSetTargetReached: 0, finalSetTargetNotReached: 0,
-        normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0,
-        nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+        noTerminalEventTargetReached: 0, noTerminalEventTargetNotReached: 0,
+        recordedTerminalEventTargetReached: 0, recordedTerminalEventTargetNotReached: 0, unknownBestOf: 0
       };
     }
     const playerBucket = captureBoundaryCoverage.byPlayerTourAgreement[playerTour];
@@ -452,25 +452,25 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     const first = states[0], last = states.at(-1);
     const atStart = isMatchStart(first);
     const firstMissing = pointScoreMissing(first), lastMissing = pointScoreMissing(last);
-    const normalCompletion = !meta.eventStatus;
+    const noRecordedTerminalEvent = !meta.eventStatus;
     for (const target of [captureBoundaryCoverage.overall, bucket, playerBucket]) {
       target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
       if (firstMissing) target.firstStateMissingPointScore++;
       if (lastMissing) target.lastStateMissingPointScore++;
-      if (!meta.eventStatus) target.normalCompletion++;
-      else target.nonNormalCompletion++;
+      if (!meta.eventStatus) target.noRecordedTerminalEvent++;
+      else target.recordedTerminalEvent++;
       if (meta.bestOf === "BO3" || meta.bestOf === "BO5") {
         const needed = meta.bestOf === "BO5" ? 3 : 2;
         const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
         const completedSets = lastSets1 !== null && lastSets2 !== null ? lastSets1 + lastSets2 : null;
         if (completedSets !== null && completedSets >= needed) {
           target.finalSetTargetReached++;
-          if (!meta.eventStatus) target.normalCompletionTargetReached++;
-          else target.nonNormalCompletionTargetReached++;
+          if (!meta.eventStatus) target.noTerminalEventTargetReached++;
+          else target.recordedTerminalEventTargetReached++;
         } else {
           target.finalSetTargetNotReached++;
-          if (!meta.eventStatus) target.normalCompletionTargetNotReached++;
-          else target.nonNormalCompletionTargetNotReached++;
+          if (!meta.eventStatus) target.noTerminalEventTargetNotReached++;
+          else target.recordedTerminalEventTargetNotReached++;
         }
       } else target.unknownBestOf++;
     }
