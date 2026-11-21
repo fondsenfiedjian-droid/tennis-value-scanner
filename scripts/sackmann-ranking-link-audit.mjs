@@ -50,13 +50,18 @@ if(!['atp','wta'].includes(tour)||!archive||!files.length){
 }
 if(!fs.existsSync(archive)) throw new Error('Archive not found: '+archive);
 const archiveIds=new Set();
+const archiveNamesById=new Map();
 let archiveRows=0;
 for await(const row of rows(archive)){
   if(!row.fields) continue;
   const wi=row.header.indexOf('winner_id'), li=row.header.indexOf('loser_id');
+  const wn=row.header.indexOf('winner_name'), ln=row.header.indexOf('loser_name');
   if(wi<0||li<0) throw new Error('Archive must contain winner_id and loser_id columns');
   const a=String(row.fields[wi]??'').trim(),b=String(row.fields[li]??'').trim();
-  if(a)archiveIds.add(a); if(b)archiveIds.add(b); archiveRows++;
+  const an=wn>=0?String(row.fields[wn]??'').trim():'',bn=ln>=0?String(row.fields[ln]??'').trim():'';
+  if(a){archiveIds.add(a);if(an){const names=archiveNamesById.get(a)||new Set();names.add(an);archiveNamesById.set(a,names);}}
+  if(b){archiveIds.add(b);if(bn){const names=archiveNamesById.get(b)||new Set();names.add(bn);archiveNamesById.set(b,names);}}
+  archiveRows++;
 }
 const reports=[];
 for(const file of files){
@@ -119,7 +124,7 @@ for(const file of files){
     archiveIdMatchRate:uniqueIds.size?Number((matchedUniqueIds/uniqueIds.size).toFixed(6)):null,
     rankingRowsWithArchiveId:matchedRows,missingPlayerIdRows:missingId,missingDateRows:missingDate,
     missingPointsRows:missingPoints,duplicatePlayerWithinDate:duplicatePlayerDate,exactDuplicateRows,conflictingRankRows,conflictingPointsRows,duplicateSamples,
-    topConflictingPlayers:[...conflictByPlayer.values()].sort((a,b)=>b.conflictRows-a.conflictRows).slice(0,20),
+    topConflictingPlayers:[...conflictByPlayer.values()].sort((a,b)=>b.conflictRows-a.conflictRows).slice(0,20).map(item=>({...item,archiveNames:[...(archiveNamesById.get(item.playerId)||[])]})),
     dateOrderRegressionSamples:dateRegressionSamples,nonMonotonicDateRows:nonMonotonicDates});
 }
 console.log(JSON.stringify({schemaVersion:1,readOnly:true,tour,archive,archiveRows,archiveUniquePlayerIds:archiveIds.size,files:reports},null,2));
