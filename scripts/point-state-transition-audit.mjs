@@ -393,7 +393,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
       firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
       normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-      finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, unknownBestOf: 0
+      finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
     }
   };
   const isMatchStart = state => integer(state.sets_p1) === 0 && integer(state.sets_p2) === 0 &&
@@ -411,7 +411,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
         firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
         normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
-        finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, unknownBestOf: 0
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
       };
     }
     const bucket = captureBoundaryCoverage.byTour[tour];
@@ -424,7 +424,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         normalCompletion: 0, nonNormalCompletion: 0,
         finalSetTargetReached: 0, finalSetTargetNotReached: 0,
         normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0,
-        nonNormalCompletionTargetReached: 0, unknownBestOf: 0
+        nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
       };
     }
     const playerBucket = captureBoundaryCoverage.byPlayerTourAgreement[playerTour];
@@ -450,6 +450,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         } else {
           target.finalSetTargetNotReached++;
           if (!meta.eventStatus) target.normalCompletionTargetNotReached++;
+          else target.nonNormalCompletionTargetNotReached++;
         }
       } else target.unknownBestOf++;
     }
