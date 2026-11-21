@@ -503,6 +503,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
           else target.nonNormalCompletionTargetNotReached++;
         }
       } else target.unknownBestOf++;
+    }
+
     const bestOfKnown = meta.bestOf === "BO3" || meta.bestOf === "BO5";
     const neededSets = meta.bestOf === "BO5" ? 3 : 2;
     const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
@@ -520,7 +522,6 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         if (!map[key]) map[key] = newCandidateBucket();
         map[key].matches++;
       }
-    }
     }
   }
   const tiebreakFlagAlignment = auditTiebreakFlagAlignment(groups);
