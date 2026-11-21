@@ -6,7 +6,7 @@ import { runBacktest } from "./backtest.mjs";
 import { buildPreMatchWorkload } from "./workload-research.mjs";
 import { fitLogistic, predictLogistic } from "./sackmann-rank-age-research.mjs";
 
-const FEATURES = ["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","minutes7","durationCoverage7","workloadAvailable"];
+const FEATURES = ["baseLogit","matches3","matches7","playingDays7","matches14","matches28","playingDays14","playingDays28","restDays","restDaysAvailable","workloadAvailable","workloadAvailable14","workloadAvailable28"];
 const clamp = p => Math.min(1 - 1e-9, Math.max(1e-9, p));
 const logit = p => Math.log(clamp(p) / (1 - clamp(p)));
 const pairKey = (date,a,b) => date + ":" + (Number(a) < Number(b) ? a + ":" + b : b + ":" + a);
@@ -79,6 +79,8 @@ function featureRow(prediction, workload) {
   const key=pairKey(prediction.date,prediction.player1Id,prediction.player2Id);
   const w=workload.get(key);
   const recentWorkloadAvailable=Boolean(w && (w.priorMatchRecords7??0)>0);
+  const workload14Available=Boolean(w && (w.priorMatchRecords14??0)>0);
+  const workload28Available=Boolean(w && (w.priorMatchRecords28??0)>0);
   const restDaysAvailable=Boolean(w && w.restDaysAvailable===1);
   return {
     date:prediction.date,
@@ -87,14 +89,20 @@ function featureRow(prediction, workload) {
       matches3:recentWorkloadAvailable?w.matches3:0,
       matches7:recentWorkloadAvailable?w.matches7:0,
       playingDays7:recentWorkloadAvailable?w.playingDays7:0,
+      matches14:workload14Available?w.matches14:0,
+      matches28:workload28Available?w.matches28:0,
+      playingDays14:workload14Available?w.playingDays14:0,
+      playingDays28:workload28Available?w.playingDays28:0,
       restDays:restDaysAvailable?w.restDays:0,
       restDaysAvailable:restDaysAvailable?1:0,
-      minutes7:recentWorkloadAvailable?w.minutes7:0,
-      durationCoverage7:recentWorkloadAvailable?w.durationCoverage7:0,
-      workloadAvailable:recentWorkloadAvailable?1:0
+      workloadAvailable:recentWorkloadAvailable?1:0,
+      workloadAvailable14:workload14Available?1:0,
+      workloadAvailable28:workload28Available?1:0
     },
     workloadDiagnostics:{
       priorMatchRecords7:w?.priorMatchRecords7??0,
+      priorMatchRecords14:w?.priorMatchRecords14??0,
+      priorMatchRecords28:w?.priorMatchRecords28??0,
       knownDurationRecords7:w?.knownDurationRecords7??0,
       bothPlayersHavePriorHistory:restDaysAvailable
     },
@@ -107,16 +115,26 @@ function featureRow(prediction, workload) {
 function workloadAvailability(rows) {
   const total=rows.length;
   const anyHistory=rows.filter(row=>row.features.workloadAvailable===1).length;
+  const anyHistory14=rows.filter(row=>row.features.workloadAvailable14===1).length;
+  const anyHistory28=rows.filter(row=>row.features.workloadAvailable28===1).length;
   const bothHistory=rows.filter(row=>row.workloadDiagnostics.bothPlayersHavePriorHistory).length;
   const priorRecords=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords7,0);
+  const priorRecords14=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords14,0);
+  const priorRecords28=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.priorMatchRecords28,0);
   const knownDurations=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.knownDurationRecords7,0);
   return {
     matches:total,
     anyRecentWorkloadMatches:anyHistory,
     anyRecentWorkloadPct:total?+(100*anyHistory/total).toFixed(2):null,
+    any14DayWorkloadMatches:anyHistory14,
+    any14DayWorkloadPct:total?+(100*anyHistory14/total).toFixed(2):null,
+    any28DayWorkloadMatches:anyHistory28,
+    any28DayWorkloadPct:total?+(100*anyHistory28/total).toFixed(2):null,
     bothPlayersRestDaysAvailableMatches:bothHistory,
     bothPlayersRestDaysAvailablePct:total?+(100*bothHistory/total).toFixed(2):null,
     priorPlayerMatchRecords7:priorRecords,
+    priorPlayerMatchRecords14:priorRecords14,
+    priorPlayerMatchRecords28:priorRecords28,
     knownDurationPlayerMatchRecords7:knownDurations,
     knownDurationCoveragePct:priorRecords?+(100*knownDurations/priorRecords).toFixed(2):null
   };
@@ -149,24 +167,29 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
     const loadFeatures=["baseLogit","matches3","matches7","playingDays7","workloadAvailable"];
     const restFeatures=["baseLogit","restDays","restDaysAvailable"];
     const coreAceFeatures=["baseLogit","matches3","matches7","playingDays7","restDays","restDaysAvailable","workloadAvailable"];
+    const extendedLoadFeatures=["baseLogit","matches14","matches28","playingDays14","playingDays28","workloadAvailable14","workloadAvailable28"];
     const calibrationModel=fitLogistic(trainingRows,calibrationFeatures,fitOptions);
     const loadModel=fitLogistic(trainingRows,loadFeatures,fitOptions);
     const restModel=fitLogistic(trainingRows,restFeatures,fitOptions);
     const coreAceModel=fitLogistic(trainingRows,coreAceFeatures,fitOptions);
+    const extendedLoadModel=fitLogistic(trainingRows,extendedLoadFeatures,fitOptions);
     const specificationTests={
       calibrationOnly:calibrationModel?{features:calibrationFeatures,metrics:metrics(evaluation,calibrationModel),coefficients:calibrationModel.coefficients}:null,
       loadOnly:loadModel?{features:loadFeatures,metrics:metrics(evaluation,loadModel),coefficients:loadModel.coefficients}:null,
       restOnly:restModel?{features:restFeatures,metrics:metrics(evaluation,restModel),coefficients:restModel.coefficients}:null,
       coreAce:coreAceModel?{features:coreAceFeatures,metrics:metrics(evaluation,coreAceModel),coefficients:coreAceModel.coefficients}:null,
-      fullAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
+      extendedLoadOnly:extendedLoadModel?{features:extendedLoadFeatures,metrics:metrics(evaluation,extendedLoadModel),coefficients:extendedLoadModel.coefficients}:null,
+      extendedAce:model?{features:FEATURES,metrics:metrics(evaluation,model),coefficients:model.coefficients}:null
     };
-    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel?{
+    const incrementalComparisons=calibrationModel&&loadModel&&restModel&&coreAceModel&&extendedLoadModel?{
       loadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,loadModel),
       restOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,restModel),
       coreAceVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,coreAceModel),
       coreAceVsLoadOnly:pairedModelDifference(evaluation,loadModel,coreAceModel),
       coreAceVsRestOnly:pairedModelDifference(evaluation,restModel,coreAceModel),
-      fullAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null
+      extendedLoadOnlyVsCalibrationOnly:pairedModelDifference(evaluation,calibrationModel,extendedLoadModel),
+      extendedAceVsCoreAce:model?pairedModelDifference(evaluation,coreAceModel,model):null,
+      extendedAceVsExtendedLoadOnly:model?pairedModelDifference(evaluation,extendedLoadModel,model):null
     }:null;
     reports[tour]={
       inputMatches:tourRows.length,
