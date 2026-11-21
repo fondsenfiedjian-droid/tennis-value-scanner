@@ -292,7 +292,7 @@ function auditScoreVocabulary(rows) {
         else add(report.unexpectedValueCounts, value || "<missing>");
       }
       if (normalScoreRank(p1) === null || normalScoreRank(p2) === null) report.normalUnexpectedStates++;
-      if (/^\d+$/.test(p1) || /^\d+$/.test(p2)) report.unexpectedNumericNormalValues++;
+      if ((/^\d+$/.test(p1) && normalScoreRank(p1) === null) || (/^\d+$/.test(p2) && normalScoreRank(p2) === null)) report.unexpectedNumericNormalValues++;
     } else {
       report.unknownFlagStates++;
     }
