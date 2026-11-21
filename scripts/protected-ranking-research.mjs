@@ -94,8 +94,8 @@ export function runProtectedRankingResearch(matchRows,observations,options={}){
    if(year>=start.slice(0,4)&&year<=end.slice(0,4)){
     const baseTraining=symmetric(history);
     const rankTraining=symmetric(history.filter(r=>r.rankAdv!=null));
-    const base=fitLogistic(baseTraining,["eloScaled"],{minMatches:minTraining,maxRows,seed:tour+year+"protected-base"});
-    const rank=fitLogistic(rankTraining,["eloScaled","rankAdv"],{minMatches:minTraining,maxRows,seed:tour+year+"protected-rank"});
+    const base=fitLogistic(baseTraining,["eloScaled"],{minMatches:minTraining*2,maxRows,seed:tour+year+"protected-base"});
+    const rank=fitLogistic(rankTraining,["eloScaled","rankAdv"],{minMatches:minTraining*2,maxRows,seed:tour+year+"protected-rank"});
     if(base&&rank){models={base,rank,trainingMatches:history.length,rankTrainingMatches:rankTraining.length};yearsWithModels++;}
    }
    yearSummaries[year]=comparison();
