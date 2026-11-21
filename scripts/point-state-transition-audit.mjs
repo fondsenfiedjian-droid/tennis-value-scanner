@@ -141,9 +141,15 @@ export function auditPointStateTransitions(rows, matchRows = []) {
   const metadata = new Map();
   for (const match of matchRows) {
     const id = String(match.match_id ?? "").trim();
-    if (id) metadata.set(id, String(match.tier_key ?? "unknown").trim() || "unknown");
+    const round = String(match.round ?? "").trim();
+    const tourMatch = round.match(/^(ATP|WTA)\\b/i);
+    if (id) metadata.set(id, {
+      tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
+      tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified"
+    });
   }
   const tierStats = {};
+  const tourStats = {};
   const timestampStats = {
     validStates: 0, invalidOrMissingStates: 0,
     nonMonotonicTransitions: 0, duplicateTimestampTransitions: 0,
@@ -173,11 +179,17 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     let inferred = 0;
     let timestampIssue = false;
     let previousTimestamp = null;
-    const tierKey = metadata.get(String(states[0].match_id)) || "unmatched";
+    const matchMeta = metadata.get(String(states[0].match_id)) || { tierKey: "unmatched", tour: "unclassified" };
+    const tierKey = matchMeta.tierKey;
+    const tour = matchMeta.tour;
     if (!tierStats[tierKey]) tierStats[tierKey] = {
       matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
     };
+    if (!tourStats[tour]) tourStats[tour] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
     tierStats[tierKey].matchesWithPoints++;
+    tourStats[tour].matchesWithPoints++;
     for (const state of states) {
       const rawTimestamp = String(state.timestamp_utc ?? "").trim();
       const timestamp = rawTimestamp ? Date.parse(rawTimestamp) : NaN;
@@ -212,12 +224,15 @@ export function auditPointStateTransitions(rows, matchRows = []) {
       const result = inferPointStateTransition(states[i], states[i + 1]);
       totals.transitions++;
       tierStats[tierKey].transitions++;
+      tourStats[tour].transitions++;
       if (result.status === "inferred") {
         tierStats[tierKey].inferred++;
+        tourStats[tour].inferred++;
         totals.inferred++;
         inferred++;
       } else {
         tierStats[tierKey].ambiguous++;
+        tourStats[tour].ambiguous++;
         totals.ambiguous++;
         totals.byReason[result.reason] = (totals.byReason[result.reason] || 0) + 1;
       }
@@ -246,6 +261,7 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
     byTierKey: tierStats,
+    byTour: tourStats,
     totals
   };
 }
