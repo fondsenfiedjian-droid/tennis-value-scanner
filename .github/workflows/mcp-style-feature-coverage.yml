@@ -1,0 +1,99 @@
+name: Match Charting pre-match style feature coverage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/mcp-match-linkage-audit.mjs"
+      - "scripts/mcp-style-feature-coverage.mjs"
+      - "tests/mcp-match-linkage-audit.test.mjs"
+      - "tests/mcp-style-feature-coverage.test.mjs"
+      - ".github/workflows/mcp-style-feature-coverage.yml"
+      - "docs/MATCH_CHARTING_RESEARCH.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download pinned MCP metadata and stat families
+        env:
+          MCP_COMMIT: 1813a1309b7ed7ebf1c7e884b32bf675d00e4edf
+        run: |
+          set -euo pipefail
+          mkdir -p research-data
+          for tour in m w; do
+            for family in matches stats-Overview stats-Rally stats-ServeBasics stats-ReturnDepth stats-ReturnOutcomes stats-ShotTypes stats-ShotDirection stats-ServeDirection stats-ServeInfluence stats-NetPoints stats-KeyPointsReturn stats-KeyPointsServe stats-ShotDirOutcomes stats-SnV stats-SvBreakSplit stats-SvBreakTotal; do
+              file="charting-$tour-$family.csv"
+              curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 4 \
+                "https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/$MCP_COMMIT/$file" \
+                --output "research-data/$file"
+              test -s "research-data/$file"
+            done
+          done
+      - name: Download pinned historical result files
+        env:
+          RESULTS_COMMIT: 83733587353df8a41f2fd4f516147d5aa83f5a8d
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$RESULTS_COMMIT?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const main = tree.tree.filter(item => /^(atp|wta)\/(atp|wta)_matches_\d{4}\.csv$/i.test(item.path)).map(item => item.path);
+          const lower = tree.tree.filter(item => /^(atp|wta)\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(item.path)).map(item => item.path);
+          if (main.length !== 118 || lower.length !== 144) throw new Error("Unexpected pinned results archive file count");
+          await writeFile(process.env.RUNNER_TEMP + "/result-files.txt", [...main, ...lower].sort().join("\n") + "\n");
+          console.log("Pinned results: " + main.length + " main-tour + " + lower.length + " lower-tier files");
+          NODE
+          cat "$RUNNER_TEMP/result-files.txt" | xargs -r -n 1 -P 2 sh -c '
+            set -eu
+            path="$1"; name="${path##*/}"
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 4 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$RESULTS_COMMIT/$path" \
+              --output "research-data/$name"
+            test -s "research-data/$name"
+          ' _
+      - name: Run aggregate-only pre-match style coverage audit
+        run: node scripts/mcp-style-feature-coverage.mjs --input-dir research-data --out "$RUNNER_TEMP/mcp-style-feature-coverage.json"
+      - name: Publish aggregate summary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/mcp-style-feature-coverage.json", "utf8"));
+          const lines = [
+            "| Tour | Linked matches | Main targets | FH winner-share targets | Unforced-rate targets | Net-rate targets | Deep-return targets | SnV targets | Long-rally targets |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ...Object.entries(report.byTour).map(([tour,x]) => "| " + tour + " | " + x.linkedMatches + " | " + x.mainTourTargets + " | " + x.featureMatchCoverage.fhWinnerShare + " | " + x.featureMatchCoverage.unforcedPerPoint + " | " + x.featureMatchCoverage.netPointRate + " | " + x.featureMatchCoverage.deepReturnRate + " | " + x.featureMatchCoverage.serveAndVolleyRate + " | " + x.featureMatchCoverage.longRallyShare + " |"),
+            "",
+            "Pre-match target coverage requiring both players to have prior charted histories (overall / same surface):"
+          ];
+          for (const [tour,x] of Object.entries(report.byTour)) {
+            lines.push("**" + tour + "**");
+            for (const feature of report.features) {
+              const h=x.priorHistoryCoverage[feature];
+              lines.push("- " + feature + ": 3 prior = " + h.overall["3"] + "/" + h.sameSurface["3"] + "; 5 prior = " + h.overall["5"] + "/" + h.sameSurface["5"] + "; 10 prior = " + h.overall["10"] + "/" + h.sameSurface["10"]);
+            }
+          }
+          lines.push("", "Same-day charted matches are excluded. No player IDs, names or player-level histories are retained.");
+          await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          NODE
+      - name: Upload aggregate-only style coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-pre-match-style-feature-coverage
+          path: ${{ runner.temp }}/mcp-style-feature-coverage.json
+          if-no-files-found: error
+          retention-days: 30
