@@ -72,13 +72,16 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
   for(const history of ageHistory.values()){
     history.sort((a,b)=>a.date.localeCompare(b.date));
   }
-  const players=new Map(),byTourYear=new Map();
+  const players=new Map(),byTourYear=new Map(),byTourCategory=new Map();
   let bothAges=0,oneAge=0,noAge=0,mappedBoth=0,mappedOne=0,mappedNone=0,ambiguousSides=0;
   for(const row of valuebetennisRows){
-    const tour=row.tour,year=String(row.tourney_date).slice(0,4);
+    const tour=row.tour,year=String(row.tourney_date).slice(0,4),category=String(row.category??"").trim()||"Unknown";
     const bucketKey=tour+":"+year;
     if(!byTourYear.has(bucketKey)) byTourYear.set(bucketKey,{tour,year,matches:0,mappedBoth:0,mappedOne:0,mappedNone:0,bothAges:0,oneAge:0,noAge:0});
     const bucket=byTourYear.get(bucketKey);bucket.matches++;
+    const categoryKey=tour+":"+category;
+    if(!byTourCategory.has(categoryKey))byTourCategory.set(categoryKey,{tour,category,matches:0,mappedBoth:0,mappedOne:0,mappedNone:0,bothAges:0,oneAge:0,noAge:0});
+    const categoryBucket=byTourCategory.get(categoryKey);categoryBucket.matches++;
     const sides=[
       {id:String(row.player1Id??""),name:row.player1Name},
       {id:String(row.player2Id??""),name:row.player2Name}
@@ -102,12 +105,12 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
     }
     const ageCount=mapped.filter(x=>x.age!==null).length;
     const mapCount=mapped.filter(x=>x.status==="mapped").length;
-    if(mapCount===2){mappedBoth++;bucket.mappedBoth++;}
-    else if(mapCount===1){mappedOne++;bucket.mappedOne++;}
-    else {mappedNone++;bucket.mappedNone++;}
-    if(ageCount===2){bothAges++;bucket.bothAges++;}
-    else if(ageCount===1){oneAge++;bucket.oneAge++;}
-    else {noAge++;bucket.noAge++;}
+    if(mapCount===2){mappedBoth++;bucket.mappedBoth++;categoryBucket.mappedBoth++;}
+    else if(mapCount===1){mappedOne++;bucket.mappedOne++;categoryBucket.mappedOne++;}
+    else {mappedNone++;bucket.mappedNone++;categoryBucket.mappedNone++;}
+    if(ageCount===2){bothAges++;bucket.bothAges++;categoryBucket.bothAges++;}
+    else if(ageCount===1){oneAge++;bucket.oneAge++;categoryBucket.oneAge++;}
+    else {noAge++;bucket.noAge++;categoryBucket.noAge++;}
   }
   const playerRows=[...players.values()];
   const mappedPlayers=playerRows.filter(p=>p.status==="mapped").length;
@@ -145,6 +148,7 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
       anyAgeCoveragePct:valuebetennisRows.length?Number((100*(bothAges+oneAge)/valuebetennisRows.length).toFixed(2)):null
     },
     byTourYear:Object.fromEntries([...byTourYear.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key,b])=>[key,formatBucket(b)])),
+    byTourCategory:Object.fromEntries([...byTourCategory.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key,b])=>[key,formatBucket(b)])),
     unmatchedNameSamples,
     ambiguousNameSamples,
     limits:["Name aliases are limited to token-order normalization and first-initial + final-token variants; candidates that resolve to multiple Sackmann ids remain ambiguous.",""Name matching is exact after Unicode/accent/punctuation normalization; aliases and initials are not guessed.","Same-name people that map to multiple Sackmann ids are marked ambiguous and excluded.","Age is sourced from completed historical matches and is not a birth-date lookup."]
