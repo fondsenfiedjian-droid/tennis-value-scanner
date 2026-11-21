@@ -55,7 +55,7 @@ test("Sackmann audit rejects impossible ace/double-fault and break-point denomin
     values[columns.indexOf(field)]=value;
     const report=auditSackmannFiles([{
       filename:"atp_matches_2024.csv",
-      content:header+"\\n"+values.join(",")+"\\n"
+      content:header+"\n"+values.join(",")+"\n"
     }]);
     const year=report.byTourYear[0];
     assert.equal(year.statsCoreBothSides,1,field+" should not invalidate core point counts");
