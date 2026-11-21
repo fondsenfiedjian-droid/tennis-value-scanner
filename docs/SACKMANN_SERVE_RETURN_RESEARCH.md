@@ -81,3 +81,13 @@ The 730-day / 5-match configuration is strongest in aggregate for both tours. Th
 The combined model's annual standardized coefficients consistently assign negative weights to overall serve/return differences and positive weights to same-surface differences. This suggests that the useful signal may be a surface-relative adjustment rather than raw absolute rates. Next test residualized surface features and sample-size shrinkage before any further recommendation.
 
 **Decision: research-only. No production feature is activated.**
+
+## Residualized surface and shrinkage follow-up (2026-11-21)
+
+The next research run fixes the history window at 730 days and minimum prior history at five matches for both overall and same-surface rates. It tests three prior strengths (3, 5 and 10 matches) for shrinkage.
+
+Definitions:
+- **Residualized surface effect:** for each player, same-surface rate minus overall rate; the model feature is player 1's residual minus player 2's residual. This separates surface-specific deviation from general serve/return level.
+- **Shrunk surface rate:** overall rate plus a sample-size weight times the surface-minus-overall difference, where weight = surface prior matches / (surface prior matches + shrinkage prior strength). This pulls sparse surface estimates toward the player's overall rate.
+
+The fixed 730d/5-match run compares four new specifications: residualized surface only; overall plus residualized surface; shrunk surface only; and overall plus shrunk surface. Existing raw overall and raw surface specifications remain in the comparison for context. Results are pending; all variants remain research-only.
