@@ -81,11 +81,13 @@ test("result checks retry pending matches every 30 minutes and settled matches d
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
-test("match cards expose current bookmaker odds without opening the details", () => {
-  assert.match(html, /const oddsHtml=allMatched\.length\?/);
+test("match cards expose selected bookmaker EV quotes and comparison alternatives", () => {
+  assert.match(html, /const oddsHtml=displayQuoteA&&displayQuoteB\?/);
   assert.ok(html.includes(`class="match-bottom odds-visible">'+oddsHtml`));
-  assert.match(html, /displayQuoteA\?'<b>1<\/b>/);
-  assert.match(html, /displayQuoteB\?'<b>2<\/b>/);
+  assert.match(html, /comparisonQuoteA\?'<b>1<\/b>/);
+  assert.match(html, /comparisonQuoteB\?'<b>2<\/b>/);
+  assert.match(html, /альтернативы:/);
+  assert.match(html, /нет полной свежей пары/);
 });
 
 test("EV calculation keeps the configured odds range separate from visible quotes", () => {
