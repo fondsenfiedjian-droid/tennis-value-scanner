@@ -40,3 +40,15 @@ test("rejects invalid dates and tours",()=>{
  assert.throws(()=>runPerformanceGapWalkForward([],{tour:"itf"}),/tour/);
  assert.throws(()=>runPerformanceGapWalkForward([],{evaluationStart:"20240230"}),/valid ordered/);
 });
+
+test("feature ablation excludes only requested candidate predictors",()=>{
+ const rows=[...season("2000"),...season("2001"),...season("2002"),...season("2003"),...season("2004")];
+ const options={tour:"atp",evaluationStart:"20030101",evaluationEnd:"20041231",minTrainingMatches:100,maxTrainingRows:500};
+ const full=runPerformanceGapWalkForward(rows,options);
+ const ablated=runPerformanceGapWalkForward(rows,{...options,excludedFeatures:["historyCountDiff","lossStreakDiff"]});
+ assert.deepEqual(ablated.excludedFeatures,["historyCountDiff","lossStreakDiff"]);
+ assert.ok(!ablated.candidateFeatures.includes("historyCountDiff"));
+ assert.ok(!ablated.candidateFeatures.includes("lossStreakDiff"));
+ assert.equal(ablated.summary.baseline.matches,full.summary.baseline.matches);
+ assert.equal(ablated.summary.candidate.matches,full.summary.candidate.matches);
+});
