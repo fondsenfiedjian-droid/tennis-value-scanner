@@ -73,7 +73,7 @@ The 730-day result is directionally stable across shrinkage strengths 3, 5 and 1
 
 ### Coverage and interpretation
 
-For the 730-day / shrinkage-5 run, 19,722 ATP and 20,? WTA matches had enough input to generate point-engine output across the evaluation history; 3,156 ATP and a similar-sized WTA subset were marked for review due to serve/return disagreement. (Exact full-period counts are included in the machine report; holdout counts are shown above.) The 8-percentage-point consistency threshold is a conservative exclusion rule, not proof that the retained rates are unbiased.
+For the 730-day / shrinkage-5 run, 21,372 ATP and 19,745 WTA matches had enough input to generate point-engine output across the evaluation history. A further 2,838 ATP and 2,571 WTA matches were marked for review because serve and opponent-return evidence disagreed; 3,939 ATP and 4,048 WTA matches lacked sufficient input history or required fields. The 8-percentage-point consistency threshold is a conservative exclusion rule, not proof that the retained rates are unbiased.
 
 **Decision:** reject raw point-engine match probabilities. Keep the PFE point-logit delta as a research feature for a separately trained correction layer, with ATP and WTA calibrated separately. Do not promote it into PFE's live model registry until a new, untouched forward period confirms the gains and betting-market tests show incremental value.
 
