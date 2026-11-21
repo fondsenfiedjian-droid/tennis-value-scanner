@@ -239,6 +239,7 @@ test("unknown target surfaces keep overall profile rates and leave surface profi
  assert.ok(Number.isFinite(f.firstServeWonDiff));
  assert.equal(f.surfaceFirstServeWonDiff,null);
  assert.equal(f.shrunkSurfaceFirstServeWonDiff,null);
+ assert.equal(f.pfePointInputStatus,"ready_for_score_simulation");
 });
 
 
