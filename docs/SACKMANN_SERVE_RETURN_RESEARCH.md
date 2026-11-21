@@ -120,3 +120,20 @@ Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.00128
 Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
 
 Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.
+
+The frozen holdout also reports paired metrics separately for each calendar year (2025 and 2026) using the same 2016–2024 fitted coefficients. This reveals whether the combined holdout improvement is concentrated in one year or persists across both; 2026 remains partial through 2026-05-25.
+
+## Residualized surface and shrinkage results (run 44867801135)
+
+The 730-day / five-prior-match research run compared residualized surface effects and shrinkage priors 3, 5 and 10. The frozen 2025–2026 evaluation used 3,071 ATP and 2,807 WTA matches. The best result was the combined overall-plus-residualized specification:
+
+| Tour | Specification | Δ Brier (95% CI) | Δ LogLoss (95% CI) |
+|---|---|---:|---:|
+| ATP | Surface residual only | -0.001284 (-0.002290, -0.000278) | -0.003074 (-0.005384, -0.000763) |
+| ATP | Overall + surface residual | **-0.001360 (-0.002473, -0.000246)** | **-0.003942 (-0.006566, -0.001318)** |
+| WTA | Surface residual only | -0.000937 (-0.001599, -0.000275) | -0.002199 (-0.003754, -0.000644) |
+| WTA | Overall + surface residual | **-0.001198 (-0.002037, -0.000359)** | **-0.003405 (-0.005447, -0.001362)** |
+
+All eight paired intervals exclude zero in the improving direction. Residualized specifications were unchanged across shrinkage-prior runs because the prior applies to the separate shrunk-rate features. Shrinkage-only models were neutral or adverse. Overall-plus-shrunk variants improved less than residualized variants; prior 3 was strongest among those, but the WTA Brier interval only narrowly excluded zero at that setting and crossed zero at priors 5 and 10.
+
+Interpretation: the signal appears to be the player's surface-specific deviation from their own overall serve/return level, not the raw surface rate. This is promising but remains exploratory: multiple specifications and priors were compared without correction, and the 2025–2026 period was already inspected during model discovery. No production feature is enabled.
