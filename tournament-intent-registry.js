@@ -10,6 +10,10 @@ const TYPES = new Set([
   "major_event_soon", "schedule_bridge",
   "explicit_title_focus", "home_event_commitment"
 ]);
+const SOURCE_TYPES = new Set([
+  "official_tour", "official_tournament", "player_or_team",
+  "verified_social", "reputable_media", "official_schedule"
+]);
 
 function date(value) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -48,6 +52,7 @@ export function validateTournamentIntentRecord(input, options = {}) {
   const tournament = clean(input.tournament, 160);
   const targetMatchId = clean(input.targetMatchId, 120);
   const type = clean(input.type, 80);
+  const sourceType = clean(input.sourceType, 60);
   const sourceName = clean(input.sourceName, 160);
   const sourceUrl = clean(input.sourceUrl, 1000);
   const published = date(input.publishedAt);
@@ -60,6 +65,7 @@ export function validateTournamentIntentRecord(input, options = {}) {
   if (!eventId && !tournament) errors.push("missing_event_identity");
   if (!targetMatchId) errors.push("missing_target_match_id");
   if (!TYPES.has(type)) errors.push("unknown_evidence_type");
+  if (!SOURCE_TYPES.has(sourceType)) errors.push("invalid_source_type");
   if (!sourceName) errors.push("missing_source_name");
   try {
     const url = new URL(sourceUrl);
@@ -98,6 +104,7 @@ export function validateTournamentIntentRecord(input, options = {}) {
     publishedAt: new Date(published).toISOString(),
     capturedAt: new Date(captured).toISOString(),
     observedAt: new Date(captured).toISOString(),
+    sourceType,
     sourceName,
     sourceUrl,
     quote: quote || null,
