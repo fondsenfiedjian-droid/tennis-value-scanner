@@ -10,8 +10,8 @@ No match IDs, player names, raw rows, or player-level features are written to th
 
 ## Inference order
 
-1. Compare completed-set counters. Exactly one side increasing by one identifies the set winner.
-2. If set counters do not change, compare the current-set game counters. Exactly one side increasing by one identifies the game winner.
+1. Compare completed-set counters, but accept a winner only when the prior score is demonstrably one point from closing the game/set and the next state resets the point score to 0-0. For a tiebreak, the prior numeric score must be one point from the two-point-margin finish.
+2. If set counters do not change, apply the same terminal-score and 0-0 reset gate to current-set game counters. Counter changes without a terminal prior score remain ambiguous; this prevents skipped multi-point gaps from being mislabeled as a single point winner.
 3. If neither counter changes, inspect point-score states:
    - normal game progression: 0 → 15 → 30 → 40 → advantage;
    - advantage lost: advantage → 40 while the opponent remains at 40, so the opponent won the point;
@@ -42,3 +42,7 @@ The parser and synthetic tests are implemented, but no public sample file has be
 - Source licence: CC BY-NC 4.0. Use for this non-commercial research only; cite the dataset and do not redistribute raw data.
 - Validation of the harness is pending the PR checks and a successful manual/workflow run against Zenodo. No real-sample result is claimed yet.
 - Next: inspect the resulting tier coverage and timestamp quality; then manually validate a stratified sample of transitions against source score sequences before drawing conclusions about server ownership or model features.
+
+### Counter-inference safety gate (2026-11-21)
+
+The first real-sample run exposed a potential over-inference risk: the earlier parser accepted any one-game or one-set counter increment, even if the previous point score was not a terminal game-point state. Such a transition may conceal multiple missed points. Counter-based inference is now restricted to transitions where the prior score is one point from game completion (or one point from a two-point tiebreak finish) and the next state resets to 0-0. Other counter changes remain ambiguous. Dedicated tests cover ordinary game, set, tiebreak and skipped-score cases. The initial 84.38% figure is therefore a pre-gate diagnostic only and must not be treated as the validated parser rate; rerun the sample after this change.
