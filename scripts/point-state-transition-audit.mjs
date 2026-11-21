@@ -400,6 +400,15 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     tiebreakAlternativeMatches: 0, tiebreakAlternativeMismatches: 0,
     tiebreakExpectedSwitch: { checked: 0, observedSwitch: 0, observedHold: 0 },
     tiebreakExpectedHold: { checked: 0, observedSwitch: 0, observedHold: 0 },
+    regularGameBoundaryByGap: {
+      "<5s": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "5-15s": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "15-30s": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "30-60s": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "60-180s": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "180s+": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 },
+      "invalid": { checked: 0, observedSwitch: 0, observedHold: 0, afterScoreReset: 0, afterScoreNotReset: 0 }
+    },
     skipped: 0, skippedReasons: {}
   };
   const totals = {
@@ -472,6 +481,22 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       const before = states[i], after = states[i + 1];
       const result = inferPointStateTransition(before, after);
       const serverCheck = auditServerTransition(before, after);
+      if (serverCheck.kind === "regular" && serverCheck.gameBoundary) {
+        const beforeMs = Date.parse(String(before.timestamp_utc ?? ""));
+        const afterMs = Date.parse(String(after.timestamp_utc ?? ""));
+        const gap = Number.isFinite(beforeMs) && Number.isFinite(afterMs) && afterMs >= beforeMs
+          ? (afterMs - beforeMs) / 1000 : null;
+        const bucket = gap === null ? "invalid" : gap < 5 ? "<5s" : gap < 15 ? "5-15s" :
+          gap < 30 ? "15-30s" : gap < 60 ? "30-60s" : gap < 180 ? "60-180s" : "180s+";
+        const group = serverAlignment.regularGameBoundaryByGap[bucket];
+        group.checked++;
+        if (serverCheck.actualChanged) group.observedSwitch++;
+        else group.observedHold++;
+        const afterP1 = String(after.points_p1 ?? "").trim().toUpperCase();
+        const afterP2 = String(after.points_p2 ?? "").trim().toUpperCase();
+        if (afterP1 === "0" && afterP2 === "0") group.afterScoreReset++;
+        else group.afterScoreNotReset++;
+      }
       const sameScore = scoreStateIsEqual(before, after);
       const samePointScore = String(before.points_p1 ?? "").trim().toUpperCase() === String(after.points_p1 ?? "").trim().toUpperCase() &&
         String(before.points_p2 ?? "").trim().toUpperCase() === String(after.points_p2 ?? "").trim().toUpperCase();
