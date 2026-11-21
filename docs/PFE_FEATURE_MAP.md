@@ -225,3 +225,20 @@ Best aggregate specification, overall plus surface rates:
 - WTA, 8,886 out-of-sample matches: Brier delta -0.000196, CI [-0.000524, 0.000133]; LogLoss delta -0.000688, CI [-0.001461, 0.000085].
 
 Only the ATP LogLoss confidence interval excludes zero. WTA's intervals and both Brier intervals include zero. Standalone overall or surface serve/return specifications are mostly neutral or degrade aggregate scores. Annual effects vary, so the combined feature remains a research candidate only; it is not production-enabled. Require an untouched later-period holdout and calibration/stability review before any integration. This evaluation measures probability scores, not betting ROI, closing-line value or profitability.
+
+## Sackmann pre-match serve/return rates (research only)
+
+The walk-forward research builds player-level rolling rates from completed ATP/WTA match statistics, using only matches on earlier calendar dates within the preceding 365 days. It requires at least five prior statistics-complete matches per player for overall rates and at least five prior same-surface matches for surface rates. All matches on a date are scored before any statistics from that date enter histories. ATP and WTA are evaluated separately. The model is a regularized logistic correction to chronological K=32 Elo; it does not replace Elo.
+
+Successful aggregate run: GitHub Actions `44866408907`. Source archive: Jeff Sackmann/Tennis Abstract ATP and WTA datasets, CC BY-NC-SA 4.0. Research report includes 112,768 ATP and 97,614 WTA source rows; usable pre-match feature records: 28,149 ATP and 26,364 WTA. Evaluation is a pooled annual walk-forward over 2020–2026 (2026 archive partial through May 25), not an untouched final holdout. Match statistics are post-match observations and must only enter future-date histories. The source license is non-commercial; separate permission is required for commercial use.
+
+### Pooled walk-forward results for overall + same-surface serve/return correction
+
+| Tour | Evaluation matches | Elo Brier | Adjusted Brier | Brier difference (95% CI) | Elo LogLoss | Adjusted LogLoss | LogLoss difference (95% CI) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ATP | 10,809 | 0.219690 | 0.219585 | -0.000105 (-0.000315, +0.000106) | 0.628924 | 0.628368 | -0.000556 (-0.001089, -0.000023) |
+| WTA | 8,886 | 0.216927 | 0.216732 | -0.000196 (-0.000524, +0.000133) | 0.622782 | 0.622094 | -0.000688 (-0.001461, +0.000085) |
+
+Lower is better. Negative paired differences favor the adjusted model. ATP LogLoss improved with a 95% interval narrowly below zero; ATP Brier did not show a clear improvement. WTA point estimates improved, but both intervals include zero. The annual results are not uniform: the 2021 ATP Brier result regressed, while 2024 showed a clear improvement for both tours. The specification was selected among several tested feature combinations using the same pooled walk-forward period, so these figures are not an independent final confirmation and are vulnerable to selection effects.
+
+**Decision:** retain overall and same-surface serve/return rates as research candidates only. Do not activate them in production or claim betting profitability. Next validation must freeze the specification and test it on a later untouched chronological period, report calibration by tour/surface/tier and compare against Elo and rank/age baselines. No live probabilities, EV calculations or recommendations were changed.
