@@ -141,3 +141,7 @@ Successful run: GitHub Actions `44863980944`. The player-tour grouping is a seco
 - Unclassified proxy group shows the same pattern: 5.97% observed switches when expected and 97.85% holds when expected.
 
 The stale-server pattern appears in both ATP and WTA player-affiliation groups, so it is not a tour-specific quirk in this sample. Do not use tiebreak `server` for point ownership or serve/return features. Ordinary-game boundary mismatches remain a separate unresolved issue.
+
+## Score-state delta audit (2026-11-21)
+
+The next diagnostic separates transitions where the full score state is unchanged from transitions where point-score fields are missing. It records whether the server or tiebreak flag changed despite an unchanged score, and whether missing point scores coincide with game/set counter changes. This helps distinguish duplicate/update rows from incomplete score states without exposing match IDs or player-level records.
