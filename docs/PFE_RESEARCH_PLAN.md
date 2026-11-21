@@ -41,7 +41,7 @@
 
 1. Finish validating the PFE point-state research parser and the meaning of each source field.
 2. Resolve server, tiebreak and incomplete-state semantics; keep unsafe fields blocked.
-3. Continue serve/return data-quality and denominator research.
+3. Continue serve/return sensitivity tests: 180/365/730-day windows, minimum history 3/5/10, surface shrinkage and residualized surface effects; keep current rates research-only.
 4. Consolidate validated rank/age and Elo/surface/form candidates into independent ATP and WTA evaluation reports.
 5. Build and test playing-style/matchup candidates from sufficiently representative data.
 6. Add physical, schedule and market-context candidates only with reliable timestamped pre-match evidence.
