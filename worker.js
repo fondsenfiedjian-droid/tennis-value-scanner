@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "winamax-six-hour-freshness-2026-11-20-1";
+const WORKER_BUILD_ID = "winamax-odds-api-discovery-2026-11-21-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -422,7 +422,8 @@ export default {
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/historical", "/predict"]
+        oddsApiConfigured: Boolean(env.ODDS_API_KEY),
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/historical", "/predict"]
       });
     }
 
@@ -630,6 +631,70 @@ export default {
         });
       } catch (error) {
         return response({ error: "Could not retrieve odds from Apify" }, 502);
+      }
+    }
+
+    if (path === "/odds-api/sports") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.ODDS_API_KEY) return response({ error: "ODDS_API_KEY secret is not configured" }, 500);
+
+      try {
+        // The Odds API documents /v4/sports as quota-exempt. Use the key header
+        // so the credential never appears in a URL, logs, or returned payload.
+        const cache = caches.default;
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-sports/v1", { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const upstream = await fetch("https://api.the-odds-api.com/v4/sports", {
+          headers: { "x-api-key": env.ODDS_API_KEY, "Accept": "application/json" }
+        });
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "The Odds API returned invalid JSON", upstreamStatus: upstream.status }, 502);
+        }
+        if (!upstream.ok) {
+          return response({
+            error: "The Odds API sports discovery request failed",
+            upstreamStatus: upstream.status,
+            providerMessage: typeof body?.message === "string" ? body.message : null
+          }, upstream.status);
+        }
+        if (!Array.isArray(body)) {
+          return response({ error: "The Odds API returned an unexpected sports payload" }, 502);
+        }
+
+        const tennisSports = body.filter(sport =>
+          String(sport?.key || "").startsWith("tennis_")
+        );
+        const payload = {
+          source: "The Odds API",
+          retrievedAt: new Date().toISOString(),
+          quotaCost: 0,
+          totalSports: body.length,
+          tennisSportsCount: tennisSports.length,
+          tennisSports
+        };
+        const headers = {
+          "Cache-Control": "public, max-age=900",
+          "X-Data-Cache": "MISS"
+        };
+        for (const name of ["x-requests-remaining", "x-requests-used", "x-requests-last"]) {
+          const value = upstream.headers.get(name);
+          if (value !== null) headers[name] = value;
+        }
+        const cacheResponse = new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        });
+        await cache.put(cacheKey, cacheResponse);
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not reach The Odds API" }, 502);
       }
     }
 
