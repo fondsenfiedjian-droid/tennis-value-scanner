@@ -281,10 +281,10 @@ function auditScoreVocabulary(rows) {
     if (isTrue(row.is_tiebreak)) {
       report.tiebreakStates++;
       for (const value of [p1, p2]) {
-        if (/^\\d+$/.test(value)) add(report.tiebreakValueCounts, value);
+        if (/^\d+$/.test(value)) add(report.tiebreakValueCounts, value);
         else add(report.unexpectedValueCounts, value || "<missing>");
       }
-      if (!/^\\d+$/.test(p1) || !/^\\d+$/.test(p2)) report.tiebreakNonNumericStates++;
+      if (!/^\d+$/.test(p1) || !/^\d+$/.test(p2)) report.tiebreakNonNumericStates++;
     } else if (isFalse(row.is_tiebreak)) {
       report.normalStates++;
       for (const value of [p1, p2]) {
@@ -292,7 +292,7 @@ function auditScoreVocabulary(rows) {
         else add(report.unexpectedValueCounts, value || "<missing>");
       }
       if (normalScoreRank(p1) === null || normalScoreRank(p2) === null) report.normalUnexpectedStates++;
-      if (/^\\d+$/.test(p1) || /^\\d+$/.test(p2)) report.numericScoresOutsideTiebreak++;
+      if (/^\d+$/.test(p1) || /^\d+$/.test(p2)) report.numericScoresOutsideTiebreak++;
     } else {
       report.unknownFlagStates++;
     }
