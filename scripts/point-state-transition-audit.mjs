@@ -441,7 +441,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
       captureBoundaryCoverage.byPlayerTourAgreement[playerTour] = {
         totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
         firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
-        noRecordedTerminalEvent: 0, recordedTerminalEvent: 0,
+        noRecordedTerminalEvent: 0, recordedTerminalEvent: 0, unknownCompletionStatus: 0,
         finalSetTargetReached: 0, finalSetTargetNotReached: 0,
         noTerminalEventTargetReached: 0, noTerminalEventTargetNotReached: 0,
         recordedTerminalEventTargetReached: 0, recordedTerminalEventTargetNotReached: 0, unknownBestOf: 0
@@ -452,7 +452,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     const first = states[0], last = states.at(-1);
     const atStart = isMatchStart(first);
     const firstMissing = pointScoreMissing(first), lastMissing = pointScoreMissing(last);
-    const noRecordedTerminalEvent = !meta.eventStatus;
+    const completionClass = meta.eventStatus === null ? "unknownCompletionStatus" :
+      meta.eventStatus ? "recordedTerminalEvent" : "noRecordedTerminalEvent";
     for (const target of [captureBoundaryCoverage.overall, bucket, playerBucket]) {
       target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
       if (firstMissing) target.firstStateMissingPointScore++;
