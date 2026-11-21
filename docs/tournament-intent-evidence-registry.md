@@ -30,3 +30,16 @@ The source publication time and the time the evidence was captured must be no la
 ## Separation from prediction
 
 This registry feeds the evidence classifier only. It does not modify Elo, model probability, EV or bet selection. It is not an automated web scraper and does not claim that a player intends to lose.
+
+## Local import utility
+
+The repository includes `scripts/import-tournament-intent-evidence.mjs`. It imports a JSON array, a JSON object containing `records[]`, or JSONL into a local registry file. It merges an existing registry, de-duplicates evidence, retains rejection reasons and writes the normalized result atomically. It has no network access and does not write to Cloudflare or the live app.
+
+Example:
+
+```sh
+node scripts/import-tournament-intent-evidence.mjs --input incoming-evidence.json --out tournament-intent-evidence.json --dry-run
+node scripts/import-tournament-intent-evidence.mjs --input incoming-evidence.json --existing tournament-intent-evidence.json --out tournament-intent-evidence.json
+```
+
+Use a separate incoming file for each review batch. Back up the registry before replacing it. Keep source URLs and timestamps; never backdate the capture time. The output contains normalized accepted records and the most recent batch's rejection report.
