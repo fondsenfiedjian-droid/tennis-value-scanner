@@ -3,21 +3,24 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseCsv } from "./backtest.mjs";
 import { runLayoffWalkForward } from "./sackmann-layoff-research.mjs";
 
+const OVER90=["player1Over90","player2Over90"];
+const OVER180=["player1Over180","player2Over180"];
+const RETURN_COUNTS=["player1ReturnMatchesLog","player2ReturnMatchesLog","returnMatchesDiffLog"];
 const VARIANTS = [
   { key:"full", label:"Все признаки", excluded:[] },
-  { key:"no_90_180_indicators", label:"Без индикаторов 90/180 дней", excluded:[
-    "player1Over90","player2Over90","player1Over180","player2Over180"
-  ]},
-  { key:"no_max_layoff", label:"Без максимальной длительности перерыва", excluded:["layoffMaxLog"]},
-  { key:"no_return_match_count", label:"Без числа матчей после возвращения", excluded:[
-    "player1ReturnMatchesLog","player2ReturnMatchesLog","returnMatchesDiffLog"
-  ]},
-  { key:"no_unknown_history", label:"Без признака неизвестной истории", excluded:["unknownPriorCount"]}
+  { key:"no_90_180_indicators", label:"Без индикаторов 90/180 дней", excluded:[...OVER90,...OVER180] },
+  { key:"no_90_indicators", label:"Без индикаторов 90 дней", excluded:OVER90 },
+  { key:"no_180_indicators", label:"Без индикаторов 180 дней", excluded:OVER180 },
+  { key:"no_max_layoff", label:"Без максимальной длительности перерыва", excluded:["layoffMaxLog"] },
+  { key:"no_return_match_count", label:"Без числа матчей после возвращения", excluded:RETURN_COUNTS },
+  { key:"no_unknown_history", label:"Без признака неизвестной истории", excluded:["unknownPriorCount"] },
+  { key:"atp_compact", label:"Компактная модель ATP: без max layoff, счётчика возвращения и неизвестной истории",
+    excluded:["layoffMaxLog",...RETURN_COUNTS,"unknownPriorCount"] }
 ];
 
 function summarize(report) {
   const cohorts={};
-  for(const key of ["180_364","365_plus"]) {
+  for(const key of ["90_179","180_364","365_plus"]) {
     const g=report.cohorts.layoffDays[key];
     cohorts[key]=g?{n:g.playerMatchObservations,delta:g.delta}:null;
   }
@@ -58,8 +61,8 @@ async function main() {
     evaluationEnd:opts.to??"20260525",kFactor:Number(opts.k??32),
     minTrainingMatches:Number(opts["min-training"]??1000),
     maxTrainingRows:Number(opts["max-training"]??20000),symmetricTraining:true};
-  const results={schemaVersion:1,researchOnly:true,tour:opts.tour,
-    method:"Walk-forward yearly models; same dates and Elo baseline in every variant; symmetric training; one feature group excluded at a time.",
+  const results={schemaVersion:2,researchOnly:true,tour:opts.tour,
+    method:"Walk-forward yearly models; same dates and Elo baseline in every variant; symmetric training; one feature group excluded at a time, plus a predeclared compact ATP combination.",
     variants:{}};
   for(const variant of VARIANTS) {
     console.error("Running "+variant.key+"...");
