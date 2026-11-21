@@ -954,3 +954,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added distributions of elapsed seconds between consecutive score states, separately for inferred and ambiguous transitions (count, mean, p50/p90/p95/p99/max and bins).
 - Added synthetic regression coverage and aggregate-only reporting in the ephemeral public-sample workflow, including per-reason gap summaries for ambiguous transitions. Real-sample results pending.
 - Real-sample timestamp-gap run `44863667707`: all-transition median 25.44s; inferred median 27.52s; ambiguous median 15.20s. Many ambiguities are short-gap: multi-point-gap 45.8% within 15s; game-counter-jump 52.4%; missing-point-score 78.7%; no-score-change 87.0%. Ambiguity is not explained only by long gaps; investigate score/update semantics and counter consistency, not a simple time threshold.
+
+### Tiebreak server-switch matrix (2026-11-21)
+- Official dataset dictionary defines `server` as the player serving at that score state; next-point-server is the documented meaning. Last-point-server remains only a diagnostic alternative.
+- Added separate counts for tiebreak transitions where service should switch vs hold, and what the observed field did. This should clarify the near-50% aggregate agreement. Synthetic test added; real-sample matrix pending.
+- Keep server-to-point attribution blocked until matrix and source-quality checks are reviewed.
