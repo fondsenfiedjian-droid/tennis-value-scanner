@@ -1063,4 +1063,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Bumped static PWA cache from v133 to v134 so clients receive the updated settings UI.
 - Added regression tests for safe default, provider isolation, incomplete-pair suppression, best-available selection and settings persistence.
 - No probability model, EV formula, provider API, secrets, paid services, production Worker or production deployment changed.
-- Validation/CI pending. Keep this branch and its PR draft until checks pass and the user reviews it.
+- Initial CI caught an obsolete UI assertion expecting the previous all-books odds label. Updated the UI regression test to assert the selected-book EV quotes, separately labelled comparison quotes and missing-pair notice. Re-run CI is pending. Keep this branch and its PR draft until checks pass and the user reviews it.
