@@ -204,3 +204,18 @@ Successful real-sample run: GitHub Actions `44865563966`.
 The public sample data dictionary describes `server` as the player serving at a state. The current API reference further warns that tiebreak server rows are not settled and that tiebreak serving rotation cannot be reconstructed reliably from sampled rows when points are skipped; it explicitly says to withhold server-dependent tiebreak analysis unless the encoding reconciles for the match. See [Live Tennis API data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) and [Live Tennis API full reference, HistoryTapeRow.server](https://docs.livetennisapi.com/reference.html#historytaperow).
 
 Interpretation: the sample supports server continuity inside ordinary games, but game-boundary alignment is materially weaker and the tiebreak server field fails the expected rotation check. Do not use this field as a tiebreak server/returner feature, do not infer serve ownership from it, and do not use it to label point winners. Normal-game server use also remains research-only until game-boundary exceptions and the exact before/after state convention are hand-checked against source matches. No production feature is enabled.
+
+## Normal-game server boundary gap audit (2026-11-21)
+
+The June 2026 public sample shows that server-field agreement at ordinary game boundaries depends strongly on the gap between consecutive observed states. Successful run: GitHub Actions `44866428352`.
+
+| Gap between consecutive captured states | Checked game boundaries | Server field switched | Switch rate |
+|---|---:|---:|---:|
+| Under 5 s | 4,185 | 1,333 | 31.9% |
+| 5–15 s | 6,215 | 1,940 | 31.2% |
+| 15–30 s | 10,205 | 4,116 | 40.3% |
+| 30–60 s | 27,763 | 18,351 | 66.1% |
+| 60–180 s | 36,910 | 31,065 | 84.2% |
+| 180 s or more | 4,767 | 4,083 | 85.6% |
+
+Across these 90,045 boundaries, 85,670 after-states (95.1%) had a 0-0 point-score reset. The rising switch rate with longer capture gaps is consistent with delayed/asynchronous updates to the server field, but the gap is only a proxy for elapsed match time and can also include unobserved points or interruptions. It does not establish which exact row owns the serve. Keep server-based point labeling and production features blocked; do not reinterpret the server field based on gap alone.

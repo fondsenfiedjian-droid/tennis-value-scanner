@@ -425,3 +425,22 @@ test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-
     missingPointScoreStates: 0
   });
 });
+
+
+test("breaks down regular game-boundary server changes by timestamp gap", () => {
+  const rows = [
+    state({ points_p1: "40", points_p2: "30", server: "1", games_p1: "[0]", games_p2: "[0]", timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "0", points_p2: "0", server: "2", games_p1: "[1]", games_p2: "[0]", timestamp_utc: "2026-06-01T10:00:20Z" }),
+    state({ points_p1: "40", points_p2: "30", server: "2", games_p1: "[1]", games_p2: "[0]", timestamp_utc: "2026-06-01T10:01:00Z" }),
+    state({ points_p1: "0", points_p2: "0", server: "2", games_p1: "[1]", games_p2: "[1]", timestamp_utc: "2026-06-01T10:01:40Z" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  const fast = report.serverAlignment.regularGameBoundaryByGap["15-30s"];
+  const slower = report.serverAlignment.regularGameBoundaryByGap["30-60s"];
+  assert.equal(fast.checked, 1);
+  assert.equal(fast.observedSwitch, 1);
+  assert.equal(fast.afterScoreReset, 1);
+  assert.equal(slower.checked, 1);
+  assert.equal(slower.observedHold, 1);
+  assert.equal(slower.afterScoreReset, 1);
+});
