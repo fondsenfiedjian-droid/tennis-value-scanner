@@ -196,7 +196,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const excludedFeatures=new Set(options.excludedFeatures??[]);
   const candidateFeatures=FEATURES.filter(name=>!excludedFeatures.has(name));
   if(candidateFeatures.length===0) throw new RangeError("At least one candidate feature must remain");
-  const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),returnCohorts=new Map();
+  const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),layoffRoleCohorts=new Map(),returnCohorts=new Map();
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
     const date=matches[index].date,year=date.slice(0,4);
@@ -258,6 +258,12 @@ export function runLayoffWalkForward(inputRows, options={}) {
                 const bucket=cohortBucket(layoffCohorts,band.key);
                 add(bucket.baseline,view.pBase,view.outcome,errorDetails);
                 add(bucket.candidate,view.pCandidate,view.outcome,errorDetails);
+                if(band.key==="180_364"){
+                  const role=orientedRow.eloScaled>=0?"elo_favorite":"elo_underdog";
+                  const roleBucket=cohortBucket(layoffRoleCohorts,role);
+                  add(roleBucket.baseline,view.pBase,view.outcome,errorDetails);
+                  add(roleBucket.candidate,view.pCandidate,view.outcome,errorDetails);
+                }
               }
             }
             const returnIndex=view.gap!=null&&view.gap>=90?1:(view.episode?view.played+1:0);
@@ -327,13 +333,14 @@ export function runLayoffWalkForward(inputRows, options={}) {
     cohortDefinitions:{
       layoffBands:"Player-match observations grouped by days since the player's previous archived completed match; these are not injury labels.",
       returnMatches:"Player-match observations for the first, second and third match after a gap of at least 90 calendar days.",
-      unit:"Each cohort observation is one player in one match; a match can contribute two observations if both players qualify."
+      unit:"Each cohort observation is one player in one match; a match can contribute two observations if both players qualify.",
+      eloRole:"For 180–364 day layoff observations, Elo favorite means the player had pre-match overall Elo at least as high as the opponent; Elo underdog means lower pre-match Elo."
     },
     worstErrorsIncluded:captureWorstErrors,
     symmetricTraining,
     candidateFeatures,
     excludedFeatures:[...excludedFeatures],
-    cohorts:{layoffDays:finishCohorts(layoffCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
+    cohorts:{layoffDays:finishCohorts(layoffCohorts),layoff180_364ByEloRole:finishCohorts(layoffRoleCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
     byYear
   };
 }
