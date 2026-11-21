@@ -276,7 +276,7 @@ async function main(){
  for(let i=0;i<args.length;i++){if(args[i]==="--out"){if(!args[i+1])throw new Error("Missing output path");output=args[++i];}else if(args[i]==="--sensitivity")sensitivity=true;else if(args[i].startsWith("--"))throw new Error("Unknown option: "+args[i]);else files.push(args[i]);}
  if(!files.length)throw new Error("Usage: node scripts/sackmann-serve-return-research.mjs [--out report.json] atp_matches_YYYY.csv wta_matches_YYYY.csv ...");
  const inputs=[];for(const filename of files){inputs.push({filename,content:await readFile(filename,"utf8")});console.error("Loaded "+filename);}
- const report=runServeReturnResearch(inputs);await writeFile(output,JSON.stringify(report,null,2)+"\n");
+ const report=sensitivity?runServeReturnSensitivity(inputs):runServeReturnResearch(inputs);await writeFile(output,JSON.stringify(report,null,2)+"\n");
  console.log(JSON.stringify(report,null,2));console.error("Research only: no live probabilities, EV or recommendations are changed.");
 }
 if(process.argv[1]&&import.meta.url.endsWith(process.argv[1]))await main();
