@@ -925,3 +925,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Research gate: no candidate feature enters production solely because it is available or intuitively plausible. Verify data definitions, player perspective, denominators, timestamp availability and leakage controls; test chronologically on independent holdouts and compare against the appropriate baseline.
 - Development sequence: maintain the usable scanner while expanding the historical archive and research modules; validate each factor independently, then combinations; preserve aggregate-only reporting and source-license restrictions.
 - Current immediate task: repair and pass the point-state audit CLI regression test, then continue point-state sample completeness and server-transition alignment validation. Point-state and Match Charting candidates remain research-only until their chronology and data-quality gates are satisfied.
+
+### PFE real point-state sample audit harness (2026-11-21)
+- Added timestamp integrity metrics and aggregate coverage split by the source's literal `tier_key` in `scripts/point-state-transition-audit.mjs`; missing or non-monotonic timestamps are counted, never silently repaired by sorting.
+- Added tests for timestamp-order flags and tier-level aggregate output.
+- Added `.github/workflows/pfe-point-state-sample-audit.yml`: downloads the public Zenodo sample into an ephemeral runner, audits it with the match index, and emits aggregate diagnostics only. Raw CC BY-NC 4.0 data is not committed or retained as a workflow artifact.
+- Real-sample execution and CI validation are pending; do not claim real data results until the workflow completes successfully.
+- Working mode remains combined; ATP and WTA are both in scope. Initial grouping uses source `tier_key` values without guessing or relabelling them as tours.
