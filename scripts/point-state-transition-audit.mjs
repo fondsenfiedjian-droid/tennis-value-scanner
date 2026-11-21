@@ -315,13 +315,22 @@ function auditTiebreakFlagAlignment(groups) {
     normalFlagNumericWithNoAdjacentTiebreak: 0,
     tiebreakFlagNonNumericAnomalies: 0, tiebreakFlagAlphaAdjacentToNormal: 0,
     tiebreakFlagAlphaWithNoAdjacentNormal: 0,
-    missingPointScoreStates: 0
+    missingPointScoreStates: 0,
+    normalFlagNumericValueCounts: {}, normalFlagNumericPairCounts: {},
+    normalFlagNumericWithinDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericPreviousTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericNextTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    tiebreakFlagAlphaValueCounts: {}, tiebreakFlagAlphaPairCounts: {},
+    tiebreakFlagAlphaWithinDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
   };
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
   const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
   const scorePair = row => [String(row.points_p1 ?? "").trim().toUpperCase(), String(row.points_p2 ?? "").trim().toUpperCase()];
   const numericAnomaly = row => scorePair(row).some(value => /^\d+$/.test(value) && normalScoreRank(value) === null);
   const alphaTiebreakAnomaly = row => scorePair(row).some(value => value && !/^\d+$/.test(value));
+  const isNumericTiebreak = row => !!row && isTrue(row.is_tiebreak) && scorePair(row).every(value => /^\d+$/.test(value));
+  const isNormalPair = row => !!row && isFalse(row.is_tiebreak) && scorePair(row).every(value => normalScoreRank(value) !== null);
+  const add = (map, value) => { map[value] = (map[value] || 0) + 1; };
   for (const states of groups.values()) {
     for (let i = 0; i < states.length; i++) {
       const row = states[i];
@@ -329,17 +338,28 @@ function auditTiebreakFlagAlignment(groups) {
       if (!p1 || !p2) report.missingPointScoreStates++;
       if (isFalse(row.is_tiebreak) && numericAnomaly(row)) {
         report.normalFlagNumericAnomalies++;
-        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
-        if (adjacent.some(next => isTrue(next.is_tiebreak) && scorePair(next).every(value => /^\d+$/.test(value)))) {
-          report.normalFlagNumericAdjacentToTiebreak++;
-        } else report.normalFlagNumericWithNoAdjacentTiebreak++;
+        for (const value of [p1, p2]) if (/^\d+$/.test(value) && normalScoreRank(value) === null) add(report.normalFlagNumericValueCounts, value);
+        add(report.normalFlagNumericPairCounts, [p1 || "<missing>", p2 || "<missing>"].join(":"));
+        if (isNumericTiebreak(states[i - 1]) || isNumericTiebreak(states[i + 1])) report.normalFlagNumericAdjacentToTiebreak++;
+        else report.normalFlagNumericWithNoAdjacentTiebreak++;
+        for (let distance = 1; distance <= 5; distance++) {
+          const previous = states[i - distance], next = states[i + distance];
+          if (isNumericTiebreak(previous)) add(report.normalFlagNumericPreviousTiebreakDistance, distance);
+          if (isNumericTiebreak(next)) add(report.normalFlagNumericNextTiebreakDistance, distance);
+          if (isNumericTiebreak(previous) || isNumericTiebreak(next)) add(report.normalFlagNumericWithinDistance, distance);
+        }
       }
       if (isTrue(row.is_tiebreak) && alphaTiebreakAnomaly(row)) {
         report.tiebreakFlagNonNumericAnomalies++;
-        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
-        if (adjacent.some(next => isFalse(next.is_tiebreak) && scorePair(next).every(value => normalScoreRank(value) !== null))) {
-          report.tiebreakFlagAlphaAdjacentToNormal++;
-        } else report.tiebreakFlagAlphaWithNoAdjacentNormal++;
+        for (const value of [p1, p2]) if (value && !/^\d+$/.test(value)) add(report.tiebreakFlagAlphaValueCounts, value);
+        add(report.tiebreakFlagAlphaPairCounts, [p1 || "<missing>", p2 || "<missing>"].join(":"));
+        if (isNormalPair(states[i - 1]) || isNormalPair(states[i + 1])) report.tiebreakFlagAlphaAdjacentToNormal++;
+        else report.tiebreakFlagAlphaWithNoAdjacentNormal++;
+        for (let distance = 1; distance <= 5; distance++) {
+          if (isNormalPair(states[i - distance]) || isNormalPair(states[i + distance])) {
+            add(report.tiebreakFlagAlphaWithinDistance, distance);
+          }
+        }
       }
     }
   }
@@ -358,6 +378,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     const tourMatch = round.match(/^(ATP|WTA)\b/i);
     if (id) metadata.set(id, {
       tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
+      bestOf: String(match.best_of ?? "").trim().toUpperCase(),
+      eventStatus: String(match.event_status ?? "").trim(),
       tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified",
       playerTour: (() => {
         const p1 = playerTours.get(String(match.player1_id ?? "").trim());
@@ -382,6 +404,77 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     groups.get(id).push(row);
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
+  const captureBoundaryCoverage = {
+    totalMatches: groups.size,
+    byTour: {},
+    byPlayerTourAgreement: {},
+    overall: {
+      totalMatches: groups.size,
+      firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+      firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+      normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
+      finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+    }
+  };
+  const isMatchStart = state => integer(state.sets_p1) === 0 && integer(state.sets_p2) === 0 &&
+    JSON.stringify(gameArray(state.games_p1)) === "[0]" &&
+    JSON.stringify(gameArray(state.games_p2)) === "[0]" &&
+    String(state.points_p1 ?? "").trim() === "0" &&
+    String(state.points_p2 ?? "").trim() === "0" &&
+    !["true", "1", "yes"].includes(String(state.is_tiebreak ?? "").trim().toLowerCase());
+  const pointScoreMissing = state => !String(state.points_p1 ?? "").trim() || !String(state.points_p2 ?? "").trim();
+  for (const [id, states] of groups) {
+    const meta = metadata.get(id) || { tour: "unclassified", bestOf: "", eventStatus: "" };
+    const tour = meta.tour || "unclassified";
+    if (!captureBoundaryCoverage.byTour[tour]) {
+      captureBoundaryCoverage.byTour[tour] = {
+        totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+        firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+        normalCompletion: 0, nonNormalCompletion: 0, unknownCompletionStatus: 0,
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0, normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0, nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+      };
+    }
+    const bucket = captureBoundaryCoverage.byTour[tour];
+    bucket.totalMatches++;
+    const playerTour = meta.playerTour || "unclassified";
+    if (!captureBoundaryCoverage.byPlayerTourAgreement[playerTour]) {
+      captureBoundaryCoverage.byPlayerTourAgreement[playerTour] = {
+        totalMatches: 0, firstStateAtMatchStart: 0, firstStateNotAtMatchStart: 0,
+        firstStateMissingPointScore: 0, lastStateMissingPointScore: 0,
+        normalCompletion: 0, nonNormalCompletion: 0,
+        finalSetTargetReached: 0, finalSetTargetNotReached: 0,
+        normalCompletionTargetReached: 0, normalCompletionTargetNotReached: 0,
+        nonNormalCompletionTargetReached: 0, nonNormalCompletionTargetNotReached: 0, unknownBestOf: 0
+      };
+    }
+    const playerBucket = captureBoundaryCoverage.byPlayerTourAgreement[playerTour];
+    playerBucket.totalMatches++;
+    const first = states[0], last = states.at(-1);
+    const atStart = isMatchStart(first);
+    const firstMissing = pointScoreMissing(first), lastMissing = pointScoreMissing(last);
+    const normalCompletion = !meta.eventStatus;
+    for (const target of [captureBoundaryCoverage.overall, bucket, playerBucket]) {
+      target[atStart ? "firstStateAtMatchStart" : "firstStateNotAtMatchStart"]++;
+      if (firstMissing) target.firstStateMissingPointScore++;
+      if (lastMissing) target.lastStateMissingPointScore++;
+      if (!meta.eventStatus) target.normalCompletion++;
+      else target.nonNormalCompletion++;
+      if (meta.bestOf === "BO3" || meta.bestOf === "BO5") {
+        const needed = meta.bestOf === "BO5" ? 3 : 2;
+        const lastSets1 = integer(last.sets_p1), lastSets2 = integer(last.sets_p2);
+        const completedSets = lastSets1 !== null && lastSets2 !== null ? lastSets1 + lastSets2 : null;
+        if (completedSets !== null && completedSets >= needed) {
+          target.finalSetTargetReached++;
+          if (!meta.eventStatus) target.normalCompletionTargetReached++;
+          else target.nonNormalCompletionTargetReached++;
+        } else {
+          target.finalSetTargetNotReached++;
+          if (!meta.eventStatus) target.normalCompletionTargetNotReached++;
+          else target.nonNormalCompletionTargetNotReached++;
+        }
+      } else target.unknownBestOf++;
+    }
+  }
   const tiebreakFlagAlignment = auditTiebreakFlagAlignment(groups);
   const tiebreakServerByPlayerTour = {};
   const stateDeltaDiagnostics = {
@@ -629,6 +722,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
     scoreVocabulary,
+    captureBoundaryCoverage,
     tiebreakFlagAlignment,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
