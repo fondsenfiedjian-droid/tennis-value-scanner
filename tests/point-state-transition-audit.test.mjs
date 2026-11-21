@@ -395,7 +395,7 @@ test("audits normal-game and tiebreak score vocabularies separately", () => {
   assert.equal(report.scoreVocabulary.unknownFlagStates, 1);
   assert.equal(report.scoreVocabulary.normalUnexpectedStates, 1);
   assert.equal(report.scoreVocabulary.tiebreakNonNumericStates, 1);
-  assert.equal(report.scoreVocabulary.numericScoresOutsideTiebreak, 1);
+  assert.equal(report.scoreVocabulary.unexpectedNumericNormalValues, 1);
   assert.equal(report.scoreVocabulary.normalValueCounts.AD, 1);
   assert.equal(report.scoreVocabulary.tiebreakValueCounts["7"], 1);
   assert.equal(report.scoreVocabulary.unexpectedValueCounts["50"], 1);
