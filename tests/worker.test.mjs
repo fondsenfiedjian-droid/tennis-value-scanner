@@ -1723,7 +1723,7 @@ test("live value quotes are rejected after scheduled start and for non-upcoming 
 test("odds matching supports provider-specific event IDs and keeps the best price per player side", () => {
   assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
-  assert.match(frontendSource, /function selectPreferredBookmakerPair\(quotes,preference,sideForPlayer,playerName\)/);
+  assert.match(frontendSource, /function selectPreferredBookmakerPair\(quotes,preference,sideForPlayer,playerName,eventGroupKey\)/);
   assert.match(frontendSource, /selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a\)/);
   assert.match(frontendSource, /const matched=selectedBookQuotes\.filter/);
   assert.match(frontendSource, /completePreferredPair=preferredBookmaker==='best'\|\|selectedPair\.completePair/);
