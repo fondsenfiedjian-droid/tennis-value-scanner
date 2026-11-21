@@ -217,16 +217,22 @@ export function runWinnerFormulaResearch(csvTexts, options={}) {
         baseLogit:"logit of existing combined Elo/surface/form/H2H probability",
         matches3:"A-minus-B prior matches in previous 3 calendar days",
         matches7:"A-minus-B prior matches in previous 7 calendar days",
-        playingDays7:"A-minus-B playing days in previous 7 calendar days",
-        minutes7:"A-minus-B known match minutes in previous 7 calendar days",
-        durationCoverage7:"A-minus-B share of prior matches with known duration",
-        workloadAvailable:"1 when at least one player's prior 7-day match record exists"
+        playingDays7:"A-minus-B distinct playing days in previous 7 calendar days",
+        matches14:"A-minus-B prior matches in previous 14 calendar days",
+        matches28:"A-minus-B prior matches in previous 28 calendar days",
+        playingDays14:"A-minus-B distinct playing days in previous 14 calendar days",
+        playingDays28:"A-minus-B distinct playing days in previous 28 calendar days",
+        restDays:"A-minus-B days since most recent prior match, capped at 30; only when both players have prior history",
+        restDaysAvailable:"1 when both players have at least one prior match in the archive",
+        workloadAvailable:"1 when at least one player has a prior match in the previous 7 days",
+        workloadAvailable14:"1 when at least one player has a prior match in the previous 14 days",
+        workloadAvailable28:"1 when at least one player has a prior match in the previous 28 days"
       }
     };
   }
   return {
     source:"Valuebetennis open match data (CC BY 4.0)",
-    method:"Chronological Elo baseline plus regularized logistic workload correction; train strictly before evaluation window.",
+    method:"Chronological existing combined PFE probability plus regularized logistic workload correction; train strictly before evaluation window.",
     trainingEnd:trainEnd,evaluationStart:evalStart,evaluationEnd:evalEnd,
     reportsByTour:reports,
     importantLimit:"Research only. This first formula tests measurable workload/recovery inputs on top of the existing combined model. It does not yet include verified injuries, weather, serve/return point stats, style matchups, psychological or motivation claims, protected ranking, or complete tour-wide workload. Missing workload is flagged, not invented. No production model is changed and this is not betting ROI."
