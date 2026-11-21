@@ -241,7 +241,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   archiveMirror:"https://github.com/Aneeshers/tennis-sackmann-archive",
   dataLicense:"CC BY-NC-SA 4.0",reportLicense:"CC BY-NC-SA 4.0",
   attribution:"Match data compiled by Jeff Sackmann / Tennis Abstract. Aggregate research only; no raw rows or player-level records are included.",
-  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,reports,
+  evaluationPeriod:firstEvaluationYear+"–"+lastEvaluationYear,featureStartYear,fixedHoldoutStartYear:holdoutStartYear,fixedHoldoutProtocol:"Fit each feature specification once using eligible rows from featureStartYear through the year before holdoutStartYear; freeze coefficients and evaluate holdoutStartYear through lastEvaluationYear without refitting.",reports,
   method:"For each player, aggregate serve points won / serve points played and return points won / return points faced over the previous 365 days. Build overall and same-surface rates; require at least five prior statistics-complete matches for each player. Compare each player1-minus-player2 feature set as a regularized logistic correction to Elo. Lower Brier and LogLoss are better.",
   limitations:[
    "The source is non-commercial CC BY-NC-SA 4.0; do not use it commercially without separate permission.",
