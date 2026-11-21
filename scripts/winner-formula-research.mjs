@@ -78,24 +78,25 @@ function pairedModelDifference(rows, referenceModel, candidateModel) {
 function featureRow(prediction, workload) {
   const key=pairKey(prediction.date,prediction.player1Id,prediction.player2Id);
   const w=workload.get(key);
-  const available=Boolean(w && (w.priorMatchRecords7??0)>0);
+  const recentWorkloadAvailable=Boolean(w && (w.priorMatchRecords7??0)>0);
+  const restDaysAvailable=Boolean(w && w.restDaysAvailable===1);
   return {
     date:prediction.date,
     features:{
       baseLogit:logit(prediction.probabilities.combined),
-      matches3:available?w.matches3:0,
-      matches7:available?w.matches7:0,
-      playingDays7:available?w.playingDays7:0,
-      restDays:available?w.restDays:0,
-      restDaysAvailable:available?w.restDaysAvailable:0,
-      minutes7:available?w.minutes7:0,
-      durationCoverage7:available?w.durationCoverage7:0,
-      workloadAvailable:available?1:0
+      matches3:recentWorkloadAvailable?w.matches3:0,
+      matches7:recentWorkloadAvailable?w.matches7:0,
+      playingDays7:recentWorkloadAvailable?w.playingDays7:0,
+      restDays:restDaysAvailable?w.restDays:0,
+      restDaysAvailable:restDaysAvailable?1:0,
+      minutes7:recentWorkloadAvailable?w.minutes7:0,
+      durationCoverage7:recentWorkloadAvailable?w.durationCoverage7:0,
+      workloadAvailable:recentWorkloadAvailable?1:0
     },
     workloadDiagnostics:{
       priorMatchRecords7:w?.priorMatchRecords7??0,
       knownDurationRecords7:w?.knownDurationRecords7??0,
-      bothPlayersHavePriorHistory:Boolean(w?.restDaysAvailable===1)
+      bothPlayersHavePriorHistory:restDaysAvailable
     },
     baseProbability:prediction.probabilities.combined,
     outcome:prediction.winnerId===prediction.player1Id?1:0,
@@ -111,10 +112,10 @@ function workloadAvailability(rows) {
   const knownDurations=rows.reduce((sum,row)=>sum+row.workloadDiagnostics.knownDurationRecords7,0);
   return {
     matches:total,
-    anyPriorHistoryMatches:anyHistory,
-    anyPriorHistoryPct:total?+(100*anyHistory/total).toFixed(2):null,
-    bothPlayersPriorHistoryMatches:bothHistory,
-    bothPlayersPriorHistoryPct:total?+(100*bothHistory/total).toFixed(2):null,
+    anyRecentWorkloadMatches:anyHistory,
+    anyRecentWorkloadPct:total?+(100*anyHistory/total).toFixed(2):null,
+    bothPlayersRestDaysAvailableMatches:bothHistory,
+    bothPlayersRestDaysAvailablePct:total?+(100*bothHistory/total).toFixed(2):null,
     priorPlayerMatchRecords7:priorRecords,
     knownDurationPlayerMatchRecords7:knownDurations,
     knownDurationCoveragePct:priorRecords?+(100*knownDurations/priorRecords).toFixed(2):null
