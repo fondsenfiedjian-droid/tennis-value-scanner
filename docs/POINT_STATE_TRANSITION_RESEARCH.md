@@ -251,3 +251,9 @@ Successful aggregate-only run: GitHub Actions `44866399882` on the 951,064-state
 - A recognized normal-game state appeared exactly 1–5 rows away from 37, 38, 38, 43 and 41 of these alphabetic anomalies respectively.
 
 Interpretation: anomaly patterns are not confined to a single adjacent row. Row proximity cannot distinguish delayed flag updates from malformed or partial snapshots. No automatic correction is justified; keep all non-missing mismatches excluded from point-winner inference until individual sequences can be validated against a trustworthy complete source.
+
+## Strict observed-tape candidate subset
+
+A conservative diagnostic subset is now counted for parser inspection. A match qualifies only when metadata identifies BO3/BO5, the recorded completion has no terminal-event marker, the first observed state is exact 0-0, the last observed set counters reach the format's required set count, every point-score pair is present and consistent with its normal/tiebreak flag, and all row timestamps are present and strictly increasing. This is still a candidate subset, not proof of full or correct capture.
+
+For qualifying matches, the audit reports inferred vs ambiguous adjacent transitions and ambiguous reasons, split by ATP/WTA round prefix and player-primary-tour agreement. Parser inference is not part of the candidate gate: ambiguous transitions remain counted rather than discarded, avoiding selection on the model's own output. No point winners are inferred from missing or counter-only transitions.
