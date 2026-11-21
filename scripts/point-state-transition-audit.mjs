@@ -135,9 +135,10 @@ export function inferPointStateTransition(before, after) {
   };
 }
 
-export function auditPointStateTransitions(rows, matchRows = []) {
+export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const groups = new Map();
+  const playerTours = new Map(playerRows.map(player => [String(player.player_id ?? "").trim(), String(player.tour ?? "").trim().toUpperCase()]));
   const metadata = new Map();
   for (const match of matchRows) {
     const id = String(match.match_id ?? "").trim();
@@ -145,11 +146,17 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     const tourMatch = round.match(/^(ATP|WTA)\b/i);
     if (id) metadata.set(id, {
       tierKey: String(match.tier_key ?? "unknown").trim() || "unknown",
-      tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified"
+      tour: tourMatch ? tourMatch[1].toUpperCase() : "unclassified",
+      playerTour: (() => {
+        const p1 = playerTours.get(String(match.player1_id ?? "").trim());
+        const p2 = playerTours.get(String(match.player2_id ?? "").trim());
+        return p1 && p1 === p2 && (p1 === "ATP" || p1 === "WTA") ? p1 : "unclassified";
+      })()
     });
   }
   const tierStats = {};
   const tourStats = {};
+  const playerTourAgreementStats = {};
   const timestampStats = {
     validStates: 0, invalidOrMissingStates: 0,
     nonMonotonicTransitions: 0, duplicateTimestampTransitions: 0,
@@ -182,7 +189,11 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     const matchMeta = metadata.get(String(states[0].match_id)) || { tierKey: "unmatched", tour: "unclassified" };
     const tierKey = matchMeta.tierKey;
     const tour = matchMeta.tour;
+    const playerTour = matchMeta.playerTour;
     if (!tierStats[tierKey]) tierStats[tierKey] = {
+      matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
+    };
+    if (!playerTourAgreementStats[playerTour]) playerTourAgreementStats[playerTour] = {
       matchesWithPoints: 0, transitions: 0, inferred: 0, ambiguous: 0
     };
     if (!tourStats[tour]) tourStats[tour] = {
@@ -190,6 +201,7 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     };
     tierStats[tierKey].matchesWithPoints++;
     tourStats[tour].matchesWithPoints++;
+    playerTourAgreementStats[playerTour].matchesWithPoints++;
     for (const state of states) {
       const rawTimestamp = String(state.timestamp_utc ?? "").trim();
       const timestamp = rawTimestamp ? Date.parse(rawTimestamp) : NaN;
@@ -225,14 +237,17 @@ export function auditPointStateTransitions(rows, matchRows = []) {
       totals.transitions++;
       tierStats[tierKey].transitions++;
       tourStats[tour].transitions++;
+      playerTourAgreementStats[playerTour].transitions++;
       if (result.status === "inferred") {
         tierStats[tierKey].inferred++;
         tourStats[tour].inferred++;
+        playerTourAgreementStats[playerTour].inferred++;
         totals.inferred++;
         inferred++;
       } else {
         tierStats[tierKey].ambiguous++;
         tourStats[tour].ambiguous++;
+        playerTourAgreementStats[playerTour].ambiguous++;
         totals.ambiguous++;
         totals.byReason[result.reason] = (totals.byReason[result.reason] || 0) + 1;
       }
@@ -262,18 +277,20 @@ export function auditPointStateTransitions(rows, matchRows = []) {
     timestampStats,
     byTierKey: tierStats,
     byTour: tourStats,
+    byPlayerTourAgreement: playerTourAgreementStats,
     totals
   };
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  let input = "", matchesInput = "", out = "point-state-transition-audit.json";
+  let input = "", matchesInput = "", playersInput = "", out = "point-state-transition-audit.json";
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--input") input = args[++i];
     else if (args[i] === "--matches") matchesInput = args[++i];
+    else if (args[i] === "--players") playersInput = args[++i];
     else if (args[i] === "--out") out = args[++i];
-    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] [--matches matches.csv[.gz]] --out report.json");
+    else throw new Error("Usage: node scripts/point-state-transition-audit.mjs --input FILE.csv[.gz] [--matches matches.csv[.gz]] [--players players.csv[.gz]] --out report.json");
   }
   if (!input) throw new Error("Missing --input");
   const raw = await readFile(input);
@@ -281,7 +298,10 @@ async function main() {
   const matchRaw = matchesInput ? await readFile(matchesInput) : null;
   const matchCsv = matchRaw ? (matchesInput.endsWith(".gz") ? gunzipSync(matchRaw).toString("utf8") : matchRaw.toString("utf8")) : "";
   const matchRows = matchCsv ? parseCsv(matchCsv) : [];
-  const report = auditPointStateTransitions(parseCsv(csv), matchRows);
+  const playerRaw = playersInput ? await readFile(playersInput) : null;
+  const playerCsv = playerRaw ? (playersInput.endsWith(".gz") ? gunzipSync(playerRaw).toString("utf8") : playerRaw.toString("utf8")) : "";
+  const playerRows = playerCsv ? parseCsv(playerCsv) : [];
+  const report = auditPointStateTransitions(parseCsv(csv), matchRows, playerRows);
   await writeFile(out, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report.totals));
   console.log("Wrote aggregate-only point-state audit: " + out);
