@@ -55,3 +55,4 @@
 - Match Charting Project coverage is selective, not representative of the full tour.
 - Point-state observations can begin mid-match or stop before the final point. Missing rows are not point outcomes.
 - No server/tiebreak-dependent feature is production-approved until its source semantics reconcile at match level.
+- Main-tour Match Charting linkage now has an aggregate-only audit (10,278/11,822 unique IDs linked). Treat it strictly as a selective research sample; no player-level data or features until exact chronology, coverage bias and source semantics are resolved.
