@@ -1088,3 +1088,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - ATP Davis Cup Finals are excluded from the individual-event sample because team obligations create a different context. ATP Challenger entries/draws and exact WTA/ITF target match IDs still require confirmation.
 - At reconnaissance time, checked WTA/ITF draws were not available; therefore zero match-level evidence records have been created. No-evidence classifications must not be assigned before exact matches are selected and the source-search protocol is completed.
 - No prediction, EV, bet-selection or Production behavior changes.
+
+
+## Retrospective Tournament Intent case review (2026-11-21)
+- Added `docs/tournament-intent-retrospective-cases-2026-11.md` on the Tournament Intent PR branch. It documents Holger Rune–Zizou Bergs (Stockholm, 10 Nov; official match ID `ms019`), Alexander Zverev–Arthur Fils (ATP Finals, 19 Nov), and Karolina Muchova's pre-Finals schedule/recovery statements.
+- Rune's 9 Nov official interview is a clear preparation/match-rhythm signal after Achilles rehabilitation; he still said he wanted to give a strong effort and do well. This is not evidence of low competitive intent.
+- Zverev's ankle disclosure was post-match and must not be backfilled into the Zverev–Fils pre-match record. It may only inform a later match if independently captured before that later match.
+- Muchova's comments document a deliberate recovery/schedule decision before the Finals, not low priority for the Finals themselves.
+- All cases were discovered/retrieved retrospectively. They are research-log examples only and are deliberately excluded from the pre-match evidence registry. Source publication time and actual capture time must remain distinct.
+- No classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
