@@ -174,6 +174,7 @@ function fitModel(rows,names,penalty=0.05){
 }
 function calibrationMetrics(rows,key){
  const bins=Array.from({length:10},()=>({n:0,p:0,y:0}));
+ for(const row of rows){const p=clamp(row[key]),index=Math.min(9,Math.floor(p*10)),bin=bins[index];bin.n++;bin.p+=p;bin.y+=row.outcome;}
  let intercept=0,slope=1;
  for(let iteration=0;iteration<50;iteration++){
   let g0=0,g1=0,h00=0,h01=0,h11=0;
