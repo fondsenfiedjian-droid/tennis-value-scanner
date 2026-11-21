@@ -204,3 +204,20 @@ Successful real-sample run: GitHub Actions `44865563966`.
 The public sample data dictionary describes `server` as the player serving at a state. The current API reference further warns that tiebreak server rows are not settled and that tiebreak serving rotation cannot be reconstructed reliably from sampled rows when points are skipped; it explicitly says to withhold server-dependent tiebreak analysis unless the encoding reconciles for the match. See [Live Tennis API data dictionary](https://github.com/livetennisapi/livetennisapi-data/blob/main/DATA_DICTIONARY.md) and [Live Tennis API full reference, HistoryTapeRow.server](https://docs.livetennisapi.com/reference.html#historytaperow).
 
 Interpretation: the sample supports server continuity inside ordinary games, but game-boundary alignment is materially weaker and the tiebreak server field fails the expected rotation check. Do not use this field as a tiebreak server/returner feature, do not infer serve ownership from it, and do not use it to label point winners. Normal-game server use also remains research-only until game-boundary exceptions and the exact before/after state convention are hand-checked against source matches. No production feature is enabled.
+
+## Match tape capture-boundary coverage (2026-11-21)
+
+A new aggregate diagnostic checks the first and last observed scoreboard states per match against the public match metadata. It counts matches whose first captured state is exactly 0-0, missing point-score fields at the first/last observed state, and whether the last observed set counters reach the number of sets required by the match format (BO3/BO5). It separates normal completions from matches with a recorded terminal event such as retirement and reports both the explicit ATP/WTA round-prefix classification and a secondary ATP/WTA player-primary-tour agreement proxy. It also separates target attainment for normal completions from terminal-event matches.
+
+Important limitation: reaching the required set count is only a boundary-coverage proxy, not proof that the tape includes the final point. The metadata sample does not supply a verified final scoreline in the fields used by this audit. Matches that do not reach the target may be truncated, retired, or otherwise incomplete; they are never padded or treated as losses/zeros.
+
+### Real-sample boundary coverage findings (2026-11-21)
+
+Successful aggregate-only run: GitHub Actions `44866625208` (June 2026 public sample, 5,380 matches).
+
+- Only 212/5,380 tapes (3.94%) begin at the exact 0-0 match-start state. 5,168 begin after the match has already progressed.
+- 431 first observed states (8.0%) have at least one missing point-score field; 60 last observed states (1.1%) have a missing point-score field.
+- Among 5,226 matches with no recorded terminal event, 3,969 (75.96%) reach the BO3/BO5 required set count in their last observed state; 1,257 (24.04%) do not. This is a coverage proxy, not proof of final-point capture.
+- Using agreement between both players' primary tour labels as a secondary ATP/WTA proxy: ATP has 2,062 matches (89 begin at 0-0; 1,501/2,004 normal completions reach the set target, 74.90%); WTA has 1,684 matches (67 begin at 0-0; 1,203/1,637 normal completions reach the target, 73.49%). 1,634 matches have no same-tour player agreement and remain unclassified by this proxy.
+
+Interpretation: this sample is suitable for testing score-state transitions within observed tape segments, but not for assuming complete match histories. Opening coverage is especially sparse; nearly one quarter of normal-completion tapes do not reach the required set count. Never use these tapes as complete-match point sequences without an independently verified completeness gate. The sample's aggregate 77% monthly match coverage must not be confused with per-match tape completeness.
