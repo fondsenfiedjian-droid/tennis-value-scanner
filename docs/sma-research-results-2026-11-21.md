@@ -130,3 +130,22 @@ The 84-day configuration did not provide a reliable signal: point-delta-only and
 
 **Decision:** retain SMA core + PFE point-delta as the leading research candidate, using a 730-day history. Do not merge into the production PFE registry or use for betting yet. The next gate is a strict historical Winamax price evaluation with genuinely pre-match model probabilities, quote timestamps, verified outcomes and sufficient closing-price coverage. If no representative historical Winamax archive exists, collect timestamped snapshots prospectively rather than substituting Pinnacle prices or current Apify data for historical Winamax prices.
 
+## Replication on the complete 1991–2026 archive (workflow 44900519101)
+
+A second full archive download and walk-forward execution completed successfully on 2026-11-21. It reproduced the 730-day PFE point-delta stack results on the same 2025–2026 partial holdout, with minor sample-size differences caused by archive refresh/eligibility. This is a replication of the pipeline, **not a new independent temporal holdout**.
+
+| Tour | Stack | n | Δ Brier vs Elo (95% CI) | Δ LogLoss vs Elo (95% CI) |
+|---|---|---:|---:|---:|
+| ATP | PFE point-delta only | 2,740 | -0.003217 (-0.004855, -0.001579) | -0.008840 (-0.013101, -0.004579) |
+| ATP | SMA core + PFE point-delta | 2,740 | -0.003414 (-0.005274, -0.001554) | -0.009282 (-0.013894, -0.004669) |
+| ATP | SMA core + extended + PFE point-delta | 2,740 | -0.003503 (-0.005469, -0.001536) | -0.009609 (-0.014434, -0.004785) |
+| WTA | PFE point-delta only | 2,509 | -0.001537 (-0.002701, -0.000373) | -0.004369 (-0.007540, -0.001198) |
+| WTA | SMA core + PFE point-delta | 2,509 | -0.002115 (-0.003438, -0.000793) | -0.005685 (-0.009186, -0.002184) |
+| WTA | SMA core + extended + PFE point-delta | 2,509 | -0.002009 (-0.003375, -0.000644) | -0.005460 (-0.009051, -0.001869) |
+
+The 730-day core SMA + point-delta result is numerically stable across shrinkage priors 3/5/10. On the common sample, the SMA-core stack has a favorable point estimate over point-delta alone in ATP and WTA, but no direct paired candidate-vs-candidate confidence interval is available. Do not describe the incremental SMA effect as statistically established. Accuracy is not uniformly improved, especially in WTA.
+
+The 365-day core-only correction is weak and its Brier interval crosses zero for both tours; 84-day core-only is effectively neutral. This reinforces carrying 730 days forward as the sole SMA/PFE research configuration, without production promotion.
+
+The same CI run also completed the separate ranking/age archive audit. On its broad historical evaluation, rank+age corrections improved Brier versus Elo by 0.002004 ATP (n=74,556) and 0.002295 WTA (n=66,820). Annual results vary, notably WTA in 2022 and partial 2026; this is a separate candidate signal, not evidence that it should be merged with SMA/PFE or ACE. It needs a clean same-sample incremental ablation against the current PFE stack before adoption.
+
