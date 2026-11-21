@@ -103,4 +103,9 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  assert.equal(result.metrics.matches,40);
  assert.ok(Number.isFinite(result.metrics.adjusted.brier));
  assert.ok(Number.isFinite(result.standardizedCoefficients.serveDiff));
+ const changedHoldout=rows.map(row=>row.year>=2025?{...row,outcome:1-row.outcome}:row);
+ const refit=evaluateFixedHoldout(changedHoldout,["serveDiff"],{
+  featureStartYear:2016,holdoutStartYear:2025,lastEvaluationYear:2026
+ });
+ assert.deepEqual(refit.standardizedCoefficients,result.standardizedCoefficients);
 });
