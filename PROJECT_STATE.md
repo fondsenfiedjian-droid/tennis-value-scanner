@@ -1112,3 +1112,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Predeclared the ATP/WTA event frame for 21 Sep–21 Nov 2026, including eligible singles-only observations, top-150 ranking snapshot rule, 1–50/51–100/101–150 strata, symmetric review of both players, team-event exclusions and the 21 Nov ATP Finals cutoff.
 - The document explicitly distinguishes an event frame from an extracted match sample. Official draws/results and pre-event ranking snapshots must be collected and counts published before source review; no denominator or prevalence estimate is claimed yet.
 - Retrospective publications discovered now remain separate from prospective evidence capture. No classifier weights, probability, EV, bet selection, live UI or Production behavior changed.
+
+
+## Retrospective sampling-frame correction and WTA draw manifest (2026-11-21)
+- Corrected the WTA event frame against the official WTA Asian Swing preview: Singapore is WTA 500; Seoul is WTA 250; Jiangxi/Jiujiang is not a November 2026 event in the study window; Athens replaced Jiangxi but took place in July and is outside the window; WTA Finals took place in Indian Wells, 8–15 Nov.
+- Added `docs/tournament-intent-retrospective-frame-reconciliation-2026-11.md` and corrected `docs/tournament-intent-retrospective-sampling-frame-2026-09-21_to_11-21.md`.
+- Added `docs/tournament-intent-wta-draw-extraction-manifest-2026.md` with official WTA draw URLs for ten tour-level events plus WTA Finals. The 386 event bracket slots + 15 planned Finals singles matches = 401 structural slots; this is not a played-match count and not a top-150 player-match denominator.
+- Added four more retrospective cases (Alcaraz/Paris, Svitolina/WTA Finals, Rybakina withdrawal, Sabalenka/WTA Finals) to the case log. They remain non-predictive and are not imported into the pre-match registry.
+- The WTA draw extraction and pre-event ranking joins are still incomplete. Do not report a completed denominator or prevalence estimate. ATP official draw extraction and separate Challenger/WTA125/ITF strata remain outstanding.
+- No model weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
