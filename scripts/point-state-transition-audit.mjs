@@ -29,13 +29,31 @@ const gameArray = value => {
 };
 
 
+function isTerminalPointBeforeBoundary(before, after) {
+  const beforeP1 = String(before.points_p1 ?? "").trim().toUpperCase();
+  const beforeP2 = String(before.points_p2 ?? "").trim().toUpperCase();
+  const afterP1 = String(after.points_p1 ?? "").trim().toUpperCase();
+  const afterP2 = String(after.points_p2 ?? "").trim().toUpperCase();
+  if (afterP1 !== "0" || afterP2 !== "0") return false;
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  if (isTrue(before.is_tiebreak)) {
+    if (!/^\\d+$/.test(beforeP1) || !/^\\d+$/.test(beforeP2)) return false;
+    const a = Number(beforeP1), b = Number(beforeP2);
+    return Math.max(a, b) >= 6 && Math.abs(a - b) === 1;
+  }
+  const a = normalScoreRank(beforeP1), b = normalScoreRank(beforeP2);
+  if (a === null || b === null) return false;
+  return (a === 3 && b <= 2) || (b === 3 && a <= 2) ||
+    (a === 4 && b === 3) || (b === 4 && a === 3);
+}
+
 function inferSetOrGameWinner(before, after) {
   const s1 = integer(before.sets_p1), s2 = integer(before.sets_p2);
   const t1 = integer(after.sets_p1), t2 = integer(after.sets_p2);
   if ([s1, s2, t1, t2].every(value => value !== null)) {
     const d1 = t1 - s1, d2 = t2 - s2;
-    if (d1 === 1 && d2 === 0) return { status: "inferred", winner: 1, method: "set-counter" };
-    if (d2 === 1 && d1 === 0) return { status: "inferred", winner: 2, method: "set-counter" };
+    if (d1 === 1 && d2 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 1, method: "set-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "set-counter" };
+    if (d2 === 1 && d1 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 2, method: "set-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "set-counter" };
     if (d1 !== 0 || d2 !== 0) return { status: "ambiguous", reason: "set-counter-jump-or-conflict", method: "set-counter" };
   }
 
@@ -49,8 +67,8 @@ function inferSetOrGameWinner(before, after) {
       g2.slice(0, -1).some((v, i) => v !== h2[i]);
     if (changedEarlier) return { status: "ambiguous", reason: "prior-set-score-mutated", method: "game-counter" };
     const d1 = h1.at(-1) - g1.at(-1), d2 = h2.at(-1) - g2.at(-1);
-    if (d1 === 1 && d2 === 0) return { status: "inferred", winner: 1, method: "game-counter" };
-    if (d2 === 1 && d1 === 0) return { status: "inferred", winner: 2, method: "game-counter" };
+    if (d1 === 1 && d2 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 1, method: "game-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "game-counter" };
+    if (d2 === 1 && d1 === 0) return isTerminalPointBeforeBoundary(before, after) ? { status: "inferred", winner: 2, method: "game-counter" } : { status: "ambiguous", reason: "counter-change-without-terminal-score", method: "game-counter" };
     if (d1 !== 0 || d2 !== 0) return { status: "ambiguous", reason: "game-counter-jump-or-conflict", method: "game-counter" };
   }
   return null;
