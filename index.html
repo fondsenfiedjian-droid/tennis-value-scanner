@@ -486,10 +486,10 @@
     const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
     const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
     if(oddsLoadError){
-      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · всего свежих '+summary.fresh+' из '+cachedOdds.length+' · '+oddsLoadError+taskRunSeen+oddsDiagnosticsText();
+      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)+' · '+oddsLoadError+taskRunSeen+oddsDiagnosticsText();
       return;
     }
-    node.textContent=providerSummary+' · всего свежих '+summary.fresh+' из '+cachedOdds.length+' · последняя котировка '+latest+taskRunSeen+oddsDiagnosticsText();
+    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)+' · последняя котировка '+latest+taskRunSeen+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
