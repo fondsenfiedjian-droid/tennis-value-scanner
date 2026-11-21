@@ -236,3 +236,18 @@ Successful aggregate-only run: GitHub Actions `44866625208` (June 2026 public sa
 - Using agreement between both players' primary tour labels as a secondary ATP/WTA proxy: ATP has 2,062 matches (89 begin at 0-0; 1,501/2,004 normal completions reach the set target, 74.90%); WTA has 1,684 matches (67 begin at 0-0; 1,203/1,637 normal completions reach the target, 73.49%). 1,634 matches have no same-tour player agreement and remain unclassified by this proxy.
 
 Interpretation: this sample is suitable for testing score-state transitions within observed tape segments, but not for assuming complete match histories. Opening coverage is especially sparse; nearly one quarter of normal-completion tapes do not reach the required set count. Never use these tapes as complete-match point sequences without an independently verified completeness gate. The sample's aggregate 77% monthly match coverage must not be confused with per-match tape completeness.
+
+## Score/flag anomaly proximity and value-pattern audit (2026-11-21)
+
+The adjacent-state check measures distances 1–5 in both directions within each match's observed row order. It reports previous/next tiebreak proximity for numeric scores carrying a normal-game flag, proximity to a normal-game state for alphabetic scores carrying a tiebreak flag, and aggregate score-value/pair frequencies. These are diagnostic counts only: no flags or score values are rewritten, and proximity is not proof of a flag delay or a point outcome.
+
+### First real-sample proximity results (2026-11-21)
+
+Successful aggregate-only run: GitHub Actions `44866399882` on the 951,064-state June 2026 public sample.
+
+- The 504 normal-flag numeric anomalies contained 931 numeric player-side values: 1 (150), 2 (145), 3 (145), 4 (153), 5 (147), 6 (83), 7 (43), 8 (43), 9 (22).
+- Opposite-flag numeric tiebreak states appeared exactly 1, 2, 3, 4 or 5 rows away from 112, 99, 130, 120 and 155 anomalous states respectively; counts may overlap. At distance 1, 65 were preceded by a tiebreak state and 93 were followed by one.
+- The 43 alphabetic tiebreak-flag anomalies consisted of 29 `A` and 14 `AD` player-side values; score pairs were `40:A` (11), `A:40` (18), `AD:40` (9), and `40:AD` (5).
+- A recognized normal-game state appeared exactly 1–5 rows away from 37, 38, 38, 43 and 41 of these alphabetic anomalies respectively.
+
+Interpretation: anomaly patterns are not confined to a single adjacent row. Row proximity cannot distinguish delayed flag updates from malformed or partial snapshots. No automatic correction is justified; keep all non-missing mismatches excluded from point-winner inference until individual sequences can be validated against a trustworthy complete source.
