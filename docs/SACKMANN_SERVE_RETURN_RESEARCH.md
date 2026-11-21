@@ -84,7 +84,9 @@ The combined model's annual standardized coefficients consistently assign negati
 
 ## Frozen-coefficient later-period holdout
 
-A second evaluation protocol fits each feature specification once on eligible pre-match rows from 2016 through 2024, freezes its coefficients, then evaluates 2025–2026 without refitting. Player rolling serve/return features for each holdout match still use only matches completed before that match date; same-day rows remain excluded. The 2026 archive is partial through 2026-05-25. This fixed holdout is a temporal stability check, not a blind test, because annual 2025–2026 results were already inspected. Each specification's report includes the frozen training window, holdout match count, baseline/adjusted Brier and LogLoss, paired confidence intervals and frozen standardized coefficients. ### Frozen 2025–2026 holdout result (run 44867207484)
+A second evaluation protocol fits each feature specification once on eligible pre-match rows from 2016 through 2024, freezes its coefficients, then evaluates 2025–2026 without refitting. Player rolling serve/return features for each holdout match still use only matches completed before that match date; same-day rows remain excluded. The 2026 archive is partial through 2026-05-25. This fixed holdout is a temporal stability check, not a blind test, because annual 2025–2026 results were already inspected. Each specification's report includes the frozen training window, holdout match count, baseline/adjusted Brier and LogLoss, paired confidence intervals and frozen standardized coefficients.
+
+### Frozen 2025–2026 holdout result (run 44867207484)
 
 For the 730-day / five-prior-match configuration, the overall-plus-surface specification improved both metrics for both tours on the fixed-coefficient holdout. Coefficients were fitted once on eligible 2016–2024 records and then frozen:
 
@@ -94,3 +96,27 @@ For the 730-day / five-prior-match configuration, the overall-plus-surface speci
 | WTA | 2,807 | -0.000624 (-0.001146, -0.000102) | -0.001997 (-0.003317, -0.000677) |
 
 Both paired intervals exclude zero in the improving direction for both tours. This is encouraging temporal stability, but not a blind confirmation: 2025–2026 annual results had already been inspected, four rolling configurations and seven specifications were compared, and no multiple-comparison correction was applied. The 2026 archive is partial through 2026-05-25. Keep this research-only; next evaluate residualized surface effects and sample-size shrinkage before any shadow test.
+
+
+## Residualized surface and shrinkage follow-up (2026-11-21)
+
+This follow-up fixes the history window at 730 days and minimum prior history at five matches for both overall and same-surface rates. It tests three prior strengths (3, 5 and 10 matches) for shrinkage.
+
+Definitions:
+- **Residualized surface effect:** for each player, same-surface rate minus overall rate; the model feature is player 1's residual minus player 2's residual. This separates surface-specific deviation from general serve/return level.
+- **Shrunk surface rate:** overall rate plus a sample-size weight times the surface-minus-overall difference, where weight = surface prior matches / (surface prior matches + shrinkage prior strength). This pulls sparse surface estimates toward the player's overall rate.
+
+The run compares four new specifications: residualized surface only; overall plus residualized surface; shrunk surface only; and overall plus shrunk surface. It also reports a fixed-coefficient 2025–2026 holdout trained on 2016–2024. ### Frozen 2025–2026 holdout results (run 44867801135)
+
+For the fixed 730-day / five-prior-match configuration, coefficients were fitted on eligible 2016–2024 rows and frozen for 2025–2026. The strongest result was **overall plus residualized surface effect**:
+
+| Tour | Holdout n | Δ Brier (95% CI) | Δ LogLoss (95% CI) |
+|---|---:|---:|---:|
+| ATP | 3,071 | -0.001360 (-0.002473, -0.000246) | -0.003942 (-0.006566, -0.001318) |
+| WTA | 2,807 | -0.001198 (-0.002037, -0.000359) | -0.003405 (-0.005447, -0.001362) |
+
+Residualized-surface-only was also positive for both tours: ATP ΔBrier -0.001284 and ΔLogLoss -0.003074; WTA -0.000937 and -0.002199, with all paired 95% intervals excluding zero. The raw overall-plus-surface baseline was weaker (ATP -0.000652 / -0.002133; WTA -0.000624 / -0.001997).
+
+Shrinkage-only specifications were near-neutral. Adding overall features to shrunk surface rates helped, but less consistently than residualized features; prior strength 3 was the strongest of the tested shrinkage settings. These are paired evaluation metrics, not expected betting returns.
+
+Caution: the 2025–2026 period was already inspected during model discovery; 11 specifications and three shrinkage strengths were compared without multiple-comparison correction. This is not an untouched blind test. The 2026 archive is partial through 2026-05-25. **Keep all residualized and shrunk features research-only.** The next valid confirmation requires a genuinely later, untouched chronological period; no production activation is authorized by this result.

@@ -128,3 +128,25 @@ test("fixed later-period holdout freezes coefficients before the holdout begins"
  });
  assert.deepEqual(refit.standardizedCoefficients,result.standardizedCoefficients);
 });
+
+
+test("separates surface-relative residuals and shrinks surface rates toward overall rates",()=>{
+ const rows=[
+  row("20240101",1,1,3,stats(100,60,50,30),stats(100,60,30,20),"Clay"),
+  row("20240102",2,5,1,stats(100,60,40,20),stats(100,60,20,20),"Hard"),
+  row("20240103",3,2,4,stats(100,60,40,20),stats(100,60,30,20),"Clay"),
+  row("20240104",4,6,2,stats(100,60,40,20),stats(100,60,40,20),"Hard"),
+  row("20240105",5,1,2,stats(100,60,40,20),stats(100,60,30,20),"Clay")
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1,windowDays:365,surfaceShrinkageMatches:1}).get("20240105:1:2:Clay");
+ assert.ok(Math.abs(f.serveDiff)<1e-9);
+ assert.ok(Math.abs(f.surfaceServeResidualDiff-0.2)<1e-9);
+ assert.ok(Math.abs(f.shrunkSurfaceServeDiff-0.1)<1e-9);
+ assert.ok(Math.abs(f.surfaceReturnResidualDiff)<1e-9);
+ assert.ok(Math.abs(f.shrunkSurfaceReturnDiff)<1e-9);
+});
+
+test("rejects invalid surface shrinkage strength",()=>{
+ const rows=[row("20250101",1,1,2,stats(100,60,40,20),stats(100,60,30,20))];
+ assert.throws(()=>buildPreMatchServeReturn(rows,{surfaceShrinkageMatches:0}),/surfaceShrinkageMatches/);
+});
