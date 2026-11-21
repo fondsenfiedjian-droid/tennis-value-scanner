@@ -30,7 +30,7 @@ const validDate=value=>{
 };
 const dayNumber=value=>validDate(value)?Date.UTC(+value.slice(0,4),+value.slice(4,6)-1,+value.slice(6,8))/86400000:null;
 
-function parseMcpCsv(source){
+export function parseMcpCsv(source){
   source=source.replace(/^\uFEFF/,"");
   const rows=[];let row=[],field="",quoted=false;
   const pushField=()=>{row.push(field);field="";};
@@ -84,12 +84,20 @@ function addResultsFile(context,file){
     if(!context.yearPairIndex.has(key))context.yearPairIndex.set(key,new Map());
     const group=context.yearPairIndex.get(key);
     if(!group.has(identity)){
-      group.set(identity,{event,round,date:String(row.tourney_date??""),sourceTypes:new Set([sourceType])});
+      group.set(identity,{
+        event,round,date:String(row.tourney_date??""),
+        winnerName:String(row.winner_name??""),loserName:String(row.loser_name??""),
+        winnerId:String(row.winner_id??""),loserId:String(row.loser_id??""),
+        score:String(row.score??""),surface:String(row.surface??""),bestOf:String(row.best_of??""),
+        matchNum:String(row.match_num??""),tourneyId:String(row.tourney_id??""),
+        sourceTypes:new Set([sourceType])
+      });
     }else group.get(identity).sourceTypes.add(sourceType);
   }
 }
 function finishAudit(context){
   const byTour={};
+  const linkedRows=[];
   for(const [code,rows] of context.metadata){
     const tour=code==="m"?"ATP":"WTA";
     const counters={metadataRows:rows.length,uniqueMatchIds:0,linkedUnique:0,linkedFullName:0,ambiguous:0,roundConflicts:0,eventMismatches:0,noPlayerPairInYear:0,missingNames:0,invalidDates:0,missingDates:0,negativeDateOffsets:0,negativeUpTo7Days:0,negativeOver7Days:0,dateOffsetsOver21Days:0,linkedCrossYear:0,linkedMainTour:0,linkedChallengerQualifying:0,linkedFutures:0,linkedITFQualifying:0};
@@ -135,6 +143,24 @@ function finishAudit(context){
       else counters.noPlayerPairInYear++;
       if(selected){
         const candidate=selected.candidate,offset=selected.offset;
+        const p1IsWinner=normalize(p1)===normalize(candidate.winnerName);
+        const p1IsLoser=normalize(p1)===normalize(candidate.loserName);
+        const p2IsWinner=normalize(p2)===normalize(candidate.winnerName);
+        const p2IsLoser=normalize(p2)===normalize(candidate.loserName);
+        const player1Id=p1IsWinner?candidate.winnerId:p1IsLoser?candidate.loserId:"";
+        const player2Id=p2IsWinner?candidate.winnerId:p2IsLoser?candidate.loserId:"";
+        if(player1Id&&player2Id){
+          linkedRows.push({
+            matchId:id,tour,date,surface:String(row.Surface??""),tournament:String(row.Tournament??""),
+            round:String(row.Round??""),bestOf:String(row["Best of"]??""),
+            player1Name:p1,player2Name:p2,player1Id,player2Id,
+            winnerId:candidate.winnerId,loserId:candidate.loserId,
+            winnerIsPlayer1:p1IsWinner,eventWeekDate:candidate.date,
+            dateOffsetDays:offset,score:candidate.score,sourceTier:candidate.sourceTypes.has("main")?"main":
+              candidate.sourceTypes.has("qual_chall")?"challenger_qualifying":
+              candidate.sourceTypes.has("futures")?"futures":"itf_qualifying"
+          });
+        }
         counters.linkedUnique++;counters.linkedFullName++;
         if(candidate.date.slice(0,4)!==year)counters.linkedCrossYear++;
         if(candidate.sourceTypes.has("main"))counters.linkedMainTour++;
@@ -171,7 +197,9 @@ function finishAudit(context){
     return sum;
   },{});
   totals.linkagePct=totals.uniqueMatchIds?Number((100*totals.linkedUnique/totals.uniqueMatchIds).toFixed(2)):null;
-  return {schemaVersion:3,source:"Jeff Sackmann Match Charting Project metadata linked to Jeff Sackmann ATP/WTA main-tour and lower-tier results",mcpCommit:"1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",resultsCommit:"83733587353df8a41f2fd4f516147d5aa83f5a8d",license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",totals,byTour,warnings:["Only exact normalized full-name pairs, explicit event aliases, year and round are accepted; no initials or fuzzy matches.","Only unique candidate matches are linked. December/January metadata may match an adjacent-year result file when its event-week date falls within -7 to +21 days of the charted date; otherwise adjacent-year candidates are not accepted. Unmatched rows may be events absent from the archive or contain source naming/date inconsistencies.","Sackmann tourney_date is usually the event-week date, not the exact match date. MCP Date is the charted match date; date offsets are diagnostics only.","Only aggregate counts are written. No player names, match IDs or player-level linkage records are retained.","Metadata date/surface/hand quality anomalies remain quarantined; this audit does not approve those fields as model features."]};
+  const report={schemaVersion:3,source:"Jeff Sackmann Match Charting Project metadata linked to Jeff Sackmann ATP/WTA main-tour and lower-tier results",mcpCommit:"1813a1309b7ed7ebf1c7e884b32bf675d00e4edf",resultsCommit:"83733587353df8a41f2fd4f516147d5aa83f5a8d",license:"CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",totals,byTour,warnings:["Only exact normalized full-name pairs, explicit event aliases, year and round are accepted; no initials or fuzzy matches.","Only unique candidate matches are linked. December/January metadata may match an adjacent-year result file when its event-week date falls within -7 to +21 days of the charted date; otherwise adjacent-year candidates are not accepted. Unmatched rows may be events absent from the archive or contain source naming/date inconsistencies.","Sackmann tourney_date is usually the event-week date, not the exact match date. MCP Date is the charted match date; date offsets are diagnostics only.","Only aggregate counts are written. No player names, match IDs or player-level linkage records are retained.","Metadata date/surface/hand quality anomalies remain quarantined; this audit does not approve those fields as model features."]};
+  Object.defineProperty(report,"linkedRows",{value:linkedRows,enumerable:false});
+  return report;
 }
 
 export function auditMcpMatchLinkage(files){
