@@ -43,7 +43,7 @@ jobs:
           node scripts/point-state-transition-audit.mjs \
             --input research-data/points_sample_2026-06.csv.gz \
             --matches research-data/matches.csv.gz \
-            --players research-data/players.csv.gz \\
+            --players research-data/players.csv.gz \
             --out "$RUNNER_TEMP/pfe-point-state-report.json"
       - name: Publish aggregate diagnostics only
         shell: bash
