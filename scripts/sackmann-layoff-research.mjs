@@ -192,6 +192,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
   const prepared=prepare(inputRows), matches=prepared.rows;
   const elo=new Map(),lastPlayed=new Map(),returnEpisode=new Map(),returnMatches=new Map(),history=[];
   const captureWorstErrors=options.captureWorstErrors===true;
+  const symmetricTraining=options.symmetricTraining===true;
   const baseTotal=metric(),candidateTotal=metric(),byYear={},layoffCohorts=new Map(),returnCohorts=new Map();
   let index=0,evaluatedMatches=0,yearsWithModels=0,currentYear=null,models=null,yearBase=null,yearCandidate=null;
   while(index<matches.length) {
@@ -201,7 +202,10 @@ export function runLayoffWalkForward(inputRows, options={}) {
       models=null;yearBase=metric();yearCandidate=metric();
       if(year>=start.slice(0,4)&&year<=end.slice(0,4)) {
         const baseline=fitLogistic(history,["eloScaled"],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"layoff-base"});
-        const candidate=fitLogistic(history,["eloScaled",...FEATURES],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"layoff-candidate"});
+        const candidateHistory=symmetricTraining
+          ? history.flatMap(row=>[row,{...orientedFeatureRow(row,1),outcome:1-row.outcome}])
+          : history;
+        const candidate=fitLogistic(candidateHistory,["eloScaled",...FEATURES],{minMatches:minTrainingMatches,maxRows:maxTrainingRows,seed:tour+year+"layoff-candidate"});
         if(baseline&&candidate) {
           models={baseline,candidate,trainingMatches:history.length};
           yearsWithModels++;
@@ -323,6 +327,7 @@ export function runLayoffWalkForward(inputRows, options={}) {
       unit:"Each cohort observation is one player in one match; a match can contribute two observations if both players qualify."
     },
     worstErrorsIncluded:captureWorstErrors,
+    symmetricTraining,
     cohorts:{layoffDays:finishCohorts(layoffCohorts),firstMatchesAfterReturn:finishCohorts(returnCohorts)},
     byYear
   };
@@ -332,6 +337,7 @@ async function main(){
   const args=process.argv.slice(2),opts={},files=[];
   for(let i=0;i<args.length;i++){
     if(args[i]==="--worst-errors"){opts["worst-errors"]="true";continue;}
+    if(args[i]==="--symmetric-training"){opts["symmetric-training"]="true";continue;}
     if(["--tour","--from","--to","--k","--min-training","--max-training","--out"].includes(args[i])){
       const key=args[i].slice(2),value=args[++i];if(!value)throw new Error("Missing value for --"+key);opts[key]=value;
     } else if(args[i].startsWith("--")) throw new Error("Unknown option "+args[i]);
@@ -344,7 +350,7 @@ async function main(){
   const report=runLayoffWalkForward(rows,{tour:opts.tour,evaluationStart:opts.from??"20000101",
     evaluationEnd:opts.to??"20261231",kFactor:Number(opts.k??32),
     minTrainingMatches:Number(opts["min-training"]??1000),maxTrainingRows:Number(opts["max-training"]??20000),
-    captureWorstErrors:opts["worst-errors"]==="true"});
+    captureWorstErrors:opts["worst-errors"]==="true",symmetricTraining:opts["symmetric-training"]==="true"});
   const json=JSON.stringify(report,null,2)+"\n";
   if(opts.out)await writeFile(opts.out,json,"utf8");
   console.log(json);
