@@ -1086,3 +1086,43 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Initial strict full-name age audit mapped only 10.02% of unique players and found both ages in 19.92% of matches; insufficient. Expanded the audit to report tournament category and use safe token-order/initial+surname aliases, with exact full-name matches taking priority and ambiguous mappings rejected. Preliminary coverage is superseded pending the expanded run.
+
+
+## 10. Research branch handoff — 2026-11-21 (latest)
+
+Research branch: `research/sma-stat-integrity-audit`  
+PR: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/148  
+Latest documented work is research-only. Do not merge or promote to production without explicit approval.
+
+### Completed validation on commit `7cce22410c6253cb559754dba91ed20b27780b0b`
+
+All five associated GitHub Actions workflows completed successfully:
+- Regression tests.
+- Human Factor workload research.
+- Sackmann historical data coverage/import audit.
+- Sackmann serve-return walk-forward research.
+- Project-state documentation guard.
+
+The research jobs completed their report-upload steps. Reports were retrieved and inspected from the workflow artifacts.
+
+### Current research conclusions
+
+- **ACE:** corrected PFE+ACE remains promising across 2025 and 2026 chronological holdouts. Core candidate is 3/7-day workload plus rest-day difference and explicit availability flags. 14/28-day extensions are not stable enough for shared ATP/WTA adoption; retain as ATP-only research. Duration/minutes are too sparse in Valuebetennis and should not be imputed.
+- **Age × load:** reject the current Valuebetennis-to-Sackmann name join. Expanded audit: 177,888 matches, 13,957 unique players, 1,534 unique mappings (10.99%); both ages available in 37,499 matches (21.08%), at least one in 46.35%. 2026 partial both-age coverage ranges 14.99% ATP / 22.88% WTA. Do not fit or ship age×load from this biased low-coverage join. A stable, separately licensed DOB/player-ID source is required.
+- **SMA/PFE stack:** the 730-day window is the most consistent tested window. On the prior-5 common sample, PFE point-logit delta plus core SMA residual reduced Brier/LogLoss against Elo on both tours (ATP n=2,740: ΔBrier -0.003414; WTA n=2,509: -0.002115). WTA accuracy fell slightly, so do not equate lower error with improved ranking accuracy. Direct paired comparisons between stack variants remain necessary. Raw PFE point probabilities remain rejected as standalone forecasts.
+- **TCA:** a new research-only feasibility plan was added at `docs/tca-feasibility-plan.md`. Current archive has reliable handedness coverage (2016–2026: ATP 98.86%, WTA 95.21%), but handedness is matchup context, not a measurement of technical skill. Shot placement, rally tolerance, movement and tactical-choice data are absent. Next TCA step is only a narrow handedness residual ablation, with no duplication of SMA features. Sackmann data is CC BY-NC-SA 4.0 and not approved for commercial production.
+
+### Updated research documentation
+
+- `docs/ace-v2-research-plan.md` records the expanded age-link audit and rejection.
+- `docs/sma-research-results-2026-11-21.md` records the latest 730-day / shrinkage-5 PFE stacking results.
+- `docs/tca-feasibility-plan.md` defines the TCA boundary, data tiers, licensing limits and ablation protocol.
+
+### Next priorities
+
+1. Run regression tests and documentation guard for the latest documentation commits.
+2. Implement a narrow research-only handedness matchup residual experiment on a common PFE/ACE/SMA sample; test whether it adds anything after SMA.
+3. Inspect coefficient stability and direct paired comparisons for PFE point-delta + core SMA across shrinkage priors and chronological origins.
+4. Do not add age×load or broad technical-attribute scores without suitable identity-linked, licensed data.
+5. Keep historical Winamax validation separate: current Sackmann research data is not Winamax odds and cannot establish ROI/CLV. Use only timestamped Winamax quotes and verified results.
+6. Do not merge PR #148, alter production PFE, or deploy research changes without explicit user approval.
