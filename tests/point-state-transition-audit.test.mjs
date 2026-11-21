@@ -161,3 +161,21 @@ test("allows a set-counter inference from a final tiebreak point state", () => {
   assert.equal(result.winner, 1);
   assert.equal(result.method, "set-counter");
 });
+
+
+test("separates ATP and WTA only when the match index has an explicit tour prefix", () => {
+  const rows = [
+    state({ timestamp_utc: "2026-06-01T10:00:00Z" }),
+    state({ points_p1: "15", timestamp_utc: "2026-06-01T10:00:10Z" }),
+    state({ match_id: "m2", timestamp_utc: "2026-06-02T10:00:00Z" }),
+    state({ match_id: "m2", points_p2: "15", timestamp_utc: "2026-06-02T10:00:10Z" })
+  ];
+  const report = auditPointStateTransitions(rows, [
+    { match_id: "m1", tier_key: "265", round: "ATP Miami - 1/16-finals" },
+    { match_id: "m2", tier_key: "270", round: "WTA Rome - Quarter-finals" }
+  ]);
+  assert.equal(report.byTour.ATP.matchesWithPoints, 1);
+  assert.equal(report.byTour.WTA.matchesWithPoints, 1);
+  assert.equal(report.byTour.ATP.inferred, 1);
+  assert.equal(report.byTour.WTA.inferred, 1);
+});
