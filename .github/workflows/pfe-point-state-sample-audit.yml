@@ -47,7 +47,7 @@ jobs:
       - name: Publish aggregate diagnostics only
         shell: bash
         run: |
-          node --input-type=module <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          node --input-type=module <<'NODE' | tee -a "$GITHUB_STEP_SUMMARY"
           import { readFile } from "node:fs/promises";
           const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/pfe-point-state-report.json", "utf8"));
           console.log("# PFE point-state public-sample audit");
