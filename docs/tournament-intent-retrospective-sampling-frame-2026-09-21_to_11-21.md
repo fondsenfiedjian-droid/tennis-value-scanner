@@ -45,8 +45,8 @@ This list is derived from the published 2026 ATP and WTA calendars and official 
 
 | Event | Scheduled period / calendar week | Tier |
 |---|---|---|
-| Singapore Tennis Open | 21–27 Sep | WTA 250 |
-| Korea Open, Seoul | 21–27 Sep | WTA 500 |
+| Singapore Tennis Open | 21–27 Sep | WTA 500 |
+| Korea Open, Seoul | 21–27 Sep | WTA 250 |
 | China Open, Beijing | 29 Sep–11 Oct (calendar weeks 39–40) | WTA 1000 |
 | Wuhan Open | 12–18 Oct | WTA 1000 |
 | Ningbo Open | 19–25 Oct | WTA 500 |
@@ -55,8 +55,8 @@ This list is derived from the published 2026 ATP and WTA calendars and official 
 | Guangzhou Open | 26 Oct–1 Nov | WTA 250 |
 | Chennai Open | 2–8 Nov | WTA 250 |
 | Prudential Hong Kong Tennis Open | 2–8 Nov | WTA 250 |
-| Jiangxi Open, Jiujiang | November calendar week | WTA 250 |
-| WTA Finals | 7–14 Nov | Finals |
+| *(remove)* Jiangxi Open, Jiujiang | — | — |
+| WTA Finals, Indian Wells | 8–15 Nov | Finals |
 
 ## Match-list construction — required before source review
 
@@ -95,3 +95,23 @@ Do not report a prevalence estimate until the full match frame and all observati
 - WTA Hong Kong 2026 official event page: https://www.wtatennis.com/tournaments/1074/prudential-hong-kong-tennis-open/2026/
 
 Calendar pages can be revised; when extracting draws, retain the actual official event page and date accessed for each event. The list above should be reconciled against the source event pages before the final denominator is frozen.
+
+
+## Calendar correction — verified 21 November 2026
+
+The WTA event table above has been corrected against the WTA's official 17 September 2026 Asian Swing preview and the official WTA Finals event page.
+
+Corrections:
+- Singapore Tennis Open was WTA 500, not WTA 250.
+- Korea Open (Seoul) was WTA 250, not WTA 500.
+- Jiangxi Open was **not** a November 2026 event in this window. The WTA states that Jiangxi was replaced by Athens Open in 2026; Athens was held in July, so it is outside this retrospective window. Do not include Jiujiang or substitute Athens in the September–November frame.
+- WTA Finals took place in Indian Wells, 8–15 November 2026, not 7–14 November.
+
+The official WTA Asian Swing preview identifies ten tour-level events across seven weeks: Singapore, Seoul, Beijing, Wuhan, Ningbo, Osaka, Tokyo, Guangzhou, Chennai and Hong Kong. The WTA Finals is a separate season-ending event and is included separately because it falls inside the study window.
+
+Official sources:
+- WTA Asian Swing preview, published 17 September 2026: https://www.wtatennis.com/news/4576359/asian-swing-2026-preview-dates-draws-prize-money-and-everything-you-need-to-know
+- WTA Finals official overview: https://www.wtatennis.com/tournaments/wta-finals
+- WTA Finals official draws: https://www.wtatennis.com/tournaments/wta-finals/draws
+
+**Important limitation:** this corrects the event frame only. It does not establish the number of eligible matches or top-150 player-match observations. Those counts still require official draw/result extraction and pre-event ranking snapshots.
