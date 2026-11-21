@@ -423,7 +423,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
       });
     }
 
@@ -802,6 +802,119 @@ export default {
           headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
         });
         await cache.put(cacheKey, cacheResponse);
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not reach The Odds API" }, 502);
+      }
+    }
+
+    if (path === "/odds-api/quotes") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.ODDS_API_KEY) return response({ error: "ODDS_API_KEY secret is not configured" }, 500);
+      const sportKey = (url.searchParams.get("sport") || "tennis_atp_finals").trim();
+      if (!/^tennis_[a-z0-9_]{2,80}$/.test(sportKey)) {
+        return response({ error: "sport must be a valid tennis sport key from /odds-api/sports" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-quotes/v1/" + encodeURIComponent(sportKey));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const params = new URLSearchParams({
+          bookmakers: "betclic_fr,netbet_fr",
+          markets: "h2h",
+          oddsFormat: "decimal",
+          dateFormat: "iso"
+        });
+        const upstream = await fetch(
+          "https://api.the-odds-api.com/v4/sports/" + encodeURIComponent(sportKey) + "/odds/?" + params.toString(),
+          { headers: { "x-api-key": env.ODDS_API_KEY, "Accept": "application/json" } }
+        );
+        let events;
+        try { events = await upstream.json(); } catch {
+          return response({ error: "The Odds API returned invalid JSON", upstreamStatus: upstream.status }, 502);
+        }
+        if (!upstream.ok) {
+          return response({
+            error: "The Odds API odds request failed",
+            sportKey,
+            upstreamStatus: upstream.status,
+            providerMessage: typeof events?.message === "string" ? events.message : null
+          }, upstream.status);
+        }
+        if (!Array.isArray(events)) return response({ error: "The Odds API returned an unexpected odds payload", sportKey }, 502);
+        const retrievedAt = new Date().toISOString();
+        const normalizeName = value => String(value || "").normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+        const bookmakerNames = { betclic_fr: "betclic", netbet_fr: "netbet" };
+        const items = [];
+        for (const event of events) {
+          const homeTeam = String(event?.home_team || "").trim();
+          const awayTeam = String(event?.away_team || "").trim();
+          const startTime = Date.parse(event?.commence_time || "");
+          if (!homeTeam || !awayTeam || !Number.isFinite(startTime)) continue;
+          for (const bookmaker of Array.isArray(event.bookmakers) ? event.bookmakers : []) {
+            const bookmakerKey = String(bookmaker?.key || "");
+            const provider = bookmakerNames[bookmakerKey];
+            if (!provider) continue;
+            for (const market of Array.isArray(bookmaker.markets) ? bookmaker.markets : []) {
+              if (market?.key !== "h2h" || !Array.isArray(market.outcomes)) continue;
+              const outcomes = market.outcomes.map(outcome => {
+                const name = String(outcome?.name || "").trim();
+                const price = Number(outcome?.price);
+                const normalized = normalizeName(name);
+                const side = normalized === normalizeName(homeTeam) ? "home" :
+                  normalized === normalizeName(awayTeam) ? "away" : null;
+                return side && Number.isFinite(price) && price > 1 && price <= 1000
+                  ? { side, name, price } : null;
+              }).filter(Boolean);
+              const sides = new Set(outcomes.map(outcome => outcome.side));
+              if (!sides.has("home") || !sides.has("away")) continue;
+              for (const outcome of outcomes) items.push({
+                bookmaker: provider,
+                bookmakerCountry: "FR",
+                sport: "tennis",
+                marketType: "match_winner",
+                line: null,
+                eventId: String(event.id || ""),
+                eventName: homeTeam + " - " + awayTeam,
+                homeTeam,
+                awayTeam,
+                startTime: new Date(startTime).toISOString(),
+                outcome: outcome.side,
+                outcomeName: outcome.name,
+                oddsDecimal: outcome.price,
+                competition: String(event?.sport_title || ""),
+                isLive: startTime <= Date.now(),
+                scrapedAt: String(market.last_update || bookmaker.last_update || retrievedAt),
+                source: "the-odds-api",
+                sourceBookmakerKey: bookmakerKey
+              });
+            }
+          }
+        }
+        const payload = {
+          source: "The Odds API",
+          sportKey,
+          requestedBookmakers: ["betclic_fr", "netbet_fr"],
+          retrievedAt,
+          eventCount: events.length,
+          quoteCount: items.length,
+          items,
+          quota: {
+            requestsRemaining: upstream.headers.get("x-requests-remaining"),
+            requestsUsed: upstream.headers.get("x-requests-used"),
+            lastRequestCost: upstream.headers.get("x-requests-last")
+          }
+        };
+        const headers = { "Cache-Control": "public, max-age=180", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
         return response(payload, 200, headers);
       } catch {
         return response({ error: "Could not reach The Odds API" }, 502);
