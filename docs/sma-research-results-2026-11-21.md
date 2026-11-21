@@ -47,6 +47,17 @@ A preliminary bridge that averaged overall serve rate with one minus opponent re
 
 That crude bridge is rejected. It is superseded by a stricter implementation using first-serve-in, first-serve points won, second-serve points won, and opponent first/second-serve return rates. It delegates the consistency check to PFE's existing `deriveServeReturnMatchInputs()` and converts point inputs through `calculateMatchWinProbability()`. Results for that split-profile bridge are pending a separate full run.
 
+### Split first/second-serve PFE bridge — standalone result
+
+The stricter bridge used first-serve-in, first-serve points won, second-serve points won, opponent first/second-serve return rates, PFE's 8-point disagreement check, and the exact PFE match engine with source `best_of`. It was still worse than Elo as a standalone probability source.
+
+| Window / tour | Holdout n | Δ Brier (95% paired CI) | Δ LogLoss (95% paired CI) | Accuracy: Elo → PFE | ECE: Elo → PFE |
+|---|---:|---:|---:|---:|---:|
+| 730d ATP | 3,142 | +0.003210 (-0.001535, +0.007954) | +0.006119 (-0.005124, +0.017363) | 64.35% → 64.00% | 0.049751 → 0.038984 |
+| 730d WTA | 2,926 | +0.011864 (+0.006840, +0.016889) | +0.025996 (+0.013960, +0.038032) | 65.07% → 62.78% | 0.037577 → 0.031713 |
+
+The WTA deterioration is statistically clear in this holdout; ATP is directionally worse but its paired intervals cross zero. ECE improved, but Brier, LogLoss and winner accuracy did not. This is not enough to trust the point engine as a standalone forecast. It remains a research input only; the next test is whether a walk-forward-trained logit stack can learn a conservative weight for the PFE point-model delta alongside Elo and core SMA features.
+
 ## Limitations and decision
 
 1. This is probability-quality research, not a betting ROI, CLV, or profitability test.
