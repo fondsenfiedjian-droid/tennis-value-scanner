@@ -320,8 +320,8 @@ function auditTiebreakFlagAlignment(groups) {
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
   const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
   const scorePair = row => [String(row.points_p1 ?? "").trim().toUpperCase(), String(row.points_p2 ?? "").trim().toUpperCase()];
-  const numericAnomaly = row => scorePair(row).some(value => /^\\d+$/.test(value) && normalScoreRank(value) === null);
-  const alphaTiebreakAnomaly = row => scorePair(row).some(value => value && !/^\\d+$/.test(value));
+  const numericAnomaly = row => scorePair(row).some(value => /^\d+$/.test(value) && normalScoreRank(value) === null);
+  const alphaTiebreakAnomaly = row => scorePair(row).some(value => value && !/^\d+$/.test(value));
   for (const states of groups.values()) {
     for (let i = 0; i < states.length; i++) {
       const row = states[i];
@@ -330,7 +330,7 @@ function auditTiebreakFlagAlignment(groups) {
       if (isFalse(row.is_tiebreak) && numericAnomaly(row)) {
         report.normalFlagNumericAnomalies++;
         const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
-        if (adjacent.some(next => isTrue(next.is_tiebreak) && scorePair(next).every(value => /^\\d+$/.test(value)))) {
+        if (adjacent.some(next => isTrue(next.is_tiebreak) && scorePair(next).every(value => /^\d+$/.test(value)))) {
           report.normalFlagNumericAdjacentToTiebreak++;
         } else report.normalFlagNumericWithNoAdjacentTiebreak++;
       }
