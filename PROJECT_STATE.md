@@ -932,3 +932,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `.github/workflows/pfe-point-state-sample-audit.yml`: downloads the public Zenodo sample into an ephemeral runner, audits it with the match index, and emits aggregate diagnostics only. Raw CC BY-NC 4.0 data is not committed or retained as a workflow artifact.
 - Real-sample execution and CI validation are pending; do not claim real data results until the workflow completes successfully.
 - Working mode remains combined; ATP and WTA are both in scope. Initial grouping uses source `tier_key` values without guessing or relabelling them as tours.
+- Additional safety correction: counter-based game/set inference now requires a terminal prior point score plus a 0-0 next-state reset (including a tiebreak-specific finish condition). Counter jumps after non-terminal scores are ambiguous. The first 84.38% figure is pre-gate only; rerun the real sample before using it.
