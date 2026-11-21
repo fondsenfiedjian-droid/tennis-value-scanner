@@ -31,7 +31,8 @@ const SPECS=[
  {name:"core_plus_extended_profile",features:[...OVERALL,...PROFILE]},
  {name:"surface_profile_only",features:SURFACE_PROFILE},
  {name:"shrunk_surface_profile_only",features:SHRUNK_SURFACE_PROFILE},
- {name:"overall_plus_shrunk_surface_profile",features:[...PROFILE,...SHRUNK_SURFACE_PROFILE]}
+ {name:"overall_plus_shrunk_surface_profile",features:[...PROFILE,...SHRUNK_SURFACE_PROFILE]},
+ {name:"core_residual_plus_extended_profile",features:[...OVERALL,...SURFACE_RESIDUAL,...PROFILE,...SHRUNK_SURFACE_PROFILE]}
 ];
 const SURFACES=new Set(["Hard","Clay","Grass","Carpet"]);
 const dayNumber=date=>Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8))/86400000;
@@ -414,12 +415,14 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
    pointAnnual.push({year,evaluation:aggregatePredictions(part)});
   }
   const commonNamesCore=[...OVERALL,...SURFACE_RESIDUAL];
-  const commonNamesExtended=[...PROFILE,...SHRUNK_SURFACE_PROFILE];
-  const commonRows=matched.filter(row=>[...commonNamesCore,...commonNamesExtended].every(name=>Number.isFinite(row.features[name])));
-  const commonSampleComparisons={
+  const extendedNames=[...PROFILE,...SHRUNK_SURFACE_PROFILE];
+  const commonNamesExtended=[...commonNamesCore,...extendedNames];
+  const commonRows=matched.filter(row=>commonNamesExtended.every(name=>Number.isFinite(row.features[name])));
+  commonSampleComparisons={
    commonEligibleMatches:commonRows.length,
    coreSurfaceResidual:evaluateFixedHoldout(commonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
-   overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
+   overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,extendedNames,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
+   coreResidualPlusExtendedProfile:evaluateFixedHoldout(commonRows,commonNamesExtended,{holdoutStartYear,featureStartYear,lastEvaluationYear})
   };
   reports[tour]={sourceRows:rows.length,serveStatsQuality:auditServeReturnStats(rows),featureMatches:matched.length,predictionsWithoutFeatureRecord:missingFeatures,
    pfePointModel:{eligibleMatches:pointRows.length,holdoutMatches:pointHoldout.length,
