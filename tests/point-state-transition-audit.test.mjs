@@ -379,3 +379,24 @@ test("separates game and set counter changes when point scores are identical", (
   assert.equal(report.stateDeltaDiagnostics.samePointScore.bothCountersChanged, 1);
   assert.equal(report.totals.byReason["counter-change-without-terminal-score"], 1);
 });
+
+
+test("audits normal-game and tiebreak score vocabularies separately", () => {
+  const rows = [
+    state({ points_p1: "AD", points_p2: "40", is_tiebreak: "false" }),
+    state({ points_p1: "50", points_p2: "0", is_tiebreak: "false" }),
+    state({ points_p1: "7", points_p2: "6", is_tiebreak: "true" }),
+    state({ points_p1: "AD", points_p2: "40", is_tiebreak: "true" }),
+    state({ points_p1: "15", points_p2: "0", is_tiebreak: "" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.equal(report.scoreVocabulary.normalStates, 2);
+  assert.equal(report.scoreVocabulary.tiebreakStates, 2);
+  assert.equal(report.scoreVocabulary.unknownFlagStates, 1);
+  assert.equal(report.scoreVocabulary.normalUnexpectedStates, 1);
+  assert.equal(report.scoreVocabulary.tiebreakNonNumericStates, 1);
+  assert.equal(report.scoreVocabulary.numericScoresOutsideTiebreak, 1);
+  assert.equal(report.scoreVocabulary.normalValueCounts.AD, 1);
+  assert.equal(report.scoreVocabulary.tiebreakValueCounts["7"], 1);
+  assert.equal(report.scoreVocabulary.unexpectedValueCounts["50"], 1);
+});
