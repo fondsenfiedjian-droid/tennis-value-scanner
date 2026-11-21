@@ -418,7 +418,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
   const extendedNames=[...PROFILE,...SHRUNK_SURFACE_PROFILE];
   const commonNamesExtended=[...commonNamesCore,...extendedNames];
   const commonRows=matched.filter(row=>commonNamesExtended.every(name=>Number.isFinite(row.features[name])));
-  commonSampleComparisons={
+  const commonSampleComparisons={
    commonEligibleMatches:commonRows.length,
    coreSurfaceResidual:evaluateFixedHoldout(commonRows,commonNamesCore,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
    overallPlusShrunkExtendedProfile:evaluateFixedHoldout(commonRows,extendedNames,{holdoutStartYear,featureStartYear,lastEvaluationYear}),
