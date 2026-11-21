@@ -315,13 +315,22 @@ function auditTiebreakFlagAlignment(groups) {
     normalFlagNumericWithNoAdjacentTiebreak: 0,
     tiebreakFlagNonNumericAnomalies: 0, tiebreakFlagAlphaAdjacentToNormal: 0,
     tiebreakFlagAlphaWithNoAdjacentNormal: 0,
-    missingPointScoreStates: 0
+    missingPointScoreStates: 0,
+    normalFlagNumericValueCounts: {}, normalFlagNumericPairCounts: {},
+    normalFlagNumericWithinDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericPreviousTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    normalFlagNumericNextTiebreakDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    tiebreakFlagAlphaValueCounts: {}, tiebreakFlagAlphaPairCounts: {},
+    tiebreakFlagAlphaWithinDistance: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
   };
   const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
   const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
   const scorePair = row => [String(row.points_p1 ?? "").trim().toUpperCase(), String(row.points_p2 ?? "").trim().toUpperCase()];
   const numericAnomaly = row => scorePair(row).some(value => /^\d+$/.test(value) && normalScoreRank(value) === null);
   const alphaTiebreakAnomaly = row => scorePair(row).some(value => value && !/^\d+$/.test(value));
+  const isNumericTiebreak = row => !!row && isTrue(row.is_tiebreak) && scorePair(row).every(value => /^\d+$/.test(value));
+  const isNormalPair = row => !!row && isFalse(row.is_tiebreak) && scorePair(row).every(value => normalScoreRank(value) !== null);
+  const add = (map, value) => { map[value] = (map[value] || 0) + 1; };
   for (const states of groups.values()) {
     for (let i = 0; i < states.length; i++) {
       const row = states[i];
@@ -329,17 +338,28 @@ function auditTiebreakFlagAlignment(groups) {
       if (!p1 || !p2) report.missingPointScoreStates++;
       if (isFalse(row.is_tiebreak) && numericAnomaly(row)) {
         report.normalFlagNumericAnomalies++;
-        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
-        if (adjacent.some(next => isTrue(next.is_tiebreak) && scorePair(next).every(value => /^\d+$/.test(value)))) {
-          report.normalFlagNumericAdjacentToTiebreak++;
-        } else report.normalFlagNumericWithNoAdjacentTiebreak++;
+        for (const value of [p1, p2]) if (/^\d+$/.test(value) && normalScoreRank(value) === null) add(report.normalFlagNumericValueCounts, value);
+        add(report.normalFlagNumericPairCounts, [p1 || "<missing>", p2 || "<missing>"].join(":"));
+        if (isNumericTiebreak(states[i - 1]) || isNumericTiebreak(states[i + 1])) report.normalFlagNumericAdjacentToTiebreak++;
+        else report.normalFlagNumericWithNoAdjacentTiebreak++;
+        for (let distance = 1; distance <= 5; distance++) {
+          const previous = states[i - distance], next = states[i + distance];
+          if (isNumericTiebreak(previous)) add(report.normalFlagNumericPreviousTiebreakDistance, distance);
+          if (isNumericTiebreak(next)) add(report.normalFlagNumericNextTiebreakDistance, distance);
+          if (isNumericTiebreak(previous) || isNumericTiebreak(next)) add(report.normalFlagNumericWithinDistance, distance);
+        }
       }
       if (isTrue(row.is_tiebreak) && alphaTiebreakAnomaly(row)) {
         report.tiebreakFlagNonNumericAnomalies++;
-        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
-        if (adjacent.some(next => isFalse(next.is_tiebreak) && scorePair(next).every(value => normalScoreRank(value) !== null))) {
-          report.tiebreakFlagAlphaAdjacentToNormal++;
-        } else report.tiebreakFlagAlphaWithNoAdjacentNormal++;
+        for (const value of [p1, p2]) if (value && !/^\d+$/.test(value)) add(report.tiebreakFlagAlphaValueCounts, value);
+        add(report.tiebreakFlagAlphaPairCounts, [p1 || "<missing>", p2 || "<missing>"].join(":"));
+        if (isNormalPair(states[i - 1]) || isNormalPair(states[i + 1])) report.tiebreakFlagAlphaAdjacentToNormal++;
+        else report.tiebreakFlagAlphaWithNoAdjacentNormal++;
+        for (let distance = 1; distance <= 5; distance++) {
+          if (isNormalPair(states[i - distance]) || isNormalPair(states[i + distance])) {
+            add(report.tiebreakFlagAlphaWithinDistance, distance);
+          }
+        }
       }
     }
   }
