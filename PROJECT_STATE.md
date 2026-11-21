@@ -1065,3 +1065,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - Corrective audit 2026-11-21: found and fixed an availability-gating bug in the PFE+ACE experiment. RestDays/restDaysAvailable are now independent of 7-day workload presence and remain available when both players have older prior-match history. All PFE+ACE results before this correction are provisional/superseded pending a rerun. New diagnostics separate recent-week workload coverage, both-player rest-history coverage, and known-duration coverage.
+
+
+- Corrected PFE+ACE run completed after fixing rest-day availability gating. Core ACE (no minutes) beat raw PFE and a calibration-only PFE-logit correction on all three chronological holdouts: ATP/WTA 2025 ΔBrier -0.005432/-0.006613; ATP/WTA 2026 full Δ -0.009589/-0.008799; ATP/WTA Jul–Nov 2026 Δ -0.010347/-0.009791. Core ACE also beat calibration-only by paired ΔBrier -0.003627/-0.004068 (2025), -0.005559/-0.004782 (2026 full), and -0.005613/-0.005096 (2026 second half); all 95% paired CIs excluded zero. Paired LogLoss CIs also excluded zero. Duration/minutes features added no measurable incremental value; remove from ACE v1 candidate. Rest-day availability is 93.99–96.60% across evaluation samples, while known duration coverage is only 0.03–7.32%. Research-only; no production path changed.
