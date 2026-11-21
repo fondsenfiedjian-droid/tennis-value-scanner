@@ -96,3 +96,7 @@ Successful run: GitHub Actions `44863408028`.
 - **Tiebreak:** next-point hypothesis 6,839/13,252 (51.61%); last-point alternative 6,413/13,252 (48.39%). Neither is convincing.
 
 The next-point-server interpretation is substantially more consistent for ordinary games, especially within games, so it remains the leading hypothesis there. However, only 67.62% of game-boundary transitions match it; this boundary mismatch must be explained before serve ownership is considered reliable. Tiebreak server alignment remains unresolved. Keep server-based point attribution and all serve/return features blocked.
+
+## Timestamp-gap audit (2026-11-21)
+
+The parser now measures elapsed seconds between consecutive observed states and reports distributions separately for inferred and ambiguous transitions: count, mean, median, p90/p95/p99, maximum and broad time-gap bins. This is intended to test whether ambiguous transitions are concentrated in long capture gaps or also occur at short intervals. A long gap is not automatically a missed point; timestamps are observed capture times and require cautious interpretation.
