@@ -157,6 +157,8 @@ function auditServerTransition(before, after) {
     return {
       status: serverAfter === expected ? "match" : "mismatch",
       alternativeStatus: serverAfter === alternativeExpected ? "match" : "mismatch",
+      expectedChange: nextPointNumber % 2 === 1,
+      actualChanged: serverAfter !== serverBefore,
       kind: "tiebreak"
     };
   }
@@ -205,6 +207,8 @@ function auditServerTransition(before, after) {
   return {
     status: serverAfter === expected ? "match" : "mismatch",
     alternativeStatus: serverAfter === alternativeExpected ? "match" : "mismatch",
+    expectedChange: gameAdvanced,
+    actualChanged: serverAfter !== serverBefore,
     kind: "regular",
     gameBoundary: gameAdvanced,
     firstPointOfNewGame
@@ -276,6 +280,8 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     regularWithinGameAlternativeMatches: 0, regularWithinGameAlternativeMismatches: 0,
     tiebreakChecked: 0, tiebreakMatches: 0, tiebreakMismatches: 0,
     tiebreakAlternativeMatches: 0, tiebreakAlternativeMismatches: 0,
+    tiebreakExpectedSwitch: { checked: 0, observedSwitch: 0, observedHold: 0 },
+    tiebreakExpectedHold: { checked: 0, observedSwitch: 0, observedHold: 0 },
     skipped: 0, skippedReasons: {}
   };
   const totals = {
@@ -370,6 +376,12 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
         else serverAlignment[prefix + "Mismatches"]++;
         if (serverCheck.alternativeStatus === "match") serverAlignment[prefix + "AlternativeMatches"]++;
         else serverAlignment[prefix + "AlternativeMismatches"]++;
+        if (prefix === "tiebreak") {
+          const group = serverCheck.expectedChange ? serverAlignment.tiebreakExpectedSwitch : serverAlignment.tiebreakExpectedHold;
+          group.checked++;
+          if (serverCheck.actualChanged) group.observedSwitch++;
+          else group.observedHold++;
+        }
         if (prefix === "regular") {
           const bucket = serverCheck.gameBoundary ? "regularGameBoundary" : "regularWithinGame";
           serverAlignment[bucket + "Checked"]++;
