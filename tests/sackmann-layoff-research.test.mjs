@@ -114,3 +114,13 @@ test("rejects invalid tour, date window and Elo K factor",()=>{
   assert.throws(()=>runLayoffWalkForward([],{tour:"atp",evaluationStart:"20240230"}),/valid ordered/);
   assert.throws(()=>runLayoffWalkForward([],{tour:"atp",kFactor:0}),/kFactor/);
 });
+
+
+test("symmetric training mirrors player orientation for layoff features",()=>{
+  const rows=[...season("2000"),...season("2001"),...season("2002"),...season("2003")];
+  const report=runLayoffWalkForward(rows,{tour:"wta",evaluationStart:"20030101",evaluationEnd:"20031231",
+    minTrainingMatches:100,maxTrainingRows:250,symmetricTraining:true});
+  assert.equal(report.symmetricTraining,true);
+  assert.ok(report.summary.candidate.matches>0);
+  assert.ok(Number.isFinite(report.summary.candidate.brier));
+});
