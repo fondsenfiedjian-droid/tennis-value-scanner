@@ -98,3 +98,35 @@ The WTA deterioration is statistically clear in this holdout; ATP is directional
 6. The archive source is CC BY-NC-SA 4.0. Commercial use requires separate permission.
 
 **Decision:** retain the 730-day SMA candidate for further research, but do not deploy or use it to place bets. The next gate is the split first/second-serve PFE bridge, followed by a future untouched holdout and an explicit test for incremental value over the core surface-residual model.
+
+## Latest frozen-holdout robustness run (2026-11-21, workflow 44899493914)
+
+The completed full-archive run re-evaluated the PFE point-delta stack across 84-, 365- and 730-day SMA histories. For 730 days it tested surface-shrinkage priors 3, 5 and 10. Each specification was trained on eligible 2016–2024 rows, coefficients were frozen, and evaluation used 2025 through the available 2026 archive. Rolling player histories remain strictly pre-match; all matches on a date are scored before that date's statistics are added. The 2026 source is partial through 2026-05-25.
+
+### 730-day stability: core SMA residual + PFE point-delta
+
+Negative deltas mean lower error than the same-sample Elo baseline. Confidence intervals are paired comparisons against Elo, not direct intervals between the two candidate stacks.
+
+| Tour / shrinkage prior | Holdout n | Δ Brier (95% CI vs Elo) | Δ LogLoss (95% CI vs Elo) | Accuracy: Elo → stack |
+|---|---:|---:|---:|---:|
+| ATP / 3 | 2,731 | -0.003375 (-0.005224, -0.001526) | -0.009249 (-0.013841, -0.004656) | 64.30% → 64.56% |
+| ATP / 5 | 2,740 | -0.003414 (-0.005274, -0.001554) | -0.009282 (-0.013894, -0.004669) | 64.27% → 64.64% |
+| ATP / 10 | 2,748 | -0.003530 (-0.005395, -0.001665) | -0.009528 (-0.014134, -0.004922) | 64.30% → 64.77% |
+| WTA / 3 | 2,499 | -0.002163 (-0.003475, -0.000850) | -0.005689 (-0.009166, -0.002212) | 65.55% → 65.11% |
+| WTA / 5 | 2,509 | -0.002115 (-0.003438, -0.000793) | -0.005685 (-0.009186, -0.002184) | 65.72% → 65.48% |
+| WTA / 10 | 2,523 | -0.002163 (-0.003472, -0.000853) | -0.005759 (-0.009242, -0.002277) | 65.64% → 65.48% |
+
+The point-delta-only candidate also improved Brier and LogLoss over Elo in all six 730-day/shrinkage combinations. Adding core SMA residual features gave a further favorable point estimate in every combination; the incremental difference versus point-delta-only has not yet been given its own paired confidence interval, so this is not proof of statistically significant synergy. Accuracy improved slightly on ATP but declined on WTA, illustrating why accuracy alone is not the selection criterion.
+
+The 84-day configuration did not provide a reliable signal: point-delta-only and core-plus-point-delta were approximately neutral or slightly worse on Brier, with wide intervals for both tours. The 365-day results were directionally positive but generally weaker than 730 days, particularly for WTA. The 730-day window is therefore the only current configuration worth carrying into the next validation stage.
+
+### Interpretation and decision
+
+- The 730-day stack's direction is robust to surface-shrinkage prior strengths 3, 5 and 10 for both tours.
+- This is a frozen-coefficient temporal holdout, but **not a blind independent holdout**: 2025–partial 2026 results and many candidate specifications were already inspected in prior iterations. No multiple-comparison correction was applied.
+- Candidate comparisons share overlapping matches. Reported confidence intervals compare each specification with Elo, not directly with another candidate.
+- The archive ends on 2026-05-25, so it does not cover the full current season.
+- These are probability metrics, not Winamax ROI, closing-line value or profitability.
+
+**Decision:** retain SMA core + PFE point-delta as the leading research candidate, using a 730-day history. Do not merge into the production PFE registry or use for betting yet. The next gate is a strict historical Winamax price evaluation with genuinely pre-match model probabilities, quote timestamps, verified outcomes and sufficient closing-price coverage. If no representative historical Winamax archive exists, collect timestamped snapshots prospectively rather than substituting Pinnacle prices or current Apify data for historical Winamax prices.
+
