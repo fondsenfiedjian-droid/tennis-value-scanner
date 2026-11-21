@@ -257,3 +257,15 @@ test("SMA historical serve and opponent-return inputs can feed PFE's exact match
  assert.equal(result.status,"provisional");
  assert.ok(result.probabilityA>0.5&&result.probabilityA<1);
 });
+
+test("PFE point bridge withholds match probabilities when serve and opponent-return evidence conflicts",()=>{
+ const rows=[
+  row("20250101",1,1,3,stats(100,60,30,20),stats(100,60,30,20)),
+  row("20250101",2,4,2,stats(100,60,20,20),stats(100,60,30,20)),
+  row("20250102",3,1,2,stats(100,60,30,20),stats(100,60,30,20))
+ ];
+ const f=buildPreMatchServeReturn(rows,{minOverallMatches:1,minSurfaceMatches:1}).get("20250102:1:2:Hard");
+ assert.equal(f.pfePointInputStatus,"review");
+ assert.equal(f.servicePointP1,null);
+ assert.equal(f.servicePointP2,null);
+});
