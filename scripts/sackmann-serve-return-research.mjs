@@ -76,7 +76,6 @@ function aggregate(history,today,surface=null,windowDays=365){
 export function buildPreMatchServeReturn(rows,{minOverallMatches=5,minSurfaceMatches=5,windowDays=365,surfaceShrinkageMatches=5}={}){
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
- if(!Number.isInteger(surfaceShrinkageMatches)||surfaceShrinkageMatches<1)throw new Error("surfaceShrinkageMatches must be a positive integer");
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(surfaceShrinkageMatches)||surfaceShrinkageMatches<1)throw new Error("surfaceShrinkageMatches must be a positive integer");
  const clean=rows.filter(row=>
@@ -195,6 +194,7 @@ export function runServeReturnResearch(fileInputs,{firstEvaluationYear=2020,last
  if(!Number.isInteger(windowDays)||windowDays<1)throw new Error("windowDays must be a positive integer");
  if(!Number.isInteger(minOverallMatches)||minOverallMatches<1)throw new Error("minOverallMatches must be a positive integer");
  if(!Number.isInteger(minSurfaceMatches)||minSurfaceMatches<1)throw new Error("minSurfaceMatches must be a positive integer");
+ if(!Number.isInteger(surfaceShrinkageMatches)||surfaceShrinkageMatches<1)throw new Error("surfaceShrinkageMatches must be a positive integer");
  const allRows={ATP:[],WTA:[]};
  for(const input of fileInputs){
   const match=String(input.filename).match(/(?:^|\/)(atp|wta)_matches_(\d{4})\.csv$/i);
