@@ -451,6 +451,7 @@ test("measures first and last observed states against match metadata without ass
   assert.equal(coverage.overall.lastStateMissingPointScore, 0);
   assert.equal(coverage.overall.normalCompletion, 1);
   assert.equal(coverage.overall.nonNormalCompletion, 1);
+  // Only the normal BO3 match reaches two sets; the retired tape stops after one.
   assert.equal(coverage.overall.finalSetTargetReached, 1);
   assert.equal(coverage.overall.finalSetTargetNotReached, 1);
   assert.equal(coverage.byTour.ATP.totalMatches, 1);
