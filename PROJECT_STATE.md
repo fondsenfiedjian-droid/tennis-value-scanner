@@ -1071,3 +1071,6 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 
 - ACE component ablation completed on three chronological holdouts. Load-only and rest-only each improve over PFE-logit recalibration, and combined core ACE beats either group alone on ATP and WTA in 2025, full 2026, and Jul–Nov 2026 (all paired Brier CIs exclude zero). Load contributes more standalone signal; rest-days add a smaller consistent increment. Minutes/duration features remain neutral beyond core ACE. Next: test 14/28-day match counts and playing days as a separate extension, retaining 3/7-day and rest-day features as the fixed core.
+
+
+- Added 14/28-calendar-day match-count and distinct-playing-day features to the pre-match workload builder, with independent availability flags and same-day exclusion preserved. Added inclusive-boundary regression tests and extended the PFE research runner to compare 14/28-day load and combined extended ACE against the validated 3/7-day+rest core. CI results pending; research-only.
