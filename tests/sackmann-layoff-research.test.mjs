@@ -71,6 +71,26 @@ test("walk-forward layoff model is research-only and evaluates only with prior-y
   }
 });
 
+test("optional worst-error audit records player context and candidate feature contributions",()=>{
+  const rows=[...season("2000"),...season("2001"),...season("2002"),...season("2003")];
+  const report=runLayoffWalkForward(rows,{tour:"wta",evaluationStart:"20030101",evaluationEnd:"20031231",
+    minTrainingMatches:100,maxTrainingRows:250,captureWorstErrors:true});
+  assert.equal(report.worstErrorsIncluded,true);
+  const cohort=report.cohorts.firstMatchesAfterReturn["1"];
+  assert.ok(cohort);
+  const errors=cohort.candidate.diagnostics.worstErrors;
+  assert.ok(errors.length>0);
+  assert.ok(errors.length<=20);
+  const worst=errors[0];
+  assert.match(worst.date,/^2003/);
+  assert.ok(worst.playerId);
+  assert.ok(worst.opponentId);
+  assert.ok(Number.isFinite(worst.baselineProbability));
+  assert.ok(Number.isFinite(worst.candidateProbability));
+  assert.equal(worst.candidateFeatureContributions.features.length,12);
+  assert.ok(worst.candidateFeatureContributions.features.every(item=>Number.isFinite(item.logitContribution)));
+});
+
 test("future seasons cannot change an earlier evaluation year",()=>{
   const past=[...season("2000"),...season("2001"),...season("2002"),...season("2003")];
   const options={tour:"wta",evaluationStart:"20030101",evaluationEnd:"20031231",
