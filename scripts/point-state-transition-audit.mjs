@@ -237,10 +237,14 @@ function summarizeTimestampGaps(values) {
 }
 
 function scoreStateIsEqual(a, b) {
-  return String(a.sets_p1 ?? "") === String(b.sets_p1 ?? "") &&
-    String(a.sets_p2 ?? "") === String(b.sets_p2 ?? "") &&
-    JSON.stringify(gameArray(a.games_p1)) === JSON.stringify(gameArray(b.games_p1)) &&
-    JSON.stringify(gameArray(a.games_p2)) === JSON.stringify(gameArray(b.games_p2)) &&
+  const sameGames = (left, right) => {
+    if (left === null || right === null) return left === right;
+    return left.length === right.length && left.every((value, index) => value === right[index]);
+  };
+  return integer(a.sets_p1) === integer(b.sets_p1) &&
+    integer(a.sets_p2) === integer(b.sets_p2) &&
+    sameGames(gameArray(a.games_p1), gameArray(b.games_p1)) &&
+    sameGames(gameArray(a.games_p2), gameArray(b.games_p2)) &&
     String(a.points_p1 ?? "").trim().toUpperCase() === String(b.points_p1 ?? "").trim().toUpperCase() &&
     String(a.points_p2 ?? "").trim().toUpperCase() === String(b.points_p2 ?? "").trim().toUpperCase();
 }
