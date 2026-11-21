@@ -286,4 +286,6 @@ test("summarizes timestamp gaps separately for inferred and ambiguous transition
   assert.equal(report.timestampGapStats.ambiguous.count, 1);
   assert.equal(report.timestampGapStats.ambiguous.p50Seconds, 120);
   assert.equal(report.timestampGapStats.ambiguous.bins["60-180s"], 1);
+  assert.equal(report.timestampGapStats.byAmbiguousReason["multi-point-gap-or-score-conflict"].count, 1);
+  assert.equal(report.timestampGapStats.byAmbiguousReason["multi-point-gap-or-score-conflict"].p50Seconds, 120);
 });
