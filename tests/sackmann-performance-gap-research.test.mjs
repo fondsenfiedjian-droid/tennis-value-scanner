@@ -18,7 +18,7 @@ test("walk-forward performance gap produces finite matched metrics",()=>{
  assert.ok(report.summary.baseline.matches>0);
  assert.equal(report.summary.baseline.matches,report.summary.candidate.matches);
  assert.ok(Number.isFinite(report.summary.delta.brier));
- assert.ok(report.bySurface.hard.matches>0);
+ assert.ok(report.bySurface.hard.candidate.matches>0);
 });
 test("same-day results do not affect another same-day match features",()=>{
  const base=[...season("2000",250),...season("2001",250),...season("2002",250)];
