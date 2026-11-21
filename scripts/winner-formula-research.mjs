@@ -34,6 +34,8 @@ function featureRow(prediction, workload) {
       matches3:available?w.matches3:0,
       matches7:available?w.matches7:0,
       playingDays7:available?w.playingDays7:0,
+      restDays:available?w.restDays:0,
+      restDaysAvailable:available?w.restDaysAvailable:0,
       minutes7:available?w.minutes7:0,
       durationCoverage7:available?w.durationCoverage7:0,
       workloadAvailable:available?1:0
