@@ -309,6 +309,43 @@ function auditScoreVocabulary(rows) {
   return report;
 }
 
+function auditTiebreakFlagAlignment(groups) {
+  const report = {
+    normalFlagNumericAnomalies: 0, normalFlagNumericAdjacentToTiebreak: 0,
+    normalFlagNumericWithNoAdjacentTiebreak: 0,
+    tiebreakFlagNonNumericAnomalies: 0, tiebreakFlagAlphaAdjacentToNormal: 0,
+    tiebreakFlagAlphaWithNoAdjacentNormal: 0,
+    missingPointScoreStates: 0
+  };
+  const isTrue = value => value === true || ["true", "1", "yes"].includes(String(value ?? "").trim().toLowerCase());
+  const isFalse = value => value === false || ["false", "0", "no"].includes(String(value ?? "").trim().toLowerCase());
+  const scorePair = row => [String(row.points_p1 ?? "").trim().toUpperCase(), String(row.points_p2 ?? "").trim().toUpperCase()];
+  const numericAnomaly = row => scorePair(row).some(value => /^\d+$/.test(value) && normalScoreRank(value) === null);
+  const alphaTiebreakAnomaly = row => scorePair(row).some(value => value && !/^\d+$/.test(value));
+  for (const states of groups.values()) {
+    for (let i = 0; i < states.length; i++) {
+      const row = states[i];
+      const [p1, p2] = scorePair(row);
+      if (!p1 || !p2) report.missingPointScoreStates++;
+      if (isFalse(row.is_tiebreak) && numericAnomaly(row)) {
+        report.normalFlagNumericAnomalies++;
+        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
+        if (adjacent.some(next => isTrue(next.is_tiebreak) && scorePair(next).every(value => /^\d+$/.test(value)))) {
+          report.normalFlagNumericAdjacentToTiebreak++;
+        } else report.normalFlagNumericWithNoAdjacentTiebreak++;
+      }
+      if (isTrue(row.is_tiebreak) && alphaTiebreakAnomaly(row)) {
+        report.tiebreakFlagNonNumericAnomalies++;
+        const adjacent = [states[i - 1], states[i + 1]].filter(Boolean);
+        if (adjacent.some(next => isFalse(next.is_tiebreak) && scorePair(next).every(value => normalScoreRank(value) !== null))) {
+          report.tiebreakFlagAlphaAdjacentToNormal++;
+        } else report.tiebreakFlagAlphaWithNoAdjacentNormal++;
+      }
+    }
+  }
+  return report;
+}
+
 export function auditPointStateTransitions(rows, matchRows = [], playerRows = []) {
   if (!Array.isArray(rows) || !rows.length) throw new Error("No point-state rows supplied");
   const scoreVocabulary = auditScoreVocabulary(rows);
@@ -345,6 +382,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     groups.get(id).push(row);
   }
   if (!groups.size) throw new Error("No rows with match IDs supplied");
+  const tiebreakFlagAlignment = auditTiebreakFlagAlignment(groups);
   const tiebreakServerByPlayerTour = {};
   const stateDeltaDiagnostics = {
     fullScoreStateUnchanged: { total: 0, serverChanged: 0, tiebreakChanged: 0, bothChanged: 0, exactDuplicateExceptTimestamp: 0 },
@@ -566,6 +604,7 @@ export function auditPointStateTransitions(rows, matchRows = [], playerRows = []
     provenance: "observed score states only; rows are not point outcomes",
     timestampStats,
     scoreVocabulary,
+    tiebreakFlagAlignment,
     timestampGapStats: {
       all: summarizeTimestampGaps(allTimestampGaps),
       inferred: summarizeTimestampGaps(inferredTimestampGaps),

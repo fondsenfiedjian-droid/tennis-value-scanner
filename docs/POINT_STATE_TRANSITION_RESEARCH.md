@@ -178,3 +178,17 @@ Successful run: GitHub Actions `44864969199`.
 - Normal-game values observed and accepted: 0, 15, 30, 40, A and AD. Tiebreak scores are numeric and can exceed 9 (the sample includes values through 40).
 
 Interpretation: a small number of states have a tiebreak flag/score-vocabulary mismatch, in addition to missing values. The 504 numeric normal-flag states may be tiebreak-like states with a delayed or incorrect flag; the 43 non-numeric tiebreak-flag states may be the reverse. Keep them excluded from point-outcome inference until state-level flag alignment is understood. Missing point scores remain ambiguous.
+
+## Adjacent tiebreak-flag alignment audit (2026-11-21)
+
+The next validation step checks whether states with numeric scores under a normal-game flag are immediately adjacent, within the same match's source row order, to a tiebreak-flagged numeric state. It also checks whether tiebreak-flagged states containing non-numeric score tokens are adjacent to a normal-game-flagged state with a recognized normal score pair. This is a diagnostic for possible one-row flag lag or state-boundary transitions only; adjacency is not proof of a flag error, and no anomalous row is reclassified by this check.
+
+### First real-sample adjacency results (2026-11-21)
+
+Successful run: GitHub Actions `44865468673`.
+
+- 504 normal-flag states contained unexpected numeric score values (1–9). 112 (22.2%) were immediately adjacent to a tiebreak-flagged state whose two score fields were numeric; 392 were not.
+- 43 tiebreak-flagged states contained a non-numeric score token (A/AD). 37 (86.0%) were immediately adjacent to a normal-flagged state with a recognized normal score pair; 6 were not.
+- 5,710 states had at least one missing point-score field.
+
+Interpretation: many A/AD-under-tiebreak cases occur at a normal/tiebreak boundary and may reflect a one-row flag lag or boundary snapshot. Most numeric-under-normal anomalies do not have an immediately adjacent tiebreak state, so they cannot be explained by simple one-row flag lag alone. This test is only adjacency in source row order; it does not prove the exact cause. Keep all 547 non-missing mismatch states ambiguous and do not rewrite their flags or infer point winners from them.

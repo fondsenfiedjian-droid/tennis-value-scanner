@@ -969,5 +969,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 ### PFE score-value vocabulary audit (2026-11-21)
 - Added aggregate frequency and validation counts for normal-game score labels vs numeric tiebreak scores, including unexpected values, unexpected numeric values in normal-game states and unknown tiebreak flags.
-- Added synthetic regression tests and aggregate-only workflow output. Real-sample findings pending.
+- Added synthetic regression tests and aggregate-only workflow output; real-sample score-vocabulary findings are recorded below.
 - Real-sample score vocabulary run `44864969199`: 929,956 normal-flag states and 21,108 tiebreak-flag states; zero unknown flags. 5,368 normal states had missing scores and 504 had unexpected numeric values 1–9; 342 tiebreak states had missing scores and 43 had A/AD values. Tiebreak flag/score-vocabulary mismatches remain research-only and excluded from inference.
+- Added adjacent-state diagnostics for score/flag mismatches: count numeric scores under normal-game flags and non-numeric tokens under tiebreak flags, then measure whether an opposite-flag state with the expected score shape is immediately adjacent. Diagnostic only; no automatic reclassification.
+- Real-sample adjacent tiebreak-flag run `44865468673`: of 504 numeric score anomalies under normal flags, 112 (22.2%) touched a neighboring numeric tiebreak-flag state; of 43 A/AD tokens under tiebreak flags, 37 (86.0%) touched a neighboring recognized normal-score state. 5,710 states had missing score fields. Adjacency suggests possible boundary/flag lag for some cases but does not prove cause; all 547 non-missing mismatches remain ambiguous and excluded from point-outcome inference.

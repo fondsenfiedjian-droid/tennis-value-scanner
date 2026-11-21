@@ -402,3 +402,26 @@ test("audits normal-game and tiebreak score vocabularies separately", () => {
   assert.equal(report.scoreVocabulary.tiebreakValueCounts["7"], 1);
   assert.equal(report.scoreVocabulary.normalUnexpectedValueCounts["50"], 1);
 });
+
+
+test("checks whether tiebreak-flag score anomalies touch a neighboring opposite-flag state", () => {
+  const rows = [
+    state({ points_p1: "5", points_p2: "0", is_tiebreak: "false" }),
+    state({ points_p1: "50", points_p2: "0", is_tiebreak: "false" }),
+    state({ points_p1: "7", points_p2: "6", is_tiebreak: "true" }),
+    state({ points_p1: "AD", points_p2: "40", is_tiebreak: "true" }),
+    state({ points_p1: "40", points_p2: "40", is_tiebreak: "false" }),
+    state({ points_p1: "7", points_p2: "7", is_tiebreak: "true" }),
+    state({ points_p1: "A", points_p2: "AD", is_tiebreak: "true" })
+  ];
+  const report = auditPointStateTransitions(rows);
+  assert.deepEqual(report.tiebreakFlagAlignment, {
+    normalFlagNumericAnomalies: 2,
+    normalFlagNumericAdjacentToTiebreak: 1,
+    normalFlagNumericWithNoAdjacentTiebreak: 1,
+    tiebreakFlagNonNumericAnomalies: 2,
+    tiebreakFlagAlphaAdjacentToNormal: 1,
+    tiebreakFlagAlphaWithNoAdjacentNormal: 1,
+    missingPointScoreStates: 0
+  });
+});
