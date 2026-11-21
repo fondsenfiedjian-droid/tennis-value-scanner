@@ -85,3 +85,30 @@ test("does not coerce missing set or game counters into zero",()=>{
  assert.equal(result.status,"ambiguous");
  assert.equal(result.reason,"no-score-change");
 });
+
+
+test("CLI runs from repository root with a relative script path and writes aggregate-only output", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const { mkdtemp, readFile, rm, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = await mkdtemp(join(tmpdir(), "pfe-point-state-"));
+  try {
+    const input = join(dir, "points.csv");
+    const output = join(dir, "report.json");
+    const csv = [
+      "match_id,sets_p1,sets_p2,games_p1,games_p2,points_p1,points_p2,server,is_tiebreak,timestamp_utc",
+      'm1,0,0,"[0]","[0]",0,0,1,false,2026-06-01T10:00:00Z',
+      'm1,0,0,"[0]","[0]",15,0,1,false,2026-06-01T10:00:10Z'
+    ].join("\\n");
+    await writeFile(input, csv);
+    const run = spawnSync(process.execPath, ["scripts/point-state-transition-audit.mjs", "--input", input, "--out", output], { encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr);
+    const report = JSON.parse(await readFile(output, "utf8"));
+    assert.equal(report.totals.matches, 1);
+    assert.equal(report.totals.inferred, 1);
+    assert.equal(JSON.stringify(report).includes("m1"), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
