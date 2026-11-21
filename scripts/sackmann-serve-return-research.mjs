@@ -172,8 +172,38 @@ function fitModel(rows,names,penalty=0.05){
  }
  return {standardization,beta};
 }
-function aggregatePredictions(rows){
- const n=rows.length;if(!n)return {matches:0,baseline:null,adjusted:null,pairedDifference:null};
+function calibrationMetrics(rows,key){
+ const bins=Array.from({length:10},()=>({n:0,p:0,y:0}));
+ for(const row of rows){const p=clamp(row[key]),index=Math.min(9,Math.floor(p*10)),bin=bins[index];bin.n++;bin.p+=p;bin.y+=row.outcome;}
+ let intercept=0,slope=1;
+ for(let iteration=0;iteration<50;iteration++){
+  let g0=0,g1=0,h00=0,h01=0,h11=0;
+  for(const row of rows){
+   const p=clamp(row[key]),x=logit(p),y=row.outcome,q=sigmoid(intercept+slope*x),w=q*(1-q);
+   if(iteration===0){const index=Math.min(9,Math.floor(p*10));bins[index].n++;bins[index].p+=p;bins[index].y+=y;}
+   g0+=y-q;g1+=(y-q)*x;h00+=w;h01+=w*x;h11+=w*x*x;
+  }
+  const det=h00*h11-h01*h01;
+  if(!Number.isFinite(det)||det<1e-12)break;
+  const delta0=(g0*h11-g1*h01)/det,delta1=(g1*h00-g0*h01)/det;
+  intercept+=delta0;slope+=delta1;
+  if(!Number.isFinite(intercept)||!Number.isFinite(slope))return {ece:null,mce:null,calibrationIntercept:null,calibrationSlope:null,bins:[]};
+  if(Math.max(Math.abs(delta0),Math.abs(delta1))<1e-8)break;
+ }
+ let weightedError=0,maxError=0;
+ const populated=[];
+ for(let i=0;i<bins.length;i++){
+  const bin=bins[i];if(!bin.n)continue;
+  const forecast=bin.p/bin.n,observed=bin.y/bin.n,error=Math.abs(forecast-observed);
+  weightedError+=(bin.n/rows.length)*error;maxError=Math.max(maxError,error);
+  populated.push({range:[Number((i/10).toFixed(1)),Number(((i+1)/10).toFixed(1))],matches:bin.n,meanForecast:Number(forecast.toFixed(4)),observedRate:Number(observed.toFixed(4))});
+ }
+ return {ece:Number(weightedError.toFixed(6)),mce:Number(maxError.toFixed(6)),
+  calibrationIntercept:Number(intercept.toFixed(5)),calibrationSlope:Number(slope.toFixed(5)),bins:populated};
+}
+
+export function aggregatePredictions(rows){
+ const n=rows.length;if(!n)return {matches:0,baseline:null,adjusted:null,pairedDifference:null,calibration:{baseline:null,adjusted:null}};
  let b0=0,l0=0,b=0,l=0,db=0,db2=0,dl=0,dl2=0;
  for(const row of rows){
   const p0=clamp(row.baseProbability),p=clamp(row.adjustedProbability),y=row.outcome;
@@ -184,6 +214,7 @@ function aggregatePredictions(rows){
  return {
   matches:n,baseline:{brier:Number((b0/n).toFixed(6)),logLoss:Number((l0/n).toFixed(6))},
   adjusted:{brier:Number((b/n).toFixed(6)),logLoss:Number((l/n).toFixed(6))},
+  calibration:{baseline:calibrationMetrics(rows,"baseProbability"),adjusted:calibrationMetrics(rows,"adjustedProbability")},
   pairedDifference:{
    brier:Number((db/n).toFixed(6)),brierCI95:n>1?{lower:Number((db/n-ci(db,db2)).toFixed(6)),upper:Number((db/n+ci(db,db2)).toFixed(6))}:null,
    logLoss:Number((dl/n).toFixed(6)),logLossCI95:n>1?{lower:Number((dl/n-ci(dl,dl2)).toFixed(6)),upper:Number((dl/n+ci(dl,dl2)).toFixed(6))}:null
