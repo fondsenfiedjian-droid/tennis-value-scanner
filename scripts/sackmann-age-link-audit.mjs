@@ -14,22 +14,30 @@ export function normalizePlayerName(value) {
 
 export function playerNameKeys(value) {
   const normalized=normalizePlayerName(value);
-  if(!normalized)return [];
+  if(!normalized)return {exact:[],initials:[]};
   const tokens=normalized.split(" ");
-  const keys=new Set([normalized,[...tokens].sort().join(" ")]);
+  const exact=[...new Set([normalized,[...tokens].sort().join(" ")])];
+  const initials=[];
   if(tokens.length>=2){
     const first=tokens[0].length===1?tokens[0]:tokens[0][0];
     const last=tokens.at(-1);
-    keys.add(first+" "+last);
-    keys.add(last+" "+first);
+    initials.push(first+" "+last,last+" "+first);
   }
-  return [...keys];
+  return {exact,initials:[...new Set(initials)]};
+}
+
+function resolvePlayerIds(nameToIds,tour,name) {
+  const keys=playerNameKeys(name);
+  let candidates=new Set(keys.exact.flatMap(alias=>[...(nameToIds.get(tour+":"+alias)??[])]));
+  if(candidates.size===0)candidates=new Set(keys.initials.flatMap(alias=>[...(nameToIds.get(tour+":"+alias)??[])]));
+  return candidates;
 }
 
 function addPlayerSide(nameToIds, ageHistory, name, id, date, age, tour) {
   const playerId=String(id??"").trim(), normalized=normalizePlayerName(name);
   if(!playerId || !normalized || !/^\d+$/.test(playerId)) return;
-  for(const alias of playerNameKeys(name)){
+  const keys=playerNameKeys(name);
+  for(const alias of [...keys.exact,...keys.initials]){
     const key=tour+":"+alias;
     if(!nameToIds.has(key)) nameToIds.set(key,new Set());
     nameToIds.get(key).add(playerId);
@@ -76,7 +84,7 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
       {id:String(row.player2Id??""),name:row.player2Name}
     ];
     const mapped=sides.map(side=>{
-      const candidates=new Set(playerNameKeys(side.name).flatMap(alias=>[...(nameToIds.get(tour+":"+alias)??[])]));
+      const candidates=resolvePlayerIds(nameToIds,tour,side.name);
       if(candidates.size===0) return {id:null,status:"unmatched",age:null};
       if(candidates.size!==1) return {id:null,status:"ambiguous",age:null};
       const id=[...candidates][0];
@@ -86,7 +94,7 @@ export function auditAgeLinks(valuebetennisRows, sackmannRowsByTour) {
       const side=sides[i],key=tour+":"+side.id;
       if(!players.has(key)) players.set(key,{tour,id:side.id,names:new Set(),status:null});
       const p=players.get(key);p.names.add(String(side.name??""));
-      const ids=new Set(playerNameKeys(side.name).flatMap(alias=>[...(nameToIds.get(tour+":"+alias)??[])]));
+      const ids=resolvePlayerIds(nameToIds,tour,side.name);
       const status=ids.size===0?"unmatched":ids.size>1?"ambiguous":"mapped";
       if(p.status && p.status!==status)p.status="inconsistent_name_mapping";
       else p.status=status;
