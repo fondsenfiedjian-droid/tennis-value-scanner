@@ -8,7 +8,7 @@ This research branch is isolated from Production. No Worker, frontend, API secre
 |---|---|---|---|
 | Valuebetennis | Recent ATP/WTA singles, match IDs, Pinnacle opening/closing odds, results and surfaces since 2021 | CC BY 4.0; attribution | Keep as odds/results spine; refresh annual files |
 | Jeff Sackmann ATP/WTA + lower tiers | Long history and match statistics; Challenger, Futures, qualifying, WTA ITF | CC BY-NC-SA 4.0; non-commercial, attribution, share-alike | Reuse the pinned archive already audited; do not duplicate the full download |
-| TennisMyLife | ATP IDs and richer serve/return match statistics; ATP/Challenger and WTA files | Personal/non-commercial research; no raw redistribution/resale; commercial use needs written permission | Download selected seasons only after confirming direct file URLs |
+| TennisMyLife | ATP IDs and richer serve/return match statistics; ATP, Challenger, qualifying and WTA CSVs | Personal/non-commercial research; no raw redistribution/resale; commercial use needs written permission | Download selected seasons only; WTA files are explicitly marked lower-confidence by publisher |
 | TennisData.app | 49-column ATP/WTA season exports, match and first-set odds where available | Public page says free; confirm applicable terms before ingestion | Schema/coverage comparison candidate; avoid duplicate storage |
 
 ## Current published Valuebetennis inventory
@@ -24,6 +24,15 @@ The source page generated on 21 Nov 2026 lists:
 The 2025 and 2026 CSV copies already available in the research workspace were audited previously: 80,412 and 80,836 rows respectively. The local 2026 copy is behind the current published count and should be refreshed. The exact 2026 published count is date-sensitive because the file is regenerated.
 
 Download page: https://www.valuebetennis.com/en/donnees.htm
+
+TennisMyLife direct CSV index/API: https://stats.tennismylife.org/api/data-files
+- ATP seasons: https://stats.tennismylife.org/data/YYYY.csv
+- Challenger seasons: https://stats.tennismylife.org/data/YYYY_challenger.csv
+- WTA seasons: https://stats.tennismylife.org/data/YYYY_wta.csv
+- ATP qualifying: https://stats.tennismylife.org/data/atp_quali/YYYY_atp_quali.csv
+- ATP player ID table: https://stats.tennismylife.org/data/ATP_Database.csv
+
+The official database page confirms these file groups and states that WTA files are imported from existing online CSVs and are not guaranteed to have the same reliability as ATP files.
 Expected direct file pattern: https://www.valuebetennis.com/datasets/valuebetennis-matchs-YYYY.csv
 
 ## Existing Sackmann audit (not a Valuebetennis linkage audit)
