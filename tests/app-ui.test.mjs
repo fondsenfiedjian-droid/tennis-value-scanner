@@ -624,8 +624,21 @@ test("BASIC comparison history derives last-five, recent form and surface splits
   assert.equal(result.bySurface.clay.losses,1);
   assert.equal(result.bySurface.grass.decided,0);
   assert.equal(result.last5[2].score,"6-3 6-4");
+  const opponentView=sandbox.derive(payload,20);
+  assert.deepEqual(Array.from(opponentView.last5,x=>x.winner),["?","W","L"]);
+  assert.equal(opponentView.last5[2].score,"3-6 4-6");
   assert.equal(Object.hasOwn(result.bySurface,"carpet"),false);
   assert.doesNotMatch(html,/\[\x27carpet\x27,\x27Ковёр\x27\]/);
+});
+test("H2H meeting rows display the published final score",()=>{
+  const start=html.indexOf("function renderCompareH2H(");
+  const end=html.indexOf("function renderCompareResult(",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={escapeHtml:value=>String(value)};
+  vm.runInNewContext(html.slice(start,end)+"\\nglobalThis.render=renderCompareH2H;",sandbox);
+  const payload={players:{p1:{name:"Novak Djokovic"},p2:{name:"Carlos Alcaraz"}},totals:{p1_wins:2,p2_wins:1,meetings:3},meetings:[{date:"2026-01-01",winner:1,score:"6-4 7-6(3)",outcome:"completed"}]};
+  const rendered=sandbox.render(payload,"Novak Djokovic","Carlos Alcaraz");
+  assert.match(rendered,/6-4 7-6\\(3\\)/);
 });
 test("Compare loads both histories and H2H independently after Elo, and rejects mismatched H2H identities",()=>{
   assert.match(html,/Promise\.allSettled\(\[/);
