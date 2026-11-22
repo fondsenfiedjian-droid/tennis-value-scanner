@@ -580,3 +580,34 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+test("BASIC comparison history derives last-five, recent form and surface splits by participant ID",()=>{
+  const start=html.indexOf("function deriveCompareHistory(");
+  const end=html.indexOf("function renderCompareHistory(",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={};
+  vm.runInNewContext(html.slice(start,end)+"\\nglobalThis.derive=deriveCompareHistory;",sandbox);
+  const payload={source:"Live Tennis API /history/matches",period:"2023-present",data:[
+    {id:1,scheduled_time:"2026-05-03T12:00:00Z",players:{p1:{id:10,name:"A"},p2:{id:20,name:"B"}},winner:1,surface:"hard",score:"6-3 6-4"},
+    {id:2,scheduled_time:"2026-05-02T12:00:00Z",players:{p1:{id:20,name:"B"},p2:{id:10,name:"A"}},winner:1,surface:"clay",score:"6-4 6-2"},
+    {id:3,scheduled_time:"2026-05-01T12:00:00Z",players:{p1:{id:10,name:"A"},p2:{id:20,name:"B"}},winner:null,surface:null}
+  ]};
+  const result=sandbox.derive(payload,10);
+  assert.equal(result.sample,3);
+  assert.deepEqual(Array.from(result.last5,x=>x.winner),["W","L","?"]);
+  assert.equal(result.form10.wins,1);
+  assert.equal(result.form10.losses,1);
+  assert.equal(result.undecided,1);
+  assert.equal(result.bySurface.hard.wins,1);
+  assert.equal(result.bySurface.clay.losses,1);
+  assert.equal(result.bySurface.grass.decided,0);
+});
+test("Compare loads both histories and H2H independently after Elo, and rejects mismatched H2H identities",()=>{
+  assert.match(html,/Promise\.allSettled\(\[/);
+  assert.match(html,/API\+'\/player-history\?id='/);
+  assert.match(html,/API\+'\/player-h2h\?p1='/);
+  assert.match(html,/norm\(p1\)!==norm\(nameA\)/);
+  assert.match(html,/Идентичность игроков не подтверждена точным совпадением имён/);
+  assert.match(html,/История недоступна\. Основное сравнение Elo сохранено/);
+  assert.match(html,/История 2023–н\.в\.; H2H 1968–н\.в\./);
+});
