@@ -643,3 +643,25 @@ The second alias batch was evaluated in full audit run `45085127030`; download, 
 | Ambiguous links | 6,482 | 6,274 |
 
 The second batch produced another 7,313 exact event-name agreements, reduced mismatches by 7,105, and reduced ambiguous links by 208. Across both batches, exact agreement has increased by 69,175 compared with the pre-alias baseline, while mismatches have fallen by 67,108. This is still not a final canonical linkage: 31,459 accepted candidates retain an event-name discrepancy and must be resolved or quarantined.
+
+
+### Third alias batch and full-dataset rerun
+
+The next full audit, run `45085256100`, completed successfully on 2026-11-22. It includes the third conservative alias batch and duplicate-alias cleanup.
+
+| Metric | Second alias run | Latest full audit |
+|---|---:|---:|
+| Unique candidate links | 282,765 | 282,821 |
+| Exact tournament-name agreement | 251,306 | 252,996 |
+| Tournament-name mismatches | 31,459 | 29,825 |
+| Ambiguous links | 6,274 | 6,218 |
+
+The latest run adds 56 unique candidate links, increases exact event-name agreement by 1,690, reduces mismatches by 1,634, and reduces ambiguous links by 56. This is a further improvement, but 29,825 event-name discrepancies remain among accepted unique candidates.
+
+Tour split in the latest run:
+- ATP: 141,399 unique links; 128,184 exact event-name matches; 13,215 mismatches; 2,373 ambiguous.
+- WTA: 141,422 unique links; 124,812 exact event-name matches; 16,610 mismatches; 3,845 ambiguous.
+
+The top remaining mismatch pairs still include ambiguous location-only cases such as `M15 Naples` / `M15 Naples FL`. Do not alias these automatically. Other high-frequency pairs should be checked against event tier, country/venue, year, and independent event identifiers before any further normalization. A tournament-name match is a diagnostic, not proof that two match records are identical.
+
+A regression fixture was added for the explicit `St Tropez CH` / `Saint-Tropez CH` alias. The research checks are being rerun against this fixture. Full audit run: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45085256100
