@@ -1939,6 +1939,35 @@ test("player rating audit distinguishes fresh, recent, stale, unknown and invali
   assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-11-19", now))), { status: "invalid", ageDays: null });
 });
 
+test("official player profile metadata is normalized without inventing missing values", () => {
+  const start = workerSource.indexOf("function extractOfficialPlayerProfile(");
+  const end = workerSource.indexOf("function assessRatingFreshness", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(workerSource.slice(start, end) + "\\nglobalThis.extract = extractOfficialPlayerProfile;", sandbox);
+  const extract = sandbox.extract;
+  assert.deepEqual(JSON.parse(JSON.stringify(extract({
+    ranking: 7, tour: "ATP", country: "Italy",
+    data_completeness: { known: 8, of: 10, missing: ["hand", "backhand"] }
+  }))), {
+    ranking: 7, tour: "atp", country: "Italy",
+    completeness: { known: 8, of: 10, percent: 80 }
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(extract({
+    ranking: 0, tour: "challenger", country: "", data_completeness: { known: 0, of: 0 }
+  }))), { ranking: null, tour: null, country: null, completeness: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(extract(null))), {
+    ranking: null, tour: null, country: null, completeness: null
+  });
+});
+
+test("comparison UI displays official ranking and profile completeness separately from Elo", () => {
+  assert.match(workerSource, /officialProfileA: hasIdA \\? extractOfficialPlayerProfile\\(profileA\\) : null/);
+  assert.match(workerSource, /officialProfileB: hasIdB \\? extractOfficialPlayerProfile\\(profileB\\) : null/);
+  assert.match(frontendSource, /Официальный рейтинг:/);
+  assert.match(frontendSource, /заполнено /);
+  assert.match(frontendSource, /вероятность победы по Elo/);
+});
 test("prediction UI displays each player's rating freshness separately", () => {
   assert.match(frontendSource, /ratingFreshnessA/);
   assert.match(frontendSource, /ratingFreshnessB/);
