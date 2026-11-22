@@ -47,6 +47,20 @@ Serve-stat coverage varies materially: 4.84% Futures, 57.52% Challenger/qualifyi
 
 Existing report: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/blob/main/docs/LOWER_TIER_DATABASE_RESEARCH.md
 
+## Selective downloader
+
+A Node.js downloader is included; it uses built-in Node APIs only and stores files under `research-data/aggregator1` (not Production). It fetches Valuebetennis 2021–2026 and TennisMyLife ATP, Challenger, WTA and qualifying files for the selected years, plus the ATP ID table. It records file sizes and SHA-256 hashes in `manifest.json`.
+
+Run from the repository root:
+
+\`\`\`bash
+node scripts/download-aggregator1-free-data.mjs
+\`\`\`
+
+Optional: `--years 2021,2022,2023` to limit the range, `--no-wta` to skip the lower-confidence WTA files, or `--no-quali` to skip ATP qualifying.
+
+The downloader has not been executed in this research environment: outbound DNS/network access is unavailable here. It is prepared for execution in Termux or a normal Node.js environment; inspect the manifest for any source-side omissions or failed files.
+
 ## New linkage audit
 
 Run after placing Valuebetennis season CSVs and Sackmann CSVs in separate folders:
