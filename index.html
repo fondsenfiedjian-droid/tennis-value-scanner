@@ -2473,6 +2473,11 @@
   window.addEventListener('pageshow',()=>{
     scheduleAutoRefresh();
   });
+  function buildScheduleDateParams(now=new Date()){
+    const from=new Date(now);from.setHours(0,0,0,0);
+    const to=new Date(from);to.setDate(to.getDate()+7);to.setMilliseconds(-1);
+    return 'from='+encodeURIComponent(from.toISOString())+'&to='+encodeURIComponent(to.toISOString());
+  }
   async function loadMatches(force=false){
     const btn=$('#refreshBtn');
     let oddsUpdated=false;
@@ -2482,7 +2487,7 @@
       // Schedule loading must not wait for local prediction-archive initialization.
       setConnectionStatus('ПРОВЕРКА API');
       $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
-      try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
+      try{const raw=localStorage.getItem('tvs-match-cache-v2');if(raw)saved=JSON.parse(raw);}catch(e){}
       // Odds providers run independently: a slow bookmaker must not block the match schedule.
       const oddsPromise=loadOdds();
       // Reuse recent match data for fifteen minutes; wait for odds only on this cache path.
@@ -2493,7 +2498,7 @@
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
         return;
       }
-      const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
+      const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200&'+buildScheduleDateParams()+(force?'&fresh=true':''));
       const payload=await res.json();
       if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
       const cacheHeader=String(res.headers.get('X-Data-Cache')||'').toUpperCase();
@@ -2502,7 +2507,7 @@
       if(matches===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
       setConnectionStatus('Live Tennis API · '+scheduleCacheLabel);
-      localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
+      localStorage.setItem('tvs-match-cache-v2',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
       oddsPromise.then(()=>{if(window.cachedMatches===matches)renderMatches(matches);}).catch(()=>{});
     }catch(err){
