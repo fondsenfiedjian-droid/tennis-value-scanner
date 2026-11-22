@@ -1114,6 +1114,76 @@ export default {
       }
     }
 
+    if (path === "/player-h2h") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const player1 = (url.searchParams.get("p1") || "").trim();
+      const player2 = (url.searchParams.get("p2") || "").trim();
+      if (player1.length < 3 || player1.length > 80 || player2.length < 3 || player2.length > 80) {
+        return response({ error: "p1 and p2 must each contain between 3 and 80 characters" }, 400);
+      }
+      if (player1.toLocaleLowerCase() === player2.toLocaleLowerCase()) {
+        return response({ error: "p1 and p2 must identify different players" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request,
+          "/__player-h2h/v1/" + encodeURIComponent(player1.toLocaleLowerCase()) + "/" +
+          encodeURIComponent(player2.toLocaleLowerCase()));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const params = new URLSearchParams({ p1: player1, p2: player2 });
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/h2h?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis H2H returned invalid JSON", accessStatus: "invalid_payload" }, 502);
+        }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "basic_h2h_not_entitled"
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 429 ? "rate_limited"
+            : upstream.status === 400 ? "ambiguous_or_invalid_player_name"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Live Tennis head-to-head request failed",
+            accessStatus,
+            upstreamStatus: upstream.status,
+            ...(upstream.status === 400 && body && typeof body === "object" ? { detail: body } : {})
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) ||
+            !body.totals || typeof body.totals !== "object" || !Array.isArray(body.meetings)) {
+          return response({ error: "Live Tennis H2H returned an unexpected payload", accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = {
+          source: "Live Tennis API /h2h",
+          period: "1968-present",
+          requested: { p1: player1, p2: player2 },
+          retrievedAt: new Date().toISOString(),
+          accessStatus: "available",
+          ...body
+        };
+        const headers = { "Cache-Control": "public, max-age=86400", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not retrieve head-to-head history", accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/player-stats") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
@@ -1531,7 +1601,7 @@ export default {
 
     return response({
       service: "tennis-value-api",
-      endpoints: ["/health", "/matches", "/player-history", "/player-stats", "/players/search", "/odds", "/historical", "/predict"]
+      endpoints: ["/health", "/matches", "/player-history", "/player-h2h", "/player-stats", "/players/search", "/odds", "/historical", "/predict"]
     });
   }
 };
