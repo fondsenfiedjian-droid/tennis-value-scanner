@@ -200,6 +200,14 @@
     .additional-open{margin-top:9px;padding:7px 10px;border:1px solid #65404a;border-radius:8px;background:#211319;color:#f0dce0;font-size:10px;font-weight:750}
     .additional-empty{color:var(--muted);font-size:11px;line-height:1.5}
     .additional-empty b{display:block;margin-bottom:4px;color:var(--text);font-size:12px}
+
+    .plan-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+    .plan-summary-item{min-width:0;padding:10px 11px;border:1px solid #353640;border-radius:11px;background:linear-gradient(145deg,#17181f,#101116)}
+    .plan-summary-item span{display:block;color:#a9aeba;font-size:9px;font-weight:850;letter-spacing:.08em}
+    .plan-summary-item b{display:block;margin-top:5px;color:#f0f1f4;font-size:17px;line-height:1.15;overflow-wrap:anywhere}
+    .plan-summary-item small{display:block;margin-top:4px;color:#9298a4;font-size:9px;line-height:1.35}
+    #planMandatoryCount{color:#d58a8e}
+    #planStakeTotal{color:#e3b455}
 </style>
 </head>
 <body>
@@ -215,10 +223,12 @@
     <button class="tab" data-day="tomorrow">Завтра</button>
   </div>
 
-  <div class="stats">
-    <div class="panel"><div class="muted">Валуйных ставок</div><div class="stat-num" id="valueCount">—</div><div class="muted">после проверки модели</div></div>
-    <div class="panel"><div class="muted">Матчей в списке</div><div class="stat-num" id="matchCount">—</div><div class="muted">после фильтрации по туру и дате</div></div>
-  </div>
+  <section class="plan-summary" aria-label="Сводка плана ставок">
+    <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ</span><b id="planMandatoryCount">0</b><small>прошли строгие критерии</small></div>
+    <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>размер не рассчитан</small></div>
+    <div class="plan-summary-item"><span>БАНК</span><b id="planBank">не задан</b><small>не настроен пользователем</small></div>
+    <div class="plan-summary-item"><span>ЭКСПОЗИЦИЯ</span><b id="planExposure">—</b><small>не рассчитана</small></div>
+  </section>
 
   <button class="refresh" id="refreshBtn">↻ &nbsp; ОБНОВИТЬ ДАННЫЕ</button>
   <div id="oddsStatus" class="muted" role="status" aria-live="polite" style="margin:-7px 2px 12px">Коэффициенты Winamax ещё не загружены.</div>
@@ -1671,6 +1681,8 @@
     if(bestBetCarouselIndex<0)bestBetCarouselIndex=0;
     const best=bestBets[bestBetCarouselIndex]||null;
     bestBetCarouselKey=best?betKey(best):null;
+    const mandatoryCount=$('#planMandatoryCount');
+    if(mandatoryCount)mandatoryCount.textContent=String(bestBets.length);
     box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
