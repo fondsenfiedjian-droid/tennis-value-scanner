@@ -45,6 +45,21 @@ TennisMyLife is a strong ATP identity bridge for the covered 2021–2025 ATP row
 
 This does **not** yet demonstrate an increase in the 478,606-row Valuebetennis ↔ Sackmann linkage. The next research step is to test whether TennisMyLife's player registry names and IDs can safely normalize Valuebetennis player names and increase confirmed links without introducing false positives.
 
+## Valuebetennis ID-bridge test
+
+A second aggregate-only test compared the direct Valuebetennis-name linkage with a route through the TennisMyLife ATP registry and the derived TML-ID-to-Sackmann-ID aliases. It covered ATP rows from 2021–2025 only.
+
+Verified GitHub Actions run: [45067879384](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45067879384).
+
+- Valuebetennis ATP rows: 232,093.
+- Direct normalized-name method: 11,957 resolved links (5.15%).
+- TennisMyLife ID bridge: 11,882 resolved links (5.12%).
+- ID bridge added new resolved links beyond direct name matching: **0**.
+- All 11,882 ID-bridge links agreed with the direct-name result; no disagreements were observed.
+- The ID bridge had 75 fewer resolved rows because some Valuebetennis player names/IDs did not have a complete TML-to-Sackmann crosswalk.
+
+Conclusion: in this tested period, TennisMyLife IDs do not increase Valuebetennis-to-Sackmann match coverage. They remain useful as an independent ATP player-identity validation layer, but there is no evidence to justify adding this bridge to the production matching pipeline.
+
 ## Data-use restrictions
 
 TennisMyLife's public terms limit use to personal, educational and non-commercial research. Commercial model training or commercial use of derived predictions requires prior written permission. Sackmann data is CC BY-NC-SA 4.0. No data from this audit has been merged into Production.
