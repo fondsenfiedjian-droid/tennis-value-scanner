@@ -612,7 +612,7 @@
     applySkin(activeSkin);
     scheduleAutoRefresh();
     close();
-    $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
+    if($('#filterSummary'))$('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
@@ -2417,14 +2417,16 @@
     scheduleAutoRefresh();
   });
   async function loadMatches(force=false){
-    await archiveStorageReady;
-    const btn=$('#refreshBtn');btn.disabled=true;btn.textContent='ЗАГРУЗКА…';
-    setConnectionStatus('ПРОВЕРКА API');
-    $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
+    const btn=$('#refreshBtn');
+    let oddsUpdated=false;
     let saved=null;
-    try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
-    const oddsUpdated=await loadOdds();
+    btn.disabled=true;btn.textContent='…';btn.setAttribute('aria-label','Загрузка данных');
     try{
+      await archiveStorageReady;
+      setConnectionStatus('ПРОВЕРКА API');
+      $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
+      try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
+      oddsUpdated=await loadOdds();
       // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
@@ -2454,9 +2456,9 @@
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
-        $('#matchCount').textContent='—';
+        if($('#matchCount'))$('#matchCount').textContent='—';
       }
-    }finally{btn.disabled=false;btn.textContent='↻  ОБНОВИТЬ ДАННЫЕ';}
+    }finally{btn.disabled=false;btn.textContent='↻';btn.setAttribute('aria-label','Обновить данные');}
   }
   $('#refreshBtn').onclick=()=>loadMatches(true);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
