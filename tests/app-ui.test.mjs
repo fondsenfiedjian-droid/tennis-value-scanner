@@ -381,7 +381,7 @@ test("strict recommendations return the full reliability-ranked list for manual 
   const higher={...base,ev:4,probability:74,reliabilityScore:95,player:"Player A"};
   const blocked={...base,reliabilityScore:84,player:"Blocked"};
   const sandbox={};
-  vm.runInNewContext(recommendationSource+"\\nglobalThis.selectBestBets=selectBestBets;",sandbox);
+  vm.runInNewContext(recommendationSource+"\nglobalThis.selectBestBets=selectBestBets;",sandbox);
   const selected=sandbox.selectBestBets([lower,blocked,higher],3,1.9);
   assert.deepEqual(Array.from(selected).map(x=>x.player),["Player A","Player B"]);
   assert.equal(selected.length,2);
@@ -397,9 +397,9 @@ test("strict recommendation carousel is manually navigated and does not auto-rot
   assert.match(html,/aria-label="Обязательные ставки"/);
 });
 
-test("best bet of the day prioritizes validated reliability and opens its match from the whole feature card", () => {
-  assert.match(html, /id="bestBet" class="best-bet" role="button" tabindex="0"/);
-  assert.match(html, /СТАВКА ДНЯ/);
+test("mandatory bets carousel prioritizes validated reliability and opens the selected match", () => {
+  assert.match(html, /id="bestBet" class="best-bet" role="region" aria-label="Обязательные ставки"/);
+  assert.match(html, /ОБЯЗАТЕЛЬНЫЕ СТАВКИ/);
   assert.match(html, /best-bet-odds/);
   assert.match(html, /best-bet-pair/);
   assert.match(html, /reliabilityEligible===true/);
@@ -409,9 +409,9 @@ test("best bet of the day prioritizes validated reliability and opens its match 
   assert.match(html, /не менее 50 проверенных матчей калибровки/);
   assert.match(html, /Brier score выше 0\.22/);
   assert.match(html, /\.sort\(\(a,b\)=>b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\|\|b\.ev-a\.ev\)/);
-  assert.match(html, /box\.onclick=openDetails/);
-  assert.match(html, /box\.onkeydown=/);
-  assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
+  assert.match(html, /\$\('#bestBetOpen'\)\.onclick=openDetails/);
+  assert.match(html, /id="bestBetPrev"/);
+  assert.match(html, /id="bestBetNext"/);
   assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html, /x\.reliabilityScore>=65/);
   assert.match(html, /x\.valueEligible===true/);
