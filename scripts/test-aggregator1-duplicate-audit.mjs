@@ -12,7 +12,7 @@ const files=[
  ].join("\n")},
  {filename:"valuebetennis-matchs-2026.csv",content:[
   "match_id;date;genre;surface;joueur1;joueur2;tournoi;tournoi_id;score;joueur1_id;joueur2_id;vainqueur_id",
-  "m1;2025-01-10;ATP;dur;Player One;Player Two;Open A;10"
+  "m1;2025-01-10;ATP;dur;Player One;Player Two;Open A;10;6-4 6-4;101;102;101"
  ].join("\n")}
 ];
 const r=auditValuebetDuplicates(files);
