@@ -1098,3 +1098,9 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Each match now reports one of four states: complete fresh pair, one-sided/incomplete pair, no fresh complete pair, or winner market disabled. The list summary separately counts all displayed matches and those with a complete pair.
 - Prediction eligibility remains separate: matches without eligible odds are displayed but do not become model/value candidates. Existing odds freshness, same-event matching, model calculation and EV rules are unchanged.
 - Regression workflow run 45008710902 passed after this change: 477 tests, 477 passed, 0 failed. Draft PR #167 remains unmerged; no Production deployment has been authorized or performed.
+
+
+### Preview verification — PR #167
+- Netlify Deploy Preview for PR #167 reported success and is available at https://deploy-preview-167--fascinating-paprenjak-1aa9b3.netlify.app.
+- Cloudflare Workers Build for branch preview `ui/tennis-value-scanner-2` completed successfully. The check resolved to the branch preview environment, not the Production Worker.
+- Latest confirmed regression run before this documentation-only update: 45008753110, 477/477 passed. The documentation update will trigger another PR validation cycle.
