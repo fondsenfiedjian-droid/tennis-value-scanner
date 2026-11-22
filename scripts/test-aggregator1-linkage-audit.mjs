@@ -33,7 +33,7 @@ const sackmann = [
   {
     filename: "wta_matches_2025.csv",
     content: [
-      "tourney_date,tourney_name,surface,winner_name,loser_name",
+      "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
       "20250127,Abu Dhabi,Hard,Ons Jabeur,Emma Raducanu,22,21",
       "20250130,Doha,Hard,Ons Jabeur,Emma Raducanu,22,21"
     ].join("\n")
@@ -51,7 +51,6 @@ assert.equal(result.totals.noCandidate, 4);
 assert.equal(result.totals.invalidPlayerPair, 1);
 assert.equal(result.totals.pairAbsent, 1);
 assert.equal(result.totals.dateWindowMiss, 1);
-assert.equal(result.totals.surfaceAbsent, 0);
 assert.equal(result.totals.surfaceAbsent, 0);
 assert.equal(result.totals.unknownSurface, 1);
 assert.equal(result.totals.ambiguous, 1);
