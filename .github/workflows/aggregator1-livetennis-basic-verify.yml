@@ -29,7 +29,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: livetennis-basic-verification
-          path: livetennis-basic-verification.json
+          name: livetennis-archive-inventory
+          path: livetennis-archive-inventory.json
           if-no-files-found: ignore
           retention-days: 1
