@@ -1178,3 +1178,8 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Provider 403 is surfaced as `basic_history_not_entitled`; 401/429/400 and malformed payloads remain distinct. No empty or fabricated match history is created.
 - Added regression tests for input validation, exact upstream filters, cache hits, BASIC plan refusal and rate-limit retry guidance.
 - The route is a data proxy only: no player form calculations, H2H calls, frontend wiring or Elo/model changes in this step. It has not been deployed to the Production Worker; PR #167 remains draft.
+
+### 2026-11-22 — BASIC history proxy validation
+- Fixed a regex escaping defect found by the first CI run; the initial run had 493 passing / 2 failing tests because valid numeric IDs were rejected.
+- Re-ran regression tests on commit `9d34cf7e`: 495 passed, 0 failed. Project-state documentation guard also passed.
+- Added `/player-history` to the Worker health endpoint inventory. BASIC history proxy remains isolated to the draft branch; no frontend wiring or production deployment.
