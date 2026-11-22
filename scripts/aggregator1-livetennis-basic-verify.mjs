@@ -4,8 +4,8 @@
 const BASE = "https://api.livetennisapi.com/api/public/v1";
 const key = process.env.LIVE_TENNIS_API_KEY;
 if (!key) {
-  console.log("SKIP: GitHub Actions secret LIVE_TENNIS_API_KEY is not configured. No API request was made.");
-  process.exit(0);
+  console.error("BLOCKED: GitHub Actions secret LIVE_TENNIS_API_KEY is not configured. No API request was made; add the key directly in repository Actions secrets, never in source code.");
+  process.exit(2);
 }
 const headers = { "X-API-Key": key, "Accept": "application/json", "User-Agent": "TennisValueScanner-Aggregator1-Research/1.0" };
 async function get(path) {
