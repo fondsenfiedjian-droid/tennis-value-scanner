@@ -586,7 +586,7 @@ test("BASIC comparison history derives last-five, recent form and surface splits
   const end=html.indexOf("function renderCompareHistory(",start);
   assert.ok(start>=0&&end>start);
   const sandbox={};
-  vm.runInNewContext(html.slice(start,end)+"\\nglobalThis.derive=deriveCompareHistory;",sandbox);
+  vm.runInNewContext(html.slice(start,end)+"\nglobalThis.derive=deriveCompareHistory;",sandbox);
   const payload={source:"Live Tennis API /history/matches",period:"2023-present",data:[
     {id:1,scheduled_time:"2026-05-03T12:00:00Z",players:{p1:{id:10,name:"A"},p2:{id:20,name:"B"}},winner:1,surface:"hard",score:"6-3 6-4"},
     {id:2,scheduled_time:"2026-05-02T12:00:00Z",players:{p1:{id:20,name:"B"},p2:{id:10,name:"A"}},winner:1,surface:"clay",score:"6-4 6-2"},
