@@ -2479,7 +2479,7 @@
     let saved=null;
     btn.disabled=true;btn.textContent='…';btn.setAttribute('aria-label','Загрузка данных');
     try{
-      await archiveStorageReady;
+      // Schedule loading must not wait for local prediction-archive initialization.
       setConnectionStatus('ПРОВЕРКА API');
       $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
       try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
