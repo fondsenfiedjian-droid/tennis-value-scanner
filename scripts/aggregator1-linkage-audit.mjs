@@ -98,7 +98,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;cg.validRows++;tcg.validRows++;
       if(!sf){
         totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;
-        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;
+        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
@@ -112,7 +112,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         offsets.push(date-selected.date);
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;}
-      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;}
+      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
