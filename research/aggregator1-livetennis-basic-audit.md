@@ -615,3 +615,17 @@ This alias update is a normalization change only; it does not widen the 14-day d
 
 
 A potentially ambiguous `M15 Naples` / `M15 Naples FL` pair was deliberately **not** promoted to an alias: the city name alone is insufficient to rule out another Naples event. It remains a mismatch until country/venue or independent event-ID evidence confirms identity. This illustrates the policy: exact, well-supported aliases only; ambiguous city matches stay unresolved.
+
+
+### First alias batch measurement
+
+The first full rerun after explicit aliases, with the ambiguous Naples alias excluded, completed successfully on run `45084958530`.
+
+| Metric | Before aliases | After first alias batch |
+|---|---:|---:|
+| Unique candidate links | 280,698 | 282,499 |
+| Exact tournament-name agreement | 182,131 | 241,622 |
+| Tournament-name mismatches | 98,567 | 40,877 |
+| Ambiguous links | 8,341 | 6,540 |
+
+The alias batch reduced the accepted-link mismatch count by 57,690 (about 58.5%) and resolved 1,801 previously ambiguous candidate rows. This is strong evidence that much of the original mismatch was caused by event naming, but 40,877 mismatches remain. The second alias batch is being tested separately; do not yet promote all candidate links to canonical matches.
