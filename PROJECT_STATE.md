@@ -1142,3 +1142,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - No intent labels, classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed.
 
 - Classifier interpretation hardening: numeric evidence weights are now descriptive-only and no longer determine the classification. Calendar-only signals cannot produce a preparation/low-priority label; preparation statements, later-event priority statements, return/readiness context and current-event priority are reported separately. Mixed direct statements remain mixed. Added regression tests. No probability, EV, bet-selection or Production behavior changed.
+
+- CI follow-up on classifier hardening: first regression run exposed one registry-test assertion still expecting the retired broad label `possible_preparation_or_low_priority`; actual narrow output was `explicit_preparation_statement`. Updated the stale expectation. No production or model behavior changed.
