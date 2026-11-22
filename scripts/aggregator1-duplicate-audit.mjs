@@ -10,7 +10,7 @@ const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 export function auditValuebetDuplicates(files){
   if(!files.length)throw new Error("Valuebetennis files are required");
   const ids=new Map(),fingerprints=new Map(),byYear={},byTour={};
-  const totals={rows:0,rowsWithMatchId:0,missingMatchId:0,duplicateMatchIdRows:0,duplicateMatchIdGroups:0,conflictingMatchIdGroups:0,duplicateFingerprintRows:0,duplicateFingerprintGroups:0,invalidCoreRows:0};
+  const totals={rows:0,rowsWithMatchId:0,missingMatchId:0,duplicateMatchIdRows:0,duplicateMatchIdGroups:0,conflictingMatchIdGroups:0,duplicateFingerprintRows:0,duplicateFingerprintGroups:0,duplicateFingerprintScoreConflictGroups:0,duplicateFingerprintWinnerConflictGroups:0,duplicateFingerprintIdenticalPayloadGroups:0,invalidCoreRows:0};
   const required=["match_id","date","genre","surface","joueur1","joueur2"];
   let columns=[];
   for(const file of files){
@@ -49,10 +49,17 @@ export function auditValuebetDuplicates(files){
     if(signatures.size>1)totals.conflictingMatchIdGroups++;
     for(const x of group){byYear[x.year].rowsInDuplicateMatchIdGroups++;byTour[x.tour].rowsInDuplicateMatchIdGroups++;}
   }
+  const scoreFields=columns.filter(k=>/score|set[1-5]|result/i.test(k));
+  const winnerFields=columns.filter(k=>/winner|vainqueur|gagnant/i.test(k));
   for(const group of fingerprints.values()){
     if(group.length<2)continue;
     totals.duplicateFingerprintGroups++;
     totals.duplicateFingerprintRows+=group.length-1;
+    const hasConflict=fields=>fields.some(field=>new Set(group.map(x=>String(x.row[field]??"").trim()).filter(Boolean)).size>1);
+    if(hasConflict(scoreFields))totals.duplicateFingerprintScoreConflictGroups++;
+    if(hasConflict(winnerFields))totals.duplicateFingerprintWinnerConflictGroups++;
+    const payloads=new Set(group.map(x=>JSON.stringify(Object.fromEntries(Object.entries(x.row).filter(([key])=>key!=="match_id").sort(([a],[b])=>a.localeCompare(b)))));
+    if(payloads.size===1)totals.duplicateFingerprintIdenticalPayloadGroups++;
     for(const x of group){byYear[x.year].rowsInDuplicateFingerprintGroups++;byTour[x.tour].rowsInDuplicateFingerprintGroups++;}
   }
   return {
@@ -64,6 +71,7 @@ export function auditValuebetDuplicates(files){
     methods:{
       matchId:"Repeated source match_id across all input years; conflicting groups have more than one tour/date/event/player-pair/surface signature.",
       fingerprint:"Same tour, calendar date, tournament_id (preferred) or normalized tournament name, surface, and unordered normalized player pair. This is a duplicate candidate, not an automatic deletion rule.",
+      payloadComparison:{scoreFields,winnerFields,identicalPayload:"All columns except match_id are byte-for-byte equal after CSV parsing; this is a strong duplicate signal, not an automatic deletion rule.",conflicts:"A score or winner conflict means the corresponding detected field has more than one non-empty normalized value within the same fingerprint group."},
       exclusions:"Rows with missing date/player pair/surface/event or identical normalized player names are counted as invalid core rows and excluded from composite fingerprinting."
     },
     warnings:["Repeated composite fingerprints may represent genuine same-day repeats or source revisions; inspect before deduplication.","Match IDs are checked across all yearly files; do not assume they are globally unique until this report is reviewed."]
