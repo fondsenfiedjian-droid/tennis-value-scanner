@@ -5,6 +5,8 @@ on:
       - research/aggregator1-linkage-audit
     paths:
       - "scripts/aggregator1-linkage-audit.mjs"
+      - "scripts/aggregator1-player-id-audit.mjs"
+      - "scripts/test-aggregator1-player-id-audit.mjs"
       - "scripts/download-aggregator1-free-data.mjs"
       - "scripts/test-aggregator1-linkage-audit.mjs"
       - ".github/workflows/aggregator1-research.yml"
@@ -20,7 +22,11 @@ jobs:
       - name: Syntax-check research scripts
         run: |
           node --check scripts/aggregator1-linkage-audit.mjs
+          node --check scripts/aggregator1-player-id-audit.mjs
+          node --check scripts/test-aggregator1-player-id-audit.mjs
           node --check scripts/download-aggregator1-free-data.mjs
           node --check scripts/test-aggregator1-linkage-audit.mjs
       - name: Run synthetic linkage fixture
         run: node scripts/test-aggregator1-linkage-audit.mjs
+      - name: Run synthetic player ID fixture
+        run: node scripts/test-aggregator1-player-id-audit.mjs
