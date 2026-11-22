@@ -34,9 +34,6 @@ CREATE TABLE IF NOT EXISTS match_results (
   verified_at TEXT NOT NULL,
   is_official INTEGER NOT NULL DEFAULT 0 CHECK (is_official IN (0,1)),
   UNIQUE (match_id, result_version),
-  CHECK (winner_id IS NULL OR winner_id IN (
-    SELECT player_a_id FROM matches WHERE match_id = match_results.match_id
-  ))
 );
 
 CREATE TABLE IF NOT EXISTS model_versions (
@@ -114,7 +111,7 @@ CREATE TABLE IF NOT EXISTS market_quotes (
   captured_at TEXT NOT NULL,
   source_timestamp TEXT,
   source_id TEXT,
-  is_pre_match INTEGER NOT NULL DEFAULT 1 CHECK (is_pre_match IN (0,1)),
+  is_pre_match INTEGER NOT NULL DEFAULT 1 CHECK (is_pre_match IN (0,1))
 );
 
 CREATE TABLE IF NOT EXISTS evaluation_runs (
