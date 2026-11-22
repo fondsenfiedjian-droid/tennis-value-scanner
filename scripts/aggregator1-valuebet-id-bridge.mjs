@@ -13,7 +13,8 @@ const surface=v=>{
   return null;
 };
 const day=v=>{
-  let s=String(v??"").trim();\n  if(s.includes("-"))s=s.slice(0,10).replaceAll("-","");else s=s.slice(0,8);
+  let s=String(v??"").trim();
+  if(s.includes("-"))s=s.slice(0,10).replaceAll("-","");else s=s.slice(0,8);
   if(s.length!==8||!/^\d{8}$/.test(s))return null;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8),t=Date.UTC(y,m-1,d),dt=new Date(t);
   return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?t/86400000:null;
