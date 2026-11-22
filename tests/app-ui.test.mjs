@@ -421,7 +421,7 @@ test("mandatory recommendations and additional opportunities are separate plan t
   assert.match(html, /котировка недостаточно свежая/);
   assert.match(html, /не пройдена проверка качества value-сигнала/);
   assert.match(html, /не завершена строгая калибровка и независимое подтверждение/);
-  assert.match(html, /не возвращала проверенную вероятность/);
+  assert.match(html, /модель ещё не вернула проверенную вероятность/);
   assert.match(html, /id="additionalCount"/);
   assert.doesNotMatch(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
   assert.doesNotMatch(html, /id="highestEv"/);
@@ -519,15 +519,22 @@ test("optional player statistics are not fetched during automatic prediction sca
 });
 
 
-test("EV panel preserves bookmaker pair and opens match when prediction calculation fails", () => {
+test("additional opportunities preserve bookmaker pair when prediction calculation fails", () => {
   assert.match(html, /const oddsFallback=matches\.map\(\(m,i\)=>/);
   assert.match(html, /Коэффициенты Winamax:/);
-  assert.match(html, /EV не рассчитан:/);
-  assert.match(html, /evButton\.hidden=false;/);
+  assert.match(html, /модель ещё не вернула проверенную вероятность/);
+  assert.match(html, /additionalFallbackOpen/);
   assert.match(html, /quote\.matchIndex/);
   assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
 
+test("minimum EV setting gates mandatory recommendations while lower positive EV remains watchlist eligible",()=>{
+  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/selectBestBets\(bets,filters\.minEv,/);
+  assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
+  assert.match(html,/if\(oddsInRange&&bet\.odds>=1\.9&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)dayBets\.push\(bet\)/);
+  assert.match(html,/if\(bet\.ev<filters\.minEv\)reasons\.push\('EV ниже установленного порога/);
+});
 
 
 
