@@ -68,7 +68,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       sackPairIndex.get(pairKey).push(record);
     }
   }
-  const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0};
+  const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[];
   const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
@@ -97,7 +97,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;cg.validRows++;tcg.validRows++;
       if(!sf){
