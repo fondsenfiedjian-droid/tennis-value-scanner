@@ -208,6 +208,31 @@
     .plan-summary-item small{display:block;margin-top:4px;color:#9298a4;font-size:9px;line-height:1.35}
     #planMandatoryCount{color:#d58a8e}
     #planStakeTotal{color:#e3b455}
+
+    .compare-view{max-width:760px;margin:0 auto;padding:18px 16px 110px;min-height:100vh}
+    .compare-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+    .compare-header .brand{font-size:14px;letter-spacing:.1em}
+    .compare-intro{padding:12px;border:1px solid #353640;border-radius:11px;background:#121319;color:#c9c3c8;font-size:12px;line-height:1.5;margin-bottom:12px}
+    .compare-players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .compare-player{min-width:0;padding:11px;border:1px solid #75404b;border-radius:12px;background:linear-gradient(145deg,#211319,#121116)}
+    .compare-player-title{color:#d58a8e;font-size:10px;font-weight:900;letter-spacing:.1em;margin-bottom:9px}
+    .compare-player label,.compare-surface-field label{display:block;color:#b9b2b5;font-size:10px;margin:8px 0 5px}
+    .compare-player input,.compare-surface-field select{width:100%;min-width:0;padding:9px 8px;border:1px solid #55434a;border-radius:8px;background:#0c0c10;color:#f0f1f4;font-size:12px}
+    .compare-hint{margin:10px 0;color:#969ba5;font-size:10px;line-height:1.45}
+    .compare-run{width:100%;margin:5px 0 10px}
+    .compare-result{margin-top:12px;padding:13px;border:1px solid #65404a;border-radius:13px;background:#151219}
+    .compare-result[hidden]{display:none}
+    .compare-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .compare-result-player{padding:11px;border:1px solid #3d3942;border-radius:10px;background:#101116;text-align:center;min-width:0}
+    .compare-result-player strong{display:block;color:#f0f1f4;font-size:13px;overflow-wrap:anywhere}
+    .compare-result-player .compare-rating{display:block;margin:8px 0;color:#e3b455;font-size:19px;font-weight:900}
+    .compare-result-player .compare-probability{display:block;color:#d58a8e;font-size:24px;font-weight:900}
+    .compare-result-player small{display:block;margin-top:4px;color:#a9aeba;font-size:10px}
+    .compare-result-summary{margin-top:10px;color:#c9c3c8;font-size:11px;line-height:1.5;text-align:center}
+    .compare-disclaimer{margin-top:16px}
+    .more-modal .more-action{width:100%;padding:12px;border:1px solid #65404a;border-radius:10px;background:#211319;color:#f0dce0;text-align:left;font-weight:750}
+    .more-note{margin-top:12px;color:var(--muted);font-size:11px;line-height:1.5}
+    @media(max-width:390px){.compare-player{padding:8px}.compare-player input{font-size:11px;padding:8px 5px}.compare-result-player{padding:8px}}
 </style>
 </head>
 <body>
@@ -248,6 +273,21 @@
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
+<div class="compare-view" id="compareView" style="display:none">
+  <header class="compare-header"><div><div class="brand">СРАВНЕНИЕ ИГРОКОВ</div><div class="sub">Независимый анализ двух теннисистов</div></div><button type="button" class="linkbtn" id="compareBack">← Главная</button></header>
+  <div class="compare-intro">Сравнение использует текущую Elo-модель и профили Live Tennis API. Матч, турнир и букмекерские коэффициенты для анализа не нужны.</div>
+  <div class="compare-players">
+    <section class="compare-player"><div class="compare-player-title">ИГРОК A</div><label for="compareNameA">Имя игрока</label><input id="compareNameA" type="text" autocomplete="off" placeholder="Например, Carlos Alcaraz"><label for="compareIdA">ID Live Tennis API</label><input id="compareIdA" type="number" min="1" step="1" inputmode="numeric" placeholder="ID игрока"></section>
+    <section class="compare-player"><div class="compare-player-title">ИГРОК B</div><label for="compareNameB">Имя игрока</label><input id="compareNameB" type="text" autocomplete="off" placeholder="Например, Jannik Sinner"><label for="compareIdB">ID Live Tennis API</label><input id="compareIdB" type="number" min="1" step="1" inputmode="numeric" placeholder="ID игрока"></section>
+  </div>
+  <div class="field compare-surface-field"><label for="compareSurface">Покрытие</label><select id="compareSurface"><option value="">Общий Elo — без выбора покрытия</option><option value="Hard">Хард</option><option value="Clay">Грунт</option><option value="Grass">Трава</option><option value="Carpet">Ковёр</option></select></div>
+  <div class="compare-hint">Если игрок есть в загруженном расписании, ID можно определить по имени автоматически. Для остальных игроков укажи их ID Live Tennis API.</div>
+  <button type="button" class="refresh compare-run" id="compareRun">СРАВНИТЬ ИГРОКОВ</button>
+  <div id="compareStatus" class="muted" role="status" aria-live="polite">Введи двух игроков для независимого сравнения.</div>
+  <section id="compareResult" class="compare-result" hidden aria-live="polite"></section>
+  <div class="notice compare-disclaimer"><b>Ограничение текущей версии:</b> сравнение показывает Elo-рейтинг и вероятность победы. Травмы, форма, H2H и статистика подачи пока не входят в этот расчёт. Это аналитическое сравнение, не рекомендация ставки.</div>
+</div>
+
 <div class="stats-view" id="statsView">
   <h1>Архив прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
@@ -278,8 +318,9 @@
 <div class="bottom"><div class="nav">
   <button id="navHome" class="active"><b>⌂</b>Главная</button>
   <button id="navMatches"><b>🎾</b>Матчи</button>
+  <button id="navCompare"><b>⇄</b>Сравнение</button>
   <button id="navStats"><b>▥</b>Статистика</button>
-  <button id="navSettings"><b>⚙</b>Настройки</button>
+  <button id="navMore"><b>•••</b>Ещё</button>
 </div></div>
 
 <div class="modal-back" id="settingsModal">
@@ -299,6 +340,15 @@
     <div class="actions"><button id="cancelSettings">Отмена</button><button class="primary" id="saveSettings">Сохранить</button></div>
   </div>
 </div>
+<div class="modal-back" id="moreModal">
+  <div class="modal more-modal">
+    <h2>Ещё</h2>
+    <button type="button" class="more-action" id="moreSettings">Настройки приложения</button>
+    <div class="more-note">Архив прогнозов и лабораторные показатели находятся в разделе «Статистика».</div>
+    <div class="actions"><button type="button" id="closeMore">Закрыть</button></div>
+  </div>
+</div>
+
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
