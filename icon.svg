@@ -1,12 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#21130f"/><stop offset=".55" stop-color="#090909"/><stop offset="1" stop-color="#342017"/></linearGradient>
-    <radialGradient id="ball" cx="32%" cy="24%" r="78%"><stop stop-color="#f0a17d"/><stop offset=".32" stop-color="#c66b49"/><stop offset=".72" stop-color="#8f432e"/><stop offset="1" stop-color="#3d2119"/></radialGradient>
-    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".22" stop-color="#77716d"/><stop offset=".48" stop-color="#f1e8e2"/><stop offset=".72" stop-color="#77716d"/><stop offset="1" stop-color="#e9e2dd"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#17191e"/>
+      <stop offset=".52" stop-color="#07080b"/>
+      <stop offset="1" stop-color="#20232a"/>
+    </linearGradient>
+    <radialGradient id="ruby" cx="31%" cy="22%" r="82%">
+      <stop stop-color="#ff8b9c"/>
+      <stop offset=".22" stop-color="#e32649"/>
+      <stop offset=".58" stop-color="#a6092d"/>
+      <stop offset=".86" stop-color="#65051d"/>
+      <stop offset="1" stop-color="#310512"/>
+    </radialGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff"/>
+      <stop offset=".2" stop-color="#9299a4"/>
+      <stop offset=".48" stop-color="#f4f6fa"/>
+      <stop offset=".72" stop-color="#737b87"/>
+      <stop offset="1" stop-color="#e9edf3"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="28%" cy="18%" r="65%">
+      <stop stop-color="#fff" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="13"/>
+    </filter>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="180" fill="url(#ball)" stroke="url(#chrome)" stroke-width="13"/>
-  <path d="M105 166c86 38 157 112 191 237M407 166c-86 38-157 112-191 237" fill="none" stroke="#f4e7df" stroke-width="17" stroke-linecap="round" opacity=".9"/>
-  <path d="M105 166c86 38 157 112 191 237M407 166c-86 38-157 112-191 237" fill="none" stroke="#6c3425" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="256" cy="256" r="194" fill="none" stroke="#c66b49" stroke-width="3" opacity=".65"/>
+  <circle cx="256" cy="273" r="190" fill="#000" opacity=".7" filter="url(#shadow)"/>
+  <circle cx="256" cy="256" r="181" fill="url(#ruby)" stroke="url(#silver)" stroke-width="12"/>
+  <path d="M105 165c83 39 151 111 190 238M407 165c-83 39-151 111-190 238"
+        fill="none" stroke="#4d071a" stroke-width="25" stroke-linecap="round" opacity=".8"/>
+  <path d="M105 165c83 39 151 111 190 238M407 165c-83 39-151 111-190 238"
+        fill="none" stroke="url(#silver)" stroke-width="15" stroke-linecap="round"/>
+  <path d="M105 165c83 39 151 111 190 238M407 165c-83 39-151 111-190 238"
+        fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+  <circle cx="256" cy="256" r="198" fill="none" stroke="#b8c0cc" stroke-width="2" opacity=".5"/>
+  <circle cx="256" cy="256" r="174" fill="url(#shine)"/>
 </svg>
