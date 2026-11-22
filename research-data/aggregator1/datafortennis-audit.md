@@ -99,3 +99,30 @@ Terms last updated 2026-10-05. Sections 5–7 are unusually explicit:
 ## Production boundary
 
 Research only. No Production code, calculations, API keys, Cloudflare Worker, Winamax scraper, or deployment was changed.
+
+## Follow-up coverage and access review — 2026-11-22
+
+Additional official documentation review clarifies several important points:
+
+- The public coverage ledger snapshot is dated **2026-09-11** and reports **346 tournament editions across six seasons**, of which **274 editions have point records**. This is 79.2% of listed editions, but it is not a match-level PBP completeness rate and does not show that every match in those editions has a full point replay.
+- The public ledger is edition-oriented and supports filtering by year, circuit and field family (PBP, rally, serve speed and match statistics). Its public page currently renders a default ATP 2026 view; a complete machine-readable public export was not exposed in the page content reviewed.
+- API documentation defines `/v1/coverage` and `/v1/coverage/summary`. They expose family-level census, available, missing, unknown, not-applicable, known-applicable, partial, usable-row and derived-row counts, with release/epoch/schema/quality identifiers. Filters include release, season, discipline and category. These endpoints require an authorized credential; they cannot be used to verify the actual release counts anonymously.
+- The API documentation explicitly says coverage counts are measured only within the declared census and do not prove a full calendar or verified-complete PBP. The historical research release is a selected singles/doubles corpus; a release name does not imply that every data family reaches the same latest date.
+- The service is currently described as an authenticated beta. A public RapidAPI listing is not available. The one-match onboarding endpoint is free, but requires a user-created account/key. No account or request was made.
+- The docs distinguish raw ordered points from rally categories, reconstructed lengths, stroke summaries and clock evidence. Stroke summaries are not ordered shot sequences; accepted point rows alone do not establish a complete replay. Relative elapsed time is not UTC.
+- Separate live coverage claims are not historical archive coverage. Current live support is uneven: ATP main tour has model support; Challenger has no model support and point/stat coverage is not promised; WTA main tour/WTA125 has no point history promise; ITF may expose observed point prefixes and allowlisted statistics. Predictions are labelled shadow qualification, not production-grade validated recommendations.
+
+### Updated decision
+
+DataForTennis remains the leading candidate for commercial point/statistics research because the reviewed Terms expressly permit qualifying commercial ML training. However, **the actual historical usable coverage cannot yet be verified without the free account/sample and authorized release coverage responses**. The public 346/274 edition counts are an inventory indicator only. Do not estimate training volume from those figures, and do not purchase a month until the sample and release coverage are inspected.
+
+### Required checks before any acquisition
+
+1. Record the exact release ID, epoch, schema version and quality version.
+2. Export coverage separately by tour/category, season, singles/doubles and data family.
+3. Compare match-level coverage against the full match census, not merely accepted point-row counts.
+4. Quantify complete, partial, missing and unknown records; measure point density and serve-speed availability only within known-applicable denominators.
+5. Validate a stratified sample of match point sequences against final scores and set/game states.
+6. Obtain source provenance and rights confirmation for each family, especially third-party supplied points and statistics.
+
+No account, credential, API request, download or purchase was made during this follow-up.
