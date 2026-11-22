@@ -62,8 +62,14 @@
     if(Array.isArray(current.tours))tourChecks.forEach(input=>input.checked=current.tours.includes(input.dataset.tour));
   }
   const open=()=>{populateSettingsForm();modal.classList.add('show');};
+  const closeMore=()=>$('#moreModal').classList.remove('show');
   const cancelSettings=()=>{applySkin(activeSkin);$('#skinSelect').value=activeSkin;close();};
-  $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=cancelSettings;
+  $('#settingsOpen').onclick=open;
+  $('#moreSettings').onclick=()=>{closeMore();open();};
+  $('#closeMore').onclick=closeMore;
+  $('#navMore').onclick=()=>$('#moreModal').classList.add('show');
+  $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
+  $('#cancelSettings').onclick=cancelSettings;
   modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
   function readSettings(){
     try{
@@ -1149,15 +1155,69 @@
       return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.bookmaker||'Букмекер не указан')+' · '+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
+  function setActiveNavigation(activeId){
+    document.querySelectorAll('.nav button').forEach(button=>button.classList.toggle('active',button.id===activeId));
+  }
   function showMain(){
-    $('.app').style.display='block';$('#statsView').style.display='none';
-    $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
+    $('.app').style.display='block';$('#statsView').style.display='none';$('#compareView').style.display='none';
+    setActiveNavigation('navHome');
   }
   function showStats(){
-    $('.app').style.display='none';$('#statsView').style.display='block';
-    $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
+    $('.app').style.display='none';$('#statsView').style.display='block';$('#compareView').style.display='none';
+    setActiveNavigation('navStats');
     archiveStorageReady.then(renderArchive);
   }
+  function showCompare(){
+    $('.app').style.display='none';$('#statsView').style.display='none';$('#compareView').style.display='block';
+    setActiveNavigation('navCompare');
+  }
+  function findScheduledPlayerId(name){
+    const target=String(name||'').trim();
+    if(!target||!Array.isArray(window.cachedMatches))return null;
+    for(const match of window.cachedMatches){
+      const players=match.players||{};
+      for(const player of [players.p1||match.player1,players.p2||match.player2]){
+        if(player&&playerNamesMatch(playerName(player),target)){
+          const id=getPlayerId(player);
+          if(id)return id;
+        }
+      }
+    }
+    return null;
+  }
+  function renderCompareResult(result,nameA,nameB,surface){
+    const node=$('#compareResult');
+    const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
+    const probA=Number(result.probabilityA),probB=Number(result.probabilityB);
+    const freshnessA=result.ratingFreshnessA?.status||'unknown',freshnessB=result.ratingFreshnessB?.status||'unknown';
+    const freshnessLabel=status=>({fresh:'свежий рейтинг',recent:'недавний рейтинг',stale:'устаревший рейтинг',unknown:'дата рейтинга неизвестна',invalid:'некорректная дата'})[status]||'статус неизвестен';
+    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата рейтингов: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';
+    node.hidden=false;
+  }
+  $('#compareRun').onclick=async()=>{
+    const button=$('#compareRun'),status=$('#compareStatus'),resultNode=$('#compareResult');
+    const nameA=$('#compareNameA').value.trim(),nameB=$('#compareNameB').value.trim();
+    const typedA=$('#compareIdA').value.trim(),typedB=$('#compareIdB').value.trim();
+    const idA=typedA?Number(typedA):findScheduledPlayerId(nameA);
+    const idB=typedB?Number(typedB):findScheduledPlayerId(nameB);
+    if(!nameA||!nameB){status.textContent='Укажи имена обоих игроков.';resultNode.hidden=true;return;}
+    if(!Number.isSafeInteger(idA)||idA<=0||!Number.isSafeInteger(idB)||idB<=0){status.textContent='Не удалось определить ID обоих игроков. Укажи ID Live Tennis API вручную или выбери игроков, присутствующих в загруженном расписании.';resultNode.hidden=true;return;}
+    if(idA===idB){status.textContent='Выбраны одинаковые ID игроков. Проверь данные.';resultNode.hidden=true;return;}
+    const surface=$('#compareSurface').value;
+    button.disabled=true;button.textContent='СРАВНЕНИЕ…';status.textContent='Запрашиваю профили и рассчитываю вероятности…';resultNode.hidden=true;
+    try{
+      const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
+      const payload=await response.json();
+      if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
+      if(!Number.isFinite(Number(payload.probabilityA))||!Number.isFinite(Number(payload.probabilityB)))throw new Error('API не вернул корректные вероятности для этой пары.');
+      renderCompareResult(payload,nameA,nameB,surface);
+      status.textContent='Сравнение рассчитано по текущей Elo-модели. Данные получены из Live Tennis API.';
+    }catch(error){
+      status.textContent='Не удалось выполнить сравнение: '+String(error.message||error);
+    }finally{button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
+  };
+  $('#navCompare').onclick=showCompare;
+  $('#compareBack').onclick=showMain;
   let archiveAutoCheckRunning=false;
   let archiveAutoCheckLastAt=0;
   $('#archiveCheckResults').onclick=async()=>{
@@ -1829,7 +1889,6 @@
   }
   $('#refreshBtn').onclick=()=>loadMatches(true);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
-  $('#navMatches').onclick=loadMatches;
   $('#navHome').onclick=showMain;
   $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
