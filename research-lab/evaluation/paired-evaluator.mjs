@@ -77,7 +77,7 @@ function metricSummary(rows, probabilityKey) {
   const briers = ps.map((p,i) => brier(p,ys[i]));
   const losses = ps.map((p,i) => logLoss(p,ys[i]));
   const correct = ps.reduce((sum,p,i) => sum + ((p >= 0.5) === (ys[i] === 1) ? 1 : 0),0);
-  const bins = Array.from({length:10},(_,i)=>({bin:`${i/10.toFixed?i/10: i/10}-${(i+1)/10}`,n:0,mean_probability:0,observed_rate:0}));
+  const bins = Array.from({length:10},(_,i)=>({bin:`${(i/10).toFixed(1)}-${((i+1)/10).toFixed(1)}`,n:0,mean_probability:0,observed_rate:0}));
   for(let i=0;i<n;i++){
     const index=Math.min(9,Math.floor(ps[i]*10));
     bins[index].n++;
