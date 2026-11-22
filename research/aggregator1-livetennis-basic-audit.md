@@ -598,3 +598,17 @@ Interpretation:
 - No fingerprint group is byte-identical across every source column except `match_id`.
 
 This narrows the review queue: 52 groups have no detected score disagreement, while 2 have material score conflicts. It does not establish that the other 52 are safe to merge; event/round/date semantics and source provenance must still be checked.
+
+
+## 25. Tournament-name mismatch taxonomy and alias refinement — 2026-11-22
+
+The aggregate mismatch list from run `45084782450` showed that many leading discrepancies are systematic naming variants rather than obviously different events. Examples include:
+- Grand Slam city suffixes: Australian Open Melbourne / Australian Open; French Open Paris / French Open; US Open New York / US Open; Wimbledon London / Wimbledon.
+- Sponsor and venue variants: Mutua Madrid Open Madrid / Madrid; Internazionali BNL d'Italia Rome / Rome; BNP Paribas Open Indian Wells / Indian Wells; Rolex Paris Masters Paris / Paris.
+- Same tournament under a sponsor/city title versus a short city name: Miami Open Miami / Miami; China Open Beijing / Beijing; Dubai Duty Free Championships Dubai / Dubai; Shanghai Rolex Masters Shanghai / Shanghai Masters.
+- Challenger naming: `... Challenger` versus Sackmann's `... CH` convention.
+- ITF venue suffixes in a small set of examples: M15 Naples / M15 Naples FL; W35 Boca Raton / W35 Boca Raton FL.
+
+A conservative explicit alias list was added for repeated, recognizable tournament pairs from this audit, including Grand Slam venue suffixes, selected Masters/500 events, and the observed Challenger suffix convention. Synthetic tests confirm that a venue-suffixed Grand Slam name normalizes to the corresponding Sackmann event.
+
+This alias update is a normalization change only; it does not widen the 14-day date window or use fuzzy event matching. The next full run measures its effect on exact event agreement and on ambiguous/accepted links. Unfamiliar mismatch pairs remain diagnostic and are not auto-aliased.
