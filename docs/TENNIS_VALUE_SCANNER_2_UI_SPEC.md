@@ -154,3 +154,14 @@ The TVS2 Worker now exposes `GET /player-history?id={playerId}&limit=20&tour={op
 - 403 is reported as `basic_history_not_entitled`; 401, 429, invalid query and malformed payloads remain distinct.
 - The endpoint deliberately returns source rows rather than manufacturing derived statistics. The next layer must validate participant identity and winner mapping before deriving last-5/10/20 form or surface splits.
 - The proxy is on the TVS2 draft branch only. No Production Worker deployment, PR merge, frontend wiring or Elo/model change has occurred.
+
+## BASIC head-to-head proxy — implementation note (2026-11-22)
+
+The TVS2 Worker now exposes `GET /player-h2h?p1={fullName}&p2={fullName}` as a cached, read-only proxy to BASIC `GET /h2h`.
+
+- Requires two distinct names of 3–80 characters; the upstream exact-name resolution is authoritative.
+- Successful responses are cached for 24 hours and preserve totals, surface splits and the newest-first meeting list.
+- Upstream 400 (including ambiguous fragments) is surfaced as `ambiguous_or_invalid_player_name` with the provider detail preserved; 403 is `basic_h2h_not_entitled`.
+- The endpoint does not infer identity from roster IDs: the provider's H2H uses names because the 1968–2022 archive has a separate person ID space.
+- The UI must only request H2H using the exact names selected in the player search and must display the resolved names returned by the provider before trusting totals.
+- Draft branch only; no Production deployment, PR merge or model change.
