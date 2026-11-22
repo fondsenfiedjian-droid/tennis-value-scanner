@@ -291,6 +291,75 @@ test("odds endpoint reports malformed JSON and never caches it", async () => {
   assert.equal(cacheWrites, 0);
 });
 
+
+test("player history endpoint validates player ID, limit and tour without upstream calls", async () => {
+  let calls = 0;
+  workerSandbox.fetch = async () => { calls++; throw new Error("unexpected request"); };
+  for (const query of ["id=abc", "id=0", "id=9007199254740992", "id=123&limit=0", "id=123&limit=51", "id=123&tour=unknown"]) {
+    const result = await call("/player-history?" + query);
+    assert.equal(result.status, 400, query);
+  }
+  assert.equal(calls, 0);
+});
+
+test("player history endpoint requests BASIC singles history, caches it and returns source coverage", async () => {
+  let requestedUrl = "";
+  let requestedHeaders = null;
+  let cachedResponse = null;
+  let cachedKey = "";
+  let upstreamCalls = 0;
+  workerSandbox.caches.default.match = async () => cachedResponse ? new Response(await cachedResponse.clone().text(), { status: 200, headers: cachedResponse.headers }) : null;
+  workerSandbox.caches.default.put = async (key, value) => {
+    cachedKey = key.url;
+    cachedResponse = value.clone();
+  };
+  workerSandbox.fetch = async (url, options) => {
+    upstreamCalls++;
+    requestedUrl = url;
+    requestedHeaders = options.headers;
+    return new Response(JSON.stringify({
+      data: [{ id: 9001, winner: 1, surface: "clay" }],
+      meta: { count: 1, limit: 20, has_more: false }
+    }), { status: 200 });
+  };
+  const result = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.playerId, "123");
+  assert.equal(payload.source, "Live Tennis API /history/matches");
+  assert.equal(payload.period, "2023-present");
+  assert.equal(payload.accessStatus, "available");
+  assert.equal(payload.count, 1);
+  assert.equal(payload.meta.count, 1);
+  assert.equal(new URL(requestedUrl).pathname, "/api/public/v1/history/matches");
+  assert.equal(new URL(requestedUrl).searchParams.get("player"), "123");
+  assert.equal(new URL(requestedUrl).searchParams.get("draw"), "singles");
+  assert.equal(new URL(requestedUrl).searchParams.get("limit"), "20");
+  assert.equal(new URL(requestedUrl).searchParams.get("tour"), "atp");
+  assert.equal(requestedHeaders["X-API-Key"], "test-key");
+  assert.ok(cachedKey.includes("/__player-history/v1/123/20/atp"));
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=21600");
+  const cached = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(cached.status, 200);
+  assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
+  assert.equal(upstreamCalls, 1);
+});
+
+test("player history endpoint labels BASIC plan refusal and forwards rate-limit timing", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  const denied = await call("/player-history?id=123");
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).accessStatus, "basic_history_not_entitled");
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "day" }), {
+    status: 429, headers: { "Retry-After": "90" }
+  });
+  const limited = await call("/player-history?id=123");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("Retry-After"), "90");
+  assert.equal((await limited.json()).accessStatus, "rate_limited");
+});
+
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
