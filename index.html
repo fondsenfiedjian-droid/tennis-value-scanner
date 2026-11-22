@@ -1,3 +1,287 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <title>Tennis Value Scanner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root{color-scheme:dark;--bg:#080808;--panel:#11100f;--panel2:#191513;--line:#655b56;--muted:#b5aaa4;--text:#f5f1ee;--amber:#e6bd58}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#2a1711 0,#100d0b 34%,#070707 75%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+    button,input,select{font:inherit}button{cursor:pointer}
+    .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom))}
+    header{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 18px}
+    .brand{font-size:18px;font-weight:850;letter-spacing:.07em}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .status{border:1px solid #8a6c32;color:#f0d58b;background:#211a0d;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700}
+    .datebar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
+    .datebar strong{font-size:20px}.datebar span{font-size:12px;color:var(--muted)}
+    .tabs{display:flex;gap:8px;background:#0b0a09;border:1px solid var(--line);padding:5px;border-radius:14px;margin-bottom:14px}
+    .tab{flex:1;border:0;background:transparent;color:var(--muted);padding:10px 6px;border-radius:10px;font-weight:700}
+    .tab.active{background:#9d4e34;color:white}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .panel{background:linear-gradient(145deg,#191615,#0e0d0c 72%);border:1px solid var(--line);border-radius:17px;padding:15px}
+    .stat-num{font-size:27px;font-weight:850;margin:3px 0}.muted{color:var(--muted);font-size:12px}
+    .refresh{width:100%;border:0;border-radius:15px;background:linear-gradient(100deg,#8e422d,#c66b49);color:white;font-weight:850;padding:16px;margin:2px 0 16px;box-shadow:0 8px 24px #a94e302d}
+    .refresh:disabled{opacity:.65}
+    .section-head{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px}
+    .section-head h2{font-size:16px;margin:0}.linkbtn{border:0;background:transparent;color:#d58a8e;font-size:12px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:#191412;color:#e0d5ce;padding:8px 12px;border-radius:999px;font-size:12px}
+    .chip.on{background:#332016;border-color:#c66b49;color:#e7b49e}
+    .chip:disabled{opacity:.48;cursor:not-allowed}
+    .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
+    .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
+    .bottom{position:fixed;bottom:0;left:0;right:0;background:#080808ed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
+    .nav b{display:block;font-size:18px;margin-bottom:3px}
+    .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
+    .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#1b1715;border:1px solid var(--line);border-radius:22px;padding:18px}
+    .modal h2{margin:0 0 16px;font-size:19px}.field{margin:13px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+    input[type=number],select{width:100%;background:#100e0d;border:1px solid var(--line);border-radius:11px;padding:12px;color:var(--text)}
+    .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;gap:8px;align-items:center;background:#100e0d;padding:10px;border-radius:10px;font-size:13px}
+    .actions{display:flex;gap:9px;margin-top:18px}.actions button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:#211815;color:white;font-weight:700}.actions .primary{background:#8e422d;border-color:#8e422d}
+    .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
+    .best-bet{background:linear-gradient(135deg,#211018,#090909);border:1px solid #a51f45;border-radius:16px;padding:14px;margin:0 0 12px}.best-bet-title{font-size:13px;font-weight:850;color:#d58a8e;letter-spacing:.02em}.best-bet-empty{font-size:13px;color:#c9bdb6;margin-top:7px;line-height:1.45}.best-bet-main{font-size:16px;font-weight:850;margin-top:8px;line-height:1.4}.best-bet-meta{font-size:12px;color:#c9bdb6;margin-top:6px;line-height:1.6}.best-bet-value{color:#d58a8e;font-weight:850}.match-list{display:grid;gap:10px}.match-card{background:linear-gradient(145deg,#191615,#0e0d0c 72%);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}
+    .match-card{position:relative;cursor:pointer;transition:border-color .15s,background .15s}.match-card .match-top{padding-right:92px}.bookmaker-tag{position:absolute;top:8px;right:11px;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border:1px solid #a9a6a3;border-radius:6px;background:#171412;color:#e6bd58;font-size:9px;font-weight:850;letter-spacing:.06em}.match-card:focus{outline:2px solid #c66b49;outline-offset:2px}.match-card.expanded{border-color:#c66b49;background:#281912}.match-card .match-details{display:none}.match-card.expanded .match-details{display:block}.match-card .odds-visible{margin-top:9px;color:#f0c2a8;font-size:13px;line-height:1.5}.match-card .odds-visible b{color:#f5eee9}.loading{text-align:center;padding:24px;color:var(--muted)}
+    .model-result{margin-top:11px;padding:10px;border-radius:11px;background:#100e0d;border:1px solid #625149;font-size:12px;line-height:1.55}.model-result strong{color:#e7a083}.model-positive{color:#e6bd58;font-weight:800}.model-negative{color:#f2bd72}.model-muted{color:var(--muted)}.data-freshness{margin-top:7px;padding:7px 8px;border-radius:8px;font-size:11px;line-height:1.45}.data-freshness.good{background:#211a0d;color:#d58a8e;border:1px solid #8a6c32}.data-freshness.medium{background:#302817;color:#f5d99d;border:1px solid #6a5428}.data-freshness.limited{background:#351f25;color:#f2b7c0;border:1px solid #75404b}
+    .stats-view{display:none;max-width:760px;margin:0 auto;padding:24px 16px calc(100px + env(safe-area-inset-bottom));min-height:100vh}.stats-view h1{font-size:21px;margin:0 0 6px}.archive-list{display:grid;gap:9px;margin-top:14px}.archive-item{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;font-size:13px}.archive-meta{color:var(--muted);font-size:11px;margin-top:5px}.stats-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.stats-actions button{flex:1 1 130px;border:1px solid var(--line);background:#211815;color:white;padding:11px;border-radius:10px}
+    @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
+  
+    /* Approved black / terracotta / chrome visual system */
+    :root{--bg:#080808;--panel:#11100f;--panel2:#191513;--line:#655b56;--muted:#b5aaa4;--text:#f5f1ee;--amber:#d89a78;--terra:#c66b49;--terra-bright:#e1845d;--chrome:#a9a6a3}
+    body{background:radial-gradient(ellipse at 50% -20%,#2a1711 0,#100d0b 34%,#070707 75%);color:var(--text)}
+    .status{border-color:#8a6c32;color:#f0d58b;background:#211a0d}
+    .tabs{background:#0b0a09;border-color:#554b46}
+    .tab.active{background:linear-gradient(135deg,#9d4e34,#c66b49 55%,#713923);color:#fff7f2;box-shadow:inset 0 1px #f2b69a55,0 3px 14px #9c4b302b}
+    .panel,.match-card,.archive-item{background:linear-gradient(145deg,#191615,#0e0d0c 72%);border-color:#625954;box-shadow:inset 0 1px #ffffff12,0 7px 20px #0008}
+    .refresh,.actions .primary{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border:1px solid #d18a6d;color:#fff8f4;box-shadow:0 7px 22px #a94e302d,inset 0 1px #ffd1b155}
+    .linkbtn{color:#e08a68}
+    .chip{background:#191412;border-color:#66564e;color:#e0d5ce}
+    .chip.on{background:#3a2119;border-color:#bd6848;color:#f0b094}
+    .notice{border-color:#80523e;background:#241610;color:#e6c0ad}
+    .bottom{background:#080808ed;border-top:1px solid #716760}
+    .nav button.active{color:#e1845d;background:#321d16}
+    .modal{background:linear-gradient(145deg,#1b1715,#0d0c0b);border-color:#756960}
+    input[type=number],select,.check{background:#100e0d;border-color:#62564f;color:var(--text)}
+    .actions button,.stats-actions button{background:#211815;border-color:#68574e;color:#f5eee9}
+    .best-bet{background:linear-gradient(145deg,#1d120e,#090909 65%);border:1px solid transparent;border-radius:17px;padding:14px;margin:0 0 12px;position:relative;box-shadow:inset 0 1px #fff4,0 8px 24px #0009}
+    .best-bet:before{content:"";position:absolute;inset:0;padding:1px;border-radius:inherit;background:linear-gradient(135deg,#eee9e4,#77716d 18%,#c66b49 48%,#514944 72%,#e2dcd7);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+    .best-bet-title{color:#e1845d;letter-spacing:.08em}
+    .best-bet-empty,.best-bet-meta{color:#c9bdb6}
+    .best-bet-value{color:#e1845d}
+    .match-card.expanded{border-color:#c66b49;background:linear-gradient(145deg,#281912,#15100e)}
+    .match-card:focus{outline:2px solid #c66b49}
+    .model-result{background:#100e0d;border-color:#625149}
+    .model-result strong{color:#e7a083}
+    .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
+    .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
+    .stats-actions button:focus,.actions button:focus,.chip:focus{outline:2px solid #d47b58;outline-offset:2px}
+
+    /* Current palette: black, yellow, terracotta and copper-pink; no green */
+    :root{--amber:#e6bd58;--yellow:#e6bd58;--copper-pink:#d58a8e;--ruby:#a51f45}
+    .status{border-color:#8a6c32;color:#f0d58b;background:#211a0d}
+    .refresh{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border:1px solid #d18a6d;color:#fff8f4;box-shadow:0 7px 22px #a94e302d,inset 0 1px #ffd1b155}
+    .chip.on{background:#332016;border-color:#c66b49;color:#e7b49e}
+    .nav button.active{color:#e6bd58;background:#302414}
+    .actions .primary{background:linear-gradient(110deg,#8e422d,#c66b49 52%,#a45135);border-color:#d18a6d}
+    .model-result strong,.model-positive{color:#e6bd58;font-weight:800}
+    .model-negative{color:#d58a8e}
+    .data-freshness.good{background:#211a0d;color:#f0d58b;border:1px solid #8a6c32}
+    .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
+    .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
+    .best-bet{background:linear-gradient(145deg,#211018,#090909 68%);border-color:transparent}
+    #bestBet{cursor:pointer;text-align:center;min-height:178px;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+    #bestBet .best-bet-title{align-self:flex-start;text-align:left;width:100%}
+    #bestBet .best-bet-sub{margin-top:auto}
+    #bestBet:focus-visible{outline:2px solid #d58a8e;outline-offset:3px}
+    .best-bet-odds{font-size:clamp(48px,12vw,68px);line-height:1;font-weight:900;letter-spacing:-2px;color:#fff1f2;text-shadow:0 0 10px #d58a8e99,0 0 26px #a51f456b;animation:oddsPulse 2.2s ease-in-out infinite}
+    .best-bet-pair{font-size:17px;font-weight:850;color:#fff1f2}
+    .best-bet-sub{font-size:11px;color:#c9b8ba;letter-spacing:.08em}
+    @keyframes oddsPulse{0%,100%{text-shadow:0 0 8px #d58a8e66,0 0 18px #a51f4544}50%{text-shadow:0 0 14px #ffd2d866,0 0 34px #a51f45aa}}
+    @media(prefers-reduced-motion:reduce){.best-bet-odds{animation:none}}
+    .best-bet.has-pick{animation:bestBetGlow 2.8s ease-in-out infinite}
+    .best-bet:before{background:linear-gradient(120deg,#d9a0a7,#77716d 12%,#d58a8e 35%,#a51f45 58%,#d58a8e 78%,#e2dcd7)}
+    .best-bet-title,.best-bet-value{color:#d58a8e}
+    .best-bet-main{color:#fff1f2}
+    @keyframes bestBetGlow{0%,100%{box-shadow:inset 0 1px #fff4,0 0 10px #d58a8e25,0 8px 24px #0009}50%{box-shadow:inset 0 1px #fff5,0 0 20px #a51f456b,0 8px 28px #000b}}
+    @media(prefers-reduced-motion:reduce){.best-bet.has-pick{animation:none}}
+    .highest-ev{border-color:#8a6c32;background:linear-gradient(145deg,#211b10,#090909 68%)}.highest-ev .best-bet-title{color:#e6bd58}.highest-ev-open{margin-top:10px;border:1px solid #8a6c32;border-radius:9px;padding:8px 12px;background:#302414;color:#f0d58b;font-size:12px;font-weight:800}.highest-ev-open[hidden]{display:none}
+
+  
+    /* User-selectable experimental olive court skin */
+    body[data-skin="olive"]{
+      --bg:#626744;--panel:#707552;--panel2:#5d6342;--line:#b8b6a8;
+      --muted:#e1dfc9;--text:#fff9e9;--amber:#f0c75e;
+      background:radial-gradient(ellipse at 50% -18%,#858963 0,#70764f 38%,#555b3b 100%);
+      color:var(--text)
+    }
+    body[data-skin="olive"] .tabs{background:#565c3c;border-color:#b8b6a8}
+    body[data-skin="olive"] .tab{color:#f0edda}
+    body[data-skin="olive"] .tab.active{background:linear-gradient(135deg,#d9aa3e,#bd6848 58%,#762f3c);color:#fff9e9;box-shadow:inset 0 1px #fff7,0 3px 14px #34371f55}
+    body[data-skin="olive"] .panel,
+    body[data-skin="olive"] .match-card,
+    body[data-skin="olive"] .archive-item{background:linear-gradient(145deg,#777c55,#626744 78%);border-color:#b8b6a8;box-shadow:inset 0 1px #ffffff20,0 7px 20px #30351f44}
+    body[data-skin="olive"] .match-card.expanded{background:linear-gradient(145deg,#77744a,#5d6342);border-color:#d58b59}
+    body[data-skin="olive"] .bottom{background:#565c3def;border-top-color:#c1bfb0}
+    body[data-skin="olive"] .nav button.active{color:#ffe08a;background:#7b5734}
+    body[data-skin="olive"] .modal{background:linear-gradient(145deg,#73784f,#555b3b);border-color:#c1bfb0}
+    body[data-skin="olive"] input[type=number],
+    body[data-skin="olive"] select,
+    body[data-skin="olive"] .check{background:#555b3b;border-color:#b8b6a8;color:#fff9e9}
+    body[data-skin="olive"] .actions button,
+    body[data-skin="olive"] .stats-actions button{background:#626744;border-color:#b8b6a8;color:#fff9e9}
+    body[data-skin="olive"] .actions .primary{background:linear-gradient(110deg,#a94e36,#c66b49 52%,#7e3540);border-color:#e0a17d}
+    body[data-skin="olive"] .refresh{background:linear-gradient(110deg,#d3a63d,#c66b49 55%,#803543);border-color:#e4c879;color:#fff9e9}
+    body[data-skin="olive"] .linkbtn{color:#ffe08a}
+    body[data-skin="olive"] .chip{background:#5b6140;border-color:#b8b6a8;color:#fff5dc}
+    body[data-skin="olive"] .chip.on{background:#803f37;border-color:#e4c879;color:#fff3d5}
+    body[data-skin="olive"] .notice{background:#5b5638;border-color:#c88a55;color:#fff0cf}
+    body[data-skin="olive"] .status{background:#62502f;border-color:#e4c879;color:#ffe9a8}
+    body[data-skin="olive"] .best-bet{background:linear-gradient(145deg,#77734a,#555b3b 72%);border-color:transparent;box-shadow:inset 0 1px #fff5,0 8px 24px #30351f55}
+    body[data-skin="olive"] .best-bet:before{background:linear-gradient(120deg,#f0d36d,#b8b6a8 14%,#d17b4e 38%,#762f3c 62%,#d9a0a7 82%,#f0d36d)}
+    body[data-skin="olive"] .best-bet-title,
+    body[data-skin="olive"] .best-bet-value{color:#ffe08a}
+    body[data-skin="olive"] .best-bet-main{color:#fff9e9}
+    body[data-skin="olive"] .best-bet-empty,
+    body[data-skin="olive"] .best-bet-meta{color:#f0edda}
+    body[data-skin="olive"] .model-result{background:#555b3b;border-color:#b8b6a8}
+    body[data-skin="olive"] .model-result strong,
+    body[data-skin="olive"] .model-positive{color:#ffe08a}
+    body[data-skin="olive"] .model-negative{color:#f1b3b1}
+    body[data-skin="olive"] .data-freshness.good{background:#62502f;color:#ffe9a8;border-color:#d6ad58}
+    body[data-skin="olive"] .data-freshness.medium{background:#69533a;color:#ffe0bb;border-color:#d59a65}
+    body[data-skin="olive"] .data-freshness.limited{background:#653b40;color:#ffe0e2;border-color:#c77b82}
+    body[data-skin="olive"] .bookmaker-tag{background:#555b3b;border-color:#c1bfb0;color:#ffe08a}
+    body[data-skin="olive"] .match-card:focus,
+    body[data-skin="olive"] .stats-actions button:focus,
+    body[data-skin="olive"] .actions button:focus,
+    body[data-skin="olive"] .chip:focus{outline-color:#f0c75e}
+
+  
+    /* TVS 2.0 strict recommendation carousel: manual navigation, no auto-rotation */
+    #bestBet{display:block;min-height:0;text-align:left;gap:0;cursor:default;animation:none}
+    #bestBet.has-pick{animation:none}
+    #bestBet .best-bet-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    #bestBet .best-bet-title{width:auto;align-self:auto;color:#d58a8e;font-size:12px;letter-spacing:.09em}
+    #bestBet .best-bet-navigation{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px}
+    #bestBet .best-bet-navigation button{width:30px;height:30px;border:1px solid #75404b;border-radius:9px;background:#211018;color:#f5d9df;font-size:21px;line-height:1}
+    #bestBet .best-bet-open{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;padding:13px;border:1px solid #75404b;border-radius:13px;background:linear-gradient(145deg,#211018,#100b0d);color:var(--text)}
+    #bestBet .best-bet-confidence{font-size:10px;font-weight:850;letter-spacing:.08em;color:#d58a8e}
+    #bestBet .best-bet-pair{font-size:17px;font-weight:850;color:#fff1f2}
+    #bestBet .best-bet-selection{font-size:12px;color:#d8c9cb}
+    #bestBet .best-bet-odds{font-size:38px;line-height:1;font-weight:900;letter-spacing:-1px;color:#e6bd58;text-shadow:none;animation:none}
+    #bestBet .best-bet-metrics{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11px;color:#c9b8ba}
+    #bestBet .best-bet-metrics b{display:block;margin-top:2px;color:#f5eee9;font-size:13px}
+    #bestBet .best-bet-sub{font-size:11px;color:#c9b8ba;letter-spacing:0}
+    #bestBet .best-bet-footnote{margin-top:10px;color:var(--muted);font-size:10px;line-height:1.45}
+    #bestBet .best-bet-empty{padding:8px 0;color:#c9bdb6}
+    @media(prefers-reduced-motion:reduce){#bestBet *{animation:none!important;transition:none!important}}
+    .match-quote-status{display:inline-flex;margin-top:7px;padding:4px 7px;border-radius:6px;font-size:10px;font-weight:750;letter-spacing:.02em;border:1px solid #625954;color:var(--muted);background:#141110}
+    .match-quote-status.complete{border-color:#8a6c32;color:#e6bd58;background:#211a0d}
+    .match-quote-status.partial{border-color:#80543d;color:#e9bd9d;background:#2b1d15}
+    .match-quote-status.missing{border-color:#75404b;color:#efb7bd;background:#2a1517}
+    .match-quote-status.disabled{border-color:#625954;color:var(--muted);background:#141110}
+
+    /* TVS 2.0 watchlist: secondary opportunities are not mandatory picks */
+    .additional-opportunities{margin:14px 0 18px;padding:13px;border:1px solid #353640;border-radius:14px;background:#121319}
+    .additional-opportunities-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .additional-opportunities-head h2{margin:0;font-size:14px;font-weight:850;color:var(--text)}
+    .additional-opportunities-head .muted{font-size:11px}
+    .additional-opportunities-content{display:grid;gap:9px}
+    .additional-opportunity,.additional-empty{padding:11px;border:1px solid #45404a;border-radius:11px;background:#17171e}
+    .additional-opportunity-top{display:flex;justify-content:space-between;gap:10px;color:#b8aab0;font-size:9px;font-weight:850;letter-spacing:.07em}
+    .additional-ev{color:#e3b455;font-size:11px}
+    .additional-opportunity-match{margin-top:7px;color:#f0f1f4;font-size:14px;font-weight:850}
+    .additional-opportunity-bet{margin-top:4px;color:#ddd2d4;font-size:11px}
+    .additional-opportunity-meta{margin-top:6px;color:var(--muted);font-size:10px}
+    .additional-opportunity-reasons{margin-top:8px;padding-top:7px;border-top:1px solid #39343b;color:#c9b8ba;font-size:10px;line-height:1.45}
+    .additional-opportunity-reasons b{color:#e3b455}
+    .additional-open{margin-top:9px;padding:7px 10px;border:1px solid #65404a;border-radius:8px;background:#211319;color:#f0dce0;font-size:10px;font-weight:750}
+    .additional-empty{color:var(--muted);font-size:11px;line-height:1.5}
+    .additional-empty b{display:block;margin-bottom:4px;color:var(--text);font-size:12px}
+
+    .plan-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+    .plan-summary-item{min-width:0;padding:10px 11px;border:1px solid #353640;border-radius:11px;background:linear-gradient(145deg,#17181f,#101116)}
+    .plan-summary-item span{display:block;color:#a9aeba;font-size:9px;font-weight:850;letter-spacing:.08em}
+    .plan-summary-item b{display:block;margin-top:5px;color:#f0f1f4;font-size:17px;line-height:1.15;overflow-wrap:anywhere}
+    .plan-summary-item small{display:block;margin-top:4px;color:#9298a4;font-size:9px;line-height:1.35}
+    #planMandatoryCount{color:#d58a8e}
+    #planStakeTotal{color:#e3b455}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
+    <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
+  </header>
+
+  <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-day="all">Все матчи</button>
+    <button class="tab" data-day="tomorrow">Завтра</button>
+  </div>
+
+  <section class="plan-summary" aria-label="Сводка плана ставок">
+    <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ</span><b id="planMandatoryCount">0</b><small>прошли строгие критерии</small></div>
+    <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>размер не рассчитан</small></div>
+    <div class="plan-summary-item"><span>БАНК</span><b id="planBank">не задан</b><small>не настроен пользователем</small></div>
+    <div class="plan-summary-item"><span>ЭКСПОЗИЦИЯ</span><b id="planExposure">—</b><small>не рассчитана</small></div>
+  </section>
+
+  <button class="refresh" id="refreshBtn">↻ &nbsp; ОБНОВИТЬ ДАННЫЕ</button>
+  <div id="oddsStatus" class="muted" role="status" aria-live="polite" style="margin:-7px 2px 12px">Коэффициенты Winamax ещё не загружены.</div>
+
+  <div class="section-head"><h2>Рынки</h2><button class="linkbtn" id="settingsOpen">Настроить →</button></div>
+  <div class="chips" id="marketChips">
+    <button class="chip on" data-market="winner">Победитель</button>
+    <button class="chip on" data-market="totals">Тоталы</button>
+    <button class="chip on" data-market="handicap">Форы</button>
+    <button class="chip on" data-market="sets">Сеты</button>
+  </div>
+
+  <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
+  <section id="bestBet" class="best-bet" role="region" aria-label="Обязательные ставки" aria-live="polite"><div class="best-bet-title">ОБЯЗАТЕЛЬНЫЕ СТАВКИ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></section>
+  <section id="additionalOpportunities" class="additional-opportunities" aria-live="polite"><div class="additional-opportunities-head"><h2>Дополнительные возможности</h2><span class="muted" id="additionalCount">0</span></div><div id="additionalOpportunitiesContent" class="additional-opportunities-content"><div class="muted">Ожидаю проверки матчей…</div></div></section>
+  <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
+  <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
+</div>
+
+<div class="stats-view" id="statsView">
+  <h1>Архив прогнозов</h1>
+  <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
+  <div class="stats" style="margin-top:16px">
+    <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
+    <div class="panel"><div class="muted">Сторон с положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
+    <div class="panel"><div class="muted">Средний EV по сторонам</div><div class="stat-num" id="archiveAvgEv">—</div></div>
+    <div class="panel"><div class="muted">Средний коэффициент по сторонам</div><div class="stat-num" id="archiveAvgOdds">—</div></div>
+    <div class="panel"><div class="muted">Завершено матчей</div><div class="stat-num" id="archiveSettled">0</div></div>
+    <div class="panel"><div class="muted">Точность прогноза</div><div class="stat-num" id="archiveAccuracy">—</div></div>
+    <div class="panel"><div class="muted">Неоднозначные результаты</div><div class="stat-num" id="archiveAmbiguous">0</div></div>
+    <div class="panel"><div class="muted">Исключено: матч не завершён</div><div class="stat-num" id="archiveExcluded">0</div></div>
+    <div class="panel"><div class="muted">Коэффициент снизился</div><div class="stat-num" id="archiveOddsShortened">0</div></div>
+    <div class="panel"><div class="muted">Коэффициент вырос</div><div class="stat-num" id="archiveOddsDrifted">0</div></div>
+    <div class="panel"><div class="muted">Коэффициент не изменился</div><div class="stat-num" id="archiveOddsUnchanged">0</div></div>
+    <div class="panel"><div class="muted">Конфликтные снимки</div><div class="stat-num" id="archiveOddsConflicts">0</div></div>
+  </div>
+  <div id="archiveOddsByBookmaker" class="archive-meta"></div>
+  <div class="panel" id="archiveCalibrationPanel"><b>Калибровка текущей модели v2</b><div class="muted">Сравнение предматчевой вероятности текущей версии модели с фактической победой. Снимки других версий модели исключены из общей и сегментной оценки. Новые снимки учитываются только при статусе upcoming; live/completed/cancelled исключаются. Для старых записей без статуса действует строгая проверка времени. Это точность модели, не доходность ставок.</div><div id="archiveCalibration" class="archive-list"><div class="archive-item">Пока недостаточно проверенных результатов.</div></div><div class="archive-meta"><b>Качество по сегментам</b> · покрытия и категории турниров</div><div id="archiveSegmentCalibration" class="archive-list"><div class="archive-item">Недостаточно данных для сегментного анализа.</div></div></div></div>
+
+  <div class="panel"><b>Качество архива по букмекерам</b><div class="muted">Покрытие считается относительно всех уникальных пар «матч + исход», уже встречавшихся в архиве. Это не покрытие всего календаря матчей.</div><div id="archiveOddsQuality" class="archive-list"><div class="panel empty">Нет данных для аудита.</div></div></div>
+  <div class="stats-actions"><button id="archiveCheckResults">Проверить результаты</button><button id="archiveExport">Экспорт CSV</button><button id="archiveBackup">Резервная копия JSON</button><button id="archiveImport">Импорт архива</button><button id="humanFactorAudit" type="button">Аудит нагрузки игроков</button><input id="archiveImportFile" type="file" accept="application/json,.json" hidden></div>
+  <div class="panel" id="humanFactorAuditPanel" hidden><b>Покрытие архива для анализа нагрузки</b><div class="muted">Проверка выполняется только на этом устройстве. Архив не загружается и не передаётся. История прогнозов неполная и не равна полной истории турниров.</div><div id="humanFactorAuditResult" class="archive-list"><div class="archive-item">Нажмите «Аудит нагрузки игроков».</div></div></div>
+  <div class="section-head"><h2>Последние записи</h2><span class="muted" id="archiveUpdated"></span></div>
+  <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
+</div>
+
+<div class="bottom"><div class="nav">
+  <button id="navHome" class="active"><b>⌂</b>Главная</button>
+  <button id="navMatches"><b>🎾</b>Матчи</button>
+  <button id="navStats"><b>▥</b>Статистика</button>
+  <button id="navSettings"><b>⚙</b>Настройки</button>
+</div></div>
+
 <div class="modal-back" id="settingsModal">
   <div class="modal">
     <h2>Настройки сканера</h2>
@@ -15,15 +299,6 @@
     <div class="actions"><button id="cancelSettings">Отмена</button><button class="primary" id="saveSettings">Сохранить</button></div>
   </div>
 </div>
-<div class="modal-back" id="moreModal">
-  <div class="modal more-modal">
-    <h2>Ещё</h2>
-    <button type="button" class="more-action" id="moreSettings">Настройки приложения</button>
-    <div class="more-note">Архив прогнозов и лабораторные показатели находятся в разделе «Статистика».</div>
-    <div class="actions"><button type="button" id="closeMore">Закрыть</button></div>
-  </div>
-</div>
-
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
@@ -62,14 +337,8 @@
     if(Array.isArray(current.tours))tourChecks.forEach(input=>input.checked=current.tours.includes(input.dataset.tour));
   }
   const open=()=>{populateSettingsForm();modal.classList.add('show');};
-  const closeMore=()=>$('#moreModal').classList.remove('show');
   const cancelSettings=()=>{applySkin(activeSkin);$('#skinSelect').value=activeSkin;close();};
-  $('#settingsOpen').onclick=open;
-  $('#moreSettings').onclick=()=>{closeMore();open();};
-  $('#closeMore').onclick=closeMore;
-  $('#navMore').onclick=()=>$('#moreModal').classList.add('show');
-  $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
-  $('#cancelSettings').onclick=cancelSettings;
+  $('#settingsOpen').onclick=open; $('#navSettings').onclick=open; $('#cancelSettings').onclick=cancelSettings;
   modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
   function readSettings(){
     try{
@@ -1155,69 +1424,15 @@
       return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.bookmaker||'Букмекер не указан')+' · '+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
-  function setActiveNavigation(activeId){
-    document.querySelectorAll('.nav button').forEach(button=>button.classList.toggle('active',button.id===activeId));
-  }
   function showMain(){
-    $('.app').style.display='block';$('#statsView').style.display='none';$('#compareView').style.display='none';
-    setActiveNavigation('navHome');
+    $('.app').style.display='block';$('#statsView').style.display='none';
+    $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
   }
   function showStats(){
-    $('.app').style.display='none';$('#statsView').style.display='block';$('#compareView').style.display='none';
-    setActiveNavigation('navStats');
+    $('.app').style.display='none';$('#statsView').style.display='block';
+    $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     archiveStorageReady.then(renderArchive);
   }
-  function showCompare(){
-    $('.app').style.display='none';$('#statsView').style.display='none';$('#compareView').style.display='block';
-    setActiveNavigation('navCompare');
-  }
-  function findScheduledPlayerId(name){
-    const target=String(name||'').trim();
-    if(!target||!Array.isArray(window.cachedMatches))return null;
-    for(const match of window.cachedMatches){
-      const players=match.players||{};
-      for(const player of [players.p1||match.player1,players.p2||match.player2]){
-        if(player&&playerNamesMatch(playerName(player),target)){
-          const id=getPlayerId(player);
-          if(id)return id;
-        }
-      }
-    }
-    return null;
-  }
-  function renderCompareResult(result,nameA,nameB,surface){
-    const node=$('#compareResult');
-    const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
-    const probA=Number(result.probabilityA),probB=Number(result.probabilityB);
-    const freshnessA=result.ratingFreshnessA?.status||'unknown',freshnessB=result.ratingFreshnessB?.status||'unknown';
-    const freshnessLabel=status=>({fresh:'свежий рейтинг',recent:'недавний рейтинг',stale:'устаревший рейтинг',unknown:'дата рейтинга неизвестна',invalid:'некорректная дата'})[status]||'статус неизвестен';
-    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата рейтингов: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';
-    node.hidden=false;
-  }
-  $('#compareRun').onclick=async()=>{
-    const button=$('#compareRun'),status=$('#compareStatus'),resultNode=$('#compareResult');
-    const nameA=$('#compareNameA').value.trim(),nameB=$('#compareNameB').value.trim();
-    const typedA=$('#compareIdA').value.trim(),typedB=$('#compareIdB').value.trim();
-    const idA=typedA?Number(typedA):findScheduledPlayerId(nameA);
-    const idB=typedB?Number(typedB):findScheduledPlayerId(nameB);
-    if(!nameA||!nameB){status.textContent='Укажи имена обоих игроков.';resultNode.hidden=true;return;}
-    if(!Number.isSafeInteger(idA)||idA<=0||!Number.isSafeInteger(idB)||idB<=0){status.textContent='Не удалось определить ID обоих игроков. Укажи ID Live Tennis API вручную или выбери игроков, присутствующих в загруженном расписании.';resultNode.hidden=true;return;}
-    if(idA===idB){status.textContent='Выбраны одинаковые ID игроков. Проверь данные.';resultNode.hidden=true;return;}
-    const surface=$('#compareSurface').value;
-    button.disabled=true;button.textContent='СРАВНЕНИЕ…';status.textContent='Запрашиваю профили и рассчитываю вероятности…';resultNode.hidden=true;
-    try{
-      const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
-      const payload=await response.json();
-      if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
-      if(!Number.isFinite(Number(payload.probabilityA))||!Number.isFinite(Number(payload.probabilityB)))throw new Error('API не вернул корректные вероятности для этой пары.');
-      renderCompareResult(payload,nameA,nameB,surface);
-      status.textContent='Сравнение рассчитано по текущей Elo-модели. Данные получены из Live Tennis API.';
-    }catch(error){
-      status.textContent='Не удалось выполнить сравнение: '+String(error.message||error);
-    }finally{button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
-  };
-  $('#navCompare').onclick=showCompare;
-  $('#compareBack').onclick=showMain;
   let archiveAutoCheckRunning=false;
   let archiveAutoCheckLastAt=0;
   $('#archiveCheckResults').onclick=async()=>{
@@ -1889,6 +2104,7 @@
   }
   $('#refreshBtn').onclick=()=>loadMatches(true);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
+  $('#navMatches').onclick=loadMatches;
   $('#navHome').onclick=showMain;
   $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
@@ -1942,28 +2158,3 @@
 </script>
 </body>
                                                                                                                                 </html>
-    .compare-view{max-width:760px;margin:0 auto;padding:18px 16px 110px;min-height:100vh}
-    .compare-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
-    .compare-header .brand{font-size:14px;letter-spacing:.1em}
-    .compare-intro{padding:12px;border:1px solid #353640;border-radius:11px;background:#121319;color:#c9c3c8;font-size:12px;line-height:1.5;margin-bottom:12px}
-    .compare-players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-    .compare-player{min-width:0;padding:11px;border:1px solid #75404b;border-radius:12px;background:linear-gradient(145deg,#211319,#121116)}
-    .compare-player-title{color:#d58a8e;font-size:10px;font-weight:900;letter-spacing:.1em;margin-bottom:9px}
-    .compare-player label,.compare-surface-field label{display:block;color:#b9b2b5;font-size:10px;margin:8px 0 5px}
-    .compare-player input,.compare-surface-field select{width:100%;min-width:0;padding:9px 8px;border:1px solid #55434a;border-radius:8px;background:#0c0c10;color:#f0f1f4;font-size:12px}
-    .compare-hint{margin:10px 0;color:#969ba5;font-size:10px;line-height:1.45}
-    .compare-run{width:100%;margin:5px 0 10px}
-    .compare-result{margin-top:12px;padding:13px;border:1px solid #65404a;border-radius:13px;background:#151219}
-    .compare-result[hidden]{display:none}
-    .compare-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-    .compare-result-player{padding:11px;border:1px solid #3d3942;border-radius:10px;background:#101116;text-align:center;min-width:0}
-    .compare-result-player strong{display:block;color:#f0f1f4;font-size:13px;overflow-wrap:anywhere}
-    .compare-result-player .compare-rating{display:block;margin:8px 0;color:#e3b455;font-size:19px;font-weight:900}
-    .compare-result-player .compare-probability{display:block;color:#d58a8e;font-size:24px;font-weight:900}
-    .compare-result-player small{display:block;margin-top:4px;color:#a9aeba;font-size:10px}
-    .compare-result-summary{margin-top:10px;color:#c9c3c8;font-size:11px;line-height:1.5;text-align:center}
-    .compare-disclaimer{margin-top:16px}
-    .more-modal .more-action{width:100%;padding:12px;border:1px solid #65404a;border-radius:10px;background:#211319;color:#f0dce0;text-align:left;font-weight:750}
-    .more-note{margin-top:12px;color:var(--muted);font-size:11px;line-height:1.5}
-    @media(max-width:390px){.compare-player{padding:8px}.compare-player input{font-size:11px;padding:8px 5px}.compare-result-player{padding:8px}}
-
