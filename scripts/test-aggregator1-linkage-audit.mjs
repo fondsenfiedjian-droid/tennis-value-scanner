@@ -121,4 +121,20 @@ assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differen
 
 
 
+
+
+// Regression: abbreviated St Tropez and fully spelled Saint-Tropez must normalize identically.
+const stTropezValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "st1;2025-06-16;St Tropez CH;atp;dur;Player One;Player Two;Challenger"
+].join("\\n")}];
+const stTropezSackmann=[{filename:"atp_matches_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250616,Saint-Tropez CH,Hard,Player One,Player Two,501,502"
+].join("\\n")}];
+const stTropezReport=auditValuebetSackmann(stTropezValuebet,stTropezSackmann);
+assert.equal(stTropezReport.totals.linkedUnique,1);
+assert.equal(stTropezReport.totals.eventNameExactMatch,1);
+assert.equal(stTropezReport.totals.eventNameMismatch,0);
+
 console.log("Aggregator 1 linkage audit fixtures: PASS");
