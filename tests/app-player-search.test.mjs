@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
+test("deploy preview calls the branch-isolated Cloudflare Worker while production keeps its Worker", () => {
+  assert.match(html, /location\.hostname\.startsWith\('deploy-preview-'\)\?'https:\/\/ui-tennis-value-scanner-2-tennis-value-api\.fonds-enfiedjian\.workers\.dev'/);
+  assert.match(html, /:'https:\/\/tennis-value-api\.fonds-enfiedjian\.workers\.dev'/);
+});
+
 test("comparison view provides independent player autocomplete fields", () => {
   assert.match(html, /id="compareNameA"[^>]*aria-controls="compareSuggestionsA"/);
   assert.match(html, /id="compareNameB"[^>]*aria-controls="compareSuggestionsB"/);
