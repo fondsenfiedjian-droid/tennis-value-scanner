@@ -237,12 +237,15 @@ async function main(){
   if(!vdir||!sdir||!Number.isInteger(window)||window<0||window>31)throw new Error("Invalid input directories or date window");
   const vnames=(await readdir(vdir)).filter(n=>VBT.test(n)).sort();
   const snames=(await readdir(sdir)).filter(n=>SACK.test(n)).sort();
+  const pnames=(await readdir(sdir)).filter(n=>/^(atp|wta)_players\\.csv$/i.test(n)).sort();
   const vfiles=[];for(const n of vnames)vfiles.push({filename:n,content:await readFile(join(vdir,n),"utf8")});
   const sfiles=[];for(const n of snames)sfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
-  const report=auditValuebetSackmann(vfiles,sfiles,{maxDateOffsetDays:window});
+  const pfiles=[];for(const n of pnames)pfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
+  const report=auditValuebetSackmann(vfiles,sfiles,{maxDateOffsetDays:window,playerFiles:pfiles});
   await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log("Valuebetennis rows: "+report.totals.valuebetRows);
   console.log("Unique links: "+report.totals.linkedUnique+" ("+report.totals.linkagePct+"% of valid rows); ambiguous: "+report.totals.ambiguous);
+  console.log("Player ID comparison: "+JSON.stringify(report.playerIdComparison));
   console.log("Aggregate report written to "+out);
 }
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href)main().catch(e=>{console.error(e.message);process.exitCode=1;});
