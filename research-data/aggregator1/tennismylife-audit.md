@@ -115,3 +115,24 @@ This audit does not yet test whether TML WTA IDs increase Valuebetennis-to-Sackm
 - Synthetic fixture: scripts/test-aggregator1-wta-tnm-linkage.mjs
 - Workflow: .github/workflows/aggregator1-tennismylife-wta-audit.yml
 - Report artifact retention: 14 days from 2026-11-22.
+
+
+## Valuebetennis WTA ID-bridge test
+
+The WTA workflow was extended to compare direct Valuebetennis-name linkage against a route through TML WTA player IDs and the aggregate-derived TML-ID-to-Sackmann-ID crosswalk. The test covers 2021–2025 WTA rows only.
+
+Verified GitHub Actions run: [45069152763](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45069152763). Updated aggregate artifact: aggregator1-wta-linkage-report.
+
+- Valuebetennis WTA rows: 165,164.
+- Direct normalized-name method: 10,391 resolved links (6.29%).
+- TML WTA ID bridge: 10,250 resolved links (6.21%).
+- ID bridge added new resolved links beyond direct name matching: **0**.
+- All 10,250 ID-bridge links agreed with direct-name results; no disagreements were observed.
+- The ID bridge had 141 fewer resolved rows than direct matching.
+- Both Valuebetennis names mapped unambiguously to one TML WTA ID in 38,275 rows; 126,889 rows had at least one missing or ambiguous TML name.
+- Both TML IDs had a Sackmann crosswalk in 37,635 rows; one or both lacked a crosswalk in 640 rows.
+- The ID route generated 220 unresolved ambiguous candidate sets.
+
+Conclusion: as in ATP, the TML WTA ID bridge does not improve Valuebetennis-to-Sackmann linkage for 2021–2025. It is not justified as an additional matching stage in the current pipeline. The direct-name result remains preferable because it resolves more rows with the same confirmed set.
+
+No raw WTA data or player-level crosswalk was exported. No TML data has been merged into Production. The provider's WTA reliability caveat remains relevant even though the overlap with Sackmann is high.
