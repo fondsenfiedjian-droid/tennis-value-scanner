@@ -392,3 +392,24 @@ Build an explicit player identity crosswalk before changing match matching:
 5. Re-run the same match audit with the crosswalk and report how many links are genuinely added, not merely re-labelled.
 
 Do not use TennisMyLife raw files in the training corpus without permission for the intended retention and model-training use. Do not bulk-ingest Live Tennis API archive data until written permission on retention/training is obtained. Sackmann remains CC BY-NC-SA 4.0 and must stay separately attributed and non-commercial unless the rights holder grants otherwise.
+
+
+## 17. Direct Valuebetennis player-ID crosswalk baseline — 2026-11-22
+
+A new aggregate-only audit compared Valuebetennis player IDs and names against the Sackmann ATP/WTA player registries. It supports both first-last and last-first name order, strips Unicode diacritics and punctuation, and does not use fuzzy or initials matching.
+
+| Tour | Valuebetennis player IDs | Unique name-based candidate IDs | Ambiguous | Unmapped |
+|---|---:|---:|---:|---:|
+| ATP | 14,185 | 6,942 (48.94%) | 134 | 7,109 |
+| WTA | 9,790 | 7,472 (76.32%) | 630 | 1,688 |
+
+- Valuebetennis contains 478,606 match rows and 957,212 player observations. All observations have a source player ID; one observation lacks a player name.
+- Sackmann registries parsed successfully: ATP 66,912 rows (66,864 with ID and name); WTA 70,571 rows (all valid). The registries contain 130,853 distinct normalized ATP name-order keys and 132,807 WTA keys.
+- Some normalized registry name keys map to multiple Sackmann player IDs (1,900 ATP and 3,703 WTA keys, counting first-last and last-first forms separately). These remain ambiguous and are not force-mapped.
+- The result is a baseline, not an authoritative identity crosswalk. Common names and historical name collisions are the main known ambiguity source; exact-name misses may reflect abbreviations, alternate spellings, or incomplete registry coverage.
+
+### Next refinement
+
+Use accepted match-level evidence to resolve identities where the exact player pair, surface, and date window produce one unique Sackmann match. That evidence can map both Valuebetennis player IDs to the corresponding Sackmann winner/loser IDs without fuzzy matching. Compare it against the direct registry baseline and count agreements, conflicts, and additional resolved IDs. Keep all row-level mappings ephemeral and publish only aggregate diagnostics until licensing and identity quality are fully cleared.
+
+The full dataset workflow now downloads the two Sackmann player registries and emits only an aggregate player-ID report. Its synthetic player-ID tests pass. The report and checksum manifest are retained; raw CSVs remain temporary.
