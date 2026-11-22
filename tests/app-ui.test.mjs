@@ -658,3 +658,8 @@ test("TVS 2.0 bottom navigation and quick links open the approved destinations",
   assert.match(html,/id=\"moreArchiveMount\"/);
   assert.match(html,/\[\$\('#archiveOddsByBookmaker'\),archiveQuality,\$\('\.stats-actions'\),archiveLastHead,\$\('#archiveList'\)\]\.filter\(Boolean\)\.forEach\(node=>archiveMount\.appendChild\(node\)\)/);
 });
+
+test("singles player search excludes doubles teams returned by Live Tennis API",()=>{
+  assert.match(html,/const players=\(Array\.isArray\(payload\.players\)\?payload\.players:\[\]\)\.filter\(player=>player\?\.is_doubles_team!==true\)/);
+  assert.match(html,/Одиночные игроки не найдены/);
+});
