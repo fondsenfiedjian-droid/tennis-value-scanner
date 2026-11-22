@@ -57,7 +57,14 @@ const tourney=value=>{
     w100landisville:"w100landisvillepa",w80tyler:"w80tylertx",m25calabasas:"m25calabasasca",
     m25austin:"m25austintx",m25bakersfield:"m25bakersfieldca",w60orlando:"w60orlandofl",
     m25columbus:"m25columbusoh",w60charlottesville:"w60charlottesvilleva",w15hiltonhead:"w15hiltonheadsc",
-    w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
+    w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc",
+    sttropezch:"saintropezch",francavillach:"francavillaalmarech",genovach:"genoach",
+    m15lakewood:"m15lakewoodca",m15verobeach:"m15verobeachfl",m15orangepark:"m15orangeparkfl",
+    openparclyon:"lyon",open6senslyon:"lyon",badhomburgopenbadhomburg:"badhomburg",
+    toraypanpacificopentokyo:"tokyo",dallasopendallas:"dallas",
+    open35desaintmalosaintmalo:"saintmalo125",rothesayopennottingham:"nottingham",
+    livesportpragueopenprague:"prague",rioopenriodejaneiro:"riodejaneiro",
+    nationalbankopenmontreal:"canadamasters",rothesayopennottingham:"nottingham"
   };
   if(aliases[s])return aliases[s];
   if(s.endsWith("challenger"))return s.slice(0,-10)+"ch";
