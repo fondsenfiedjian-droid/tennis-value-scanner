@@ -164,6 +164,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
     },
     byTour,
+    playerIdEvidence:{method:"accepted unique match links only; Valuebetennis player IDs are associated with Sackmann winner/loser IDs by exact normalized name orientation",matchRowsWithBothPlayerIdsEvidence,byTour:playerIdEvidence},
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
