@@ -145,7 +145,7 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /async function loadMatches\(force=false\)/);
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
   assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
-  assert.match(html, /\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
+  assert.match(html, /\$\('#navMatches'\)\.onclick=showMatches;/);
 });
 
 test("forced schedule refresh bypasses both browser and Worker caches", () => {
@@ -611,4 +611,23 @@ test("Compare loads both histories and H2H independently after Elo, and rejects 
   assert.match(html,/История недоступна\. Основное сравнение Elo сохранено/);
   assert.match(html,/История 2023–н\.в\.; H2H 1968–н\.в\./);
   assert.match(html,/проверка имён показана в блоке H2H/);
+});
+
+
+test("TVS 2.0 bottom navigation opens five independent screens",()=>{
+  assert.match(html,/function mountIndependentScreens\(\)/);
+  assert.match(html,/matches\.id='matchesView'/);
+  assert.match(html,/more\.id='moreView'/);
+  assert.match(html,/function hideAllScreens\(\)/);
+  assert.match(html,/function showMatches\(\)/);
+  assert.match(html,/function showMore\(\)/);
+  assert.match(html,/\$\('#navHome'\)\.onclick=showMain;/);
+  assert.match(html,/\$\('#navMatches'\)\.onclick=showMatches;/);
+  assert.match(html,/\$\('#navCompare'\)\.onclick=showCompare;/);
+  assert.match(html,/\$\('#navStats'\)\.onclick=showStats;/);
+  assert.match(html,/\$\('#navMore'\)\.onclick=showMore;/);
+  assert.match(html,/\$\('#matchesRefreshBtn'\)\.addEventListener\('click',\(\)=>loadMatches\(true\)\)/);
+  assert.match(html,/\$\('#moreScreenSettings'\)\.addEventListener\('click'/);
+  assert.match(html,/\$\('#openArchiveFromMore'\)\.addEventListener\('click',showStats\)/);
+  assert.doesNotMatch(html,/\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
 });
