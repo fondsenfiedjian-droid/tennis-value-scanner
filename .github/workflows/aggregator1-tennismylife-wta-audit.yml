@@ -64,7 +64,7 @@ jobs:
           done < "$ROOT/wta-files.tsv"
           for year in 2021 2022 2023 2024 2025; do
             vfile="valuebetennis-matchs-$year.csv"
-            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \\
+            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
               "https://www.valuebetennis.com/datasets/$vfile" --output "$ROOT/valuebetennis/$vfile"
             test -s "$ROOT/valuebetennis/$vfile"
             file="wta_matches_$year.csv"
@@ -96,11 +96,11 @@ jobs:
         run: |
           DATE_WINDOW="${{ inputs.date_window }}"
           if [[ -z "$DATE_WINDOW" ]]; then DATE_WINDOW=14; fi
-          node scripts/aggregator1-wta-valuebet-bridge.mjs \\
-            --valuebet-dir "$RUNNER_TEMP/aggregator1-wta/valuebetennis" \\
-            --tml-dir "$RUNNER_TEMP/aggregator1-wta/tml" \\
-            --sackmann-dir "$RUNNER_TEMP/aggregator1-wta/sackmann" \\
-            --date-window "$DATE_WINDOW" \\
+          node scripts/aggregator1-wta-valuebet-bridge.mjs \
+            --valuebet-dir "$RUNNER_TEMP/aggregator1-wta/valuebetennis" \
+            --tml-dir "$RUNNER_TEMP/aggregator1-wta/tml" \
+            --sackmann-dir "$RUNNER_TEMP/aggregator1-wta/sackmann" \
+            --date-window "$DATE_WINDOW" \
             --out audit-output/aggregator1-wta-valuebet-bridge.json
       - name: Validate aggregate report
         run: |
