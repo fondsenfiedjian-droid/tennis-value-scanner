@@ -4,8 +4,8 @@ import { auditPlayerIdCrosswalk } from "./aggregator1-player-id-audit.mjs";
 const valuebet=[
   {filename:"valuebetennis-matchs-2025.csv",content:[
     "genre;joueur1_id;joueur1;joueur2_id;joueur2",
-    "ATP;101;John Doe;102;Jane Roe",
-    "ATP;103;Alex Smith;101;John Doe",
+    "ATP;101;Doe John;102;Roe Jane",
+    "ATP;103;Smith Alex;101;Doe John",
     "WTA;201;Emma Stone;202;Other Player"
   ].join("\n")}
 ];
