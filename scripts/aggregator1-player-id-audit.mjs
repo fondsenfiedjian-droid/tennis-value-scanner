@@ -9,12 +9,13 @@ const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 
 export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
   if(!valuebetFiles.length||!playerFiles.length)throw new Error("Valuebetennis match files and Sackmann player registries are required");
-  const registryByTour={},registryNameCollisions={};
+  const registryByTour={},registryNameCollisions={},registryColumns={};
   for(const file of playerFiles){
     const fileName=basename(file.filename).toLowerCase();
     const tour=fileName.startsWith("atp_")?"ATP":fileName.startsWith("wta_")?"WTA":null;
     if(!tour)throw new Error("Unexpected player registry filename: "+basename(file.filename));
     const rows=parseCsv(file.content),names=new Map();let validRows=0;
+    registryColumns[tour]=Object.keys(rows[0]||{});
     for(const row of rows){
       const id=String(row.player_id??row.id??"").trim();
       const first=String(row.first_name??"").trim(),last=String(row.last_name??"").trim();
@@ -30,11 +31,13 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     registryNameCollisions[tour]=[...names.values()].filter(ids=>ids.size>1).length;
   }
 
-  const sourceIds={ATP:new Map(),WTA:new Map()};
+  const sourceIds={ATP:new Map(),WTA:new Map()};let valuebetColumns=[];
   const totals={matchRows:0,playerObservations:0,missingSourcePlayerId:0,missingPlayerName:0};
   for(const file of valuebetFiles){
     if(!VBT.test(basename(file.filename)))throw new Error("Unexpected Valuebetennis filename: "+basename(file.filename));
-    for(const row of parseCsv(file.content,{delimiter:";"})){
+    const parsedRows=parseCsv(file.content,{delimiter:";"});
+    if(!valuebetColumns.length)valuebetColumns=Object.keys(parsedRows[0]||{});
+    for(const row of parsedRows){
       const tour=String(row.genre??"").trim().toUpperCase();
       if(!["ATP","WTA"].includes(tour))continue;
       totals.matchRows++;
@@ -72,7 +75,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
   return {
     schemaVersion:1,
     purpose:"Aggregate-only crosswalk coverage audit. No source player IDs, names, or ID mappings are exported.",
-    sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannPlayerRegistries:playerFiles.map(x=>basename(x.filename)).sort(),registryRows:Object.fromEntries(Object.entries(registryByTour).map(([tour,r])=>[tour,{rows:r.rows,validRows:r.validRows,distinctNormalizedNames:r.names.size}]))},
+    sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),valuebetennisColumns:valuebetColumns,sackmannPlayerRegistries:playerFiles.map(x=>basename(x.filename)).sort(),playerRegistryColumns:registryColumns,registryRows:Object.fromEntries(Object.entries(registryByTour).map(([tour,r])=>[tour,{rows:r.rows,validRows:r.validRows,distinctNormalizedNames:r.names.size}]))},
     totals,
     byTour,
     matching:{method:"exact normalized full name in either first-last or last-first order (Unicode diacritics removed; punctuation and spaces removed); all source-name variants for one Valuebetennis player ID must resolve to exactly one Sackmann player ID",fuzzyMatching:false,initialsMatching:false},
@@ -95,8 +98,11 @@ async function main(){
   const pfiles=[];for(const n of pnames)pfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
   const report=auditPlayerIdCrosswalk(vfiles,pfiles);
   await writeFile(out,JSON.stringify(report,null,2)+"\n");
-  console.log("ATP source IDs: "+report.byTour.ATP.distinctSourcePlayerIds+"; uniquely name-mapped: "+report.byTour.ATP.resolved);
-  console.log("WTA source IDs: "+report.byTour.WTA.distinctSourcePlayerIds+"; uniquely name-mapped: "+report.byTour.WTA.resolved);
+  console.log("ATP source IDs: "+report.byTour.ATP.distinctSourcePlayerIds+"; uniquely name-mapped: "+report.byTour.ATP.resolved+"; registry: "+JSON.stringify(report.sources.registryRows.ATP));
+  console.log("WTA source IDs: "+report.byTour.WTA.distinctSourcePlayerIds+"; uniquely name-mapped: "+report.byTour.WTA.resolved+"; registry: "+JSON.stringify(report.sources.registryRows.WTA));
+  console.log("Valuebetennis columns: "+report.sources.valuebetennisColumns.join(","));
+  console.log("Player registry columns: "+JSON.stringify(report.sources.playerRegistryColumns));
+  console.log("Player observations: "+JSON.stringify(report.totals));
   console.log("Aggregate player-ID report written to "+out);
 }
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href)main().catch(e=>{console.error(e.message);process.exitCode=1;});
