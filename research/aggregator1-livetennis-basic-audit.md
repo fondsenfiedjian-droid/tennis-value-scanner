@@ -535,3 +535,19 @@ The five invalid-core rows are all WTA. They are excluded from composite fingerp
 - Keep the source audit report aggregate-only; raw CSV files remain temporary in the workflow runner.
 
 The audit's yearly/tour breakdown now distinguishes excess duplicate rows from all rows belonging to flagged groups, avoiding confusion between those two counts.
+
+
+## 22. Duplicate candidate outcome consistency — 2026-11-22
+
+The duplicate audit was extended to compare detected score/result and winner columns inside each of the 54 composite fingerprint groups. The full run `45084342218` completed successfully, with syntax checks and synthetic fixtures passing.
+
+| Diagnostic | Groups |
+|---|---:|
+| Composite fingerprint groups | 54 |
+| Groups with conflicting score/result values | 2 |
+| Groups with conflicting winner values | 10 |
+| Groups with identical payload across every column except match_id | 0 |
+
+The 54 groups contain 108 records (70 ATP, 38 WTA). All have distinct source match IDs; there are still zero repeated match_id groups. The result/winner conflict flags mean that a fingerprint match alone is not sufficient to collapse the records. They may indicate inconsistent source rows, corrections, or edge cases in the composite key. The audit does not choose a preferred record.
+
+Next, inspect which source columns were detected for score and winner comparison, then refine the review logic to distinguish a true result contradiction from alternate score formatting, player-side orientation, or missing fields. Keep every candidate pair quarantined until that distinction is resolved.
