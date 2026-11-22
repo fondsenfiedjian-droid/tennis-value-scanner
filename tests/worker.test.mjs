@@ -2565,7 +2565,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
   assert.ok(dateRetry.result.retryAfterSeconds >= 1 && dateRetry.result.retryAfterSeconds <= 60);
 });
 
-test("PFE player stats are connected read-only and score simulation is gated by verified inputs and explicit format", () => {
+test("PFE player stats remain connected read-only without exposing a match simulator", () => {
   const start = frontendSource.indexOf("function explicitMatchBestOf(");
   const end = frontendSource.indexOf("\n  async function loadPredictions", start);
   assert.ok(start >= 0 && end > start);
@@ -2581,9 +2581,6 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /const cachedTtl=cached\?\.value\?\.accessStatus==='available'\?60\*1000/);
   assert.match(frontendSource, /normalizeRecentFormProfile/);
   assert.match(frontendSource, /normalizeServeReturnProfile/);
-  assert.match(frontendSource, /pfeServeInputs\.status==='ready_for_score_simulation'&&matchBestOf/);
-  assert.match(frontendSource, /runMatchMonteCarlo/);
-  assert.match(frontendSource, /confidenceInterval95A/);
   assert.match(frontendSource, /Доступ Live Tennis API:/);
   assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
