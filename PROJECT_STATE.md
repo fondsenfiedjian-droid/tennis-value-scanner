@@ -1080,3 +1080,14 @@ Safety / implementation constraints:
 Durable design specification: `docs/TENNIS_VALUE_SCANNER_2_UI_SPEC.md`.
 Initial code audit: `docs/TVS2_IMPLEMENTATION_AUDIT.md`.
 Initial audit confirmed current `renderMatches()` hides matches without a complete odds pair; `selectBestBet()` returns only one strict candidate; current home has separate best-bet and highest-EV cards; active app is a single-page `index.html` with embedded CSS/JS and UI regression coverage in `tests/app-ui.test.mjs`.
+
+
+### 2026-11-22 — TVS 2.0 mandatory recommendation carousel (PR #167)
+- Implemented a strict recommendation list using the existing eligibility conditions: configured minimum EV/odds, valid model probability, reliability eligibility, reliability score >=85, good freshness and value eligibility. The full list retains the existing priority order: reliability score, model probability, then EV.
+- Replaced the single mandatory-bet feature card with a manually navigable carousel. The selected recommendation remains stable while the prediction scan incrementally updates. Automatic rotation is intentionally absent.
+- Each slide displays the selected player, opponent, bookmaker, odds, model probability, EV, reliability and freshness. Stake size is explicitly labelled as not calculated; no bankroll or stake amount is invented.
+- Kept the legacy single-result selector as a compatibility function for existing tests/callers. Elo, probability, EV, PFE, reliability calculations, API contracts, odds matching, archive and storage were not changed.
+- Added regression tests for the full strict candidate list, ranking, excluded candidates, manual navigation and the no-auto-rotation rule.
+- PR #167: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/167 (draft, not merged). Regression workflow run 45008580926 passed: 477 tests, 477 passed, 0 failed. Project-state guard passed.
+- A Netlify Deploy Preview was initiated by the draft PR; it is not Production. Cloudflare build/check activity is also separate from any approved Production release. Do not merge or deploy without user review.
+- Next UI task: replace the separate “EV дня” panel with the “Дополнительные возможности” watchlist and make the Matches view show all upcoming matches with explicit quote-status labels instead of hiding matches without a fresh complete pair.
