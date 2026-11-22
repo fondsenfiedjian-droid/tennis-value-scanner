@@ -1,13 +1,13 @@
 # Tennis Value Scanner
 
-PWA for scanning tennis match-winner odds from Winamax (France) and comparing them with probabilities calculated from player Elo ratings.
+PWA for scanning tennis match-winner odds from Winamax, Betclic and NetBet and comparing selected bookmaker prices with probabilities calculated from player Elo ratings. Winamax is the default EV source.
 
 ## Architecture
 
 - **Frontend:** static `index.html`, served by Netlify.
 - **Backend:** Cloudflare Worker in `worker.js`.
 - **Match schedule and player profiles:** Live Tennis API.
-- **Odds:** Apify dataset populated with Winamax tennis markets.
+- **Odds:** Apify dataset for Winamax tennis markets; Betclic/NetBet quotes from the configured odds API.
 - **Secrets:** stored in Cloudflare Worker secrets; never put API keys in frontend code or commit them to GitHub.
 
 ## Worker endpoints
@@ -20,6 +20,7 @@ Base URL: `https://tennis-value-api.fonds-enfiedjian.workers.dev`
 | `/usage` | GET | Live Tennis API quota usage |
 | `/matches` | GET | Match schedule; defaults to upcoming |
 | `/odds` | GET | Current Winamax dataset records |
+| `/odds-api/quotes` | GET | Betclic/NetBet tennis quotes where configured |
 | `/predict` | GET or POST | Elo probability and optional expected-value calculation |
 
 ### Match filters
@@ -38,9 +39,13 @@ Optional `oddsA` and `oddsB` must be greater than 1 and no greater than 1000. Ra
 - Winamax odds: Cloudflare cache for 5 minutes.
 - Player profiles: Cloudflare cache for 7 days.
 - Frontend match cache: 15 minutes.
-- Frontend odds cache: 10 minutes; the live matcher temporarily accepts Winamax odds up to six hours old to accommodate the current Apify refresh interval. This is a temporary availability allowance, not a guarantee that a quote remains executable. The strict historical odds backtest retains its separate 90-minute quote-age requirement.
+- Frontend odds cache: 10 minutes; the live matcher temporarily accepts selected-provider quotes up to six hours old to accommodate the current feed refresh intervals. This is a temporary availability allowance, not a guarantee that a quote remains executable. The strict historical odds backtest retains its separate 90-minute quote-age requirement.
 
 These are quota and resilience safeguards, not guarantees that a bookmaker price is still available at the moment a bet is placed.
+
+## Preferred bookmaker selection
+
+The Settings screen stores a preferred EV source on the current device: Winamax (default), Betclic, NetBet, or Best available. In a single-book mode, both outcomes must come from the same bookmaker and the same bookmaker-specific event group; if a complete fresh pair is unavailable, EV is not calculated for that match. The app never silently substitutes another bookmaker. Other providers' prices may still be shown as clearly labelled comparison quotes, but they are not EV inputs in a single-book mode. Best available mode selects the best valid price separately for each player side and can therefore use different bookmakers for the two sides. PFE's market-consensus input remains stricter and is available only when both prices belong to the same bookmaker and event.
 
 ## Prediction archive
 
@@ -51,7 +56,7 @@ The frontend stores local snapshots of each priced player outcome (odds, Elo pro
 
 The frontend includes a device-local bankroll ledger, initially seeded with €100. It separates free cash, stakes reserved in open bets, total equity, deposits, withdrawals and realized betting profit. Each bet records the match, selection, tour, court surface when supplied by the feed, bookmaker, odds, model probability, estimated EV, stake and timestamp. Settlements are recorded as won, lost or void; the ledger updates the available balance and realized profit without mixing deposits or withdrawals into betting performance.
 
-The portfolio allocator sorts eligible candidates by estimated EV and distributes stakes across distinct matches using one quarter of the Kelly fraction, capped at 2% of current bankroll equity per bet, 8% aggregate open-stake exposure and 8% cumulative stake turnover per local calendar day. It previews the allocation and requires explicit user confirmation before recording the virtual bets. It also enforces a minimum decimal price of 1.90 and minimum estimated EV of 3%. The amount is a conservative sizing rule, not proof that the model has an edge. A user must explicitly confirm adding a virtual bet to the ledger; the app does not place wagers or transfer money to Winamax. Where the archive contains a consistent verified `completed` result for the same numeric match ID, the ledger automatically settles the linked bet using its stored A/B side. Retirements, walkovers, cancellations, missing IDs and conflicting result records are deliberately not auto-settled; those remain open for manual review because bookmaker void rules can differ. A newer official result version recalculates a previously auto-settled bet; if a revision changes a completed match to a non-completed status, the prior payout is reversed and the bet is reopened for manual review.
+The portfolio allocator sorts eligible candidates by estimated EV and distributes stakes across distinct matches using one quarter of the Kelly fraction, capped at 2% of current bankroll equity per bet, 8% aggregate open-stake exposure and 8% cumulative stake turnover per local calendar day. It previews the allocation and requires explicit user confirmation before recording the virtual bets. It also enforces a minimum decimal price of 1.90 and minimum estimated EV of 3%. The amount is a conservative sizing rule, not proof that the model has an edge. A user must explicitly confirm adding a virtual bet to the ledger; the app does not place wagers or transfer money to any bookmaker. Where the archive contains a consistent verified `completed` result for the same numeric match ID, the ledger automatically settles the linked bet using its stored A/B side. Retirements, walkovers, cancellations, missing IDs and conflicting result records are deliberately not auto-settled; those remain open for manual review because bookmaker void rules can differ. A newer official result version recalculates a previously auto-settled bet; if a revision changes a completed match to a non-completed status, the prior payout is reversed and the bet is reopened for manual review.
 
 Bankroll data is stored separately from the prediction archive in browser local storage on the current device. A versioned JSON backup with an accidental-corruption checksum can be exported and restored (the checksum is not a cryptographic signature); imports also validate transaction types, timestamps, unique IDs and balance movements before accepting the ledger. The transaction ledger can be exported as semicolon-delimited CSV for spreadsheet analysis. The dashboard reports gross cash inflows and outflows (including stake reservations and settlement payouts) alongside external deposits and withdrawals, total staked, realized profit and ROI on settled stake volume; external funding is therefore distinguishable from betting turnover and still-open stakes. ROI is calculated as realized profit divided by the stake volume of won and lost bets; voided stakes are excluded from the denominator and reported separately. When an official result is revised, superseded settlements are reversed in the ledger and are not counted as realized profit. Clearing browser data or reinstalling the PWA can remove local records, so keep a backup. The ledger is not a bank account or a cloud-synced wallet.
 
@@ -65,7 +70,7 @@ Player B receives the complementary probability (`1 - P(A)`). Model probabilitie
 
 ## Live data freshness indicator
 
-Each calculated match card labels the freshness of its inputs separately from the model probability. The label is **high** only when both player Elo update dates are known and no older than 14 days and the matched Winamax quote is no older than 30 minutes. It is **medium** when both rating dates are known and no older than 30 days and the quote is no older than 90 minutes. Missing dates, older ratings, or unknown/out-of-window quote age produce a **limited** label. This is a data-recency diagnostic, not a confidence interval, win probability, or guarantee that a price remains available. The live value-signal gate also excludes candidates when either rating date or quote age is outside the good/medium freshness bands, when either rating fails validation, or when a same-bookmaker, same-event market pair disagrees with Elo by at least 15 percentage points. Matches whose scheduled start has passed, whose odds event has started, or whose status is live/completed/cancelled are also excluded from live value calculations, including stale schedule-cache entries. A provisional single-source Elo estimate can still be shown, but is labelled provisional; it is not presented as agreement with the market. For bankroll allocation, high freshness receives the full calculated stake, medium freshness receives half, and limited freshness is excluded from the recommended portfolio. This is a conservative data-recency safeguard, not a statistical confidence score. Segment calibration in the live archive reports populated 5-percentage-point probability buckets separately for each known tour and surface; a match is omitted from a segment if its side records disagree on that segment's metadata. Bucket counts remain visible so small samples are not mistaken for stable evidence.
+Each calculated match card labels the freshness of its inputs separately from the model probability. The label is **high** only when both player Elo update dates are known and no older than 14 days and the selected bookmaker quote is no older than 30 minutes. It is **medium** when both rating dates are known and no older than 30 days and the quote is no older than 90 minutes. Missing dates, older ratings, or unknown/out-of-window quote age produce a **limited** label. This is a data-recency diagnostic, not a confidence interval, win probability, or guarantee that a price remains available. The live value-signal gate also excludes candidates when either rating date or quote age is outside the good/medium freshness bands, when either rating fails validation, or when a same-bookmaker, same-event market pair disagrees with Elo by at least 15 percentage points. Matches whose scheduled start has passed, whose odds event has started, or whose status is live/completed/cancelled are also excluded from live value calculations, including stale schedule-cache entries. A provisional single-source Elo estimate can still be shown, but is labelled provisional; it is not presented as agreement with the market. For bankroll allocation, high freshness receives the full calculated stake, medium freshness receives half, and limited freshness is excluded from the recommended portfolio. This is a conservative data-recency safeguard, not a statistical confidence score. Segment calibration in the live archive reports populated 5-percentage-point probability buckets separately for each known tour and surface; a match is omitted from a segment if its side records disagree on that segment's metadata. Bucket counts remain visible so small samples are not mistaken for stable evidence.
 
 ## Model limitations
 
