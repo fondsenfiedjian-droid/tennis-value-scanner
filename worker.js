@@ -223,6 +223,24 @@ function extractRatingAsOf(profile) {
   return null;
 }
 
+function extractOfficialPlayerProfile(profile) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    return { ranking: null, tour: null, country: null, completeness: null };
+  }
+  const rankingValue = profile.ranking;
+  const ranking = Number.isSafeInteger(rankingValue) && rankingValue > 0 && rankingValue <= 10000
+    ? rankingValue : null;
+  const tourValue = typeof profile.tour === "string" ? profile.tour.toLowerCase() : "";
+  const tour = ["atp", "wta"].includes(tourValue) ? tourValue : null;
+  const country = typeof profile.country === "string" && profile.country.trim()
+    ? profile.country.trim().slice(0, 80) : null;
+  const known = profile.data_completeness?.known;
+  const of = profile.data_completeness?.of;
+  const completeness = Number.isSafeInteger(known) && Number.isSafeInteger(of) && of > 0 && known >= 0 && known <= of
+    ? { known, of, percent: Number((known / of * 100).toFixed(1)) } : null;
+  return { ranking, tour, country, completeness };
+}
+
 function assessRatingFreshness(asOf, now = Date.now()) {
   if (!asOf) return { status: "unknown", ageDays: null };
   const timestamp = Date.parse(asOf);
@@ -1409,6 +1427,8 @@ export default {
         evA: oddsA !== null ? Number(((pA * oddsA - 1) * 100).toFixed(2)) : null,
         evB: oddsB !== null ? Number(((pB * oddsB - 1) * 100).toFixed(2)) : null,
         method: "Elo",
+        officialProfileA: hasIdA ? extractOfficialPlayerProfile(profileA) : null,
+        officialProfileB: hasIdB ? extractOfficialPlayerProfile(profileB) : null,
         ratingTypeA: hasIdA ? selectedA.type : "manual",
         ratingTypeB: hasIdB ? selectedB.type : "manual",
         surface: hasIdA ? (selectedA.surface || null) : null,
