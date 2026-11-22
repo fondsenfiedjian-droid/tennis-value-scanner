@@ -57,7 +57,7 @@ assert.equal(result.totals.ambiguous, 1);
 assert.equal(result.totals.linkagePct, 42.86);
 assert.equal(result.byTour.ATP.linkedUnique, 2);
 assert.equal(result.byTour.WTA.linkedUnique, 1);
-assert.equal(result.playerIdEvidence.matchRowsWithBothIdsEvidence, 3);
+assert.equal(result.playerIdEvidence.matchRowsWithBothPlayerIdsEvidence, 3);
 assert.equal(result.playerIdEvidence.byTour.ATP.resolvedToSingleSackmannId, 4);
 assert.equal(result.playerIdEvidence.byTour.WTA.resolvedToSingleSackmannId, 2);
 assert.equal(result.playerIdEvidence.byTour.ATP.withAcceptedMatchEvidence, 4);
