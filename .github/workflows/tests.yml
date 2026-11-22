@@ -2,7 +2,7 @@ name: Regression tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, ui/tennis-value-scanner-2]
   pull_request:
     branches: [main]
 
