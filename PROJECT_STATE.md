@@ -1156,3 +1156,11 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Compare UI now displays official ranking, tour/country and profile completeness alongside Elo and Elo probability. It does not change Elo inputs, probabilities, fair odds, EV or recommendation logic.
 - Added regression tests for valid, missing and invalid profile metadata and UI separation of official rank from Elo.
 - Files changed: `worker.js`, `index.html`, `tests/worker.test.mjs`. No production deployment; PR #167 remains draft. GitHub Actions validation is pending.
+
+
+### 2026-11-22 — Historical-form tier boundary clarified
+- Rechecked the current official Live Tennis API reference. FREE has a limited 20-call-per-calendar-month history taste allowance, but this is not a dependable entitlement for normal application operation.
+- BASIC is required for completed-match history and H2H; PRO is required for player W/L, surface splits, set-based records and recent matches; ULTRA adds serve/return aggregates.
+- Decision: do not spend the limited history allowance during routine refreshes or comparison. Keep FREE Compare on Elo plus FREE profile metadata. Do not fabricate last-five form from scheduled matches or represent plan-restricted responses as zero statistics.
+- Documented capability-gated activation for any future paid-tier access. No subscription, history calls, production deployment, model change or merge performed.
+- Latest verified PR #167 head before this documentation commit: 78c387874ce293ba0dc367e045bb0c3556d49c15; regression tests and project-state guard both passed on that head.
