@@ -93,3 +93,21 @@ The most useful near-term feature candidates are:
 - per-match serve statistics only where the source recorded them (the provider says this begins in 1991, but coverage is uneven).
 
 Before using the archive in a training corpus, obtain written permission for persistent retention and ML training. Until then, use bounded API analysis and metadata only.
+
+
+## 8. Targeted Grand Slam / player endpoint checks — 2026-11-22
+
+A follow-up run made 41 requests (25 inventory + 16 targeted checks; the script's declared budget of 37 was four too low). All 4 targeted Grand Slam list/detail, player-bio, and career-aggregate paths returned HTTP 200.
+
+| Tour / era | Match detail | Serve stats | Player bio | Career aggregate |
+|---|---:|---|---:|---:|
+| ATP 1991–2000 | 200 | null in selected record | 200 | 200 |
+| ATP 2016–2022 | 200 | present for winner and loser | 200 | 200 |
+| WTA 1991–2000 | 200 | null in selected record | 200 | 200 |
+| WTA 2016–2022 | 200 | present for winner and loser | 200 | 200 |
+
+The 2016–2022 selected ATP and WTA Grand Slam records exposed aces, double faults, first-serve-in, first-serve points won, second-serve points won, serve points/games and break points saved/faced for both players. The 1991–2000 selected records had null stats; this reinforces that stats availability is match-specific and cannot be assumed solely from year.
+
+The archive player endpoint returned bios with country, DOB, hand, height, career-high rank and date. The career endpoint returned overall and by-surface/by-level W-L, titles, yearly records, and aggregate serve totals/ratios. These are accessible under BASIC and potentially useful as player-profile features, but they are career aggregates over the archive, not time-frozen pre-match features. Using full-career aggregates in a historical backtest would leak future information unless the feature is rebuilt only from matches before the target match.
+
+The run's report states 41 actual requests against a declared budget of 37; all returned checks succeeded. The account usage response showed Basic active and 994 daily calls remaining at its point of measurement. The discrepancy in the counter is documented; no more broad archive calls should be made until the next bounded task is defined.
