@@ -116,15 +116,30 @@ Implementation order for the comparison dossier:
 The current implementation remains on the draft branch. This audit changes no production endpoint, prediction calculation or API subscription.
 
 
-## Historical-form access boundary — verified 2026-11-22
+## Historical-form access boundary — BASIC subscription confirmed 2026-11-22
 
-The current FREE API key must be treated as a current-state source, not a dependable historical-form source:
+The user has confirmed that the active Live Tennis API subscription is BASIC ($9.99/month). The earlier FREE-only assumption in this document is superseded. The exact live key entitlement should still be confirmed through the quota-exempt `GET /usage` response before any historical data workflow is activated.
 
-- FREE includes live/upcoming matches, player directory/profile and fixtures. The normal FREE quota is 100 requests/day and 30/minute.
-- The provider documents a limited history taste allowance of 20 history-endpoint calls per calendar month for FREE keys. This is a trial allowance, not a production data entitlement. Do not spend it in routine app refreshes, player autocomplete, or automatic comparison rendering.
-- BASIC unlocks completed-match listings and per-match point-by-point tapes from 2023 onward, plus archive results/H2H for 1968–2022.
-- PRO unlocks /players/{playerId}/stats, including recent completed matches, W/L records, surface splits and set-based records over the provider's 2023+ completed singles corpus. ULTRA alone adds serve_return aggregates.
-- Therefore, on the current FREE configuration, Compare must continue to show Elo and FREE profile metadata without attempting player-stats/history calls. Do not add a simulated last-five form from scheduled matches, and do not translate a 403 into zeros.
-- If the provider later grants PRO/BASIC access, enable the relevant data modules only after a capability check confirms access. Cache responses, show the coverage window and sample size, and preserve null for empty samples.
+BASIC unlocks:
+- `GET /history/matches`: completed matches from January 2023 to the present, filterable by player roster ID, tour, draw and date range.
+- `GET /history/coverage`: measured completeness by tour and draw.
+- `GET /h2h`: head-to-head across the 1968–2022 results archive and the provider's completed matches from 2023 onward.
+- `GET /history/archive/matches`, `/history/archive/players` and `/history/archive/career`: historical results and career aggregates for 1968–2022.
+- `GET /history/matches/{matchId}`: match-level point-by-point tape where available.
 
-This is a tier-boundary and quota-protection decision. It does not authorize a subscription purchase, consume the 20-call history allowance, or change the production model.
+PRO-only:
+- `GET /players/{playerId}/stats`: prebuilt player W/L records, surface splits, set-based records and recent matches (2023 onward).
+- Match events, market prices and bulk history packages.
+
+ULTRA-only:
+- Serve/return aggregates and advanced live/statistical feeds.
+
+Implementation decision:
+1. Use BASIC `/history/matches?player={id}&draw=singles&limit=...` to build the last 5, 10 and 20 completed-match form windows. Derive wins/losses from the published winner field and show the actual sample size, date range, tour and surface. Never fill missing matches or infer a result.
+2. Use BASIC `/h2h?p1={name}&p2={name}` for head-to-head. Because the endpoint resolves name fragments, verify that the returned player names match the selected comparison players before displaying the result. If ambiguous or mismatched, show unavailable rather than a misleading H2H.
+3. Use `/history/coverage` to qualify the completeness of the source. Do not present the 2023+ provider history as a complete career record.
+4. Cache history and H2H responses, avoid routine polling, and keep API errors / 403 / 429 visible as access or availability states.
+5. Keep form, surface form and H2H as separate evidence modules. They do not alter the production Elo K=32, its probabilities, EV, PFE or reliability calculations.
+6. Keep `/player-stats` dormant on BASIC. A PRO-only 403 must not be translated into zero values or a missing-player error.
+
+This correction supersedes the earlier FREE-only tier assumption. It does not authorize a subscription change, production deployment, PR merge or modification of the production model.
