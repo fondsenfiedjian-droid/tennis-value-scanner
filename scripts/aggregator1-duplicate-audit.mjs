@@ -76,7 +76,7 @@ async function main(){
   const names=(await readdir(dir)).filter(n=>FILE.test(n)).sort();
   const files=[];for(const n of names)files.push({filename:n,content:await readFile(join(dir,n),"utf8")});
   const report=auditValuebetDuplicates(files);
-  await writeFile(out,JSON.stringify(report,null,2)+"\\n");
+  await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log("Valuebetennis duplicate audit: "+JSON.stringify(report.totals));
   console.log("Aggregate duplicate report written to "+out);
 }
