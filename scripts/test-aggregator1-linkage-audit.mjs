@@ -58,5 +58,7 @@ assert.equal(result.byTourCategory["ATP::Grand Chelem"].linkedUnique, 1);
 assert.equal(result.byTourCategory["ATP::Main tour"].linkedUnique, 1);
 assert.equal(result.byTourCategory["WTA::Main tour"].linkedUnique, 1);
 assert.equal(result.byTourCategory["ATP::ITF"].unknownSurface, 1);
+assert.equal(result.byTourCategory["ATP::Main tour"].pairAbsent, 1);
+assert.equal(result.byCategory["Main tour"].pairAbsent, 1);
 assert.equal(result.byCategory["Main tour"].rows, 3);
 console.log("Aggregator 1 linkage audit fixtures: PASS");
