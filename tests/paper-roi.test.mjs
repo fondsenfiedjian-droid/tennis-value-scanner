@@ -54,3 +54,14 @@ test('excludes post-start, non-Winamax, non-v2 and non-positive-EV rows',()=>{
   ];
   assert.equal(archivePaperRoi(rows).bets,0);
 });
+
+test('excludes odds whose source timestamps are at or after match start',()=>{
+  const rows=[
+    row({quoteObservedAt:Date.parse(matchDate)}),
+    row({quoteCapturedAt:Date.parse(matchDate)+1000})
+  ];
+  assert.equal(archivePaperRoi(rows).bets,0);
+});
+test('excludes malformed non-empty source quote timestamps',()=>{
+  assert.equal(archivePaperRoi([row({quoteObservedAt:'not-a-timestamp'})]).bets,0);
+});
