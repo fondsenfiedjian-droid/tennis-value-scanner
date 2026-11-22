@@ -1104,3 +1104,13 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Netlify Deploy Preview for PR #167 reported success and is available at https://deploy-preview-167--fascinating-paprenjak-1aa9b3.netlify.app.
 - Cloudflare Workers Build for branch preview `ui/tennis-value-scanner-2` completed successfully. The check resolved to the branch preview environment, not the Production Worker.
 - Latest confirmed regression run before this documentation-only update: 45008753110, 477/477 passed. The documentation update will trigger another PR validation cycle.
+
+
+### 2026-11-22 — Additional opportunities and daily plan summary (TVS 2.0)
+- Removed the separate “EV дня / рискованный шанс” top-level card and replaced it with “Дополнительные возможности”. The watchlist shows up to three positive-EV candidates that are not in the mandatory plan, ordered by proximity to the strict gates, then reliability and EV.
+- Each watchlist item states why it has not qualified: EV below the configured threshold, odds below the mandatory threshold, insufficient quote freshness, value-signal quality gate, reliability below 85/100, or missing strict calibration/independent confirmation. The list never promotes a candidate to mandatory status by itself.
+- If a verified bookmaker pair exists but no validated model probability was returned, the watchlist shows the pair as awaiting analysis and explicitly says EV is not calculated. It is not presented as a value bet.
+- Replaced the old two-tile home statistics with a safe daily-plan summary: mandatory recommendation count, stake total not calculated, bankroll not configured, and exposure not calculated. The mandatory count updates from the strict recommendation list; no bankroll, amount, or exposure is fabricated.
+- Updated regression tests for the watchlist, fallback behavior, minimum-EV separation and safe financial summary. Latest regression run 45009075344 passed: 479 tests, 479 passed, 0 failed. Project-state documentation guard passed on the preceding commit; the current documentation update will trigger its own guard run.
+- Draft PR #167 remains unmerged. Production Worker deploy and production smoke checks remain skipped; no production deployment has been performed.
+- Next: complete the navigation shell (Главная, Матчи, Сравнение, Статистика, Ещё) without breaking existing archive/settings routes, then implement the independent two-player comparison view.
