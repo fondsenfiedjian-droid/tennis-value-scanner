@@ -87,7 +87,7 @@ jobs:
 
       - name: Validate aggregate report
         run: |
-          node -e "const r=require('./audit-output/aggregator1-linkage-audit.json'); if(r.schemaVersion!==2 || !r.totals || !r.byTour || !r.byYear || !r.byCategory || !r.valuebetSchema) process.exit(1); console.log(JSON.stringify({totals:r.totals,byTour:r.byTour,byCategory:r.byCategory,byYear:r.byYear,valuebetSchema:r.valuebetSchema,sackmannSourceRows:r.sources.sackmannSourceRows,sackmannSourceRowsByYear:r.sources.sackmannSourceRowsByYear},null,2));"
+          node -e "const r=require('./audit-output/aggregator1-linkage-audit.json'); if(r.schemaVersion!==2 || !r.totals || !r.byTour || !r.byYear || !r.byCategory || !r.byTourCategory || !r.valuebetSchema) process.exit(1); console.log(JSON.stringify({totals:r.totals,byTour:r.byTour,byCategory:r.byCategory,byTourCategory:r.byTourCategory,byYear:r.byYear,valuebetSchema:r.valuebetSchema,sackmannSourceRows:r.sources.sackmannSourceRows,sackmannSourceRowsByYear:r.sources.sackmannSourceRowsByYear},null,2));"
 
       - name: Upload aggregate report only
         uses: actions/upload-artifact@v4
