@@ -172,7 +172,7 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 - `BASELINE-INVENTORY.md`: existing repository research assets and gaps.
 - `PFE-CONTROLS.md`: separates the live Worker baseline from offline historical Elo experiments.
 - `DATA-FEASIBILITY.md`: source availability and constraints for ACE, SMA and HFA.
-- `schema.sql`: normalized SQLite ledger schema.
+- `schema.sql`: normalized SQLite ledger schema, append-only result revisions and immutable forecast / quote snapshots.
 - `contracts/system-output.schema.json`: standard SAS output contract.
 
 ## Current research readiness
