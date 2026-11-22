@@ -46,7 +46,14 @@ The data-audit workflow separately publishes artifacts named:
 - `sackmann-prematch-ranking-research`;
 - `sackmann-data-coverage-audit`.
 
-The workflow files were inspected, but no workflow run was launched and no report artifact was retrieved in this review. The available GitHub read interface did not expose the workflow-run listing for this repository, so the latest run ID and report metrics remain unverified. Do not infer results from workflow configuration or unit tests.
+The latest completed SMA run was retrieved and its report artifact was inspected through a read-only artifact-summary workflow:
+- run ID: `44918617777`, source commit `4e3a719244e6b54988a5a725a4d6fcc47a476f6b`;
+- fixed holdout: train 2016–2024, evaluate 2025–2026 (2026 partial through May 25);
+- leading 730-day candidate: overall serve/return plus surface-relative residual serve/return features;
+- fixed-holdout Brier improved by 0.001360 ATP and 0.001198 WTA; paired 95% intervals remained below zero for both tours;
+- fixed-holdout LogLoss improved by 0.003942 ATP and 0.003405 WTA; paired 95% intervals remained below zero;
+- expanding annual walk-forward results showed the same direction for both tours and both metrics.
+See `SMA-RESULTS-AUDIT.md` for exact baseline/adjusted values, sample sizes, confidence intervals, window ablations and restrictions. These results are against offline K=32 Elo, not live Worker PFE, and do not establish ROI.
 
 ## Important constraints discovered
 
@@ -60,11 +67,11 @@ The workflow files were inspected, but no workflow run was launched and no repor
 ## Immediate gap list
 
 - ACE: audit whether the historical match corpus supports reliable calendar workload features. Match dates alone do not establish actual finish times or hours of recovery. Injury/medical signals need a lawful, timestamped source and explicit missingness rules.
-- SMA: retrieve and inspect the latest walk-forward report; determine coverage and incremental value by tour, year, surface and tournament level before fitting any aggregator coefficient.
+- SMA: report artifact retrieved; the 730-day surface-residual candidate shows incremental probability-quality value on ATP and WTA holdout and annual walk-forward samples. Remaining gates: identical-sample comparison against live PFE, deeper surface/tournament strata, calibration and source-coverage audits.
 - HFA: identify admissible, timestamped, pre-match evidence sources. If coverage cannot be established, keep HFA in abstention mode rather than manufacturing scores.
 - PFE: define the exact frozen baseline version and data cutoff used for every paired comparison.
 - Aggregator: only after the three input audits, implement a research-only aggregator that accepts standardized system outputs and supports abstention.
 
 ## Scope of this inventory
 
-The inspection fetched the README, two backtest scripts, the serve/return research script, both workflow definitions and the SMA test file from `main`. It did not execute tests or workflows, download datasets, retrieve workflow artifacts, inspect every repository file, or change the production branch. Treat this as a focused inventory, not a complete code audit.
+The inspection fetched the README, two backtest scripts, the serve/return research script, both workflow definitions and the SMA test file from `main`. It retrieved the existing SMA artifact via GitHub Actions and summarized its JSON reports without rerunning the model. It did not change the production branch. Treat this as a focused inventory, not a complete code audit.
