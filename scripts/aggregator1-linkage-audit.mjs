@@ -12,7 +12,7 @@ const surface=value=>{
   if(["clay","terrebattue","terre","redclay"].includes(s))return "clay";
   if(["grass","gazon"].includes(s))return "grass";
   if(["carpet","moquette","moquetteinterieur","indoorcarpet"].includes(s))return "carpet";
-  return s;
+  return null;
 };
 const tourney=value=>{
   const s=normalize(value);
@@ -56,9 +56,9 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     sourceRows[tour+":"+tier]=(sourceRows[tour+":"+tier]||0)+rows.length;
     for(const row of rows){
       const a=normalize(row.winner_name),b=normalize(row.loser_name);
-      const date=parseSackDate(row.tourney_date);
-      if(!a||!b||a===b||date===null)continue;
-      const key=[tour,[a,b].sort().join("|"),surface(row.surface)].join("::");
+      const date=parseSackDate(row.tourney_date),sf=surface(row.surface);
+      if(!a||!b||a===b||date===null||!sf)continue;
+      const key=[tour,[a,b].sort().join("|"),sf].join("::");
       if(!sackIndex.has(key))sackIndex.set(key,[]);
       sackIndex.get(key).push({date,tier,year,event:tourney(row.tourney_name)});
     }
