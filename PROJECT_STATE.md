@@ -1052,3 +1052,31 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-22 — Tennis Value Scanner 2.0 UI redesign
+
+The user approved a redesign of the PWA under the product name **Tennis Value Scanner 2.0**. Work is isolated on branch `ui/tennis-value-scanner-2`; do not merge or deploy until reviewed and tested.
+
+Approved home-screen concept:
+- Near-black / graphite interface with thin restrained luminous outlines.
+- Deep ruby/crimson primary accent (reduce pink to zero or near-zero), cool cyan for system/data status, amber/gold for odds, EV and financial values.
+- Home screen is a daily plan dashboard, not a feed of technical diagnostics.
+- Primary block: “Обязательные ставки” — all recommendations passing strict system criteria, with selected side, bookmaker, current odds/freshness, model probability, EV, confidence/data quality, and stake recommendation when safely calculable.
+- Secondary block: “Дополнительные возможности” — separate watchlist with explicit reason/condition preventing strict admission.
+- Summary metrics: count of strict recommendations, total recommended amount, configured bankroll if available, and combined exposure only when inputs are valid.
+- No duplicate “Ставка дня” / “EV дня” top-level cards. The best candidate may be highlighted inside the plan.
+- Navigation target: Главная, Матчи, Сравнение, Статистика, Ещё (Лаборатория and Архив/Система inside Ещё).
+- Do not hide upcoming matches because odds are missing; show explicit statuses instead.
+
+Safety / implementation constraints:
+- “Обязательные” means system-qualified recommendation, not guarantee or instruction.
+- Never invent a bankroll or stake amount. Until a bankroll and validated sizing rule are configured, show “Банк не задан” / “Сумма не рассчитана”.
+- Advisory recommendations only; no automatic bet placement, money movement, bookmaker account control, silent stake changes, stop-loss or losing-day blocks.
+- Preserve production prediction model, Elo K=32, PFE, EV, reliability scoring, Worker/API contracts, Live Tennis API, Apify task/scraper, archive/storage and service-worker behavior.
+- Keep K=80 and experimental SAS out of production.
+- No merge/deployment from the redesign branch during the initial UI migration.
+
+Durable design specification: `docs/TENNIS_VALUE_SCANNER_2_UI_SPEC.md`.
+Initial code audit: `docs/TVS2_IMPLEMENTATION_AUDIT.md`.
+Initial audit confirmed current `renderMatches()` hides matches without a complete odds pair; `selectBestBet()` returns only one strict candidate; current home has separate best-bet and highest-EV cards; active app is a single-page `index.html` with embedded CSS/JS and UI regression coverage in `tests/app-ui.test.mjs`.
