@@ -92,3 +92,22 @@ No probability adjustment is permitted until the evidence demonstrates increment
 ## 8. Interpretation guardrail
 
 The output must describe sourced evidence and uncertainty, not claim to know a player's private motivation. “Preparation signal” is not synonymous with “does not intend to win”, “will lose” or “safe bet against”. Physical readiness remains a separate dimension handled by the workload/recovery analysis.
+
+### Operational recording contract
+
+Use `tournament-intent-observations.js` for one record per sampled player–target-match. The required source-status fields are:
+- `official_tour_news`
+- `official_tournament_media`
+- `player_team_statement`
+- `reputable_media`
+- `official_schedule`
+
+Each status must be `searched`, `unavailable`, or `not_searched`. The observation also stores the exact match ID and start time, tour, player ID/name, pre-event rank and ranking-snapshot date, search start/completion timestamps, reviewer, search duration (maximum 15 minutes), and linked evidence IDs.
+
+Outcome rules:
+- `evidence_found`: at least one linked admissible evidence ID.
+- `no_evidence_found`: zero evidence IDs and all five source categories marked `searched`.
+- `source_unavailable`: zero evidence IDs, at least one `unavailable`, and no category left `not_searched`.
+- `search_incomplete`: zero evidence IDs and at least one category marked `not_searched`.
+
+The import utility validates these rules, merges by exact player–target-match identity, and reports coverage by tour and ranking band. Do not count an observation as `no_evidence_found` when any required source category was unavailable or not searched.
