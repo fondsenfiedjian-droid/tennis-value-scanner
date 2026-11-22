@@ -1065,3 +1065,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - README now documents provider choices, Winamax default, strict same-bookmaker/same-event pairing, alternative quote labels and the Best available behavior.
 - No probability model, EV formula, provider API, secrets, paid services, production Worker or production deployment changed.
 - Initial CI exposed outdated assertions for the previous all-books selector, cache v133 and selector signature; all were corrected. Final current-head validation: Regression tests passed 477/477 (run `44964554645`); project-state guard passed (run `44964554640`); Netlify Deploy Preview status is successful. Added same-event pair isolation and README documentation. Preview status is confirmed, but visual inspection was unavailable. Keep this branch and PR draft until reviewed.
+
+- Follow-up usability safeguard: Settings now label Betclic/NetBet as limited-coverage sources and state that the currently configured API feed is limited to ATP Finals. README documents this limitation so users do not mistake missing quotes for a scraper failure or expect silent Winamax fallback.
