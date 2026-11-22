@@ -86,7 +86,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     }
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
-  const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[];
+  const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[],eventMismatchPairs=new Map();
   const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()},directNameEvidence={ATP:new Map(),WTA:new Map()};
   let matchRowsWithBothPlayerIdsEvidence=0;
   const valuebetSchema={columns:[],categorical:{}};
@@ -151,7 +151,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         if(!ev){totals.sourceEventMissing++;g.sourceEventMissing++;}
         else if(!selected.event){totals.eventNameUnavailableInSackmann++;g.eventNameUnavailableInSackmann++;}
         else if(selected.event===ev){totals.eventNameExactMatch++;g.eventNameExactMatch++;}
-        else{totals.eventNameMismatch++;g.eventNameMismatch++;}
+        else{totals.eventNameMismatch++;g.eventNameMismatch++;const mismatchKey=ev+" -> "+selected.event;eventMismatchPairs.set(mismatchKey,(eventMismatchPairs.get(mismatchKey)||0)+1);}
         offsets.push(date-selected.date);
         const source1=String(row.joueur1_id??"").trim(),source2=String(row.joueur2_id??"").trim();
         const sackFor=(name)=>name===selected.winnerName?selected.winnerId:name===selected.loserName?selected.loserId:"";
@@ -220,7 +220,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     purpose:"Conservative aggregate-only linkage audit; no match-level or player-level links are written.",
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannFiles:sackmannFiles.map(x=>basename(x.filename)).sort(),sackmannSourceRows:sourceRows,sackmannSourceRowsByYear:sourceRowsByYear},
     matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"not required for a single player-pair/surface/date candidate; exact normalized name or explicit alias is used only to resolve multiple candidates",surface:"normalized exact surface, including French Valuebetennis labels",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"one candidate is accepted; multiple candidates require exactly one tournament-name match, otherwise remain ambiguous"},
-    eventNameDiagnostics:"For accepted links, compare normalized source tournament name with Sackmann tournament name; a mismatch is diagnostic only and does not automatically reject a unique pair/surface/date candidate.",
+    eventNameDiagnostics:{method:"For accepted links, compare normalized source tournament name with Sackmann tournament name; a mismatch is diagnostic only and does not automatically reject a unique pair/surface/date candidate.",topMismatchPairs:[...eventMismatchPairs].sort((a,b)=>b[1]-a[1]).slice(0,50).map(([pair,count])=>({pair,count}))},
     totals:{
       ...totals,
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
