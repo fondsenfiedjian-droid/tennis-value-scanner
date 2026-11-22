@@ -1114,3 +1114,12 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Updated regression tests for the watchlist, fallback behavior, minimum-EV separation and safe financial summary. Latest regression run 45009075344 passed: 479 tests, 479 passed, 0 failed. Project-state documentation guard passed on the preceding commit; the current documentation update will trigger its own guard run.
 - Draft PR #167 remains unmerged. Production Worker deploy and production smoke checks remain skipped; no production deployment has been performed.
 - Next: complete the navigation shell (Главная, Матчи, Сравнение, Статистика, Ещё) without breaking existing archive/settings routes, then implement the independent two-player comparison view.
+
+
+### 2026-11-22 — Five-tab navigation and independent player comparison
+- Added the approved five-destination mobile navigation: Главная, Матчи, Сравнение, Статистика, Ещё. The former direct Settings tab moved into the Ещё menu; the existing settings entry remains available from the home screen.
+- Added an independent two-player comparison view. It accepts player names and Live Tennis API IDs, optionally resolves IDs by exact/initial-aware name matching against the loaded schedule, and calls the existing `/predict` endpoint with the active Elo model and optional surface.
+- Comparison results show both Elo ratings, win probabilities, fair odds, rating type and rating freshness. The UI clearly states that injuries, form, H2H and serve statistics are not yet part of this calculation. It does not calculate betting EV or recommend a wager.
+- Regression run 45009364529 passed: 481 tests, 481 passed, 0 failed. Project-state documentation guard passed on the previous code commit; this documentation update will trigger a fresh guard.
+- The app shell was restored from the last fully validated pre-navigation snapshot before the navigation work was reapplied. The current file is a complete HTML document; the latest regression suite validates the restored shell and comparison feature.
+- Draft PR #167 remains unmerged. No Production deploy was authorized or performed.
