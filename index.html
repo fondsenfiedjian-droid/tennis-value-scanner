@@ -895,7 +895,9 @@
     const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
     const candidates=cachedOdds.filter(o=>{
       const provider=String(o?.bookmaker||'').trim().toLowerCase(),config=ODDS_PROVIDER_REGISTRY[provider];
-      if(!config||!config.enabled)return false;
+      // This scanner's EV and recommendations are based on the user's Winamax market only.
+      // Never combine one side from Winamax with the opposite side from Betclic/NetBet.
+      if(provider!=='winamax'||!config||!config.enabled)return false;
       const country=String(o.bookmakerCountry||'').trim().toUpperCase();
       if(country&&country!==config.country)return false;
       if(!country&&provider!=='winamax')return false;
