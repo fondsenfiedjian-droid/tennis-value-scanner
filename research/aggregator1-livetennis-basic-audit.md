@@ -156,3 +156,45 @@ Decision dated 2026-11-22: complete source discovery, rights screening, data nor
 - Continue Live Tennis API work only with narrowly scoped metadata/field checks until written ML/storage permission is received.
 - Verify AcesAPI current entitlement and Data for Tennis licensing/coverage before any new download or payment.
 - Build the canonical schema and quality gates first; then ingest sources that pass their rights gates.
+
+## 10. Additional provider review — 2026-11-22
+
+### AcesAPI: admitted as the next free research candidate, subject to a small sample audit
+
+Current official documentation states:
+- ATP/WTA singles results from 2007 to current; main draws from 2007 and qualifying from 2022; 124,000+ matches.
+- Match records include exact `match_date` / `starts_at`, tournament ID, surface, round, player IDs, set and tiebreak scores, retirements and walkovers.
+- Weekly rankings are partial (roughly 35–49 lists per tour/year; top 100–150).
+- Overall and surface-specific Elo values are supplied before and after each match.
+- No serve statistics are provided.
+- 500 free credits/month, no card; individual calls cost 1–5 credits.
+- The provider's published rights guidance explicitly permits storing retrieved data while the account is open, deriving values, research, backtesting, and training own models. It prohibits reselling/redistributing the dataset/feed and building a competing data service. It says internally stored data can continue to be used for internal research/backtesting after cancellation.
+
+Assessment: unusually useful complementary candidate because it offers exact match dates and time-indexed pre/post-match Elo, unlike the Live Tennis archive's tournament-start date limitation. It overlaps Valuebetennis/Sackmann heavily for 2007 onward, so the goal is not to count its 124k rows as 124k new matches; it is to validate chronology, IDs, rankings and Elo feature semantics, and fill genuinely missing records. No account/key has been created and no data has been fetched. Next step should be a minimal free sample after account creation, with no paid upgrade.
+
+Official sources:
+- https://acesapi.com/
+- https://acesapi.com/docs/timing-and-rights
+- https://acesapi.com/docs
+
+### Data for Tennis: high-potential, not yet admitted
+
+The current site describes historical match data, ordered points, player/tournament analytics and versioned releases. Pricing lists Starter at $39/month (100,000 requests), Developer $79, Pro $139, Scale $199; point-by-point data starts at Pro, and timestamped PBP is listed at Scale. The FAQ says API plans include commercial use, but the precise rights to retain raw historical data and train models must be checked in the actual Terms before any purchase. Its published coverage front page currently advertises six seasons / 346 tournament editions / 274 editions with point records (updated 2026-09-11), so do not assume it is a century-long results archive.
+
+Decision: keep as a potentially strong paid source for point-level features and reproducible releases, but do not spend money or create an account until its license and the incremental coverage are verified against our current sources.
+
+Official sources:
+- https://datafortennis.com/
+- https://datafortennis.com/faq
+- https://datafortennis.com/pricing
+- https://datafortennis.com/contact
+
+### Revised source priority
+
+1. Existing Valuebetennis + Sackmann + TennisMyLife datasets: inventory and normalize first; no new paid source required.
+2. AcesAPI free tier: next provider to sample because published terms expressly cover internal model training and exact match dates; first verify its real overlap and missing-match contribution.
+3. Live Tennis API Basic: retain the completed bounded research; request written permission before persistent raw archive or model training.
+4. Data for Tennis: license/coverage diligence only until user explicitly approves any purchase.
+5. Reject any source whose terms prohibit automated analysis/model training (including TennisData results site terms currently reviewed).
+
+No API keys, raw provider responses, or match-level datasets are stored in this audit.
