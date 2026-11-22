@@ -940,7 +940,7 @@ export default {
     if (path === "/history/matches" || path === "/history/coverage" ||
         path === "/history/archive/matches" || path === "/history/archive/players" ||
         path === "/history/archive/career" || path === "/history/tape" ||
-        /^\\/history\\/matches\\/\\d+$/.test(path)) {
+        /^\/history\/matches\/\d+$/.test(path)) {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
@@ -948,10 +948,10 @@ export default {
 
       let upstreamPath = path;
       const query = new URLSearchParams();
-      const isTapePath = /^\\/history\\/matches\\/\\d+$/.test(path);
+      const isTapePath = /^\/history\/matches\/\d+$/.test(path);
       if (path === "/history/tape") {
         const id = url.searchParams.get("id") || "";
-        if (!/^\\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+        if (! /^\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
           return response({ error: "id must be a positive integer match identifier" }, 400);
         }
         upstreamPath = "/history/matches/" + String(Number(id));
@@ -977,7 +977,7 @@ export default {
           if (!clean || clean.length > 200) {
             return response({ error: "Invalid " + key + " parameter" }, 400);
           }
-          if ((key === "limit" || key === "offset") && (!/^\\d+$/.test(clean) || Number(clean) > 100000)) {
+          if ((key === "limit" || key === "offset") && (! /^\d+$/.test(clean) || Number(clean) > 100000)) {
             return response({ error: key + " must be a non-negative integer" }, 400);
           }
           if (key === "sequence" && !["raw", "clean"].includes(clean)) {
