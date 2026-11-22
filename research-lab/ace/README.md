@@ -35,3 +35,8 @@ The tests are committed but have not been executed in this environment. No perfo
 ## Validation history
 
 The first GitHub Actions run exposed two fixture problems: an incorrect expected count at the 7-day boundary and an exact-duplicate scenario where player B had no prior history. The fixtures were corrected, and a retirement-duration exclusion case was added. A second CI result is pending; do not treat the first failed run as a pass.
+## Validation history
+
+GitHub Actions run [#45000705945](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45000705945) passed all 9 tests (9 passed, 0 failed) on Node.js 22. The test suite covers strict same-day exclusion, 3/7/14-day boundaries, match-vs-playing-day counts, missing/invalid durations, administrative outcomes, duplicate conflicts, retirement duration handling, insufficient history and invalid targets.
+
+Earlier runs exposed fixture errors and a literal-newline encoding error; those were corrected before the successful run. A later refinement separates exact-duplicate counts from conflicting IDs and adds an assertion for that accounting, so that refinement is awaiting the next CI run.
