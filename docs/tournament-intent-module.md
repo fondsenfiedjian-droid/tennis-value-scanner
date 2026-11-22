@@ -4,29 +4,37 @@ Status: isolated research/triage module. Not connected to live predictions, mode
 
 ## Purpose
 
-Identify documented pre-match signs that a player may treat an event as preparation or a lower-priority stop. This is not a claim that a player intends to lose or will not try to win.
+Report the type of documented, point-in-time pre-match evidence. The module does **not** infer that a player is unmotivated, unwilling to win, or likely to lose.
 
 ## Evidence classes
 
-Positive preparation / lower-priority evidence:
-- Direct player statement that this event is for match practice or preparation.
-- Direct statement that a later event is the main priority.
-- Verified player/team statement about a cautious return or limited workload.
-- Verified recent return after injury/long absence.
-- A more important event soon after the current event.
-- Current event positioned as a schedule bridge.
+- `explicit_preparation`: direct statement that the event is for practice, preparation or match rhythm. This is a preparation objective, not evidence of reduced effort.
+- `explicit_next_event_priority`: direct statement that a later event has priority. This records the stated schedule priority; it does not prove that the player will not compete fully now.
+- `official_return_cautious` and `recent_injury_return`: return/readiness context only. Neither is a motivation label.
+- `major_event_soon` and `schedule_bridge`: calendar context only. These can never independently create a preparation/low-priority classification.
+- `explicit_title_focus`: direct statement of a goal to win the current event.
+- `home_event_commitment`: contextual statement of special personal/home importance.
 
-Contrary evidence:
-- Direct statement that winning this event is a specific goal.
-- Direct statement that this is a special personal/home priority.
+Ranking, odds, reputation, an isolated loss, body language and analyst intuition are not evidence types.
 
-Calendar context is weaker than a direct statement. Ranking, odds, reputation, an isolated loss, or a speculative reading of body language are not evidence types.
+## Output interpretation
+
+The classifier reports narrow evidence categories such as:
+- `explicit_preparation_statement`
+- `explicit_later_event_priority_statement`
+- `explicit_current_event_priority_statement`
+- `mixed_direct_statements`
+- `return_or_readiness_context_only`
+- `calendar_or_home_context_only`
+- `unknown`
+
+It does not produce a scalar motivation score. The retained numeric weights are unvalidated descriptive tallies for research inspection only; they do not drive the classification and must not be interpreted as probabilities or calibrated strength.
 
 ## Data contract and safeguards
 
 Each evidence item requires a recognized type, `verified: true`, a source, and `observedAt`. The assessment is evaluated as of a timestamp and optionally before the target match date. Stale, future, unverified, post-match, unknown-type, or source-less items are rejected. Default evidence age limit is 45 days.
 
-The module returns a transparent evidence ledger, rejected-item counts, and a coarse classification. Empty evidence is `unknown`, never a low-motivation score. Positive and contrary evidence remain visible.
+The module returns a transparent evidence ledger, rejected-item counts, and a narrow evidence classification. Empty evidence is `unknown`, never a low-motivation score. Positive and contrary statements remain visible.
 
 ## Critical separation
 
