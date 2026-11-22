@@ -1944,7 +1944,7 @@ test("official player profile metadata is normalized without inventing missing v
   const end = workerSource.indexOf("function assessRatingFreshness", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(workerSource.slice(start, end) + ""\nnglobalThis.extract = extractOfficialPlayerProfile;", sandbox);
+  vm.runInNewContext(workerSource.slice(start, end) + String.fromCharCode(10) + "globalThis.extract = extractOfficialPlayerProfile;", sandbox);
   const extract = sandbox.extract;
   assert.deepEqual(JSON.parse(JSON.stringify(extract({
     ranking: 7, tour: "ATP", country: "Italy",
