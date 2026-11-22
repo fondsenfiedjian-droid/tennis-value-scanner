@@ -1,0 +1,59 @@
+name: Aggregator 1 TennisData discovery
+
+on:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - '.github/workflows/aggregator1-tennisdata-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect public downloads page and linked assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p discovery
+          curl --fail --location --retry 2 -A "Mozilla/5.0 (compatible; TennisValueScannerResearch/1.0)" https://tennisdata.app/downloads/ -o discovery/downloads.html
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.scripts=[]; self.links=[]; self.forms=[]; self.inputs=[]
+              def handle_starttag(self,t,a):
+                  d=dict(a)
+                  if t=="script" and d.get("src"): self.scripts.append(d["src"])
+                  if t=="a" and d.get("href"): self.links.append(d["href"])
+                  if t=="form": self.forms.append(d)
+                  if t in ("input","select","button"): self.inputs.append((t,d))
+          p=P(); p.feed(open("discovery/downloads.html",encoding="utf-8").read())
+          base="https://tennisdata.app/downloads/"
+          open("discovery/page-elements.txt","w").write(
+              "SCRIPTS\n"+"\n".join(urljoin(base,x) for x in p.scripts)+
+              "\nLINKS\n"+"\n".join(urljoin(base,x) for x in p.links)+
+              "\nFORMS\n"+repr(p.forms)+"\nINPUTS\n"+repr(p.inputs))
+          PY
+          while IFS= read -r url; do
+            [[ -z "$url" ]] && continue
+            name="$(printf '%s' "$url" | sed 's#https\?://##; s#[/?=&]#_#g')"
+            curl --fail --location --max-time 20 -A "Mozilla/5.0" "$url" -o "discovery/$name" || true
+          done < <(sed -n '/^SCRIPTS$/,/^LINKS$/p' discovery/page-elements.txt | sed '1d;$d')
+          grep -RniE 'csv|download|export|season|nonce|ajax|wp-json|admin-ajax|cloudflare' discovery > discovery/matches.txt || true
+          echo "DISCOVERY FILES"
+          ls -lh discovery
+          echo "PAGE ELEMENTS"
+          cat discovery/page-elements.txt
+          echo "MATCHES"
+          head -c 20000 discovery/matches.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aggregator1-tennisdata-discovery
+          path: discovery/
+          retention-days: 7
