@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "betclic-netbet-live-quotes-2026-11-21-1";
+const WORKER_BUILD_ID = "basic-history-experiment-2026-11-22-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -423,7 +423,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/history/matches", "/history/coverage", "/history/matches/{id}", "/history/archive/matches", "/predict"]
       });
     }
 
@@ -933,6 +933,102 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    // Live Tennis BASIC history endpoints. Kept separate from the Apify /historical dataset.
+    if (path === "/history/matches" || path === "/history/coverage" ||
+        path === "/history/archive/matches" || path === "/history/archive/players" ||
+        path === "/history/archive/career" || path === "/history/tape" ||
+        /^\\/history\\/matches\\/\\d+$/.test(path)) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+
+      let upstreamPath = path;
+      const query = new URLSearchParams();
+      const isTapePath = /^\\/history\\/matches\\/\\d+$/.test(path);
+      if (path === "/history/tape") {
+        const id = url.searchParams.get("id") || "";
+        if (!/^\\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+          return response({ error: "id must be a positive integer match identifier" }, 400);
+        }
+        upstreamPath = "/history/matches/" + String(Number(id));
+      } else if (isTapePath) {
+        const id = path.split("/").pop();
+        if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+          return response({ error: "Invalid match identifier" }, 400);
+        }
+      }
+
+      const allowedByPath = {
+        "/history/matches": ["limit", "offset", "from", "to", "tour", "draw", "player", "country", "tournament_id", "tier", "coverage", "points_complete", "restated_since", "gender", "has_market", "is_qualifying"],
+        "/history/archive/matches": ["tour", "name", "from", "to", "round", "level", "limit", "offset"],
+        "/history/archive/players": ["name", "tour", "limit", "offset"],
+        "/history/archive/career": ["name"],
+        "/history/tape": ["sequence", "points"],
+      };
+      const allowed = isTapePath ? ["sequence", "points"] : (allowedByPath[path] || []);
+      for (const key of allowed) {
+        const values = url.searchParams.getAll(key);
+        for (const value of values) {
+          const clean = value.trim();
+          if (!clean || clean.length > 200) {
+            return response({ error: "Invalid " + key + " parameter" }, 400);
+          }
+          if ((key === "limit" || key === "offset") && (!/^\\d+$/.test(clean) || Number(clean) > 100000)) {
+            return response({ error: key + " must be a non-negative integer" }, 400);
+          }
+          if (key === "sequence" && !["raw", "clean"].includes(clean)) {
+            return response({ error: "sequence must be raw or clean" }, 400);
+          }
+          if (key === "points" && !["default", "complete"].includes(clean)) {
+            return response({ error: "points must be default or complete" }, 400);
+          }
+          query.append(key, clean);
+        }
+      }
+      if (path === "/history/tape") query.delete("id");
+      const upstreamUrl = "https://api.livetennisapi.com/api/public/v1" + upstreamPath +
+        (query.toString() ? "?" + query.toString() : "");
+
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__live-history/v1" + upstreamPath);
+        const cacheUrl = new URL(cacheKey.url);
+        cacheUrl.search = query.toString();
+        const finalCacheKey = new Request(cacheUrl.toString(), { method: "GET" });
+        const cached = await cache.match(finalCacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const upstream = await fetchLiveTennis(upstreamUrl, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        });
+        let body;
+        try { body = await upstream.json(); }
+        catch { body = { error: "Live Tennis returned a non-JSON history response" }; }
+        const retryAfter = upstream.headers.get("Retry-After");
+        const extraHeaders = retryAfter ? { "Retry-After": retryAfter } : {};
+        if (upstream.ok) {
+          const cacheSeconds = path === "/history/coverage" ? 21600 : 3600;
+          await cache.put(finalCacheKey, new Response(JSON.stringify(body), {
+            status: 200,
+            headers: {
+              ...cors,
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "public, max-age=" + cacheSeconds
+            }
+          }));
+          return response(body, 200, { ...extraHeaders, "Cache-Control": "public, max-age=" + cacheSeconds, "X-Data-Cache": "MISS" });
+        }
+        return response(body, upstream.status, extraHeaders);
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis historical data", upstreamPath, accessStatus: "upstream_unavailable" }, 502);
       }
     }
 
