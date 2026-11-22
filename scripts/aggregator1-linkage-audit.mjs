@@ -36,7 +36,7 @@ const tourney=value=>{
     creditonecharlestonopencharleston:"charleston",adelaideinternationaladelaide:"adelaide",
     westernsouthernopencincinnati:"cincinnati",cincinnatimasters:"cincinnati",
     winstonsalemopenwinstonsalem:"winstonsalem",qatartotalenergiesopendoha:"doha",
-    m15naples:"m15naplesfl",w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
+    w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
   };
   if(aliases[s])return aliases[s];
   if(s.endsWith("challenger"))return s.slice(0,-10)+"ch";
