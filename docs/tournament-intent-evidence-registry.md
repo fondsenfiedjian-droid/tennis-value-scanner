@@ -55,3 +55,5 @@ The four outcomes are mutually distinct:
 - `search_incomplete`: at least one source category was not searched.
 
 The validator rejects post-match search completion, ranking snapshots after the target match, ranks outside the predeclared top-150 frame, incomplete status records and inconsistent outcome/evidence combinations. The summary function reports coverage by tour and ranking band. A no-evidence observation is a coverage result, never a negative motivation label.
+
+The local utility `scripts/import-tournament-intent-observations.mjs` imports reviewed JSON/JSONL observation batches, validates each row, merges by exact player–target-match key, reports duplicates/rejections, summarizes coverage, and writes atomically. It supports `--dry-run` and performs no network or Production writes.
