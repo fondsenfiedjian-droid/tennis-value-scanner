@@ -629,3 +629,17 @@ The first full rerun after explicit aliases, with the ambiguous Naples alias exc
 | Ambiguous links | 8,341 | 6,540 |
 
 The alias batch reduced the accepted-link mismatch count by 57,690 (about 58.5%) and resolved 1,801 previously ambiguous candidate rows. This is strong evidence that much of the original mismatch was caused by event naming, but 40,877 mismatches remain. The second alias batch is being tested separately; do not yet promote all candidate links to canonical matches.
+
+
+### Second alias batch measurement
+
+The second alias batch was evaluated in full audit run `45085127030`; download, duplicate audit, linkage audit, report validation, and aggregate-only artifact upload all completed successfully.
+
+| Metric | First alias batch | Second alias batch |
+|---|---:|---:|
+| Unique candidate links | 282,557 | 282,765 |
+| Exact tournament-name agreement | 243,993 | 251,306 |
+| Tournament-name mismatches | 38,564 | 31,459 |
+| Ambiguous links | 6,482 | 6,274 |
+
+The second batch produced another 7,313 exact event-name agreements, reduced mismatches by 7,105, and reduced ambiguous links by 208. Across both batches, exact agreement has increased by 69,175 compared with the pre-alias baseline, while mismatches have fallen by 67,108. This is still not a final canonical linkage: 31,459 accepted candidates retain an event-name discrepancy and must be resolved or quarantined.
