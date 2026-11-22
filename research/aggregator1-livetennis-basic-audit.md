@@ -413,3 +413,25 @@ A new aggregate-only audit compared Valuebetennis player IDs and names against t
 Use accepted match-level evidence to resolve identities where the exact player pair, surface, and date window produce one unique Sackmann match. That evidence can map both Valuebetennis player IDs to the corresponding Sackmann winner/loser IDs without fuzzy matching. Compare it against the direct registry baseline and count agreements, conflicts, and additional resolved IDs. Keep all row-level mappings ephemeral and publish only aggregate diagnostics until licensing and identity quality are fully cleared.
 
 The full dataset workflow now downloads the two Sackmann player registries and emits only an aggregate player-ID report. Its synthetic player-ID tests pass. The report and checksum manifest are retained; raw CSVs remain temporary.
+
+
+## 18. Player ID evidence from accepted match links — 2026-11-22
+
+The match audit now also derives an aggregate-only player crosswalk from accepted unique match links. For each accepted Valuebetennis–Sackmann match, the two Valuebetennis source player IDs are associated with the Sackmann winner/loser IDs using exact normalized name orientation. No row-level mappings are exported.
+
+Latest full audit run: `45083261249` — success.
+
+| Tour | Distinct Valuebetennis player IDs | IDs with accepted match evidence | Resolve to one Sackmann ID | Conflicting IDs |
+|---|---:|---:|---:|---:|
+| ATP | 14,185 | 5,741 | 5,679 (40.04%) | 62 |
+| WTA | 9,791 | 7,812 | 7,692 (78.56%) | 120 |
+
+- Both player IDs were present on all 280,698 accepted unique match links.
+- WTA has one more distinct Valuebetennis player ID here than in the direct name-registry audit because this method counts source IDs even when a player-name observation is missing.
+- Match-evidence mapping is stronger than a bare name lookup because it uses a uniquely accepted match pair, surface, date window, and event disambiguation. It is still a candidate crosswalk, not a final truth table.
+- Conflicting source IDs (62 ATP, 120 WTA) must remain quarantined. Possible causes include source ID reuse, source/player identity changes, or a mistaken match link; do not choose one ID automatically.
+- The direct registry baseline and match-evidence baseline should be compared at source-ID level before any crosswalk is used in the canonical registry.
+
+### Next validation
+
+Add aggregate conflict-multiplicity diagnostics and compare direct name-registry assignments against accepted-match assignments. Report agreement, disagreement, and one-sided coverage separately. Keep raw source-ID mappings only in temporary runner memory/files and never upload them as artifacts. Once the crosswalk is stable, use it to improve match linkage and re-run the same tier-by-tier audit.
