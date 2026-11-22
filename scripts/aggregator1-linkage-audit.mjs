@@ -177,6 +177,27 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       resolutionPct:pct(resolvedToSingleSackmannId,sourcePlayerIds[tour].size)
     };
   }
+  const playerIdComparison=playerFiles.length?{}:null;
+  if(playerIdComparison){
+    for(const tour of ["ATP","WTA"]){
+      const counts={distinctValuebetPlayerIds:sourcePlayerIds[tour].size,directUnique:0,matchEvidenceUnique:0,bothUniqueAgreement:0,bothUniqueDisagreement:0,directOnlyUnique:0,matchOnlyUnique:0,ambiguousInEither:0,neitherUnique:0};
+      for(const sourceId of sourcePlayerIds[tour]){
+        const direct=directNameEvidence[tour].get(sourceId)||new Set();
+        const match=sourceIdEvidence[tour].get(sourceId)||new Set();
+        if(direct.size===1)counts.directUnique++;
+        if(match.size===1)counts.matchEvidenceUnique++;
+        if(direct.size===1&&match.size===1){
+          if([...direct][0]===[...match][0])counts.bothUniqueAgreement++;
+          else counts.bothUniqueDisagreement++;
+        }else if(direct.size===1&&match.size===0)counts.directOnlyUnique++;
+        else if(direct.size===0&&match.size===1)counts.matchOnlyUnique++;
+        else if(direct.size>1||match.size>1)counts.ambiguousInEither++;
+        else counts.neitherUnique++;
+      }
+      counts.bothUniqueAgreementPct=pct(counts.bothUniqueAgreement,counts.distinctValuebetPlayerIds);
+      playerIdComparison[tour]=counts;
+    }
+  }
   for(const [tour,g] of Object.entries(byTour))g.linkagePct=pct(g.linkedUnique,g.validRows);
   return {
     schemaVersion:2,
@@ -189,6 +210,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     },
     byTour,
     playerIdEvidence:{method:"accepted unique match links only; Valuebetennis player IDs are associated with Sackmann winner/loser IDs by exact normalized name orientation",matchRowsWithBothPlayerIdsEvidence,byTour:playerIdEvidence},
+    playerIdComparison,
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
