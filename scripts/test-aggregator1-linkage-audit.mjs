@@ -119,4 +119,19 @@ const conflictReport=auditValuebetSackmann(conflictValuebet,conflictSackmann,{pl
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannIds,1);
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentBirthDateOrCountry,1);
 
+
+
+const aliasValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "a1;2025-06-01;St Tropez CH;atp;dur;Alpha One;Beta Two;Challenger"
+].join("\n")}];
+const aliasSackmann=[{filename:"atp_matches_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250526,Saint-Tropez CH,Hard,Alpha One,Beta Two,10,20"
+].join("\n")}];
+const aliasReport=auditValuebetSackmann(aliasValuebet,aliasSackmann);
+assert.equal(aliasReport.totals.linkedUnique,1);
+assert.equal(aliasReport.totals.eventNameExactMatch,1);
+assert.equal(aliasReport.totals.eventNameMismatch,0);
+
 console.log("Aggregator 1 linkage audit fixtures: PASS");
