@@ -40,7 +40,25 @@ const sackmann = [
   }
 ];
 
-const result = auditValuebetSackmann(valuebet, sackmann);
+const playerFiles = [
+  { filename:"atp_players.csv", content:[
+    "player_id,name_first,name_last,hand,dob,ioc,height",
+    "1,Novak,Djokovic,R,19870522,SRB,188",
+    "2,Rafael,Nadal,L,19860603,ESP,185",
+    "3,Player,C,R,19900101,USA,180",
+    "4,Player,D,R,19900101,USA,180",
+    "5,Player,E,R,19900101,USA,180",
+    "6,Player,F,R,19900101,USA,180",
+    "7,Player,G,R,19900101,USA,180",
+    "8,Player,H,R,19900101,USA,180"
+  ].join("\\n") },
+  { filename:"wta_players.csv", content:[
+    "player_id,name_first,name_last,hand,dob,ioc,height",
+    "21,Emma,Raducanu,R,20021113,GBR,175",
+    "22,Ons,Jabeur,R,19940828,TUN,167"
+  ].join("\\n") }
+];
+const result = auditValuebetSackmann(valuebet, sackmann, {playerFiles});
 assert.equal(result.totals.valuebetRows, 8);
 assert.equal(result.totals.validValuebetRows, 7);
 assert.equal(result.totals.candidateRows, 4);
@@ -62,6 +80,10 @@ assert.equal(result.playerIdEvidence.byTour.ATP.resolvedToSingleSackmannId, 4);
 assert.equal(result.playerIdEvidence.byTour.WTA.resolvedToSingleSackmannId, 2);
 assert.equal(result.playerIdEvidence.byTour.ATP.withAcceptedMatchEvidence, 4);
 assert.equal(result.playerIdEvidence.byTour.WTA.withAcceptedMatchEvidence, 2);
+assert.equal(result.playerIdComparison.ATP.bothUniqueAgreement, 4);
+assert.equal(result.playerIdComparison.ATP.bothUniqueDisagreement, 0);
+assert.equal(result.playerIdComparison.ATP.directOnlyUnique, 4);
+assert.equal(result.playerIdComparison.WTA.bothUniqueAgreement, 2);
 assert.equal(result.byTourCategory["ATP::Grand Chelem"].linkedUnique, 1);
 assert.equal(result.byTourCategory["ATP::Main tour"].linkedUnique, 1);
 assert.equal(result.byTourCategory["WTA::Main tour"].linkedUnique, 1);
