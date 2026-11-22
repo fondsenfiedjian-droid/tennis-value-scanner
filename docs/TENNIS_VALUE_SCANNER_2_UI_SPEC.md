@@ -143,3 +143,14 @@ Implementation decision:
 6. Keep `/player-stats` dormant on BASIC. A PRO-only 403 must not be translated into zero values or a missing-player error.
 
 This correction supersedes the earlier FREE-only tier assumption. It does not authorize a subscription change, production deployment, PR merge or modification of the production model.
+
+## BASIC completed-match proxy — implementation note (2026-11-22)
+
+The TVS2 Worker now exposes `GET /player-history?id={playerId}&limit=20&tour={optional}` as a cached, read-only proxy to BASIC `GET /history/matches`.
+
+- It always requests `draw=singles`; supports optional `tour=atp|wta|challenger|itf|juniors`.
+- `limit` defaults to 20 and is capped at 50 for the comparison use case; provider maximum is 200.
+- Successful responses are cached for six hours and preserve the provider's `data` and `meta`, with source and period labels (2023–present).
+- 403 is reported as `basic_history_not_entitled`; 401, 429, invalid query and malformed payloads remain distinct.
+- The endpoint deliberately returns source rows rather than manufacturing derived statistics. The next layer must validate participant identity and winner mapping before deriving last-5/10/20 form or surface splits.
+- The proxy is on the TVS2 draft branch only. No Production Worker deployment, PR merge, frontend wiring or Elo/model change has occurred.
