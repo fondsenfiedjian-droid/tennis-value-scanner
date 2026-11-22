@@ -529,7 +529,7 @@ test("Winamax player-name matching handles initials, reversed order, diacritics 
   const end = html.indexOf("function tournamentCompatible(", start);
   assert.ok(start >= 0 && end > start, "player-name matching helpers must remain extractable");
   const sandbox = {};
-  vm.runInNewContext(html.slice(start, end) + "\\nglobalThis.playerMatch = { normalizePlayer, playerNamesMatch };", sandbox);
+  vm.runInNewContext(html.slice(start, end) + ";globalThis.playerMatch = { normalizePlayer, playerNamesMatch };", sandbox);
   const match = sandbox.playerMatch.playerNamesMatch;
   assert.equal(match("João Fonseca", "Joao Fonseca"), true);
   assert.equal(match("A. de Minaur", "Alex de Minaur"), true);
