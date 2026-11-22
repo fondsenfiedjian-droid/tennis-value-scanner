@@ -1698,6 +1698,11 @@
       close();
       $('#compareStatus').textContent='Выбран игрок: '+player.name+' · ID '+player.id;
     }
+    // Keep focus on the input while a mobile user taps a suggestion; otherwise blur closes the list before click.
+    list.addEventListener('pointerdown',event=>{
+      const button=event.target.closest('button[data-player-id]');
+      if(button)event.preventDefault();
+    });
     list.onclick=event=>{
       const button=event.target.closest('button[data-player-id]');
       if(!button)return;
