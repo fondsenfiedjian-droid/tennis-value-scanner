@@ -8,6 +8,7 @@ on:
       - '.github/workflows/aggregator1-full-audit.yml'
       - 'scripts/aggregator1-linkage-audit.mjs'
       - 'scripts/aggregator1-player-id-audit.mjs'
+      - 'scripts/aggregator1-duplicate-audit.mjs'
   workflow_dispatch:
     inputs:
       date_window:
