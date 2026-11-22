@@ -364,7 +364,7 @@
 </div>
 
 <div class="stats-view" id="statsView">
-  <h1>Архив прогнозов</h1>
+  <h1>Статистика и архив прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
@@ -449,7 +449,7 @@
     const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
     const labMount=$('#moreLabMount');
     if(labButton)labMount.appendChild(labButton);
-    if(labPanel)labMount.appendChild(labPanel);
+    if(labPanel){labPanel.hidden=false;labMount.appendChild(labPanel);}
     $('#matchesRefreshBtn').addEventListener('click',()=>loadMatches(true));
     $('#openArchiveFromMore').addEventListener('click',showStats);
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
