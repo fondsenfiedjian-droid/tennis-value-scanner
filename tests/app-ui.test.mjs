@@ -86,10 +86,11 @@ test("daily plan financial summary never invents stake size, bankroll or exposur
   assert.match(html, /class="plan-summary"/);
   assert.match(html, /id="planMandatoryCount"/);
   assert.match(html, /id="planStakeTotal">—/);
-  assert.match(html, /размер не рассчитан/);
-  assert.match(html, /id="planBank">не задан/);
+  assert.match(html, /не рассчитана/);
   assert.match(html, /id="planExposure">—/);
+  assert.match(html, /банк не задан/);
   assert.match(html, /mandatoryCount\.textContent=String\(bestBets\.length\)/);
+  assert.match(html, /id="planUpdated"/);
 });
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
@@ -404,11 +405,11 @@ test("strict recommendation carousel is manually navigated and does not auto-rot
   assert.match(html,/renderBestBet\(bets,scanned,totalCandidates,failed,evBets,oddsFallback\)/);
   assert.doesNotMatch(html,/setInterval\([^)]*bestBet|bestBet[^;]*setInterval/);
   assert.match(html,/размер ставки не рассчитан/);
-  assert.match(html,/aria-label="Обязательные ставки"/);
+  assert.match(html,/aria-label="Ставка дня"/);
 });
 
 test("mandatory recommendations and additional opportunities are separate plan tiers", () => {
-  assert.match(html, /id="bestBet" class="best-bet" role="region" aria-label="Обязательные ставки"/);
+  assert.match(html, /id="bestBet" class="best-bet daily-pick" role="region" aria-label="Ставка дня"/);
   assert.match(html, /function selectBestBets\(/);
   assert.match(html, /reliabilityEligible===true/);
   assert.match(html, /reliabilityScore>=85/);
@@ -428,15 +429,31 @@ test("mandatory recommendations and additional opportunities are separate plan t
 });
 
 
-test("five-tab navigation routes to home, matches, independent comparison, statistics and More",()=>{
-  for(const id of ["navHome","navMatches","navCompare","navStats","navMore"])assert.match(html,new RegExp('id="'+id+'"'));
+test("approved dual navigation keeps five bottom destinations and quick links for lab/archive",()=>{
+  for(const id of ["navHome","navMatches","navCompare","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
+  for(const id of ["quickMatches","quickCompare","quickLab","quickStats","quickArchive"])assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(html,/id="compareView"/);
   assert.match(html,/function showCompare\(\)/);
   assert.match(html,/function setActiveNavigation\(activeId\)/);
-  assert.match(html,/id="moreModal"/);
-  assert.match(html,/id="moreSettings"/);
-  assert.match(html,/id="settingsOpen"/);
-  assert.doesNotMatch(html,/id="navSettings"/);
+  assert.match(html,/id="moreView"/);
+  assert.match(html,/id="moreArchiveMount"/);
+  assert.match(html,/id="headerSettings"/);
+  assert.match(html,/id="mandatoryBetsContent"/);
+  assert.doesNotMatch(html,/id="navMore"/);
+});
+
+
+test("home screen follows the approved daily-pick reference order",()=>{
+  const home=html.slice(html.indexOf('<div class="app">'),html.indexOf('<div class="compare-view"'));
+  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('class="plan-summary"'));
+  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBets"'));
+  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('id="additionalOpportunities"'));
+  assert.ok(home.indexOf('id="additionalOpportunities"')<home.indexOf('class="quick-links"'));
+  assert.match(home,/data-day="today"/);
+  assert.match(home,/data-day="tomorrow"/);
+  assert.match(home,/data-day="all"/);
+  assert.match(home,/СТАВКА ДНЯ/);
+  assert.match(html,/selected\?\.photo_url\|\|selected\?\.image_url/);
 });
 
 test("independent player comparison calls the current Elo API and displays both players",()=>{
@@ -614,7 +631,7 @@ test("Compare loads both histories and H2H independently after Elo, and rejects 
 });
 
 
-test("TVS 2.0 bottom navigation opens five independent screens",()=>{
+test("TVS 2.0 bottom navigation and quick links open the approved destinations",()=>{
   assert.match(html,/function mountIndependentScreens\(\)/);
   assert.match(html,/matches\.id='matchesView'/);
   assert.match(html,/more\.id='moreView'/);
@@ -625,10 +642,11 @@ test("TVS 2.0 bottom navigation opens five independent screens",()=>{
   assert.match(html,/\$\('#navMatches'\)\.onclick=showMatches;/);
   assert.match(html,/\$\('#navCompare'\)\.onclick=showCompare;/);
   assert.match(html,/\$\('#navStats'\)\.onclick=showStats;/);
-  assert.match(html,/\$\('#navMore'\)\.onclick=showMore;/);
+  assert.match(html,/\$\('#navSettings'\)\.onclick=/);
+  assert.match(html,/\$\('#quickLab'\)\.onclick=/);
+  assert.match(html,/\$\('#quickArchive'\)\.onclick=/);
   assert.match(html,/\$\('#matchesRefreshBtn'\)\.addEventListener\('click',\(\)=>loadMatches\(true\)\)/);
   assert.match(html,/\$\('#moreScreenSettings'\)\.addEventListener\('click'/);
   assert.match(html,/id=\"moreArchiveMount\"/);
   assert.match(html,/\[\$\('#archiveOddsByBookmaker'\),archiveQuality,\$\('\.stats-actions'\),archiveLastHead,\$\('#archiveList'\)\]\.filter\(Boolean\)\.forEach\(node=>archiveMount\.appendChild\(node\)\)/);
-  assert.doesNotMatch(html,/\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
 });
