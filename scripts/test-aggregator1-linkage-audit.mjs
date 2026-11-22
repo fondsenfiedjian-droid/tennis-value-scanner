@@ -51,12 +51,12 @@ const playerFiles = [
     "6,Player,F,R,19900101,USA,180",
     "7,Player,G,R,19900101,USA,180",
     "8,Player,H,R,19900101,USA,180"
-  ].join("\\n") },
+  ].join("\n") },
   { filename:"wta_players.csv", content:[
     "player_id,name_first,name_last,hand,dob,ioc,height",
     "21,Emma,Raducanu,R,20021113,GBR,175",
     "22,Ons,Jabeur,R,19940828,TUN,167"
-  ].join("\\n") }
+  ].join("\n") }
 ];
 const result = auditValuebetSackmann(valuebet, sackmann, {playerFiles});
 assert.equal(result.totals.valuebetRows, 8);
