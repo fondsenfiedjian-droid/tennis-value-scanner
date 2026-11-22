@@ -3,8 +3,8 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const FILE=/^valuebetennis-matchs-(\\d{4})\\.csv$/i;
-const norm=v=>String(v??"").normalize("NFKD").replace(/\\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
+const FILE=/^valuebetennis-matchs-(\d{4})\.csv$/i;
+const norm=v=>String(v??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
 const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 
 export function auditValuebetDuplicates(files){
