@@ -1,0 +1,35 @@
+name: Aggregator 1 — Live Tennis Basic verification
+on:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - "scripts/aggregator1-livetennis-basic-verify.mjs"
+      - ".github/workflows/aggregator1-livetennis-basic-verify.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aggregator1-livetennis-basic-verify
+  cancel-in-progress: false
+jobs:
+  verify-basic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Basic endpoints (bounded sample only)
+        env:
+          LIVE_TENNIS_API_KEY: ${{ secrets.LIVE_TENNIS_API_KEY }}
+        run: node scripts/aggregator1-livetennis-basic-verify.mjs
+      - name: Publish aggregate-only verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: livetennis-basic-verification
+          path: livetennis-basic-verification.json
+          if-no-files-found: ignore
+          retention-days: 1
