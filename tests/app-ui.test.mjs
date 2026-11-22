@@ -81,6 +81,16 @@ test("result checks retry pending matches every 30 minutes and settled matches d
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
+
+test("daily plan financial summary never invents stake size, bankroll or exposure", () => {
+  assert.match(html, /class="plan-summary"/);
+  assert.match(html, /id="planMandatoryCount"/);
+  assert.match(html, /id="planStakeTotal">—/);
+  assert.match(html, /размер не рассчитан/);
+  assert.match(html, /id="planBank">не задан/);
+  assert.match(html, /id="planExposure">—/);
+  assert.match(html, /mandatoryCount\.textContent=String\(bestBets\.length\)/);
+});
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
   assert.ok(html.includes(`class="match-bottom odds-visible">'+oddsHtml`));
