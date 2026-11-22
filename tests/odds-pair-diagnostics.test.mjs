@@ -57,8 +57,14 @@ test("uses player pair and scheduled time when a provider event ID is absent", (
     scrapedAt: "2026-11-22T11:55:00Z" };
   const result = diagnose([
     { ...common, outcome: "home", oddsDecimal: 1.9 },
-    { ...common, homeTeam: "Player F", awayTeam: "Player E", outcome: "away", oddsDecimal: 2.0 }
+    { ...common, outcome: "away", oddsDecimal: 2.0 }
   ], now);
   assert.equal(result.byBookmaker.netbet.completePairs, 1);
   assert.equal(result.byBookmaker.netbet.freshCompletePairs, 1);
+  const reversed = diagnose([
+    { ...common, outcome: "home", oddsDecimal: 1.9 },
+    { ...common, homeTeam: "Player F", awayTeam: "Player E", outcome: "away", oddsDecimal: 2.0 }
+  ], now);
+  assert.equal(reversed.byBookmaker.netbet.completePairs, 0,
+    "opposite home/away orientation must not be combined without a provider event ID");
 });
