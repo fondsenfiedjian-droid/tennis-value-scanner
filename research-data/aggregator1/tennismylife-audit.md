@@ -70,3 +70,48 @@ TennisMyLife's public terms limit use to personal, educational and non-commercia
 - Synthetic fixture: `scripts/test-aggregator1-tennismylife-audit.mjs`
 - Workflow: `.github/workflows/aggregator1-tennismylife.yml`
 - Report artifact retention: 14 days from 2026-11-22.
+
+
+## TennisMyLife WTA linkage audit
+
+The official TennisMyLife data-file manifest confirmed WTA annual CSV files for 2021–2025. All five files were downloaded successfully from their manifest URLs. Each file contains match-level player IDs (winner_id, loser_id), names, surface, tournament date, score, rankings, and match statistics. No WTA player registry was assumed or reused from the ATP audit.
+
+Verified GitHub Actions run: [45068973252](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45068973252). Aggregate artifact: aggregator1-wta-linkage-report.
+
+Across 13,281 TennisMyLife WTA match rows:
+
+- 13,224 rows had a valid date and recognized surface.
+- 13,142 rows (99.38% of valid rows) had a Sackmann candidate using exact normalized player pair, exact normalized surface, and a ±14-day tournament-date window.
+- 12,812 rows had exactly one candidate.
+- 319 additional rows were resolved by one exact score match.
+- 11 additional rows were resolved by one exact tournament-name match.
+- No candidate set remained ambiguous.
+- 82 valid rows had no Sackmann candidate.
+- 57 rows had an unknown/unusable surface.
+
+Overall, 13,142 rows (98.95% of all TML WTA rows) were resolved.
+
+### WTA player-ID crosswalk
+
+- 707 distinct TennisMyLife WTA player IDs appeared in the files.
+- 696 IDs (98.44%) linked to Sackmann IDs.
+- 696 crosswalk edges were observed.
+- 11 IDs were not mapped.
+- No ID mapped to multiple Sackmann IDs.
+- No age-conflict observations remained after the 0.6-year age guard.
+- 107 nationality-code differences were flagged; nationality was not used as a hard rejection criterion.
+
+The 107 IOC differences require caution and separate quality review before treating the crosswalk as a clean identity master. The audit exports only aggregate counts, not player-level links.
+
+### Interpretation and limitations
+
+The TML WTA files have very high match overlap with the Sackmann WTA archive for 2021–2025. The source's own notice warns that WTA data reliability may not yet match its ATP data; high overlap demonstrates coverage and structural compatibility, not independent accuracy or completeness.
+
+This audit does not yet test whether TML WTA IDs increase Valuebetennis-to-Sackmann linkage. That is a separate bridge test. No WTA data or crosswalk has been merged into Production.
+
+## WTA audit reproducibility
+
+- Script: scripts/aggregator1-wta-tnm-linkage.mjs
+- Synthetic fixture: scripts/test-aggregator1-wta-tnm-linkage.mjs
+- Workflow: .github/workflows/aggregator1-tennismylife-wta-audit.yml
+- Report artifact retention: 14 days from 2026-11-22.
