@@ -65,14 +65,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     }
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0};
-  const byTour={},byYear={},offsets=[];
+  const byTour={},byYear={},byCategory={},offsets=[];
   const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
     const m=basename(file.filename).match(VBT);
     if(!m)throw new Error("Unexpected Valuebetennis filename: "+basename(file.filename));
     const rows=parseCsv(file.content,{delimiter:";"});
     if(!valuebetSchema.columns.length)valuebetSchema.columns=Object.keys(rows[0]||{});
-    const categoryKeys=Object.keys(rows[0]||{}).filter(k=>/(genre|surface|niveau|level|category|round|tour|type|competition|categorie)/i.test(k));
+    const categoryKeys=Object.keys(rows[0]||{}).filter(k=>/^(genre|surface|niveau|level|category|round|tour|type|competition|categorie)$/i.test(k));
     for(const key of categoryKeys){
       const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
       for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
@@ -81,15 +81,18 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     for(const row of rows){
       yearBucket.rows++;
       totals.valuebetRows++;
+      const category=String(row.categorie??"").trim()||"(empty)";
+      const cg=byCategory[category]||(byCategory[category]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+      cg.rows++;
       const tour=String(row.genre??"").trim().toUpperCase();
       const date=parseVbtDate(row.date),a=normalize(row.joueur1),b=normalize(row.joueur2);
       if(!byTour[tour])byTour[tour]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
       const g=byTour[tour];g.rows++;
-      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;continue;}
-      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;continue;}
+      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;cg.unknownTour++;continue;}
+      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;cg.invalidDate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
-      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;
+      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;cg.validRows++;
       if(!sf){
         totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;
         totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;
@@ -97,15 +100,15 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
       const candidates=(sackIndex.get(key)||[]).filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;}
+      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;cg.candidateRows++;}
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
       if(selected){
-        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;
+        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;cg.linkedUnique++;
         if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         offsets.push(date-selected.date);
-      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;}
+      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;cg.ambiguous++;}
       else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;}
     }
   }
