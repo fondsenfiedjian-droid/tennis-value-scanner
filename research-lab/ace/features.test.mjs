@@ -56,6 +56,7 @@ test("exact duplicate is ignored; conflicting duplicate causes abstention", () =
   const playerBHistory = row("b-history", "2026-06-19", "B", "Y");
   const exact = calculateAceFeatures(target, [original, { ...original }, playerBHistory]);
   assert.equal(exact.status, "available");
+  assert.equal(exact.exact_duplicates_ignored, 1);
   const conflict = calculateAceFeatures(target, [original, row("same", "2026-06-18"), playerBHistory]);
   assert.equal(conflict.status, "abstain");
 });
