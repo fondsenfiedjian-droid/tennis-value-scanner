@@ -47,7 +47,7 @@ const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 
 export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffsetDays=14}={}){
   if(!valuebetFiles.length||!sackmannFiles.length)throw new Error("Both Valuebetennis and Sackmann files are required");
-  const sackIndex=new Map(),sourceRows={},sourceRowsByYear={};
+  const sackIndex=new Map(),sackPairIndex=new Map(),sourceRows={},sourceRowsByYear={};
   for(const file of sackmannFiles){
     const m=basename(file.filename).match(SACK);
     if(!m)throw new Error("Unexpected Sackmann filename: "+basename(file.filename));
@@ -59,12 +59,16 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const a=normalize(row.winner_name),b=normalize(row.loser_name);
       const date=parseSackDate(row.tourney_date),sf=surface(row.surface);
       if(!a||!b||a===b||date===null||!sf)continue;
-      const key=[tour,[a,b].sort().join("|"),sf].join("::");
+      const pairKey=[tour,[a,b].sort().join("|")].join("::");
+      const key=pairKey+"::"+sf;
+      const record={date,tier,year,surface:sf,event:tourney(row.tourney_name)};
       if(!sackIndex.has(key))sackIndex.set(key,[]);
-      sackIndex.get(key).push({date,tier,year,event:tourney(row.tourney_name)});
+      sackIndex.get(key).push(record);
+      if(!sackPairIndex.has(pairKey))sackPairIndex.set(pairKey,[]);
+      sackPairIndex.get(pairKey).push(record);
     }
   }
-  const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0};
+  const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[];
   const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
@@ -77,7 +81,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
       for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
     }
-    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
     for(const row of rows){
       yearBucket.rows++;
       totals.valuebetRows++;
@@ -102,7 +106,13 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
-      const candidates=(sackIndex.get(key)||[]).filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
+      const pairKey=[tour,[a,b].sort().join("|")].join("::");
+      const samePair=sackPairIndex.get(pairKey)||[];
+      const samePairSurface=samePair.filter(x=>x.surface===sf);
+      const candidates=samePairSurface.filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
+      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;}
+      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;}
+      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;}
       if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;}
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
