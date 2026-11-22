@@ -68,7 +68,7 @@ if(index?.files){
   for(const item of selected){
     const url=String(item.url||"");
     const name=safePath(item.name||item.path||"");
-    if(!/^https:\/\/i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
+    if(!/^https:\/\//i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
     try{await save(url,"tennismylife/"+name,"TennisMyLife");}
     catch(e){manifest.errors.push(String(e));console.error("FAILED "+String(e));}
   }
