@@ -1,0 +1,94 @@
+name: Aggregator 1 TennisMyLife WTA linkage audit
+
+on:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - '.github/workflows/aggregator1-tennismylife-wta-audit.yml'
+      - 'scripts/aggregator1-wta-tnm-linkage.mjs'
+      - 'scripts/test-aggregator1-wta-tnm-linkage.mjs'
+  workflow_dispatch:
+    inputs:
+      date_window:
+        description: "Maximum date difference in days"
+        required: true
+        default: "14"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  wta-linkage-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/aggregator1-linkage-audit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax-check and synthetic test
+        run: |
+          node --check scripts/aggregator1-wta-tnm-linkage.mjs
+          node --check scripts/test-aggregator1-wta-tnm-linkage.mjs
+          node scripts/test-aggregator1-wta-tnm-linkage.mjs
+      - name: Download official WTA and Sackmann datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/aggregator1-wta"
+          mkdir -p "$ROOT/tml" "$ROOT/sackmann" audit-output
+          curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+            "https://stats.tennismylife.org/api/data-files" --output "$ROOT/manifest.json"
+          python - "$ROOT/manifest.json" "$ROOT/wta-files.tsv" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          wanted={f"{y}_wta.csv" for y in range(2021,2026)}
+          found={x["name"]:x["url"] for x in data.get("files",[]) if x.get("name") in wanted}
+          missing=wanted-set(found)
+          if missing: raise SystemExit("Missing official WTA files: "+", ".join(sorted(missing)))
+          with open(sys.argv[2],"w") as f:
+              for name in sorted(found): f.write(name+"\t"+found[name]+"\n")
+          PY
+          while IFS=$'\t' read -r name url; do
+            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" "$url" --output "$ROOT/tml/$name"
+            test -s "$ROOT/tml/$name"
+          done < "$ROOT/wta-files.tsv"
+          for year in 2021 2022 2023 2024 2025; do
+            file="wta_matches_$year.csv"
+            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/wta/$file" \
+              --output "$ROOT/sackmann/$file"
+            test -s "$ROOT/sackmann/$file"
+          done
+          {
+            echo "Downloaded at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "TennisMyLife manifest: https://stats.tennismylife.org/api/data-files"
+            echo "TennisMyLife terms: https://github.com/Tennismylife/TML-Database"
+            echo "Sackmann mirror: https://github.com/Aneeshers/tennis-sackmann-archive"
+            echo "Raw CSVs are not included in the artifact."
+            sha256sum "$ROOT"/tml/*.csv "$ROOT"/sackmann/*.csv
+          } > audit-output/wta-source-manifest.txt
+      - name: Run aggregate WTA linkage audit
+        shell: bash
+        run: |
+          DATE_WINDOW="${{ inputs.date_window }}"
+          if [[ -z "$DATE_WINDOW" ]]; then DATE_WINDOW=14; fi
+          node scripts/aggregator1-wta-tnm-linkage.mjs \
+            --tml-dir "$RUNNER_TEMP/aggregator1-wta/tml" \
+            --sackmann-dir "$RUNNER_TEMP/aggregator1-wta/sackmann" \
+            --date-window "$DATE_WINDOW" \
+            --out audit-output/aggregator1-wta-linkage.json
+      - name: Validate aggregate report
+        run: |
+          node -e "const r=require('./audit-output/aggregator1-wta-linkage.json'); if(r.schemaVersion!==1 || !r.totals || r.totals.tmlRows===0 || r.totals.validRows===0) process.exit(1); console.log(JSON.stringify(r.totals));"
+      - name: Upload aggregate report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregator1-wta-linkage-report
+          path: audit-output/
+          if-no-files-found: error
+          retention-days: 14
