@@ -88,7 +88,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
       const candidates=(sackIndex.get(key)||[]).filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
       if(candidates.length){totals.candidateRows++;g.candidateRows++;}
-      const eventCandidates=candidates.filter(x=>x.event===ev);
+      const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
       if(selected){
         totals.linkedUnique++;g.linkedUnique++;
