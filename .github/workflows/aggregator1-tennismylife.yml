@@ -104,7 +104,7 @@ jobs:
 
       - name: Validate aggregate reports
         run: |
-          node -e "const a=require('./audit-output/aggregator1-tennismylife-audit.json'); const b=require('./audit-output/aggregator1-valuebet-id-bridge.json'); if(a.schemaVersion!==1 || !a.totals || !a.byYear || b.schemaVersion!==1 || !b.totals || !b.byYear) process.exit(1); console.log('TML audit:', JSON.stringify(a.totals)); console.log('ID bridge:', JSON.stringify(b.totals));"
+          node -e "const a=require('./audit-output/aggregator1-tennismylife-audit.json'); const b=require('./audit-output/aggregator1-valuebet-id-bridge.json'); if(a.schemaVersion!==1 || !a.totals || !a.byYear || b.schemaVersion!==1 || !b.totals || !b.byYear || b.totals.validAtpRows===0) process.exit(1); console.log('TML audit:', JSON.stringify(a.totals)); console.log('ID bridge:', JSON.stringify(b.totals));"
 
       - name: Upload aggregate report only
         uses: actions/upload-artifact@v4
