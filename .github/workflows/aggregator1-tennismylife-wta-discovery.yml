@@ -1,0 +1,81 @@
+name: Aggregator 1 TennisMyLife WTA source discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - '.github/workflows/aggregator1-tennismylife-wta-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discover-wta-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch official TennisMyLife data-file manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 \
+            --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+            "https://stats.tennismylife.org/api/data-files" \
+            --output "$RUNNER_TEMP/tml-data-files.json"
+          test -s "$RUNNER_TEMP/tml-data-files.json"
+          python - <<'PY'
+          import json, os
+          p=os.path.join(os.environ["RUNNER_TEMP"],"tml-data-files.json")
+          data=json.load(open(p,encoding="utf-8"))
+          print("MANIFEST_TOP_LEVEL_TYPE:",type(data).__name__)
+          if isinstance(data,dict):
+              print("MANIFEST_TOP_LEVEL_KEYS:",sorted(data.keys()))
+          def walk(x,path="$"):
+              if isinstance(x,dict):
+                  s=json.dumps(x,ensure_ascii=False).lower()
+                  if "2021_wta" in s or ("wta" in s and "2021" in s):
+                      print("WTA_MATCHING_ENTRY_PATH:",path)
+                      print("WTA_MATCHING_ENTRY:",json.dumps(x,ensure_ascii=False)[:5000])
+                  for k,v in x.items(): walk(v,path+"."+str(k))
+              elif isinstance(x,list):
+                  for i,v in enumerate(x[:5000]): walk(v,path+f"[{i}]")
+          walk(data)
+          if isinstance(data,list):
+              print("MANIFEST_SAMPLE:",json.dumps(data[:3],ensure_ascii=False)[:5000])
+          elif isinstance(data,dict):
+              for k,v in data.items():
+                  if isinstance(v,list):
+                      print("LIST_SAMPLE",k,json.dumps(v[:2],ensure_ascii=False)[:3000])
+          PY
+      - name: Inspect official WTA CSV availability and schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/tml-wta-discovery"
+          mkdir -p "$ROOT"
+          for year in 2021 2022 2023 2024 2025; do
+            url="https://stats.tennismylife.org/data/${year}_wta.csv"
+            code=$(curl --silent --show-error --location --retry 1 \
+              --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+              --output "$ROOT/${year}_wta.csv" --write-out '%{http_code}' "$url" || true)
+            bytes=$(wc -c < "$ROOT/${year}_wta.csv" 2>/dev/null || echo 0)
+            echo "WTA_FILE year=$year http=$code bytes=$bytes url=$url"
+            if [[ "$code" == "200" && "$bytes" -gt 100 ]]; then
+              python - "$ROOT/${year}_wta.csv" "$year" <<'PY'
+          import csv,sys,os,json
+          p,year=sys.argv[1:]
+          with open(p,encoding="utf-8-sig",newline="") as f:
+              reader=csv.DictReader(f)
+              print("WTA_SCHEMA",year,json.dumps(reader.fieldnames,ensure_ascii=False))
+              count=0; sample=None
+              for row in reader:
+                  count+=1
+                  if sample is None: sample=row
+              print("WTA_ROWS",year,count)
+              if sample:
+                  print("WTA_SAMPLE",year,json.dumps(sample,ensure_ascii=False)[:2500])
+          PY
+            fi
+          done
