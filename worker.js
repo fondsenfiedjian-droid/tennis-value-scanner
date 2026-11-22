@@ -423,7 +423,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/history/matches", "/history/coverage", "/history/matches/{id}", "/history/archive/matches", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/history/matches", "/history/coverage", "/history/matches/{id}", "/history/archive/matches", "/history/archive/players", "/history/archive/career", "/h2h", "/predict"]
       });
     }
 
@@ -939,7 +939,7 @@ export default {
     // Live Tennis BASIC history endpoints. Kept separate from the Apify /historical dataset.
     if (path === "/history/matches" || path === "/history/coverage" ||
         path === "/history/archive/matches" || path === "/history/archive/players" ||
-        path === "/history/archive/career" || path === "/history/tape" ||
+        path === "/history/archive/career" || path === "/history/tape" || path === "/h2h" ||
         /^\/history\/matches\/\d+$/.test(path)) {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
@@ -968,8 +968,16 @@ export default {
         "/history/archive/players": ["name", "tour", "limit", "offset"],
         "/history/archive/career": ["name"],
         "/history/tape": ["sequence", "points"],
+        "/h2h": ["p1", "p2"],
       };
       const allowed = isTapePath ? ["sequence", "points"] : (allowedByPath[path] || []);
+      if (path === "/h2h") {
+        const p1 = url.searchParams.get("p1") || "";
+        const p2 = url.searchParams.get("p2") || "";
+        if (p1.trim().length < 3 || p2.trim().length < 3) {
+          return response({ error: "p1 and p2 must each contain at least 3 characters" }, 400);
+        }
+      }
       for (const key of allowed) {
         const values = url.searchParams.getAll(key);
         for (const value of values) {
