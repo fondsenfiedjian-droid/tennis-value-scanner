@@ -484,3 +484,54 @@ Interpretation:
 - The conflict fixture explicitly tests that two Sackmann IDs with the same displayed name but different birth date/country are not silently merged.
 
 Decision: retain every conflicting source ID in quarantine. The next review should compare all available biography fields (birth date, country, hand, height) and event-level match evidence, while preserving separate source IDs. Do not automatically collapse duplicate-looking Sackmann records.
+
+
+## 21. Valuebetennis duplicate and key-integrity audit — 2026-11-22
+
+The new duplicate audit ran across all six Valuebetennis files (2021–2026), alongside the full Sackmann linkage audit. Latest run: `45084139894` — success, including aggregate report validation and artifact upload.
+
+### Aggregate findings
+
+| Check | Result |
+|---|---:|
+| Match rows | 478,606 |
+| Rows with a source match_id | 478,606 (100%) |
+| Repeated match_id groups | 0 |
+| Conflicting match_id groups | 0 |
+| Repeated composite match fingerprints | 54 groups |
+| Excess rows in those fingerprint groups | 54 (0.01% of source rows) |
+| Rows belonging to flagged fingerprint groups | 108 |
+| Invalid core fingerprint fields | 5 |
+
+The composite fingerprint uses tour, calendar date, tournament ID (preferred) or normalized tournament name, surface, and the unordered player pair. It is a conservative duplicate candidate key, not a deletion instruction.
+
+### Distribution of rows in flagged fingerprint groups
+
+| Year | Rows in flagged groups |
+|---|---:|
+| 2021 | 22 |
+| 2022 | 18 |
+| 2023 | 22 |
+| 2024 | 12 |
+| 2025 | 34 |
+| 2026 | 0 |
+| **Total** | **108** |
+
+| Tour | Rows in flagged groups |
+|---|---:|
+| ATP | 70 |
+| WTA | 38 |
+
+All 54 groups contain exactly two records under the current fingerprint. No source `match_id` is repeated, so the candidates are separate source records with distinct match IDs. They may represent duplicated fixtures, revised/imported records, or rare same-day same-event rematches. The aggregate-only audit intentionally does not export match IDs, player names, or row-level pairs; therefore none is automatically removed.
+
+The five invalid-core rows are all WTA. They are excluded from composite fingerprinting but remain in the source dataset pending inspection of missing fields. The yearly distribution is 4 in 2023 and 1 in 2026.
+
+### Data admission decision
+
+- Keep all 478,606 source records intact and immutable.
+- Add a duplicate-review status to the future canonical match registry; do not deduplicate solely from this fingerprint.
+- Preserve the original `match_id` and provider provenance.
+- Review the 54 candidate pairs and five incomplete rows locally in a rights-compliant environment before admitting them to a clean modelling table.
+- Keep the source audit report aggregate-only; raw CSV files remain temporary in the workflow runner.
+
+The audit's yearly/tour breakdown now distinguishes excess duplicate rows from all rows belonging to flagged groups, avoiding confusion between those two counts.
