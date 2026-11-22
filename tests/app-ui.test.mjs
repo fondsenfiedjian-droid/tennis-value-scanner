@@ -285,6 +285,61 @@ test("odds matching accepts quotes up to six hours old but still rejects older q
   assert.equal(getOddsMatching([freshHome, skewedAway]).oddsForMatch(match).length, 0);
 });
 
+test("end-to-end schedule pipeline keeps official upcoming singles and diagnoses missing start times", () => {
+  const api = runExtractMatches(null);
+  const payload = {
+    data: [
+      {
+        id: 223582,
+        draw: "singles",
+        gender: "women",
+        status: "upcoming",
+        scheduled_time: "2026-11-22T14:00:00Z",
+        created_at: "2026-11-21T16:01:55.828190Z",
+        players: { p1: { id: 1, name: "Player One" }, p2: { id: 2, name: "Player Two" } }
+      },
+      {
+        id: 223583,
+        draw: "singles",
+        gender: "men",
+        status: "upcoming",
+        scheduled_time: null,
+        created_at: "2026-11-21T16:02:00.000Z",
+        players: { p1: { id: 3, name: "Player Three" }, p2: { id: 4, name: "Player Four" } }
+      }
+    ],
+    meta: { count: 2, total: 2 }
+  };
+  const matches = api.extractMatches(payload);
+  assert.equal(matches.length, 2);
+  assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-22T14:00:00.000Z");
+  assert.equal(api.matchDate(matches[1]), null);
+
+  const filterStart = html.indexOf("function normalizeTour(value)");
+  const filterEnd = html.indexOf("let predictionRenderId=0;", filterStart);
+  const sandbox = {};
+  vm.runInNewContext(
+    html.slice(filterStart, filterEnd) +
+      "\\nglobalThis.schedulePipeline = { matchTour, filterScheduleMatches };",
+    sandbox
+  );
+  const pipeline = sandbox.schedulePipeline;
+  assert.equal(pipeline.matchTour(matches[0]), "wta");
+  assert.equal(pipeline.matchTour(matches[1]), "atp");
+  const today = pipeline.filterScheduleMatches(
+    matches, "today", ["atp", "wta", "challenger", "itf"], new Date("2026-11-22T12:00:00")
+  );
+  assert.equal(today.total, 2);
+  assert.equal(today.afterTour, 2);
+  assert.equal(today.withDate, 1);
+  assert.equal(today.withoutDate, 1);
+  assert.equal(today.matches.length, 1);
+  const all = pipeline.filterScheduleMatches(
+    matches, "all", ["atp", "wta", "challenger", "itf"], new Date("2026-11-22T12:00:00")
+  );
+  assert.equal(all.matches.length, 2);
+});
+
 test("valid empty match schedules are distinct from malformed API payloads", () => {
   assert.deepEqual(Array.from(runExtractMatches([]).extractMatches([])), []);
   assert.deepEqual(Array.from(runExtractMatches({ matches: [] }).extractMatches({ matches: [] })), []);
