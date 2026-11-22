@@ -672,6 +672,16 @@ test("TVS 2.0 bottom navigation and quick links open the approved destinations",
   assert.match(html,/\[\$\('#archiveOddsByBookmaker'\),archiveQuality,\$\('\.stats-actions'\),archiveLastHead,\$\('#archiveList'\)\]\.filter\(Boolean\)\.forEach\(node=>archiveMount\.appendChild\(node\)\)/);
 });
 
+test("mobile player suggestion taps prevent blur from closing the result list before selection",()=>{
+  const start=html.indexOf("function bindComparePlayerSearch(side)");
+  const end=html.indexOf("bindComparePlayerSearch('A')",start);
+  const search=html.slice(start,end);
+  assert.match(search,/list\.addEventListener\('pointerdown'/);
+  assert.match(search,/if\(button\)event\.preventDefault\(\)/);
+  assert.match(search,/nameInput\.addEventListener\('blur'/);
+  assert.match(search,/list\.onclick=event=>/);
+});
+
 test("singles player search excludes doubles teams returned by Live Tennis API",()=>{
   assert.match(html,/const players=\(Array\.isArray\(payload\.players\)\?payload\.players:\[\]\)\.filter\(player=>player\?\.is_doubles_team!==true\)/);
   assert.match(html,/Одиночные игроки не найдены/);
