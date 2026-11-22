@@ -1,6 +1,11 @@
 name: Aggregator 1 full dataset audit
 
 on:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - '.github/workflows/aggregator1-full-audit.yml'
   workflow_dispatch:
     inputs:
       date_window:
