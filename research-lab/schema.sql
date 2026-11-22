@@ -121,3 +121,25 @@ CREATE INDEX IF NOT EXISTS idx_aggregator_runs_match_combo
   ON aggregator_runs(match_id, combination_id, prediction_created_at);
 CREATE INDEX IF NOT EXISTS idx_market_quotes_match_time
   ON market_quotes(match_id, bookmaker, captured_at);
+
+CREATE TRIGGER IF NOT EXISTS validate_quote_selection_insert
+BEFORE INSERT ON market_quotes
+WHEN NOT EXISTS (
+  SELECT 1 FROM matches
+  WHERE match_id = NEW.match_id
+    AND NEW.selection_player_id IN (player_a_id, player_b_id)
+)
+BEGIN
+  SELECT RAISE(ABORT, 'quote selection must belong to the match');
+END;
+
+CREATE TRIGGER IF NOT EXISTS validate_quote_selection_update
+BEFORE UPDATE OF match_id, selection_player_id ON market_quotes
+WHEN NOT EXISTS (
+  SELECT 1 FROM matches
+  WHERE match_id = NEW.match_id
+    AND NEW.selection_player_id IN (player_a_id, player_b_id)
+)
+BEGIN
+  SELECT RAISE(ABORT, 'quote selection must belong to the match');
+END;
