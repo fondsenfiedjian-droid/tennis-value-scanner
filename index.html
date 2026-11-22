@@ -947,24 +947,40 @@
     if(['women','female','womens',"women's",'w'].includes(gender))return 'wta';
     return null;
   }
+  function filterScheduleMatches(all,day='today',selectedTourValues=['atp','wta','challenger','itf'],now=new Date()){
+    const source=Array.isArray(all)?all:[];
+    const tours=selectedTourValues.map(normalizeTour).filter(Boolean);
+    const byTour=source.filter(m=>{const tour=matchTour(m);return tour===null||tours.includes(tour);});
+    const withDate=byTour.filter(m=>matchDate(m));
+    let target=null;
+    if(day!=='all'){
+      target=new Date(now);target.setHours(0,0,0,0);
+      if(day==='tomorrow')target.setDate(target.getDate()+1);
+    }
+    const matches=day==='all'?byTour:byTour.filter(m=>{
+      const d=matchDate(m);if(!d)return false;
+      const date=new Date(d);date.setHours(0,0,0,0);
+      return date.getTime()===target.getTime();
+    });
+    return {matches,total:source.length,afterTour:byTour.length,withDate:withDate.length,withoutDate:byTour.length-withDate.length};
+  }
   let predictionRenderId=0;
   function renderMatches(all){
     predictionRenderId++;
-    const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
-    const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
-    const tours=selectedTours().map(normalizeTour).filter(Boolean);
-    const byTour=all.filter(m=>{const tour=matchTour(m);return tour===null||tours.includes(tour);});
-    const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
+    const list=$('#matchList');
+    const schedule=filterScheduleMatches(all,selectedDay,selectedTours(),new Date());
+    const filtered=schedule.matches;
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
     // Keep every scheduled match visible; quote availability is a status, not a list filter.
-    const filtered=dateFiltered;
     const completePairCount=filtered.filter(m=>winnerEnabled&&oddsForMatch(m).length>=2).length;
     const noPairCount=filtered.length-completePairCount;
     if($('#matchCount'))$('#matchCount').textContent=filtered.length;
     if($('#valueCount'))$('#valueCount').textContent='—';
     if(!filtered.length){
       const message='Матчей на выбранную дату не найдено.';
-      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Проверь дату и выбранные туры. Матчи без свежих коэффициентов также отображаются в списке.</div></div>';return;
+      const diagnostic='Получено от API: '+schedule.total+'. После фильтра турниров: '+schedule.afterTour+'. С датой начала: '+schedule.withDate+'. Без даты начала: '+schedule.withoutDate+'.';
+      const hint=selectedDay==='all'?'В режиме «Все» должны отображаться и матчи без опубликованного времени.':'Попробуй режим «Все»: API может вернуть матчи, для которых время начала ещё не опубликовано.';
+      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">'+escapeHtml(diagnostic)+' '+escapeHtml(hint)+' Коэффициенты не являются фильтром списка.</div></div>';return;
     }
     list.innerHTML=filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
