@@ -466,3 +466,21 @@ The next refinement should focus on:
 - whether source IDs remain stable across years and do not map to multiple Sackmann IDs over time.
 
 No player-level mappings have been committed or uploaded. The audit emits only aggregate counts. Raw CSVs and any in-memory ID sets remain temporary in the GitHub runner. The synthetic linkage and player-ID tests pass; the full aggregate audit and artifact upload succeeded.
+
+
+## 20. Biographical profile of conflicting match-evidence IDs — 2026-11-22
+
+A follow-up audit compared the Sackmann player biographies for source IDs that mapped to multiple Sackmann IDs through accepted unique matches.
+
+| Tour | Conflicting source IDs | Same DOB and country across candidate IDs | Different DOB or country | Missing biography fields |
+|---|---:|---:|---:|---:|
+| ATP | 62 | 26 | 1 | 35 |
+| WTA | 120 | 16 | 0 | 104 |
+
+Interpretation:
+- The 26 ATP and 16 WTA cases with the same date of birth and country may be duplicate/alias registry entries, but this is not enough to merge them automatically.
+- One ATP conflict has differing birth date or country and should be treated as a high-priority identity conflict.
+- Most remaining conflicts cannot yet be profiled because one or more core biography fields are missing.
+- The conflict fixture explicitly tests that two Sackmann IDs with the same displayed name but different birth date/country are not silently merged.
+
+Decision: retain every conflicting source ID in quarantine. The next review should compare all available biography fields (birth date, country, hand, height) and event-level match evidence, while preserving separate source IDs. Do not automatically collapse duplicate-looking Sackmann records.
