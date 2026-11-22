@@ -1,3 +1,4 @@
+// Read-only parser for the frozen 2026-11-21 SMA workflow artifact; does not rerun the model.
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
