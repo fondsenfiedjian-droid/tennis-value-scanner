@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "betclic-netbet-live-quotes-2026-11-21-1";
+const WORKER_BUILD_ID = "odds-pair-integrity-diagnostics-2026-11-22-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -44,7 +44,70 @@ function diagnoseOddsItems(items, now = Date.now()) {
     freshScrapedAt: freshTimestamps,
     oldestScrapedAt: timestamps.length ? new Date(Math.min(...timestamps)).toISOString() : null,
     newestScrapedAt: timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null,
-    fieldCoverage: present
+    fieldCoverage: present,
+    marketPairDiagnostics: diagnoseOddsPairs(items, now)
+  };
+}
+
+function diagnoseOddsPairs(items, now = Date.now()) {
+  const groups = new Map();
+  const normalize = value => String(value || "").normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+  for (const item of items) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const bookmaker = String(item.bookmaker || "").trim().toLowerCase();
+    const outcome = String(item.outcome || "").trim().toLowerCase();
+    const odds = Number(item.oddsDecimal);
+    const start = Date.parse(item.startTime || "");
+    if (!bookmaker || String(item.sport || "").toLowerCase() !== "tennis" ||
+        String(item.marketType || "").toLowerCase() !== "match_winner" ||
+        !["home", "away"].includes(outcome) || !Number.isFinite(odds) || odds <= 1 || odds > 1000 ||
+        !Number.isFinite(start)) continue;
+    const home = normalize(item.homeTeam), away = normalize(item.awayTeam);
+    if (!home || !away || home === away) continue;
+    const eventId = String(item.eventId || "").trim();
+    const eventKey = eventId
+      ? bookmaker + "|id|" + eventId
+      : [bookmaker, "pair", [home, away].sort().join("|"), new Date(start).toISOString(),
+          String(item.competition || "").trim().toLowerCase()].join("|");
+    if (!groups.has(eventKey)) groups.set(eventKey, { bookmaker, rows: [] });
+    groups.get(eventKey).rows.push(item);
+  }
+
+  const byBookmaker = {};
+  for (const { bookmaker, rows } of groups.values()) {
+    const stats = byBookmaker[bookmaker] ||= {
+      eventGroups: 0, completePairs: 0, freshCompletePairs: 0,
+      incompletePairs: 0, duplicateOutcomeGroups: 0, staleOrUnsynchronisedPairs: 0
+    };
+    stats.eventGroups++;
+    const latest = {};
+    const counts = { home: 0, away: 0 };
+    for (const row of rows) {
+      const side = String(row.outcome).toLowerCase();
+      counts[side]++;
+      const stamp = Date.parse(row.scrapedAt || "");
+      const currentStamp = latest[side] ? Date.parse(latest[side].scrapedAt || "") : -Infinity;
+      if (!latest[side] || (Number.isFinite(stamp) && stamp > currentStamp)) latest[side] = row;
+    }
+    if (counts.home > 1 || counts.away > 1) stats.duplicateOutcomeGroups++;
+    if (!latest.home || !latest.away) {
+      stats.incompletePairs++;
+      continue;
+    }
+    stats.completePairs++;
+    const times = [Date.parse(latest.home.scrapedAt || ""), Date.parse(latest.away.scrapedAt || "")];
+    const fresh = times.every(stamp => Number.isFinite(stamp) &&
+      stamp <= now + 5 * 60 * 1000 && now - stamp <= ODDS_FRESHNESS_MAX_AGE_MS);
+    const synchronised = times.every(Number.isFinite) && Math.abs(times[0] - times[1]) <= 30 * 60 * 1000;
+    if (fresh && synchronised) stats.freshCompletePairs++;
+    else stats.staleOrUnsynchronisedPairs++;
+  }
+  return {
+    definition: "Groups by bookmaker and event identity; a fresh pair requires both outcomes within six hours, no more than five minutes in the future, and timestamps within 30 minutes.",
+    totalEventGroups: groups.size,
+    byBookmaker
   };
 }
 
