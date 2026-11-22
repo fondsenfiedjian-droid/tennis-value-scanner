@@ -1,0 +1,78 @@
+name: Aggregator 1 full dataset audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      date_window:
+        description: "Maximum date difference in days"
+        required: true
+        default: "14"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  full-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/aggregator1-linkage-audit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download Valuebetennis and Sackmann datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/aggregator1"
+          mkdir -p "$ROOT/valuebetennis" "$ROOT/sackmann" audit-output
+          for year in 2021 2022 2023 2024 2025 2026; do
+            file="valuebetennis-matchs-${year}.csv"
+            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+              "https://www.valuebetennis.com/datasets/${file}" \
+              --output "$ROOT/valuebetennis/$file"
+            test -s "$ROOT/valuebetennis/$file"
+          done
+          for tour in atp wta; do
+            for year in 2021 2022 2023 2024 2025 2026; do
+              file="${tour}_matches_${year}.csv"
+              url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${file}"
+              curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+                "$url" --output "$ROOT/sackmann/$file"
+              test -s "$ROOT/sackmann/$file"
+            done
+          done
+          {
+            echo "Downloaded at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Valuebetennis source: https://www.valuebetennis.com/donnees.htm"
+            echo "Sackmann mirror: https://github.com/Aneeshers/tennis-sackmann-archive"
+            echo
+            echo "File checksums (raw datasets are not included in this artifact):"
+            sha256sum "$ROOT"/valuebetennis/*.csv "$ROOT"/sackmann/*.csv
+          } > audit-output/source-manifest.txt
+          echo "Downloaded $(find "$ROOT/valuebetennis" -name '*.csv' | wc -l) Valuebetennis files and $(find "$ROOT/sackmann" -name '*.csv' | wc -l) Sackmann files."
+
+      - name: Run full aggregate linkage audit
+        run: |
+          node scripts/aggregator1-linkage-audit.mjs \
+            --valuebet-dir "$RUNNER_TEMP/aggregator1/valuebetennis" \
+            --sackmann-dir "$RUNNER_TEMP/aggregator1/sackmann" \
+            --date-window "${{ inputs.date_window }}" \
+            --out audit-output/aggregator1-linkage-audit.json
+
+      - name: Validate aggregate report
+        run: |
+          node -e "const r=require('./audit-output/aggregator1-linkage-audit.json'); if(r.schemaVersion!==2 || !r.totals || !r.byTour) process.exit(1); console.log(JSON.stringify(r.totals,null,2));"
+
+      - name: Upload aggregate report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregator1-full-audit-report
+          path: audit-output/
+          if-no-files-found: error
+          retention-days: 14
