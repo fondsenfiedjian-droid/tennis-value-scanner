@@ -3,11 +3,11 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const TML=/^(\\d{4})_wta\\.csv$/i;
-const SACK=/^wta_matches_(\\d{4})\\.csv$/i;
+const TML=/^(\d{4})_wta\.csv$/i;
+const SACK=/^wta_matches_(\d{4})\.csv$/i;
 const norm=v=>String(v??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
 const surface=v=>{const s=norm(v);if(["hard","dur","durinterieur","hardcourt","indoorhard","outdoorhard"].includes(s))return "hard";if(["clay","terrebattue","terre","redclay"].includes(s))return "clay";if(["grass","gazon"].includes(s))return "grass";if(["carpet","moquette","moquetteinterieur","indoorcarpet"].includes(s))return "carpet";return null;};
-const day=v=>{const s=String(v??"").trim();if(!/^\\d{8}$/.test(s))return null;const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8),t=Date.UTC(y,m-1,d),x=new Date(t);return x.getUTCFullYear()===y&&x.getUTCMonth()===m-1&&x.getUTCDate()===d?t/86400000:null;};
+const day=v=>{const s=String(v??"").trim();if(!/^\d{8}$/.test(s))return null;const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8),t=Date.UTC(y,m-1,d),x=new Date(t);return x.getUTCFullYear()===y&&x.getUTCMonth()===m-1&&x.getUTCDate()===d?t/86400000:null;};
 const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 const pair=r=>[norm(r.winner_name),norm(r.loser_name)].sort().join("|");
 const score=v=>norm(v).replace(/(?:retired|ret|walkover|wo)/g,"");
