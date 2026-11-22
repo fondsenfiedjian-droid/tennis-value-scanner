@@ -52,7 +52,7 @@ function diagnoseOddsItems(items, now = Date.now()) {
 function diagnoseOddsPairs(items, now = Date.now()) {
   const groups = new Map();
   const normalize = value => String(value || "").normalize("NFKD")
-    .replace(/[\u0300-\\u036f]/g, "").toLowerCase()
+    .replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
   for (const item of items) {
     if (!item || typeof item !== "object" || Array.isArray(item)) continue;
