@@ -25,9 +25,22 @@ const tourney=value=>{
     romemasters:"rome",internazionalibnlditalia:"rome",
     madridopen:"madrid",madridmasters:"madrid",
     parismasters:"paris",rolexparismasters:"paris",
-    montecarlo:"montecarlo",montecarlomasters:"montecarlo"
+    montecarlo:"montecarlo",montecarlomasters:"montecarlo",
+    australianopenmelbourne:"australianopen",frenchopenparis:"frenchopen",usopennewyork:"usopen",wimbledonlondon:"wimbledon",
+    mutuamadridopenmadrid:"madrid",internazionalibnlditaliarome:"rome",miamiopenmiami:"miami",miamimasters:"miami",
+    bnpparibasopenindianwells:"indianwells",indianwellsmasters:"indianwells",chinaopenbeijing:"beijing",
+    montecarlorolexmastersmontecarlo:"montecarlo",dubaidutyfreechampionshipsdubai:"dubai",
+    shanghairolexmastersshanghai:"shanghai",shanghaimasters:"shanghai",rolexparismastersparis:"paris",
+    citiopenwashington:"washington",libemaopenshertogenbosch:"shertogenbosch",asbclassicauckland:"auckland",
+    brisbaneinternationalbrisbane:"brisbane",barcelonaopenbancsabadellbarcelona:"barcelona",
+    creditonecharlestonopencharleston:"charleston",adelaideinternationaladelaide:"adelaide",
+    westernsouthernopencincinnati:"cincinnati",cincinnatimasters:"cincinnati",
+    winstonsalemopenwinstonsalem:"winstonsalem",qatartotalenergiesopendoha:"doha",
+    m15naples:"m15naplesfl",w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
   };
-  return aliases[s]||s;
+  if(aliases[s])return aliases[s];
+  if(s.endsWith("challenger"))return s.slice(0,-10)+"ch";
+  return s;
 };
 const parseVbtDate=value=>{
   const s=String(value??"").trim();
