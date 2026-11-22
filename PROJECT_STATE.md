@@ -1150,3 +1150,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added `tournament-intent-observations.js` and tests to represent the full player–match sampling denominator, including evidence found, no evidence found, source unavailable and search incomplete. It requires exact match linkage, a pre-event top-150 ranking snapshot, per-source search statuses, reviewer and pre-match search timestamps; coverage summaries are stratified by tour and ranking band. No evidence remains a search-coverage outcome, not a negative intent label.
 
 - Added offline `scripts/import-tournament-intent-observations.mjs` with JSON/JSONL input, validation, duplicate detection, merge, coverage summary, atomic output and dry-run mode; added CLI regression tests. No network or Production writes.
+
+- Expanded the prospective pilot protocol with the exact observation-ledger source-status fields and mutually distinct outcome rules. `no_evidence_found` is permitted only after all five source categories are searched; unavailable and incomplete searches remain separate coverage outcomes.
