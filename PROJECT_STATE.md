@@ -1148,3 +1148,11 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Injury/medical status is not proven by the current FREE profile response. Withdrawals, missing records and stale ratings must not be re-labelled as injuries.
 - Durable decisions and staged implementation order recorded in `docs/TENNIS_VALUE_SCANNER_2_UI_SPEC.md`.
 - No production code, model calculations, Worker deployment or API subscription changed. PR #167 remains draft and isolated.
+
+
+### 2026-11-22 — Official player profile added to Compare
+- Worker `/predict` now includes normalized `officialProfileA/B` metadata from the same FREE player-profile responses already fetched for Elo: official singles ranking position, normalized tour (ATP/WTA), country and profile completeness (known/of/percent).
+- The normalization is defensive: unknown, invalid, absent and non-applicable fields remain null; no ranking, country, tour or completeness values are inferred. Official singles rank remains separate from Elo.
+- Compare UI now displays official ranking, tour/country and profile completeness alongside Elo and Elo probability. It does not change Elo inputs, probabilities, fair odds, EV or recommendation logic.
+- Added regression tests for valid, missing and invalid profile metadata and UI separation of official rank from Elo.
+- Files changed: `worker.js`, `index.html`, `tests/worker.test.mjs`. No production deployment; PR #167 remains draft. GitHub Actions validation is pending.
