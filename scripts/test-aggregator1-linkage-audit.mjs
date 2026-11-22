@@ -114,4 +114,5 @@ const conflictPlayers=[{filename:"atp_players.csv",content:[
 const conflictReport=auditValuebetSackmann(conflictValuebet,conflictSackmann,{playerFiles:conflictPlayers});
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannIds,1);
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentBirthDateOrCountry,1);
-\nconsole.log("Aggregator 1 linkage audit fixtures: PASS");
+
+console.log("Aggregator 1 linkage audit fixtures: PASS");
