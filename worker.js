@@ -335,11 +335,15 @@ function findEloForSurface(profile, requestedSurface) {
   return overall === null ? null : { rating: overall, type: "overall", surface };
 }
 
-const LIVE_TENNIS_QUOTA_GUARD_URL = "https://tennis-value-api.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard";
+function cacheKeyUrl(env, pathname) {
+  const namespace = String(env?.CACHE_NAMESPACE || "tennis-value-api");
+  const host = /^[a-z0-9-]{1,63}$/.test(namespace) ? namespace : "tennis-value-api";
+  return "https://" + host + ".fonds-enfiedjian.workers.dev" + pathname;
+}
 
-async function fetchLiveTennis(url, options = {}) {
+async function fetchLiveTennis(url, options = {}, env = {}) {
   const cache = caches.default;
-  const guardKey = new Request(LIVE_TENNIS_QUOTA_GUARD_URL, { method: "GET" });
+  const guardKey = new Request(cacheKeyUrl(env, "/__live-tennis-quota-guard"), { method: "GET" });
   const guard = await cache.match(guardKey);
   if (guard) {
     const payload = await guard.json();
@@ -389,7 +393,7 @@ async function fetchLiveTennis(url, options = {}) {
 
 const playerProfileInflight = new Map();
 
-async function getPlayerProfile(playerId, apiKey) {
+async function getPlayerProfile(playerId, apiKey, env = {}) {
   // Share concurrent cache misses inside this Worker isolate to avoid duplicate quota use.
   const key = String(playerId);
   const pending = playerProfileInflight.get(key);
@@ -398,13 +402,13 @@ async function getPlayerProfile(playerId, apiKey) {
   const task = (async () => {
     // Elo profiles are effectively static for this model; cache them for seven days.
     const cache = caches.default;
-    const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-profile/" + encodeURIComponent(key));
+    const cacheKey = new Request(cacheKeyUrl(env, "/__player-profile/" + encodeURIComponent(key)));
     const cached = await cache.match(cacheKey);
     if (cached) return cached.json();
 
     const res = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
       headers: { "X-API-Key": apiKey, "Accept": "application/json" }
-    });
+    }, env);
     if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
     const profile = await res.json();
     const cacheResponse = new Response(JSON.stringify(profile), {
@@ -460,7 +464,7 @@ export default {
           return response({ error: "Invalid Apify datasetId" }, 400);
         }
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__historical/v6/" + encodeURIComponent(datasetId));
+        const cacheKey = new Request(cacheKeyUrl(env, "/__historical/v6/" + encodeURIComponent(datasetId)));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -660,7 +664,7 @@ export default {
         // The Odds API documents /v4/sports as quota-exempt. Use the key header
         // so the credential never appears in a URL, logs, or returned payload.
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-sports/v1", { method: "GET" });
+        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-sports/v1"), { method: "GET" });
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -730,7 +734,7 @@ export default {
       try {
         const cache = caches.default;
         const cacheKey = new Request(
-          "https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-test/v1/" + encodeURIComponent(sportKey),
+          cacheKeyUrl(env, "/__odds-api-test/v1/" + encodeURIComponent(sportKey)),
           { method: "GET" }
         );
         const cached = await cache.match(cacheKey);
@@ -835,7 +839,7 @@ export default {
       }
       try {
         const cache = caches.default;
-        const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__odds-api-quotes/v1/" + encodeURIComponent(sportKey));
+        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-quotes/v1/" + encodeURIComponent(sportKey)));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -946,7 +950,7 @@ export default {
         // Live Tennis documents /usage as quota-exempt.
         const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/usage", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
-        });
+        }, env);
         const body = await upstream.json();
         return response(body, upstream.status);
       } catch (error) {
@@ -973,8 +977,8 @@ export default {
       try {
         const cache = caches.default;
         const cacheKey = new Request(
-          "https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-search/v1/" +
-          encodeURIComponent(query.toLocaleLowerCase()) + "/" + limit,
+          cacheKeyUrl(env, "/__player-search/v1/" +
+          encodeURIComponent(query.toLocaleLowerCase()) + "/" + limit),
           { method: "GET" }
         );
         const cached = await cache.match(cacheKey);
@@ -987,7 +991,7 @@ export default {
         const params = new URLSearchParams({ search: query, limit: String(limit) });
         const upstream = await fetchLiveTennis(
           "https://api.livetennisapi.com/api/public/v1/players?" + params.toString(),
-          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
         );
         let body;
         try { body = await upstream.json(); } catch {
@@ -1068,7 +1072,7 @@ export default {
         if (tour) params.set("tour", tour);
         const upstream = await fetchLiveTennis(
           "https://api.livetennisapi.com/api/public/v1/history/matches?" + params.toString(),
-          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
         );
         let body;
         try { body = await upstream.json(); } catch {
@@ -1141,7 +1145,7 @@ export default {
         const params = new URLSearchParams({ p1: player1, p2: player2 });
         const upstream = await fetchLiveTennis(
           "https://api.livetennisapi.com/api/public/v1/h2h?" + params.toString(),
-          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
         );
         let body;
         try { body = await upstream.json(); } catch {
@@ -1206,7 +1210,7 @@ export default {
         }
         const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
-        });
+        }, env);
         let stats;
         try { stats = await upstream.json(); }
         catch { stats = null; }
@@ -1507,8 +1511,8 @@ export default {
         }
         try {
           [profileA, profileB] = await Promise.all([
-            getPlayerProfile(playerIdA, env.LIVE_TENNIS_API_KEY),
-            getPlayerProfile(playerIdB, env.LIVE_TENNIS_API_KEY)
+            getPlayerProfile(playerIdA, env.LIVE_TENNIS_API_KEY, env),
+            getPlayerProfile(playerIdB, env.LIVE_TENNIS_API_KEY, env)
           ]);
         } catch {
           return response({ error: "Could not retrieve one or both player profiles" }, 502);
