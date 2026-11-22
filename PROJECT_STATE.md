@@ -1052,3 +1052,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-22 — Odds match identity boundary tests (research PR)
+- Added regression coverage for the current 36-hour event-time matching boundary: a quote just inside the boundary is accepted and one just outside is rejected.
+- Added regression coverage for the Roland Garros / French Open alias and rejection of an unrelated tournament on the same tour.
+- Test-only change: no production logic, quote selection, EV, probabilities, provider settings, Apify task, or deployment configuration changed.
+- Purpose is to make the existing identity constraints explicit before any proposal to narrow or widen the matching window.
+- Keep this research PR separate; do not merge or deploy Production without explicit user approval.
