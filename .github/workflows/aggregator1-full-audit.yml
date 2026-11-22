@@ -6,6 +6,7 @@ on:
       - research/aggregator1-linkage-audit
     paths:
       - '.github/workflows/aggregator1-full-audit.yml'
+      - 'scripts/aggregator1-linkage-audit.mjs'
   workflow_dispatch:
     inputs:
       date_window:
@@ -16,6 +17,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: aggregator1-full-dataset-audit
+  cancel-in-progress: false
 
 jobs:
   full-audit:
