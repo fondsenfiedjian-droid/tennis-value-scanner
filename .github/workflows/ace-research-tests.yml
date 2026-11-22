@@ -1,0 +1,26 @@
+name: ACE research unit tests
+
+on:
+  push:
+    branches:
+      - research/tvs-research-lab-v1
+    paths:
+      - "research-lab/ace/**"
+      - ".github/workflows/ace-research-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ace-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated research branch
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run ACE unit tests
+        run: node --test research-lab/ace/features.test.mjs
