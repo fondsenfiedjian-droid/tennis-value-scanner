@@ -63,11 +63,14 @@ jobs:
           echo "Downloaded $(find "$ROOT/valuebetennis" -name '*.csv' | wc -l) Valuebetennis files and $(find "$ROOT/sackmann" -name '*.csv' | wc -l) Sackmann files."
 
       - name: Run full aggregate linkage audit
+        shell: bash
         run: |
+          DATE_WINDOW="${{ inputs.date_window }}"
+          if [[ -z "$DATE_WINDOW" ]]; then DATE_WINDOW=14; fi
           node scripts/aggregator1-linkage-audit.mjs \
             --valuebet-dir "$RUNNER_TEMP/aggregator1/valuebetennis" \
             --sackmann-dir "$RUNNER_TEMP/aggregator1/sackmann" \
-            --date-window "${{ inputs.date_window }}" \
+            --date-window "$DATE_WINDOW" \
             --out audit-output/aggregator1-linkage-audit.json
 
       - name: Validate aggregate report
