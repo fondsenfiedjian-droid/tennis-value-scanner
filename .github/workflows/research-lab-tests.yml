@@ -1,0 +1,27 @@
+name: Research lab unit tests
+
+on:
+  push:
+    branches:
+      - research/tvs-research-lab-v1
+    paths:
+      - "research-lab/ace/**"
+      - "research-lab/evaluation/**"
+      - ".github/workflows/research-lab-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run ACE tests
+        run: node --test research-lab/ace/features.test.mjs
+      - name: Run common-sample evaluator tests
+        run: node --test research-lab/evaluation/paired-evaluator.test.mjs
