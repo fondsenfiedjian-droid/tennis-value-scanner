@@ -1735,7 +1735,7 @@
     }else{
       const quote=oddsFallback[0]||null;
       if(quote){
-        additionalContent.innerHTML='<div class="additional-empty"><b>'+escapeHtml(quote.player)+' — '+escapeHtml(quote.opponent)+'</b><div>Коэффициенты '+quote.oddsA.toFixed(2)+' / '+quote.oddsB.toFixed(2)+'. Модель ещё не вернула проверенную вероятность, поэтому EV не рассчитан и рекомендация не сформирована.</div><button type="button" class="additional-open" id="additionalFallbackOpen">Открыть матч</button></div>';
+        additionalContent.innerHTML='<div class="additional-empty"><b>'+escapeHtml(quote.player)+' — '+escapeHtml(quote.opponent)+'</b><div>Коэффициенты Winamax: '+quote.oddsA.toFixed(2)+' / '+quote.oddsB.toFixed(2)+'. Модель ещё не вернула проверенную вероятность, поэтому EV не рассчитан и рекомендация не сформирована.</div><button type="button" class="additional-open" id="additionalFallbackOpen">Открыть матч</button></div>';
         $('#additionalFallbackOpen').onclick=()=>{
           const card=document.querySelector('.match-card[data-match-index="'+Number(quote.matchIndex)+'"]');
           if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
