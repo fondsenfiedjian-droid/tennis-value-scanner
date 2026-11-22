@@ -66,6 +66,19 @@ export function validateTournamentIntentRecord(input, options = {}) {
   if (!targetMatchId) errors.push("missing_target_match_id");
   if (!TYPES.has(type)) errors.push("unknown_evidence_type");
   if (!SOURCE_TYPES.has(sourceType)) errors.push("invalid_source_type");
+  const statementTypes = new Set([
+    "explicit_preparation", "explicit_next_event_priority", "official_return_cautious",
+    "recent_injury_return", "explicit_title_focus", "home_event_commitment"
+  ]);
+  const calendarTypes = new Set(["major_event_soon", "schedule_bridge"]);
+  if (SOURCE_TYPES.has(sourceType)) {
+    if (statementTypes.has(type) && sourceType === "official_schedule") {
+      errors.push("source_type_not_appropriate_for_evidence_type");
+    }
+    if (calendarTypes.has(type) && !["official_schedule", "official_tour", "official_tournament"].includes(sourceType)) {
+      errors.push("source_type_not_appropriate_for_evidence_type");
+    }
+  }
   if (!sourceName) errors.push("missing_source_name");
   try {
     const url = new URL(sourceUrl);
