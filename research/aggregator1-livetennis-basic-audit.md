@@ -612,3 +612,6 @@ The aggregate mismatch list from run `45084782450` showed that many leading disc
 A conservative explicit alias list was added for repeated, recognizable tournament pairs from this audit, including Grand Slam venue suffixes, selected Masters/500 events, and the observed Challenger suffix convention. Synthetic tests confirm that a venue-suffixed Grand Slam name normalizes to the corresponding Sackmann event.
 
 This alias update is a normalization change only; it does not widen the 14-day date window or use fuzzy event matching. The next full run measures its effect on exact event agreement and on ambiguous/accepted links. Unfamiliar mismatch pairs remain diagnostic and are not auto-aliased.
+
+
+A potentially ambiguous `M15 Naples` / `M15 Naples FL` pair was deliberately **not** promoted to an alias: the city name alone is insufficient to rule out another Naples event. It remains a mismatch until country/venue or independent event-ID evidence confirms identity. This illustrates the policy: exact, well-supported aliases only; ambiguous city matches stay unresolved.
