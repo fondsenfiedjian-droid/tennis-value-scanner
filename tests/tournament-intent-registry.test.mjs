@@ -106,3 +106,15 @@ test("assessment rejects post-match timestamps even if records are supplied dire
   assert.equal(result.evidenceCount, 0);
   assert.equal(result.classification, "unknown");
 });
+
+test("rejects source categories that cannot substantiate the evidence type", () => {
+  const statementFromCalendar = validateTournamentIntentRecord({
+    ...base, type: "explicit_preparation", sourceType: "official_schedule"
+  });
+  assert.ok(statementFromCalendar.errors.includes("source_type_not_appropriate_for_evidence_type"));
+
+  const calendarFromSocialPost = validateTournamentIntentRecord({
+    ...base, type: "major_event_soon", sourceType: "verified_social"
+  });
+  assert.ok(calendarFromSocialPost.errors.includes("source_type_not_appropriate_for_evidence_type"));
+});
