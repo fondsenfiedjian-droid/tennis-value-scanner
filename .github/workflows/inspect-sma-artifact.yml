@@ -1,0 +1,35 @@
+name: Inspect frozen SMA research artifacts
+
+on:
+  push:
+    branches:
+      - research/tvs-research-lab-v1
+    paths:
+      - "research-lab/sma/**"
+      - ".github/workflows/inspect-sma-artifact.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download existing SMA artifact (no model rerun)
+        uses: actions/download-artifact@v4
+        with:
+          name: sackmann-serve-return-walkforward
+          path: /tmp/sma-artifact
+          repository: ${{ github.repository }}
+          run-id: 44918617777
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Print compact holdout and walk-forward metrics
+        run: node research-lab/sma/print-report-summary.mjs /tmp/sma-artifact
