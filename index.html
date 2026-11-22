@@ -1662,13 +1662,13 @@
     const decided=matches.filter(m=>m.winner==='W'||m.winner==='L');
     const record=list=>({wins:list.filter(m=>m.winner==='W').length,losses:list.filter(m=>m.winner==='L').length,decided:list.length});
     const last5=matches.slice(0,5).reverse(),form10=record(decided.slice(0,10)),form20=record(decided.slice(0,20));
-    const bySurface={hard:record(decided.filter(m=>m.surface==='hard')),clay:record(decided.filter(m=>m.surface==='clay')),grass:record(decided.filter(m=>m.surface==='grass')),carpet:record(decided.filter(m=>m.surface==='carpet'))};
+    const bySurface={hard:record(decided.filter(m=>m.surface==='hard')),clay:record(decided.filter(m=>m.surface==='clay')),grass:record(decided.filter(m=>m.surface==='grass'))};
     return {last5,form10,form20,bySurface,sample:matches.length,undecided:matches.length-decided.length,source:payload?.source||'Live Tennis API /history/matches',period:payload?.period||'2023-present',retrievedAt:payload?.retrievedAt||null};
   }
   function renderCompareHistory(history,label){
     if(!history)return '<section class="compare-dossier-block"><b>'+escapeHtml(label)+'</b><small>История недоступна. Основное сравнение Elo сохранено.</small></section>';
     const fmt=r=>r.wins+'–'+r.losses+' ('+r.decided+')';
-    const surfaces=[['hard','Хард'],['clay','Грунт'],['grass','Трава'],['carpet','Ковёр']];
+    const surfaces=[['hard','Хард'],['clay','Грунт'],['grass','Трава']];
     const rows=history.last5.map(m=>{const d=m.date&&Number.isFinite(Date.parse(m.date))?new Date(m.date).toLocaleDateString('ru-RU'):'дата не указана';const score=typeof m.score==='string'?m.score:JSON.stringify(m.score);return '<div class="compare-history-row"><b class="'+(m.winner==='W'?'history-win':m.winner==='L'?'history-loss':'')+'">'+m.winner+'</b><span>'+escapeHtml(d+' · '+m.tournament+' · '+(m.surface||'покрытие неизвестно')+' · '+m.opponent)+'</span><small>'+escapeHtml(score||'—')+'</small></div>';}).join('')||'<small>Нет матчей в доступной выборке.</small>';
     return '<section class="compare-dossier-block"><b>'+escapeHtml(label)+' · форма</b><div class="compare-form-grid"><span>Последние 10: '+fmt(history.form10)+'</span><span>Последние 20: '+fmt(history.form20)+'</span></div><div class="compare-surface-records">'+surfaces.map(([k,n])=>'<span>'+n+': '+fmt(history.bySurface[k])+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние матчи · '+history.last5.length+'/5</b>'+rows+'</div><small>Выборка: '+history.sample+' матчей · неопределённых: '+history.undecided+' · '+escapeHtml(history.period)+' · '+escapeHtml(history.source)+(history.retrievedAt?' · обновлено '+escapeHtml(new Date(history.retrievedAt).toLocaleString('ru-RU')):'')+'</small></section>';
   }
