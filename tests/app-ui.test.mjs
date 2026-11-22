@@ -427,6 +427,31 @@ test("mandatory recommendations and additional opportunities are separate plan t
   assert.doesNotMatch(html, /id="highestEv"/);
 });
 
+
+test("five-tab navigation routes to home, matches, independent comparison, statistics and More",()=>{
+  for(const id of ["navHome","navMatches","navCompare","navStats","navMore"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/id="compareView"/);
+  assert.match(html,/function showCompare\(\)/);
+  assert.match(html,/function setActiveNavigation\(activeId\)/);
+  assert.match(html,/id="moreModal"/);
+  assert.match(html,/id="moreSettings"/);
+  assert.match(html,/id="settingsOpen"/);
+  assert.doesNotMatch(html,/id="navSettings"/);
+});
+
+test("independent player comparison calls the current Elo API and displays both players",()=>{
+  assert.match(html,/id="compareNameA"/);
+  assert.match(html,/id="compareNameB"/);
+  assert.match(html,/id="compareIdA"/);
+  assert.match(html,/id="compareIdB"/);
+  assert.match(html,/function findScheduledPlayerId\(name\)/);
+  assert.match(html,/API\+'\/predict'/);
+  assert.match(html,/playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface/);
+  assert.match(html,/function renderCompareResult\(result,nameA,nameB,surface\)/);
+  assert.match(html,/вероятность победы/);
+  assert.match(html,/Справедливый кэф/);
+  assert.match(html,/Травмы, форма, H2H и статистика подачи пока не входят/);
+});
 test("bankroll tab and assets are fully removed from the application shell", () => {
   for (const obsolete of ["bankrollView", "navBankroll", "bankroll.js", "winamax-import.js", "TVSBankroll", "Банкролл"]) {
     assert.ok(!html.includes(obsolete), "application must not contain "+obsolete);
