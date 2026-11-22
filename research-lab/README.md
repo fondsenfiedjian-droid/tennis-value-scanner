@@ -186,3 +186,4 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 - Aggregator: design is specified, but implementation is gated on source audits and a frozen PFE control.
 
 The schema and contract are specifications at this stage. They have not yet been executed against SQLite or run through a JSON Schema validator in this branch.
+- ACE: v0.1 feature module and nine unit tests are implemented in `ace/`; the initial GitHub Actions run passed 9/9 tests. A subsequent accounting refinement is awaiting CI. Historical archive coverage and predictive value have not yet been measured.
