@@ -1656,7 +1656,7 @@
       const won=decided&&winner===(side==='p1'?1:2);
       const surface=String(row?.surface||'').trim().toLowerCase();
       const date=row?.scheduled_time||row?.date||row?.match_date||null;
-      const score=row?.score?.display||row?.score?.formatted||row?.score||'—';
+      const scoreValue=row?.score;const score=typeof scoreValue==='string'?scoreValue:Array.isArray(scoreValue?.games?.[0])&&Array.isArray(scoreValue?.games?.[1])?scoreValue.games[0].map((games,index)=>{const opponentGames=scoreValue.games[1][index];return Number.isInteger(games)&&Number.isInteger(opponentGames)?games+'-'+opponentGames:null;}).filter(Boolean).join(' ')||scoreValue?.display||scoreValue?.formatted||'—':scoreValue?.display||scoreValue?.formatted||'—';
       return {date,tournament:row?.tournament?.name||row?.tournament||row?.competition||'Турнир не указан',surface,opponent:opponent?.name||'Соперник не указан',score,winner:decided?(won?'W':'L'):'?'};
     }).filter(Boolean).sort((a,b)=>{const da=Date.parse(a.date||''),db=Date.parse(b.date||'');return (Number.isFinite(db)?db:0)-(Number.isFinite(da)?da:0);});
     const decided=matches.filter(m=>m.winner==='W'||m.winner==='L');
