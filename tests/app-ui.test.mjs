@@ -635,7 +635,7 @@ test("H2H meeting rows display the published final score",()=>{
   const end=html.indexOf("function renderCompareResult(",start);
   assert.ok(start>=0&&end>start);
   const sandbox={escapeHtml:value=>String(value)};
-  vm.runInNewContext(html.slice(start,end)+"\\nglobalThis.render=renderCompareH2H;",sandbox);
+  vm.runInNewContext(html.slice(start,end)+"\nglobalThis.render=renderCompareH2H;",sandbox);
   const payload={players:{p1:{name:"Novak Djokovic"},p2:{name:"Carlos Alcaraz"}},totals:{p1_wins:2,p2_wins:1,meetings:3},meetings:[{date:"2026-01-01",winner:1,score:"6-4 7-6(3)",outcome:"completed"}]};
   const rendered=sandbox.render(payload,"Novak Djokovic","Carlos Alcaraz");
   assert.match(rendered,/6-4 7-6\\(3\\)/);
