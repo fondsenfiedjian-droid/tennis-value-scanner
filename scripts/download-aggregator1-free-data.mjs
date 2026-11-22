@@ -2,7 +2,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 
@@ -18,7 +18,6 @@ for(let i=0;i<args.length;i++){
 }
 if(!years.length||years.some(y=>!Number.isInteger(y)||y<2021||y>2026))throw new Error("Years must be between 2021 and 2026");
 const root=resolve(outDir);
-const sources={valuebetennis:[],tennisMyLife:[]};
 const manifest={createdAt:new Date().toISOString(),years,files:[],errors:[]};
 const safePath=value=>{
   const normalized=String(value).replace(/\\/g,"/");
@@ -61,22 +60,22 @@ if(index?.files){
     if(includeQuali)wanted.add("atp_quali/"+year+"_atp_quali.csv");
   }
   const selected=index.files.filter(item=>{
-    const n=String(item.name||item.path||"").replace(/^\\//,"");
+    const n=String(item.name||item.path||"").replace(/^\//,"");
     return wanted.has(n)||wanted.has(basename(n));
   });
-  const found=new Set(selected.map(item=>String(item.name||item.path||"").replace(/^\\//,"")));
+  const found=new Set(selected.map(item=>String(item.name||item.path||"").replace(/^\//,"")));
   for(const target of wanted)if(![...found].some(n=>n===target||basename(n)===basename(target)))manifest.errors.push("TennisMyLife index missing expected file: "+target);
   for(const item of selected){
     const url=String(item.url||"");
     const name=safePath(item.name||item.path||"");
-    if(!/^https:\\/\\//i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
+    if(!/^https:\/\/\//i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
     try{await save(url,"tennismylife/"+name,"TennisMyLife");}
     catch(e){manifest.errors.push(String(e));console.error("FAILED "+String(e));}
   }
 }
 manifest.files.sort((a,b)=>a.source.localeCompare(b.source)||a.path.localeCompare(b.path));
 await mkdir(root,{recursive:true});
-await writeFile(join(root,"manifest.json"),JSON.stringify(manifest,null,2)+"\\n");
+await writeFile(join(root,"manifest.json"),JSON.stringify(manifest,null,2)+"\n");
 console.log("\\nSaved "+manifest.files.length+" files to "+root);
 console.log("Manifest: "+join(root,"manifest.json"));
 if(manifest.errors.length){console.error(manifest.errors.length+" download/index warnings; inspect manifest.json");process.exitCode=1;}
