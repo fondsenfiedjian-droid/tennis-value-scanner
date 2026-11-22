@@ -1029,6 +1029,91 @@ export default {
       }
     }
 
+    if (path === "/player-history") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const rawPlayerId = url.searchParams.get("id") || "";
+      if (!/^\\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
+        return response({ error: "id must be a positive integer player identifier" }, 400);
+      }
+      const playerId = String(Number(rawPlayerId));
+      const rawLimit = url.searchParams.get("limit") || "20";
+      if (!/^\\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 50) {
+        return response({ error: "limit must be an integer from 1 to 50" }, 400);
+      }
+      const limit = Number(rawLimit);
+      const tour = (url.searchParams.get("tour") || "").trim().toLowerCase();
+      if (tour && !["atp", "wta", "challenger", "itf", "juniors"].includes(tour)) {
+        return response({ error: "tour must be atp, wta, challenger, itf or juniors" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request,
+          "/__player-history/v1/" + playerId + "/" + limit + "/" + (tour || "all"));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const params = new URLSearchParams({
+          player: playerId,
+          draw: "singles",
+          limit: String(limit),
+          offset: "0"
+        });
+        if (tour) params.set("tour", tour);
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/history/matches?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis history returned invalid JSON", accessStatus: "invalid_payload" }, 502);
+        }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "basic_history_not_entitled"
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 429 ? "rate_limited"
+            : upstream.status === 400 ? "invalid_history_query"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Live Tennis completed-match history request failed",
+            playerId,
+            accessStatus,
+            upstreamStatus: upstream.status
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.data)) {
+          return response({ error: "Live Tennis history returned an unexpected payload", playerId, accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = {
+          playerId,
+          source: "Live Tennis API /history/matches",
+          period: "2023-present",
+          draw: "singles",
+          tour: tour || null,
+          retrievedAt: new Date().toISOString(),
+          count: body.data.length,
+          data: body.data,
+          meta: body.meta && typeof body.meta === "object" ? body.meta : null,
+          accessStatus: "available"
+        };
+        const headers = { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not retrieve completed-match history", playerId, accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/player-stats") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
