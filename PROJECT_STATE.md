@@ -1138,3 +1138,13 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Search results are rendered as selectable options with escaped player names; no search request is made until at least two characters are entered.
 - Added dedicated frontend regression checks for both search fields, debounce/stale-response handling, selection-to-ID mapping and manual fallback.
 - Existing Elo comparison still uses the same `/predict` endpoint. No Elo, probability, EV, PFE, reliability or production logic changed. The feature remains isolated on the TVS 2.0 draft PR branch; no merge or Production deployment.
+
+
+### 2026-11-22 — Comparison dossier API access and tier audit
+- Verified the official Live Tennis API reference before expanding comparison analytics.
+- FREE `GET /players/{playerId}` includes official singles ranking, tour/country metadata, profile completeness and cached profile statistics; the existing `/predict` flow already fetches this profile to calculate Elo. The next safe implementation should expose these fields from the same profile response, avoiding duplicate quota use.
+- `GET /players/{playerId}/stats` is PRO-only; its completed-match record, surface splits and recent-match list cannot be assumed available on the current FREE plan. Its `serve_return` block is ULTRA-only. The existing Worker proxy must report 403 as a plan restriction, never as zero stats.
+- Provider W/L and recent-match aggregates cover its own completed singles-match corpus from 2023 onward, not a complete career record. Any future display must show the period, sample size and source coverage.
+- Injury/medical status is not proven by the current FREE profile response. Withdrawals, missing records and stale ratings must not be re-labelled as injuries.
+- Durable decisions and staged implementation order recorded in `docs/TENNIS_VALUE_SCANNER_2_UI_SPEC.md`.
+- No production code, model calculations, Worker deployment or API subscription changed. PR #167 remains draft and isolated.
