@@ -433,6 +433,24 @@
   </div>
 </div>
 
+<script>
+  // Surface startup failures instead of leaving the initial schedule loader on screen.
+  function showScheduleStartupError(message){
+    const list=document.querySelector('#matchList');
+    if(!list||!list.textContent.includes('Загружаю расписание матчей'))return;
+    const panel=document.createElement('div');
+    panel.className='panel empty';
+    const title=document.createElement('strong');
+    title.textContent='Ошибка запуска приложения';
+    const detail=document.createElement('div');
+    detail.className='muted';
+    detail.textContent=String(message||'Неизвестная ошибка JavaScript');
+    panel.append(title,detail);
+    list.replaceChildren(panel);
+  }
+  window.addEventListener('error',event=>showScheduleStartupError(event.message||'Ошибка JavaScript при загрузке скрипта'));
+  window.addEventListener('unhandledrejection',event=>showScheduleStartupError(event.reason?.message||event.reason||'Ошибка асинхронной операции'));
+</script>
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
