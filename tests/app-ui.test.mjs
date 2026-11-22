@@ -638,7 +638,7 @@ test("H2H meeting rows display the published final score",()=>{
   vm.runInNewContext(html.slice(start,end)+"\nglobalThis.render=renderCompareH2H;",sandbox);
   const payload={players:{p1:{name:"Novak Djokovic"},p2:{name:"Carlos Alcaraz"}},totals:{p1_wins:2,p2_wins:1,meetings:3},meetings:[{date:"2026-01-01",winner:1,score:"6-4 7-6(3)",outcome:"completed"}]};
   const rendered=sandbox.render(payload,"Novak Djokovic","Carlos Alcaraz");
-  assert.match(rendered,/6-4 7-6\\(3\\)/);
+  assert.match(rendered,/6-4 7-6\(3\)/);
 });
 test("Compare loads both histories and H2H independently after Elo, and rejects mismatched H2H identities",()=>{
   assert.match(html,/Promise\.allSettled\(\[/);
