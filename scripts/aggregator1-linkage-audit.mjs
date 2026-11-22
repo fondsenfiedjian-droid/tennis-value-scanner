@@ -15,7 +15,7 @@ const surface=value=>{
   return null;
 };
 const tourney=value=>{
-  const s=normalize(value);
+  const s=normalize(value).replace(/^(?:atp|wta)(?:125|250|500|1000)?/,"");
   const aliases={
     rolandgarros:"frenchopen",frenchopen:"frenchopen",rg:"frenchopen",
     australianopen:"australianopen",ao:"australianopen",
