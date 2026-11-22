@@ -86,7 +86,7 @@ test("odds diagnostics identify player, tournament, stale quote and incomplete-p
   const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), tournament_name: "ATP Finals" };
   const diagnostic = quotes => getOddsMatching(quotes).oddsMatchDiagnostic(match).code;
   assert.equal(diagnostic([]), "no_provider_data");
-  assert.equal(diagnostic([makeWinamaxQuote({ homeTeam: "Jannik Sinner", awayTeam: "Daniil Medvedev" })]), "players_mismatch");
+  assert.equal(diagnostic([makeWinamaxQuote({ homeTeam: "Jannik Sinner", awayTeam: "Daniil Medvedev", eventName: "Jannik Sinner - Daniil Medvedev" })]), "players_mismatch");
   assert.equal(diagnostic([makeWinamaxQuote({ competition: "WTA Finals" })]), "tournament_mismatch");
   assert.equal(diagnostic([makeWinamaxQuote({ scrapedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() })]), "stale_quotes");
   assert.equal(diagnostic([makeWinamaxQuote({ outcome: "home" })]), "incomplete_pair");
