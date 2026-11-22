@@ -1215,3 +1215,14 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Netlify Deploy Preview hostnames beginning `deploy-preview-` now call the Preview Worker; normal Production hostnames continue calling the Production Worker.
 - Added regression assertions for the Preview config, branch-locked workflow, API routing and cache namespace separation. No secrets or API key values are stored in GitHub files.
 - Not deployed: GitHub repository must first receive the scoped `CLOUDFLARE_PREVIEW_API_TOKEN` secret. No merge, Production deploy, API quota use or Elo/model change.
+
+
+## 2026-11-22 — TVS 2.0 preview deployment
+
+- Draft PR: #167, branch `ui/tennis-value-scanner-2`; do not merge without explicit user approval.
+- Netlify Deploy Preview: https://deploy-preview-167--fascinating-paprenjak-1aa9b3.netlify.app
+- Isolated Preview Worker: `tennis-value-api-preview`, configured by `wrangler.preview.toml` with its own `CACHE_NAMESPACE`.
+- `.github/workflows/deploy-cloudflare-preview.yml` deploys the isolated Preview Worker on pushes to `ui/tennis-value-scanner-2` and remains manually dispatchable.
+- The Deploy Preview frontend routes to the isolated Preview Worker; production frontend continues to use `tennis-value-api`.
+- Preview deployment run `45028873975` completed successfully for branch head `67cf259e1bf15cd1549b1db89e9440ea006ab11e`.
+- Production Worker and production Netlify site have not been changed by this preview work.
