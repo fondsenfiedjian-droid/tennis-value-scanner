@@ -166,3 +166,21 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 - No paid data runs or plan upgrades without approval.
 - No changes to the production PFE model or live EV calculation.
 - No claims of model profitability based on accuracy or Brier score.
+
+## Current research documents
+
+- `BASELINE-INVENTORY.md`: existing repository research assets and gaps.
+- `PFE-CONTROLS.md`: separates the live Worker baseline from offline historical Elo experiments.
+- `DATA-FEASIBILITY.md`: source availability and constraints for ACE, SMA and HFA.
+- `schema.sql`: normalized SQLite ledger schema.
+- `contracts/system-output.schema.json`: standard SAS output contract.
+
+## Current research readiness
+
+- PFE: live and offline controls must be reported separately.
+- SMA: an existing walk-forward experiment and tests are present; inspect the latest report artifact before rebuilding.
+- ACE: only limited calendar-based workload candidates are currently defensible; true recovery hours and verified injury data are not established.
+- HFA: no validated timestamped evidence corpus is established; default to insufficient data / abstention.
+- Aggregator: design is specified, but implementation is gated on source audits and a frozen PFE control.
+
+The schema and contract are specifications at this stage. They have not yet been executed against SQLite or run through a JSON Schema validator in this branch.
