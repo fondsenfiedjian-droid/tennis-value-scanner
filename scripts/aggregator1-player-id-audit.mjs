@@ -27,6 +27,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
         names.get(full).add(id);
       }
     }
+    if(!validRows)throw new Error("No valid "+tour+" player registry rows; columns: "+Object.keys(rows[0]||{}).join(","));
     registryByTour[tour]={names,rows:rows.length,validRows};
     registryNameCollisions[tour]=[...names.values()].filter(ids=>ids.size>1).length;
   }
@@ -37,6 +38,8 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     if(!VBT.test(basename(file.filename)))throw new Error("Unexpected Valuebetennis filename: "+basename(file.filename));
     const parsedRows=parseCsv(file.content,{delimiter:";"});
     if(!valuebetColumns.length)valuebetColumns=Object.keys(parsedRows[0]||{});
+    const required=["genre","joueur1_id","joueur1","joueur2_id","joueur2"];
+    if(required.some(key=>!valuebetColumns.includes(key)))throw new Error("Valuebetennis player schema is missing required columns: "+required.filter(key=>!valuebetColumns.includes(key)).join(","));
     for(const row of parsedRows){
       const tour=String(row.genre??"").trim().toUpperCase();
       if(!["ATP","WTA"].includes(tour))continue;
