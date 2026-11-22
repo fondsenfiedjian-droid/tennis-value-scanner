@@ -114,3 +114,17 @@ Implementation order for the comparison dossier:
 4. Treat H2H, injury status, motivation and protected ranking as independent evidence modules. No empty value may be converted into a neutral score or a fabricated zero.
 
 The current implementation remains on the draft branch. This audit changes no production endpoint, prediction calculation or API subscription.
+
+
+## Historical-form access boundary — verified 2026-11-22
+
+The current FREE API key must be treated as a current-state source, not a dependable historical-form source:
+
+- FREE includes live/upcoming matches, player directory/profile and fixtures. The normal FREE quota is 100 requests/day and 30/minute.
+- The provider documents a limited history taste allowance of 20 history-endpoint calls per calendar month for FREE keys. This is a trial allowance, not a production data entitlement. Do not spend it in routine app refreshes, player autocomplete, or automatic comparison rendering.
+- BASIC unlocks completed-match listings and per-match point-by-point tapes from 2023 onward, plus archive results/H2H for 1968–2022.
+- PRO unlocks /players/{playerId}/stats, including recent completed matches, W/L records, surface splits and set-based records over the provider's 2023+ completed singles corpus. ULTRA alone adds serve_return aggregates.
+- Therefore, on the current FREE configuration, Compare must continue to show Elo and FREE profile metadata without attempting player-stats/history calls. Do not add a simulated last-five form from scheduled matches, and do not translate a 403 into zeros.
+- If the provider later grants PRO/BASIC access, enable the relevant data modules only after a capability check confirms access. Cache responses, show the coverage window and sample size, and preserve null for empty samples.
+
+This is a tier-boundary and quota-protection decision. It does not authorize a subscription purchase, consume the 20-call history allowance, or change the production model.
