@@ -355,3 +355,40 @@ The latest full audit (`45081305445`) completed successfully with the new ATP/WT
 ### Decision
 
 Do not create canonical match links from aggregate percentages alone. Next inspect the Valuebetennis category blanks and quantify why candidate matches are not accepted (zero candidate vs multiple candidates, event-name disambiguation, and date offset). Then build a versioned match registry that stores source-native IDs and confidence/ambiguity state, rather than overwriting source identities. Keep the main model training blocked until tier coverage, date semantics, and licensing are documented.
+
+
+## 16. Reasons for unmatched rows and diagnostic test coverage — 2026-11-22
+
+The latest expanded audit run `45082493444` completed successfully after adding explicit unmatched-row reason counters. The totals reconcile exactly:
+
+| Reason | Rows without an accepted unique link |
+|---|---:|
+| Player pair absent from Sackmann under exact normalized full-name matching | 178,460 |
+| Same player pair exists, but no matching surface | 2,870 |
+| Same player pair and surface exist, but all candidate dates are outside ±14 days | 8,232 |
+| Invalid/missing player pair in Valuebetennis | 5 |
+| **Total no-candidate rows** | **189,567** |
+
+These are diagnostic classes, not proof that all 178,460 matches are absent from the archive. Exact normalized full-name matching can miss aliases, initials, alternate transliterations, name changes, and source-specific spellings. The 2,870 surface mismatches may include surface coding inconsistencies. The 8,232 date-window misses need separate inspection of date semantics and source event weeks before changing the window.
+
+The latest full audit retained the same conservative linkage totals: 280,698 unique links (58.65%), 8,341 ambiguous candidates, and 189,567 no-candidate rows. Accepted links have median date offset 2 days and p90 4 days; the ±14-day bounds are a guardrail, not a match-date equivalence.
+
+### Code and validation
+
+- The aggregate audit now separates pair-absent, surface-absent, date-window-miss, and invalid-player-pair cases.
+- The diagnostic fields are emitted at aggregate category and tour × category level; no player names, individual match rows, or raw CSVs are exported.
+- Synthetic fixtures now cover unique matches, tournament-based ambiguity resolution, no matching player pair, date-window misses, unknown surfaces, and malformed player pairs.
+- Latest research fixture workflow `45082521630` completed successfully.
+- Latest full data audit workflow `45082493444` completed successfully.
+- Only aggregate report and source manifest are retained as the workflow artifact; raw data remain temporary.
+
+### Next data-engineering step
+
+Build an explicit player identity crosswalk before changing match matching:
+1. Preserve each source-native player ID and source-native name.
+2. Use independently supported identifiers (for example, ATP/WTA registry IDs and birth dates where licensed and available) to map aliases.
+3. Never infer a player ID from name similarity alone when multiple candidates exist.
+4. Keep unresolved and conflicting aliases in a review queue.
+5. Re-run the same match audit with the crosswalk and report how many links are genuinely added, not merely re-labelled.
+
+Do not use TennisMyLife raw files in the training corpus without permission for the intended retention and model-training use. Do not bulk-ingest Live Tennis API archive data until written permission on retention/training is obtained. Sackmann remains CC BY-NC-SA 4.0 and must stay separately attributed and non-commercial unless the rights holder grants otherwise.
