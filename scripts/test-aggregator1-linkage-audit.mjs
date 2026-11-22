@@ -5,13 +5,13 @@ const valuebet = [
   {
     filename: "valuebetennis-matchs-2025.csv",
     content: [
-      "match_id;date;tournoi;genre;surface;joueur1;joueur2",
-      "v1;2025-01-12 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal",
-      "v2;2025-01-13 14:00:00;Australian Open;atp;dur;Carlos Alcaraz;Jannik Sinner",
-      "v3;2025-02-01 14:00:00;WTA 500 Abu Dhabi;wta;dur intérieur;Emma Raducanu;Ons Jabeur",
-      "v4;2025-03-10 14:00:00;Miami Open;atp;dur;Player C;Player D",
-      "v5;2025-04-10 14:00:00;;atp;dur;Player E;Player F",
-      "v6;2025-04-11 14:00:00;Unknown Event;atp;wood;Player G;Player H"
+      "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+      "v1;2025-01-12 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem",
+      "v2;2025-01-13 14:00:00;Australian Open;atp;dur;Carlos Alcaraz;Jannik Sinner;Main tour",
+      "v3;2025-02-01 14:00:00;WTA 500 Abu Dhabi;wta;dur intérieur;Emma Raducanu;Ons Jabeur;Main tour",
+      "v4;2025-03-10 14:00:00;Miami Open;atp;dur;Player C;Player D;Main tour",
+      "v5;2025-04-10 14:00:00;;atp;dur;Player E;Player F;",
+      "v6;2025-04-11 14:00:00;Unknown Event;atp;wood;Player G;Player H;ITF"
     ].join("\n")
   }
 ];
@@ -51,4 +51,9 @@ assert.equal(result.totals.ambiguous, 1);
 assert.equal(result.totals.linkagePct, 50);
 assert.equal(result.byTour.ATP.linkedUnique, 2);
 assert.equal(result.byTour.WTA.linkedUnique, 1);
+assert.equal(result.byTourCategory["ATP::Grand Chelem"].linkedUnique, 1);
+assert.equal(result.byTourCategory["ATP::Main tour"].linkedUnique, 1);
+assert.equal(result.byTourCategory["WTA::Main tour"].linkedUnique, 1);
+assert.equal(result.byTourCategory["ATP::ITF"].unknownSurface, 1);
+assert.equal(result.byCategory["Main tour"].rows, 3);
 console.log("Aggregator 1 linkage audit fixtures: PASS");
