@@ -30,22 +30,25 @@ Suggested tokens:
 - muted: #9DA3AE
 - border: #353640
 
-## Approved home-screen composition
+## Approved home-screen composition — visual reference confirmed 2026-11-22
 
-1. Compact header: product name/version, dynamic API status, settings entry.
-2. Daily plan summary:
-   - count of strict/system-qualified recommendations;
-   - total recommended stake amount;
-   - bankroll value only when explicitly configured and available;
-   - total planned exposure / bankroll percentage only when both inputs are valid.
-3. Primary section: **Обязательные ставки** (system-qualified recommendations).
-   Each item should show match, selected side, bookmaker, current quote and freshness, model probability, EV, confidence/data-quality indicators, and recommended stake amount when safely calculable.
-4. Secondary section: **Дополнительные возможности** (watchlist, not yet strict-qualified).
-   Each item must state why it is not in the primary plan and what confirmation/condition is missing.
-5. Compact system/data status and refresh control.
-6. Mobile bottom navigation: Главная, Матчи, Сравнение, Статистика, Ещё. The last item contains Лаборатория and Архив/Система.
+The user's supplied mobile screenshot is the authoritative visual reference. Preserve its composition, order, density and two-level navigation; do not replace it with a generic table/dashboard.
 
-The former separate “Ставка дня” and “EV дня / рисковый шанс” cards must not remain as duplicate top-level destinations. The best strict-qualified candidate may be highlighted within the primary plan, but the plan is the central object.
+1. Header: tennis-ball mark and stacked TENNIS VALUE SCANNER wordmark, short subtitle, live API status and settings gear.
+2. Date strip: selected date on the left and three controls — Сегодня, Завтра, Все.
+3. **СТАВКА ДНЯ** hero carousel at the top. Each card represents the currently selected best strict-qualified candidate and shows:
+   - portrait of the player whose side is selected for the bet (the portrait changes with the selected player; Carlos Alcaraz is not a permanent brand image);
+   - match, tournament and start time;
+   - selected side, odds, EV, reliability and a details action;
+   - manual previous/next controls and a position indicator when more than one candidate exists.
+   No automatic rotation unless separately approved. If no trustworthy player portrait is available from the data source, use a neutral fallback rather than showing the wrong player's image.
+4. **ПЛАН СТАВОК НА СЕГОДНЯ** summary immediately below the hero: number of mandatory bets, total stake amount, bankroll risk and watchlist count. Do not invent stake sizes, bankroll or exposure; show unavailable/not configured states when not supported.
+5. **Обязательные ставки** list with every strict-qualified recommendation, match, bookmaker, selected side, odds, model probability, EV and stake only when safely calculated.
+6. **Дополнительные возможности** watchlist, visually distinct from mandatory bets, with the missing qualification reason.
+7. Upper quick-navigation tiles in this exact order: Матчи, Сравнение, Лаборатория, Статистика, Архив и система.
+8. Fixed bottom navigation in this exact order: Главная, Матчи, Сравнение, Статистика, Настройки.
+
+The upper quick-navigation row and fixed bottom navigation are both intentional parts of the approved screenshot. Лаборатория and Архив/Система are quick destinations above the bottom bar, not replacements for the bottom-bar Настройки item.
 
 ## Recommendation semantics and financial safety
 
@@ -61,11 +64,12 @@ The former separate “Ставка дня” and “EV дня / рисковы�
 
 ## Navigation / information architecture
 
-- Главная — daily plan and concise data status.
+- Главная — the approved daily-pick home screen.
 - Матчи — all relevant upcoming matches, including matches without odds, with explicit data/odds states.
 - Сравнение — independent two-player dossier, not dependent on a scheduled match or bookmaker odds.
 - Статистика — prediction quality and, where properly recorded, simulated/real betting performance; keep these categories separate.
-- Ещё — Лаборатория and Архив/Система.
+- Настройки — opens the existing settings modal.
+- The upper quick-navigation row additionally opens Лаборатория and Архив/Система.
 
 ## Migration constraints
 
@@ -89,12 +93,12 @@ This document records the approved product direction. It does not authorize chan
 
 ## Player comparison view — implementation details
 
-- The bottom navigation has five destinations: Главная, Матчи, Сравнение, Статистика, Ещё.
+- The fixed bottom navigation has five destinations: Главная, Матчи, Сравнение, Статистика, Настройки. The upper quick-navigation row provides Матчи, Сравнение, Лаборатория, Статистика, Архив и система.
 - Сравнение is independent of a scheduled match and bookmaker market. It compares two player profiles through the existing `/predict` endpoint using the active Elo model; it does not change the production prediction model.
 - Each side accepts a player name and Live Tennis API player ID. When the player appears in the currently loaded schedule, the interface can resolve the ID from that schedule by name. For players outside the loaded schedule, the user must provide the ID manually.
 - The result shows both Elo ratings, model win probabilities, fair odds, rating type and rating freshness. Surface can be selected; the default is the general Elo profile without a surface filter.
 - The screen explicitly states that injuries, recent form, H2H and serve statistics are not yet included. No bookmaker EV or bet recommendation is generated by this comparison view.
-- The five bottom-navigation destinations are independent screens. Статистика contains prediction-quality and summary metrics; Ещё contains the laboratory, full archive tools and system/settings controls. The archive list, import/export and result-check actions are mounted under Ещё while the model calibration panel remains under Статистика.
+- The bottom bar remains five destinations with Настройки opening the settings modal. The upper quick-navigation tiles open the independent Матчи, Сравнение, Лаборатория, Статистика and Архив/Система destinations. The archive list, import/export and result-check actions remain in the archive/system destination while the model calibration panel remains under Статистика.
 
 
 ## Comparison dossier — data-access audit (2026-11-22)
