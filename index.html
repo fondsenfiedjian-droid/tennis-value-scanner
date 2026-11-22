@@ -504,7 +504,7 @@
   const open=()=>{populateSettingsForm();modal.classList.add('show');};
   const closeMore=()=>$('#moreModal').classList.remove('show');
   const cancelSettings=()=>{applySkin(activeSkin);$('#skinSelect').value=activeSkin;close();};
-  $('#settingsOpen').onclick=open;
+  if($('#settingsOpen'))$('#settingsOpen').onclick=open;
   $('#moreSettings').onclick=()=>{closeMore();open();};
   $('#closeMore').onclick=closeMore;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
@@ -2021,14 +2021,16 @@
     box.classList.toggle('has-pick',!!best);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.';
     if(!best){
-      box.innerHTML='<div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Пока нет рекомендаций, прошедших все строгие критерии.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.innerHTML='<div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Сегодня нет ставки, прошедшей строгий отбор.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+      const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
       const selectedPhoto=(function(){const players=best.match?.players||{};const all=[players.p1||best.match?.player1,players.p2||best.match?.player2].filter(Boolean);const selected=all.find(p=>playerNamesMatch(playerName(p),best.player));const raw=selected?.photo_url||selected?.image_url||selected?.photo||selected?.image||selected?.avatar||selected?.picture||'';return typeof raw==='string'&&/^https?:\/\//i.test(raw)?raw:'';})();
       const initials=String(best.player||'').split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase();
       box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><span class="best-bet-value-pill">Высокая ценность</span><div class="best-bet-navigation"><span class="best-bet-counter">'+(bestBetCarouselIndex+1)+' / '+bestBets.length+'</span>'+(bestBets.length>1?'<button type="button" id="bestBetPrev" aria-label="Предыдущая рекомендация">‹</button><button type="button" id="bestBetNext" aria-label="Следующая рекомендация">›</button>':'')+'</div></div><button type="button" id="bestBetOpen" class="best-bet-open"><span class="daily-pick-photo">'+(selectedPhoto?'<img src="'+escapeHtml(selectedPhoto)+'" alt="'+escapeHtml(best.player)+'" loading="lazy">':'<span class="daily-pick-initials">'+escapeHtml(initials)+'</span>')+'</span><span class="daily-pick-info"><span class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</span><span class="daily-pick-event">'+escapeHtml(best.match?.tournament?.name||best.match?.tournament||best.match?.competition||'Турнир не указан')+' · '+(matchDate(best.match)?matchDate(best.match).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время не указано')+'</span><span class="daily-pick-metrics"><span>Выбор<b>'+escapeHtml(best.player)+'</b></span><span>Коэффициент<b class="daily-odds">'+best.odds.toFixed(2)+'</b></span><span>EV<b class="daily-ev">+'+best.ev.toFixed(1)+'%</b></span></span><span class="daily-pick-confidence">◈ Надёжность: '+best.reliabilityScore+'/100</span></span></button><div class="best-bet-footnote">Динамическая карточка выбранной ставки. '+(bestBets.length>1?'Перелистывай кандидатов стрелками.':'')+' Размер ставки не рассчитывается без заданного банка и правила управления суммой.</div>';
       const mandatoryList=$('#mandatoryBetsContent');
       if(mandatoryList)mandatoryList.innerHTML=bestBets.length?bestBets.map(bet=>'<article class="mandatory-bet-row"><div class="mandatory-bet-match"><b>'+escapeHtml(bet.player)+' — '+escapeHtml(bet.opponent)+'</b><small>'+escapeHtml(bet.bookmaker||'Winamax')+' · Победа '+escapeHtml(bet.player)+'</small></div><div><small>Коэф.</small><b>'+bet.odds.toFixed(2)+'</b></div><div><small>Вероятность</small><b>'+bet.probability.toFixed(1)+'%</b></div><div><small>EV</small><b class="daily-ev">+'+bet.ev.toFixed(1)+'%</b></div><div class="mandatory-stake"><small>Сумма</small><b>—</b></div></article>').join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
-      const summaryWatch=$('#additionalCountSummary');if(summaryWatch)summaryWatch.textContent=String(Math.min(3,evBets.length-bestBets.length));
+      const summaryWatch=$('#additionalCountSummary');if(summaryWatch)summaryWatch.textContent='—';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
       const openDetails=()=>{
         const card=document.querySelector('.match-card[data-match-index="'+Number(best.matchIndex)+'"]');
@@ -2058,7 +2060,7 @@
       return bPass-aPass||b.reliabilityScore-a.reliabilityScore||b.ev-a.ev;
     }).slice(0,3);
     additionalBox.classList.toggle('has-items',additionalCandidates.length>0);
-    $('#additionalCount').textContent=String(additionalCandidates.length);
+    $('#additionalCount').textContent=String(additionalCandidates.length);const summaryWatchFinal=$('#additionalCountSummary');if(summaryWatchFinal)summaryWatchFinal.textContent=String(additionalCandidates.length);
     if(additionalCandidates.length){
       additionalContent.innerHTML=additionalCandidates.map((candidate,index)=>{
         const date=matchDate(candidate.match);
