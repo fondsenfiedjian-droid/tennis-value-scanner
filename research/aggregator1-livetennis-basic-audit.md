@@ -551,3 +551,27 @@ The duplicate audit was extended to compare detected score/result and winner col
 The 54 groups contain 108 records (70 ATP, 38 WTA). All have distinct source match IDs; there are still zero repeated match_id groups. The result/winner conflict flags mean that a fingerprint match alone is not sufficient to collapse the records. They may indicate inconsistent source rows, corrections, or edge cases in the composite key. The audit does not choose a preferred record.
 
 Next, inspect which source columns were detected for score and winner comparison, then refine the review logic to distinguish a true result contradiction from alternate score formatting, player-side orientation, or missing fields. Keep every candidate pair quarantined until that distinction is resolved.
+
+
+## 23. Tournament-name agreement among accepted match links — 2026-11-22
+
+The accepted match links were re-audited for tournament-name agreement. Full audit run `45084636545` succeeded.
+
+| Accepted-link event comparison | Rows |
+|---|---:|
+| Unique accepted match links | 280,698 |
+| Exact normalized tournament-name match | 182,131 (64.9%) |
+| Tournament-name mismatch | 98,567 (35.1%) |
+| Source event missing | 0 |
+| Sackmann event name unavailable | 0 |
+
+This is a significant unresolved quality issue. The current algorithm accepts a single player-pair/surface/date candidate even if the tournament names differ. A mismatch may be a legitimate alias, a naming convention difference, or a false match to another event in the 14-day window. It must not be silently treated as correct.
+
+Decision:
+- Keep the 280,698 links as candidates, not all final canonical links.
+- Before promoting any link to accepted canonical match status, diagnose tournament-name mismatches.
+- Add a top aggregate list of normalized tournament-name mismatch pairs (without player names, match IDs, or row-level records) to identify systematic alias patterns.
+- Expand explicit tournament aliases only when supported by repeated, unambiguous evidence.
+- Re-run linkage and measure how many mismatches are resolved, how many candidates become ambiguous, and whether any links are rejected.
+
+This check reinforces why the 58.65% linkage rate is a candidate-linkage statistic, not a verified match-level accuracy score.
