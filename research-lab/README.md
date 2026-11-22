@@ -21,7 +21,7 @@ Status: isolated research specification. This directory is not imported by the p
 | PFE | Player Fundamental Evaluation | Baseline player strength and probability | calibrated pre-match probability |
 | ACE | Adaptive Condition Evaluation | Workload, recovery, match density, verified injury/retirement signals | directional correction signal |
 | SMA | Serve & Matchup Analysis | Serve, return, aces, double faults, break-point and style matchup features | directional correction signal |
-| HFA | Human Factor Analysis | Evidence-backed motivation, pressure, concentration and experience signals | directional correction signal |
+| HFA | Human Factor Analysis | Evidence-backed, timestamped human-context observations | context/evidence; directional only after validation |
 | AGG | Aggregator | Reliability-aware combination of SAS outputs | final experimental probability or abstention |
 | MVE | Market & Value Engine | Compare experimental probability with bookmaker prices | fair odds, no-vig comparison, EV diagnostics |
 
@@ -172,15 +172,17 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 - `BASELINE-INVENTORY.md`: existing repository research assets and gaps.
 - `PFE-CONTROLS.md`: separates the live Worker baseline from offline historical Elo experiments.
 - `DATA-FEASIBILITY.md`: source availability and constraints for ACE, SMA and HFA.
+- `ACE-SPEC-v0.1.md`: leakage-safe calendar workload features, coverage and acceptance tests.
+- `HFA-PROTOCOL-v0.1.md`: source registry, evidence tiers and blinded coding rules.
 - `schema.sql`: normalized SQLite ledger schema, append-only result revisions and immutable forecast / quote snapshots.
 - `contracts/system-output.schema.json`: standard SAS output contract.
 
 ## Current research readiness
 
 - PFE: live and offline controls must be reported separately.
-- SMA: an existing walk-forward experiment and tests are present; inspect the latest report artifact before rebuilding.
-- ACE: only limited calendar-based workload candidates are currently defensible; true recovery hours and verified injury data are not established.
-- HFA: no validated timestamped evidence corpus is established; default to insufficient data / abstention.
+- SMA: an existing walk-forward experiment and tests are present; retrieve and inspect the latest workflow report before rebuilding.
+- ACE: v0.1 specification exists; implementation and historical coverage audit are pending. Only calendar workload candidates are currently defensible; true recovery hours and verified injury data are not established.
+- HFA: v0.1 evidence protocol exists; no validated timestamped evidence corpus is established; default to insufficient data / abstention.
 - Aggregator: design is specified, but implementation is gated on source audits and a frozen PFE control.
 
 The schema and contract are specifications at this stage. They have not yet been executed against SQLite or run through a JSON Schema validator in this branch.
