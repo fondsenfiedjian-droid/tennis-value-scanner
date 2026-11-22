@@ -322,3 +322,36 @@ The largest residual gap is clearly in ITF: 141,532 ITF rows have no accepted un
 Main-tour, Grand Slam, and Masters linkage is approximately 78–82%, not 100%. These residuals require separate investigation of source coverage, tournament naming, date offsets, and player-name variants. Do not relax matching or force ambiguous rows into the registry.
 
 The next useful breakdown is tour × category (ATP ITF vs WTA ITF, ATP Challenger vs WTA Challenger, etc.). This will isolate the WTA ITF main-draw gap from other missing records before canonical match-level links are created.
+
+
+## 15. Tour × competition-category breakdown — 2026-11-22
+
+The latest full audit (`45081305445`) completed successfully with the new ATP/WTA-by-category diagnostics.
+
+| Tour / category | Valuebetennis rows | Unique links | Linkage |
+|---|---:|---:|---:|
+| WTA ITF | 77,646 | 55,431 | 71.39% |
+| ATP ITF | 200,632 | 77,442 | 38.60% |
+| WTA Challenger | 96,895 (96,890 valid) | 68,327 | 70.52% |
+| ATP Challenger | 54,503 | 42,852 | 78.62% |
+| WTA Main tour | 11,070 | 8,508 | 76.86% |
+| ATP Main tour | 12,021 | 9,729 | 80.93% |
+| WTA Grand Slam | 5,548 | 4,409 | 79.47% |
+| ATP Grand Slam | 5,565 | 4,702 | 84.49% |
+| WTA Masters | 5,475 | 4,228 | 77.22% |
+| ATP Masters | 5,364 | 4,279 | 79.77% |
+| ATP Davis/BJK Cup | 737 | 579 | 78.56% |
+| WTA Davis/BJK Cup | 431 | 211 | 48.96% |
+
+### Interpretation
+
+- The biggest unresolved volume is ATP ITF: 121,225 rows have no candidate and 1,965 are ambiguous. The current Sackmann ATP Futures series is not necessarily a complete equivalent of all ITF events in Valuebetennis; event/tier coverage needs an explicit inventory before interpreting these as missing matches.
+- WTA ITF links 71.39%, but 20,307 rows have no candidate and 1,908 are ambiguous. The available Sackmann WTA ITF file is qualifying-only, so this result does not prove complete WTA ITF main-draw coverage.
+- Challenger coverage is better: ATP 78.62%, WTA 70.52%. Remaining no-candidate counts are 10,020 ATP and 26,709 WTA; these may reflect source coverage, event naming, and player-name identity differences.
+- ATP/WTA main-tour and Grand Slam linkage is around 77–84%. This is a useful starting point for cross-source identity reconciliation, but not yet enough to merge records automatically.
+- The blank Valuebetennis category remains a separate data-quality problem: 2,719 rows (1,428 ATP and 1,291 WTA) have no category. They should not be silently assigned a tier.
+- All audited records still have parseable dates, recognized tours and mapped surfaces. The five Challenger rows with invalid player-name fields remain excluded from valid-row linkage.
+
+### Decision
+
+Do not create canonical match links from aggregate percentages alone. Next inspect the Valuebetennis category blanks and quantify why candidate matches are not accepted (zero candidate vs multiple candidates, event-name disambiguation, and date offset). Then build a versioned match registry that stores source-native IDs and confidence/ambiguity state, rather than overwriting source identities. Keep the main model training blocked until tier coverage, date semantics, and licensing are documented.
