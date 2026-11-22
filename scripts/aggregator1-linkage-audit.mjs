@@ -34,8 +34,13 @@ const tourney=value=>{
     citiopenwashington:"washington",libemaopenshertogenbosch:"shertogenbosch",asbclassicauckland:"auckland",
     brisbaneinternationalbrisbane:"brisbane",barcelonaopenbancsabadellbarcelona:"barcelona",
     creditonecharlestonopencharleston:"charleston",adelaideinternationaladelaide:"adelaide",
-    westernsouthernopencincinnati:"cincinnati",cincinnatimasters:"cincinnati",
+    westernsouthernopencincinnati:"cincinnati",cincinnatimasters:"cincinnati",cincinnatiopencincinnati:"cincinnati",
     winstonsalemopenwinstonsalem:"winstonsalem",qatartotalenergiesopendoha:"doha",
+    hongkongtennisopenhongkong:"hongkong",bmwopenmunich:"munich",
+    dubaidutyfreetennischampionshipsdubai:"dubai",rothesayinternationaleastbourne:"eastbourne",
+    unitedcupaustralia:"unitedcup",abiertomexicanotelcelacapulco:"acapulco",
+    tennisinthelandcleveland:"cleveland",porschetennisgrandprixstuttgart:"stuttgart",
+    w15sandiego:"w15sandiegoca",m15sandiego:"m15sandiegoca",francavillach:"francavillaalmarech",
     w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
   };
   if(aliases[s])return aliases[s];
