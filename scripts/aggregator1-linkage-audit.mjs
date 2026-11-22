@@ -127,7 +127,7 @@ async function main(){
   const vfiles=[];for(const n of vnames)vfiles.push({filename:n,content:await readFile(join(vdir,n),"utf8")});
   const sfiles=[];for(const n of snames)sfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
   const report=auditValuebetSackmann(vfiles,sfiles,{maxDateOffsetDays:window});
-  await writeFile(out,JSON.stringify(report,null,2)+"\\n");
+  await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log("Valuebetennis rows: "+report.totals.valuebetRows);
   console.log("Unique links: "+report.totals.linkedUnique+" ("+report.totals.linkagePct+"% of valid rows); ambiguous: "+report.totals.ambiguous);
   console.log("Aggregate report written to "+out);
