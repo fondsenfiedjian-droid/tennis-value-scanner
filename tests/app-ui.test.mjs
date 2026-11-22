@@ -682,6 +682,13 @@ test("mobile player suggestion taps prevent blur from closing the result list be
   assert.match(search,/list\.onclick=event=>/);
 });
 
+test("player comparison search maps common Russian player names to canonical Live Tennis API names",()=>{
+  assert.match(html,/'алькарас':'Carlos Alcaraz'/);
+  assert.match(html,/'новак джокович':'Novak Djokovic'/);
+  assert.match(html,/const apiQuery=compareSearchAliases\[query\.toLocaleLowerCase\('ru-RU'\)\]\|\|query/);
+  assert.match(html,/encodeURIComponent\(apiQuery\)/);
+});
+
 test("singles player search excludes doubles teams returned by Live Tennis API",()=>{
   assert.match(html,/const players=\(Array\.isArray\(payload\.players\)\?payload\.players:\[\]\)\.filter\(player=>player\?\.is_doubles_team!==true\)/);
   assert.match(html,/Одиночные игроки не найдены/);
