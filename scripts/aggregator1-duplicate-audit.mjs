@@ -59,7 +59,7 @@ export function auditValuebetDuplicates(files){
     if(hasConflict(scoreFields)){
       totals.duplicateFingerprintScoreConflictGroups++;
       const scoreValues=group.map(x=>String(x.row.score??"").trim()).filter(Boolean);
-      const reverseScore=value=>value.replace(/(\\d+)-(\\d+)(\\(\\d+\\))?/g,(_,a,b,tie)=>b+"-"+a+(tie||""));
+      const reverseScore=value=>value.replace(/(\d+)-(\d+)(\(\d+\))?/g,(_,a,b,tie)=>b+"-"+a+(tie||""));
       const canonicalScores=scoreValues.map(value=>[value,reverseScore(value)].sort()[0]);
       if(scoreValues.length!==group.length||canonicalScores.some(value=>!value))totals.duplicateFingerprintScoreUnresolvedGroups++;
       else if(new Set(canonicalScores).size===1)totals.duplicateFingerprintScoreOrientationOnlyGroups++;
