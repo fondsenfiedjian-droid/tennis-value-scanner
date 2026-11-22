@@ -1198,3 +1198,5 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - H2H is displayed only after exact case-insensitive confirmation of provider-resolved p1/p2 names against the selected players. Identity mismatch and source failures are explicit.
 - History/H2H failures do not remove the Elo result or the other successfully retrieved source. No background polling or automatic bets added.
 - Production Elo/K=32, probabilities, fair odds, EV and recommendation logic remain unchanged. Draft PR #167 only; no merge or Production deployment.
+
+- Follow-up test harness correction: normalized the embedded JavaScript newline separator in the new history-derivation unit test before CI validation.
