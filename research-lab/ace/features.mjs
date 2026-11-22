@@ -91,7 +91,7 @@ function playerFeatures(playerId, targetDate, rows) {
       const age = daysBetween(row.date, targetDate);
       return age >= 1 && age <= n;
     });
-    const valid = selected.filter(row => row.duration !== null && !isAdministrativeStatus(row.status));
+    const valid = selected.filter(row => row.duration !== null && !isAdministrativeStatus(row.status) && row.status !== "RET" && row.status !== "RETIRED" && row.status !== "RETIREMENT");
     durationWindows[`${n}d`] = {
       known_duration_sum_min: valid.reduce((sum, row) => sum + row.duration, 0),
       duration_coverage: selected.length === 0 ? null : valid.length / selected.length,
