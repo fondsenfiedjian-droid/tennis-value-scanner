@@ -1724,7 +1724,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
   assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
   assert.match(frontendSource, /function selectPreferredBookmakerPair\(quotes,preference,sideForPlayer,playerName,eventGroupKey\)/);
-  assert.match(frontendSource, /selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a\)/);
+  assert.match(frontendSource, /selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey\)/);
   assert.match(frontendSource, /const matched=selectedBookQuotes\.filter/);
   assert.match(frontendSource, /completePreferredPair=preferredBookmaker==='best'\|\|selectedPair\.completePair/);
   assert.match(frontendSource, /нет полной свежей пары/);
