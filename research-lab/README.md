@@ -175,6 +175,7 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 - `DATA-FEASIBILITY.md`: source availability and constraints for ACE, SMA and HFA.
 - `ACE-SPEC-v0.1.md`: leakage-safe calendar workload features, coverage and acceptance tests.
 - `ace/README.md`: ACE v0.1 implementation API and validation history.
+- `evaluation/README.md`: common-sample paired evaluator input contract and metrics.
 - `HFA-PROTOCOL-v0.1.md`: source registry, evidence tiers and blinded coding rules.
 - `schema.sql`: normalized SQLite ledger schema, append-only result revisions and immutable forecast / quote snapshots.
 - `contracts/system-output.schema.json`: standard SAS output contract.
@@ -183,7 +184,8 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 
 - PFE: live and offline controls must be reported separately.
 - SMA: the existing 730-day surface-residual candidate improved Brier and LogLoss on both ATP and WTA fixed holdout and annual walk-forward samples against offline K=32 Elo. See `SMA-RESULTS-AUDIT.md`; live PFE comparison, deeper strata and source coverage remain open.
-- ACE: v0.1 feature module is implemented; GitHub Actions passed all 9 unit tests after the final accounting refinement. Historical archive coverage and predictive value are not yet measured. Only calendar workload indicators are defensible; true recovery hours and verified injury data are not established.
+- ACE: v0.1 feature module is implemented; GitHub Actions passed all 9 unit tests. Historical archive coverage and predictive value are not yet measured.
+- Common-sample evaluator: v0.1 implemented; GitHub Actions passed all 8 evaluator tests plus the 9 ACE tests. It is an evaluation harness only; no SAS weights are trained. Only calendar workload indicators are defensible; true recovery hours and verified injury data are not established.
 - HFA: v0.1 evidence protocol exists; no validated timestamped evidence corpus is established; default to insufficient data / abstention.
 - Aggregator: design is specified, but implementation is gated on source audits and a frozen PFE control.
 
