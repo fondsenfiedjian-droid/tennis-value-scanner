@@ -612,7 +612,6 @@
     applySkin(activeSkin);
     scheduleAutoRefresh();
     close();
-    if($('#filterSummary'))$('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
@@ -918,7 +917,6 @@
     const filtered=dateFiltered;
     const completePairCount=filtered.filter(m=>winnerEnabled&&oddsForMatch(m).length>=2).length;
     const noPairCount=filtered.length-completePairCount;
-    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · матчей: '+filtered.length+' · полных пар: '+completePairCount+' · без полной пары: '+noPairCount;
     $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){
@@ -2432,7 +2430,6 @@
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
-        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
       const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
@@ -2446,13 +2443,11 @@
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
-      $('#filterSummary').textContent='Live Tennis API · '+scheduleCacheLabel+' · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
-        $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
