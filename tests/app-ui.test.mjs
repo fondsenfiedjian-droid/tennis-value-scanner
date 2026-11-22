@@ -113,7 +113,7 @@ test("prediction pre-check uses the same versioned surface cache key as predicti
 });
 
 test("app header reports real API state instead of claiming the schedule is always connected", () => {
-  assert.match(html, /id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API/);
+  assert.match(html, /id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА/);
   assert.match(html, /setConnectionStatus\('API: ОНЛАЙН'\)/);
   assert.match(html, /setConnectionStatus\('API НЕДОСТУПЕН'\)/);
   assert.match(html, /setConnectionStatus\('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ'\)/);
@@ -435,7 +435,7 @@ test("approved dual navigation keeps five bottom destinations and quick links fo
   assert.match(html,/id="compareView"/);
   assert.match(html,/function showCompare\(\)/);
   assert.match(html,/function setActiveNavigation\(activeId\)/);
-  assert.match(html,/id="moreView"/);
+  assert.match(html,/more\.id='moreView'/);
   assert.match(html,/id="moreArchiveMount"/);
   assert.match(html,/id="headerSettings"/);
   assert.match(html,/id="mandatoryBetsContent"/);
