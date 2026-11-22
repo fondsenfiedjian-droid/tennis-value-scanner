@@ -615,7 +615,7 @@
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const API=location.hostname.startsWith('deploy-preview-')?'https://ui-tennis-value-scanner-2-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeoutMs);
