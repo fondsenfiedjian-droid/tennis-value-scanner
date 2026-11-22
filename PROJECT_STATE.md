@@ -1171,3 +1171,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - The comparison dossier may derive last-5/10/20 form from BASIC `/history/matches?player={id}&draw=singles`, and H2H from `/h2h?p1=&p2=`, with strict identity matching, sample-size/date-range disclosure and cache protection.
 - `/usage` remains the authoritative live-key tier/quota check. Direct runtime verification was not possible in this documentation pass; the user's explicit BASIC confirmation is the current working assumption.
 - No calls were made against the user's paid API quota, and no production deployment, merge or Elo/model change was performed.
+
+### 2026-11-22 — BASIC player history Worker proxy
+- Added isolated `GET /player-history?id={playerId}&limit=20&tour={optional}` to the TVS2 Worker branch, using the documented BASIC `GET /history/matches` endpoint with `draw=singles`.
+- The proxy validates numeric player IDs, limits (1–50) and supported tours; caches successful responses for six hours; returns source, 2023–present period, draw, count and upstream metadata.
+- Provider 403 is surfaced as `basic_history_not_entitled`; 401/429/400 and malformed payloads remain distinct. No empty or fabricated match history is created.
+- Added regression tests for input validation, exact upstream filters, cache hits, BASIC plan refusal and rate-limit retry guidance.
+- The route is a data proxy only: no player form calculations, H2H calls, frontend wiring or Elo/model changes in this step. It has not been deployed to the Production Worker; PR #167 remains draft.
