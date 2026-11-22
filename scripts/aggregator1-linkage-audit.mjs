@@ -237,7 +237,7 @@ async function main(){
   if(!vdir||!sdir||!Number.isInteger(window)||window<0||window>31)throw new Error("Invalid input directories or date window");
   const vnames=(await readdir(vdir)).filter(n=>VBT.test(n)).sort();
   const snames=(await readdir(sdir)).filter(n=>SACK.test(n)).sort();
-  const pnames=(await readdir(sdir)).filter(n=>/^(atp|wta)_players\\.csv$/i.test(n)).sort();
+  const pnames=(await readdir(sdir)).filter(n=>/^(atp|wta)_players\.csv$/i.test(n)).sort();
   const vfiles=[];for(const n of vnames)vfiles.push({filename:n,content:await readFile(join(vdir,n),"utf8")});
   const sfiles=[];for(const n of snames)sfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
   const pfiles=[];for(const n of pnames)pfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
