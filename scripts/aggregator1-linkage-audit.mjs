@@ -48,7 +48,7 @@ const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffsetDays=14,playerFiles=[]}={}){
   if(!valuebetFiles.length||!sackmannFiles.length)throw new Error("Both Valuebetennis and Sackmann files are required");
   const sackIndex=new Map(),sackPairIndex=new Map(),sourceRows={},sourceRowsByYear={};
-  const registryNameIndex={ATP:new Map(),WTA:new Map()};
+  const registryNameIndex={ATP:new Map(),WTA:new Map()},registryMeta={ATP:new Map(),WTA:new Map()};
   for(const file of playerFiles){
     const fileName=basename(file.filename).toLowerCase();
     const tour=fileName.startsWith("atp_")?"ATP":fileName.startsWith("wta_")?"WTA":null;
@@ -56,6 +56,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     for(const row of parseCsv(file.content)){
       const id=String(row.player_id??row.id??"").trim();
       const first=String(row.name_first??row.first_name??"").trim(),last=String(row.name_last??row.last_name??"").trim();
+      if(id)registryMeta[tour].set(id,{dob:String(row.dob??"").trim(),ioc:String(row.ioc??"").trim().toUpperCase(),hand:String(row.hand??"").trim().toUpperCase()});
       if(!id||(!first&&!last))continue;
       for(const name of new Set([normalize([first,last].filter(Boolean).join(" ")),normalize([last,first].filter(Boolean).join(" "))])){
         if(!name)continue;
@@ -167,12 +168,23 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   const playerIdEvidence={};
   for(const tour of ["ATP","WTA"]){
     let resolvedToSingleSackmannId=0,conflictingSackmannIds=0;
-    for(const ids of sourceIdEvidence[tour].values()){if(ids.size===1)resolvedToSingleSackmannId++;else if(ids.size>1)conflictingSackmannIds++;}
+    const conflictProfile={sameBirthDateAndCountry:0,differentBirthDateOrCountry:0,missingRegistryMetadata:0};
+    for(const ids of sourceIdEvidence[tour].values()){
+      if(ids.size===1)resolvedToSingleSackmannId++;
+      else if(ids.size>1){
+        conflictingSackmannIds++;
+        const metas=[...ids].map(id=>registryMeta[tour].get(id));
+        if(metas.some(m=>!m||!m.dob||!m.ioc))conflictProfile.missingRegistryMetadata++;
+        else if(new Set(metas.map(m=>m.dob+"::"+m.ioc)).size===1)conflictProfile.sameBirthDateAndCountry++;
+        else conflictProfile.differentBirthDateOrCountry++;
+      }
+    }
     playerIdEvidence[tour]={
       distinctValuebetPlayerIds:sourcePlayerIds[tour].size,
       withAcceptedMatchEvidence:sourceIdEvidence[tour].size,
       resolvedToSingleSackmannId,
       conflictingSackmannIds,
+      conflictProfile,
       withoutAcceptedMatchEvidence:sourcePlayerIds[tour].size-sourceIdEvidence[tour].size,
       resolutionPct:pct(resolvedToSingleSackmannId,sourcePlayerIds[tour].size)
     };
