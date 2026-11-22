@@ -6,6 +6,8 @@ on:
     paths:
       - "scripts/aggregator1-linkage-audit.mjs"
       - "scripts/aggregator1-player-id-audit.mjs"
+      - "scripts/aggregator1-duplicate-audit.mjs"
+      - "scripts/test-aggregator1-duplicate-audit.mjs"
       - "scripts/test-aggregator1-player-id-audit.mjs"
       - "scripts/download-aggregator1-free-data.mjs"
       - "scripts/test-aggregator1-linkage-audit.mjs"
@@ -23,6 +25,8 @@ jobs:
         run: |
           node --check scripts/aggregator1-linkage-audit.mjs
           node --check scripts/aggregator1-player-id-audit.mjs
+          node --check scripts/aggregator1-duplicate-audit.mjs
+          node --check scripts/test-aggregator1-duplicate-audit.mjs
           node --check scripts/test-aggregator1-player-id-audit.mjs
           node --check scripts/download-aggregator1-free-data.mjs
           node --check scripts/test-aggregator1-linkage-audit.mjs
@@ -30,3 +34,5 @@ jobs:
         run: node scripts/test-aggregator1-linkage-audit.mjs
       - name: Run synthetic player ID fixture
         run: node scripts/test-aggregator1-player-id-audit.mjs
+      - name: Run synthetic duplicate audit fixture
+        run: node scripts/test-aggregator1-duplicate-audit.mjs
