@@ -404,7 +404,7 @@ test("strict recommendation carousel is manually navigated and does not auto-rot
   assert.match(html,/bestBetCarouselKey/);
   assert.match(html,/renderBestBet\(bets,scanned,totalCandidates,failed,evBets,oddsFallback\)/);
   assert.doesNotMatch(html,/setInterval\([^)]*bestBet|bestBet[^;]*setInterval/);
-  assert.match(html,/размер ставки не рассчитан/);
+  assert.match(html,/[Рр]азмер ставки не рассчитан/);
   assert.match(html,/aria-label="Ставка дня"/);
 });
 
