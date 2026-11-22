@@ -19,11 +19,11 @@ export function auditValuebetDuplicates(files){
     const rows=parseCsv(file.content,{delimiter:";"});
     if(!columns.length)columns=Object.keys(rows[0]||{});
     for(const key of required)if(!columns.includes(key))throw new Error("Missing required column: "+key);
-    const year=m[1],yb=byYear[year]||(byYear[year]={rows:0,duplicateMatchIdRows:0,duplicateFingerprintRows:0,invalidCoreRows:0});
+    const year=m[1],yb=byYear[year]||(byYear[year]={rows:0,rowsInDuplicateMatchIdGroups:0,rowsInDuplicateFingerprintGroups:0,invalidCoreRows:0});
     for(const row of rows){
       totals.rows++;yb.rows++;
       const tour=String(row.genre??"").trim().toUpperCase()||"(empty)";
-      const tb=byTour[tour]||(byTour[tour]={rows:0,duplicateMatchIdRows:0,duplicateFingerprintRows:0,invalidCoreRows:0});
+      const tb=byTour[tour]||(byTour[tour]={rows:0,rowsInDuplicateMatchIdGroups:0,rowsInDuplicateFingerprintGroups:0,invalidCoreRows:0});
       const id=String(row.match_id??"").trim();
       if(id){totals.rowsWithMatchId++;if(!ids.has(id))ids.set(id,[]);ids.get(id).push({year,tour,row});}
       else{totals.missingMatchId++;}
@@ -46,13 +46,13 @@ export function auditValuebetDuplicates(files){
     totals.duplicateMatchIdRows+=group.length-1;
     const signatures=new Set(group.map(x=>[x.tour,String(x.row.date??"").slice(0,10),norm(x.row.tournoi),norm(x.row.joueur1),norm(x.row.joueur2),norm(x.row.surface)].join("::")));
     if(signatures.size>1)totals.conflictingMatchIdGroups++;
-    for(const x of group){byYear[x.year].duplicateMatchIdRows++;byTour[x.tour].duplicateMatchIdRows++;}
+    for(const x of group){byYear[x.year].rowsInDuplicateMatchIdGroups++;byTour[x.tour].rowsInDuplicateMatchIdGroups++;}
   }
   for(const group of fingerprints.values()){
     if(group.length<2)continue;
     totals.duplicateFingerprintGroups++;
     totals.duplicateFingerprintRows+=group.length-1;
-    for(const x of group){byYear[x.year].duplicateFingerprintRows++;byTour[x.tour].duplicateFingerprintRows++;}
+    for(const x of group){byYear[x.year].rowsInDuplicateFingerprintGroups++;byTour[x.tour].rowsInDuplicateFingerprintGroups++;}
   }
   return {
     schemaVersion:1,
