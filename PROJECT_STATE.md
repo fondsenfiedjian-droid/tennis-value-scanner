@@ -1206,3 +1206,12 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - QA found that the comparison footer claimed H2H player identity was verified whenever an H2H response arrived, even though the H2H panel separately performs the exact-name check and may reject a mismatch.
 - Corrected the footer to say the identity check is displayed in the H2H panel; added a regression assertion. No API calls, model calculations, or data eligibility rules changed.
 - This is an isolated draft-branch correction; no Production deployment or merge.
+
+
+### 2026-11-22 — Isolated Cloudflare Preview deployment configuration
+- Added dedicated `wrangler.preview.toml` naming only `tennis-value-api-preview`; the existing production Wrangler config remains named `tennis-value-api`.
+- Added a manual, branch-locked Preview deployment workflow using a separate `CLOUDFLARE_PREVIEW_API_TOKEN` secret and the existing account ID. Tightened the Production workflow so manual dispatch is accepted only from `main`; PR branch dispatch cannot deploy the Production Worker.
+- Worker cache-key namespaces now use `CACHE_NAMESPACE`: Preview uses its own synthetic hostname namespace, while Production falls back to the original `tennis-value-api` namespace. This prevents Preview cache reads/writes from colliding with Production.
+- Netlify Deploy Preview hostnames beginning `deploy-preview-` now call the Preview Worker; normal Production hostnames continue calling the Production Worker.
+- Added regression assertions for the Preview config, branch-locked workflow, API routing and cache namespace separation. No secrets or API key values are stored in GitHub files.
+- Not deployed: GitHub repository must first receive the scoped `CLOUDFLARE_PREVIEW_API_TOKEN` secret. No merge, Production deploy, API quota use or Elo/model change.
