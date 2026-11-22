@@ -219,6 +219,12 @@
     .compare-player label,.compare-surface-field label{display:block;color:#b9b2b5;font-size:10px;margin:8px 0 5px}
     .compare-player input,.compare-surface-field select{width:100%;min-width:0;padding:9px 8px;border:1px solid #55434a;border-radius:8px;background:#0c0c10;color:#f0f1f4;font-size:12px}
     .compare-hint{margin:10px 0;color:#969ba5;font-size:10px;line-height:1.45}
+  .compare-suggestions{position:relative;z-index:5;margin-top:5px;border:1px solid #55434a;border-radius:9px;background:#101116;overflow:hidden}
+  .compare-suggestions[hidden]{display:none}
+  .compare-suggestions button{display:block;width:100%;padding:9px 10px;border:0;border-bottom:1px solid #302c33;background:transparent;color:#f0f1f4;text-align:left;font-size:12px}
+  .compare-suggestions button:last-child{border-bottom:0}
+  .compare-suggestions button:active{background:#2a1820}
+  .compare-suggestions small{display:block;color:#9da3ae;font-size:10px;margin-top:3px}
     .compare-run{width:100%;margin:5px 0 10px}
     .compare-result{margin-top:12px;padding:13px;border:1px solid #65404a;border-radius:13px;background:#151219}
     .compare-result[hidden]{display:none}
@@ -277,11 +283,11 @@
   <header class="compare-header"><div><div class="brand">СРАВНЕНИЕ ИГРОКОВ</div><div class="sub">Независимый анализ двух теннисистов</div></div><button type="button" class="linkbtn" id="compareBack">← Главная</button></header>
   <div class="compare-intro">Сравнение использует текущую Elo-модель и профили Live Tennis API. Матч, турнир и букмекерские коэффициенты для анализа не нужны.</div>
   <div class="compare-players">
-    <section class="compare-player"><div class="compare-player-title">ИГРОК A</div><label for="compareNameA">Имя игрока</label><input id="compareNameA" type="text" autocomplete="off" placeholder="Например, Carlos Alcaraz"><label for="compareIdA">ID Live Tennis API</label><input id="compareIdA" type="number" min="1" step="1" inputmode="numeric" placeholder="ID игрока"></section>
-    <section class="compare-player"><div class="compare-player-title">ИГРОК B</div><label for="compareNameB">Имя игрока</label><input id="compareNameB" type="text" autocomplete="off" placeholder="Например, Jannik Sinner"><label for="compareIdB">ID Live Tennis API</label><input id="compareIdB" type="number" min="1" step="1" inputmode="numeric" placeholder="ID игрока"></section>
+    <section class="compare-player"><div class="compare-player-title">ИГРОК A</div><label for="compareNameA">Поиск игрока</label><input id="compareNameA" type="text" autocomplete="off" aria-controls="compareSuggestionsA" aria-autocomplete="list" placeholder="Начни вводить имя"><div class="compare-suggestions" id="compareSuggestionsA" role="listbox" hidden></div><label for="compareIdA">ID Live Tennis API · резервный ввод</label><input id="compareIdA" type="number" min="1" step="1" inputmode="numeric" placeholder="Заполнится после выбора"></section>
+    <section class="compare-player"><div class="compare-player-title">ИГРОК B</div><label for="compareNameB">Поиск игрока</label><input id="compareNameB" type="text" autocomplete="off" aria-controls="compareSuggestionsB" aria-autocomplete="list" placeholder="Начни вводить имя"><div class="compare-suggestions" id="compareSuggestionsB" role="listbox" hidden></div><label for="compareIdB">ID Live Tennis API · резервный ввод</label><input id="compareIdB" type="number" min="1" step="1" inputmode="numeric" placeholder="Заполнится после выбора"></section>
   </div>
   <div class="field compare-surface-field"><label for="compareSurface">Покрытие</label><select id="compareSurface"><option value="">Общий Elo — без выбора покрытия</option><option value="Hard">Хард</option><option value="Clay">Грунт</option><option value="Grass">Трава</option><option value="Carpet">Ковёр</option></select></div>
-  <div class="compare-hint">Если игрок есть в загруженном расписании, ID можно определить по имени автоматически. Для остальных игроков укажи их ID Live Tennis API.</div>
+  <div class="compare-hint">Начни вводить имя и выбери игрока из результатов Live Tennis API. ID подставится автоматически; ручной ввод ID оставлен как резервный вариант.</div>
   <button type="button" class="refresh compare-run" id="compareRun">СРАВНИТЬ ИГРОКОВ</button>
   <div id="compareStatus" class="muted" role="status" aria-live="polite">Введи двух игроков для независимого сравнения.</div>
   <section id="compareResult" class="compare-result" hidden aria-live="polite"></section>
@@ -1519,6 +1525,53 @@
     node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong><span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата рейтингов: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';
     node.hidden=false;
   }
+  const compareSearchState={A:{timer:null,sequence:0},B:{timer:null,sequence:0}};
+  function bindComparePlayerSearch(side){
+    const suffix=side==='A'?'A':'B';
+    const nameInput=$('#compareName'+suffix),idInput=$('#compareId'+suffix),list=$('#compareSuggestions'+suffix);
+    const state=compareSearchState[suffix];
+    function close(){list.hidden=true;list.innerHTML='';}
+    function choose(player){
+      nameInput.value=player.name;
+      idInput.value=String(player.id);
+      close();
+      $('#compareStatus').textContent='Выбран игрок: '+player.name+' · ID '+player.id;
+    }
+    list.onclick=event=>{
+      const button=event.target.closest('button[data-player-id]');
+      if(!button)return;
+      choose({id:Number(button.dataset.playerId),name:button.dataset.playerName});
+    };
+    nameInput.addEventListener('input',()=>{
+      idInput.value='';
+      if(state.timer)clearTimeout(state.timer);
+      const query=nameInput.value.trim();
+      const sequence=++state.sequence;
+      if(query.length<2){close();return;}
+      list.hidden=false;list.innerHTML='<div class="compare-hint">Поиск игроков…</div>';
+      state.timer=setTimeout(async()=>{
+        try{
+          const response=await fetchWithTimeout(API+'/players/search?search='+encodeURIComponent(query)+'&limit=8');
+          const payload=await response.json();
+          if(sequence!==state.sequence)return;
+          if(!response.ok)throw new Error(payload.error||('API '+response.status));
+          const players=Array.isArray(payload.players)?payload.players:[];
+          if(!players.length){list.innerHTML='<div class="compare-hint">Совпадений не найдено. Уточни имя.</div>';return;}
+          list.innerHTML=players.map(player=>{
+            const id=Number(player.id),name=String(player.name||'');
+            if(!Number.isSafeInteger(id)||id<=0||!name.trim())return '';
+            const meta=[player.tour,player.country,player.ranking?'рейтинг №'+player.ranking:null].filter(Boolean).join(' · ');
+            return '<button type="button" role="option" data-player-id="'+id+'" data-player-name="'+escapeHtml(name)+'">'+escapeHtml(name)+'<small>'+escapeHtml(meta||('ID '+id))+'</small></button>';
+          }).join('')||'<div class="compare-hint">Нет корректных результатов.</div>';
+        }catch(error){
+          if(sequence===state.sequence)list.innerHTML='<div class="compare-hint">Поиск недоступен: '+escapeHtml(String(error.message||error))+'</div>';
+        }
+      },350);
+    });
+    nameInput.addEventListener('blur',()=>setTimeout(close,180));
+  }
+  bindComparePlayerSearch('A');
+  bindComparePlayerSearch('B');
   $('#compareRun').onclick=async()=>{
     const button=$('#compareRun'),status=$('#compareStatus'),resultNode=$('#compareResult');
     const nameA=$('#compareNameA').value.trim(),nameB=$('#compareNameB').value.trim();
@@ -1526,7 +1579,7 @@
     const idA=typedA?Number(typedA):findScheduledPlayerId(nameA);
     const idB=typedB?Number(typedB):findScheduledPlayerId(nameB);
     if(!nameA||!nameB){status.textContent='Укажи имена обоих игроков.';resultNode.hidden=true;return;}
-    if(!Number.isSafeInteger(idA)||idA<=0||!Number.isSafeInteger(idB)||idB<=0){status.textContent='Не удалось определить ID обоих игроков. Укажи ID Live Tennis API вручную или выбери игроков, присутствующих в загруженном расписании.';resultNode.hidden=true;return;}
+    if(!Number.isSafeInteger(idA)||idA<=0||!Number.isSafeInteger(idB)||idB<=0){status.textContent='Выбери обоих игроков из поиска или введи их ID Live Tennis API вручную.';resultNode.hidden=true;return;}
     if(idA===idB){status.textContent='Выбраны одинаковые ID игроков. Проверь данные.';resultNode.hidden=true;return;}
     const surface=$('#compareSurface').value;
     button.disabled=true;button.textContent='СРАВНЕНИЕ…';status.textContent='Запрашиваю профили и рассчитываю вероятности…';resultNode.hidden=true;
