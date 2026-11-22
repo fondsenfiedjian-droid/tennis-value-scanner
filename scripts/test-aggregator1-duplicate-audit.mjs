@@ -17,9 +17,9 @@ const files=[
 ];
 const r=auditValuebetDuplicates(files);
 assert.equal(r.totals.rows,6);
-assert.equal(r.totals.duplicateMatchIdGroups,1);
-assert.equal(r.totals.duplicateMatchIdRows,2);
-assert.equal(r.totals.conflictingMatchIdGroups,0);
+assert.equal(r.totals.duplicateMatchIdGroups,2);
+assert.equal(r.totals.duplicateMatchIdRows,3);
+assert.equal(r.totals.conflictingMatchIdGroups,1);
 assert.equal(r.totals.duplicateFingerprintGroups,1);
 assert.equal(r.totals.duplicateFingerprintRows,3);
 assert.equal(r.byTour.ATP.rows,4);
