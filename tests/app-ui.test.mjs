@@ -547,3 +547,21 @@ test("odds side mapping refuses ambiguous initial-only participant identity", ()
   assert.equal(matching.oddsSideForPlayer(quote, "Jannik Sinner"), "2");
   assert.equal(matching.oddsSideForPlayer(quote, "John Sinner"), "1");
 });
+
+
+test("odds pair matching rejects a scheduled initial that matches both event participants", () => {
+  const home = makeWinamaxQuote({
+    homeTeam: "John Sinner",
+    awayTeam: "Jannik Sinner",
+    eventName: "John Sinner - Jannik Sinner",
+    outcome: "home"
+  });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = {
+    player1: "J. Sinner",
+    player2: "John Sinner",
+    startTime: home.startTime,
+    tournament_name: "ATP Finals"
+  };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
