@@ -45,9 +45,25 @@ const parseSackDate=value=>{
 };
 const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 
-export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffsetDays=14}={}){
+export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffsetDays=14,playerFiles=[]}={}){
   if(!valuebetFiles.length||!sackmannFiles.length)throw new Error("Both Valuebetennis and Sackmann files are required");
   const sackIndex=new Map(),sackPairIndex=new Map(),sourceRows={},sourceRowsByYear={};
+  const registryNameIndex={ATP:new Map(),WTA:new Map()};
+  for(const file of playerFiles){
+    const fileName=basename(file.filename).toLowerCase();
+    const tour=fileName.startsWith("atp_")?"ATP":fileName.startsWith("wta_")?"WTA":null;
+    if(!tour)throw new Error("Unexpected player registry filename: "+basename(file.filename));
+    for(const row of parseCsv(file.content)){
+      const id=String(row.player_id??row.id??"").trim();
+      const first=String(row.name_first??row.first_name??"").trim(),last=String(row.name_last??row.last_name??"").trim();
+      if(!id||(!first&&!last))continue;
+      for(const name of new Set([normalize([first,last].filter(Boolean).join(" ")),normalize([last,first].filter(Boolean).join(" "))])){
+        if(!name)continue;
+        if(!registryNameIndex[tour].has(name))registryNameIndex[tour].set(name,new Set());
+        registryNameIndex[tour].get(name).add(id);
+      }
+    }
+  }
   for(const file of sackmannFiles){
     const m=basename(file.filename).match(SACK);
     if(!m)throw new Error("Unexpected Sackmann filename: "+basename(file.filename));
@@ -70,7 +86,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[];
-  const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()};
+  const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()},directNameEvidence={ATP:new Map(),WTA:new Map()};
   let matchRowsWithBothPlayerIdsEvidence=0;
   const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
@@ -91,7 +107,15 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const cg=byCategory[category]||(byCategory[category]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       cg.rows++;
       const tour=String(row.genre??"").trim().toUpperCase();
-      if(["ATP","WTA"].includes(tour))for(const side of ["joueur1","joueur2"]){const id=String(row[side+"_id"]??"").trim();if(id)sourcePlayerIds[tour].add(id);}
+      if(["ATP","WTA"].includes(tour))for(const side of ["joueur1","joueur2"]){
+        const id=String(row[side+"_id"]??"").trim(),name=normalize(row[side]);
+        if(id)sourcePlayerIds[tour].add(id);
+        const ids=registryNameIndex[tour].get(name);
+        if(id&&ids){
+          if(!directNameEvidence[tour].has(id))directNameEvidence[tour].set(id,new Set());
+          for(const candidateId of ids)directNameEvidence[tour].get(id).add(candidateId);
+        }
+      }
       const tourCategoryKey=(tour||"(empty)")+"::"+category;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
