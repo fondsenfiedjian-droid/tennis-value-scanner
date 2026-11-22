@@ -98,8 +98,6 @@ CREATE TABLE IF NOT EXISTS market_quotes (
   source_timestamp TEXT,
   source_id TEXT,
   is_pre_match INTEGER NOT NULL DEFAULT 1 CHECK (is_pre_match IN (0,1)),
-  CHECK (selection_player_id IN (SELECT player_a_id FROM matches WHERE match_id = market_quotes.match_id)
-      OR selection_player_id IN (SELECT player_b_id FROM matches WHERE match_id = market_quotes.match_id))
 );
 
 CREATE TABLE IF NOT EXISTS evaluation_runs (
