@@ -30,3 +30,8 @@ node --test research-lab/ace/features.test.mjs
 ```
 
 The tests are committed but have not been executed in this environment. No performance claim is made.
+
+
+## Validation history
+
+The first GitHub Actions run exposed two fixture problems: an incorrect expected count at the 7-day boundary and an exact-duplicate scenario where player B had no prior history. The fixtures were corrected, and a retirement-duration exclusion case was added. A second CI result is pending; do not treat the first failed run as a pass.
