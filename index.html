@@ -988,7 +988,9 @@
     const list=$('#matchList');
     const schedule=filterScheduleMatches(all,selectedDay,selectedTours(),new Date());
     const filtered=schedule.matches;
-    const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
+    const winnerButton=$('[data-market="winner"]');
+    // The redesigned 2.0 screen may omit the legacy market toggle; winner odds remain enabled by default.
+    const winnerEnabled=!winnerButton||winnerButton.classList.contains('on');
     // Keep every scheduled match visible; quote availability is a status, not a list filter.
     const completePairCount=filtered.filter(m=>winnerEnabled&&oddsForMatch(m).length>=2).length;
     const noPairCount=filtered.length-completePairCount;
