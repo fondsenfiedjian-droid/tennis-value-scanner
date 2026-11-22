@@ -364,7 +364,7 @@
 </div>
 
 <div class="stats-view" id="statsView">
-  <h1>Статистика и архив прогнозов</h1>
+  <h1>Статистика прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
@@ -444,14 +444,17 @@
 
     const more=document.createElement('main');
     more.id='moreView';more.className='screen-view';
-    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Инструменты, архив и параметры системы</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки и аудит доступного архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card"><h2>Архив прогнозов</h2><p>Сохранённые снимки прогнозов, проверка результатов и резервные копии.</p><button type="button" class="more-screen-action" id="openArchiveFromMore">Открыть статистику и архив →</button></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
+    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
     matches.after(more);
     const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
     const labMount=$('#moreLabMount');
     if(labButton)labMount.appendChild(labButton);
     if(labPanel){labPanel.hidden=false;labMount.appendChild(labPanel);}
+    const archiveMount=$('#moreArchiveMount');
+    const archiveQuality=$('#archiveOddsQuality')?.parentElement;
+    const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
+    [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
     $('#matchesRefreshBtn').addEventListener('click',()=>loadMatches(true));
-    $('#openArchiveFromMore').addEventListener('click',showStats);
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
   }
   mountIndependentScreens();
