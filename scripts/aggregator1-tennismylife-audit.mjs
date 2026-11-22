@@ -165,7 +165,7 @@ async function main(){
   const sfiles=[];for(const n of snames)sfiles.push({filename:n,content:await readFile(join(sdir,n),"utf8")});
   const registryFile={filename:basename(registryPath),content:await readFile(registryPath,"utf8")};
   const report=auditTmlSackmann(tfiles,sfiles,registryFile,{maxDateOffsetDays:window});
-  await writeFile(out,JSON.stringify(report,null,2)+"\\n");
+  await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log("TennisMyLife ATP rows: "+report.totals.tmlRows);
   console.log("Candidate matches: "+report.totals.candidateRows+"; resolved: "+report.totals.resolvedMatchRows+"; unresolved: "+report.totals.unresolvedAmbiguousRows);
   console.log("TML player IDs mapped: "+report.totals.playerIdsMapped+"/"+report.totals.playerIdsInMatches);
