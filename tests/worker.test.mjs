@@ -1944,7 +1944,7 @@ test("official player profile metadata is normalized without inventing missing v
   const end = workerSource.indexOf("function assessRatingFreshness", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
-  vm.runInNewContext(workerSource.slice(start, end) + "\\nglobalThis.extract = extractOfficialPlayerProfile;", sandbox);
+  vm.runInNewContext(workerSource.slice(start, end) + ""\nnglobalThis.extract = extractOfficialPlayerProfile;", sandbox);
   const extract = sandbox.extract;
   assert.deepEqual(JSON.parse(JSON.stringify(extract({
     ranking: 7, tour: "ATP", country: "Italy",
@@ -1962,8 +1962,8 @@ test("official player profile metadata is normalized without inventing missing v
 });
 
 test("comparison UI displays official ranking and profile completeness separately from Elo", () => {
-  assert.match(workerSource, /officialProfileA: hasIdA \\? extractOfficialPlayerProfile\\(profileA\\) : null/);
-  assert.match(workerSource, /officialProfileB: hasIdB \\? extractOfficialPlayerProfile\\(profileB\\) : null/);
+  assert.ok(workerSource.includes("officialProfileA: hasIdA ? extractOfficialPlayerProfile(profileA) : null"));
+  assert.ok(workerSource.includes("officialProfileB: hasIdB ? extractOfficialPlayerProfile(profileB) : null"));
   assert.match(frontendSource, /Официальный рейтинг:/);
   assert.match(frontendSource, /заполнено /);
   assert.match(frontendSource, /вероятность победы по Elo/);
