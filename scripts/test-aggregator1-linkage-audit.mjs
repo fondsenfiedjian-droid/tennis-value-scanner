@@ -5,15 +5,15 @@ const valuebet = [
   {
     filename: "valuebetennis-matchs-2025.csv",
     content: [
-      "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
-      "v1;2025-01-12 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem",
-      "v2;2025-01-13 14:00:00;Australian Open;atp;dur;Carlos Alcaraz;Jannik Sinner;Main tour",
-      "v3;2025-02-01 14:00:00;WTA 500 Abu Dhabi;wta;dur intérieur;Emma Raducanu;Ons Jabeur;Main tour",
-      "v4;2025-03-10 14:00:00;Miami Open;atp;dur;Player C;Player D;Main tour",
-      "v5;2025-04-10 14:00:00;;atp;dur;Player E;Player F;",
-      "v6;2025-04-11 14:00:00;Unknown Event;atp;wood;Player G;Player H;ITF",
-      "v7;2025-06-01 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem",
-      "v8;2025-06-02 14:00:00;Unknown Challenger;atp;dur;;Player Z;Challenger"
+      "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie;joueur1_id;joueur2_id",
+      "v1;2025-01-12 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem;101;102",
+      "v2;2025-01-13 14:00:00;Australian Open;atp;dur;Carlos Alcaraz;Jannik Sinner;Main tour;103;104",
+      "v3;2025-02-01 14:00:00;WTA 500 Abu Dhabi;wta;dur intérieur;Emma Raducanu;Ons Jabeur;Main tour;201;202",
+      "v4;2025-03-10 14:00:00;Miami Open;atp;dur;Player C;Player D;Main tour;107;108",
+      "v5;2025-04-10 14:00:00;;atp;dur;Player E;Player F;;109;110",
+      "v6;2025-04-11 14:00:00;Unknown Event;atp;wood;Player G;Player H;ITF;111;112",
+      "v7;2025-06-01 14:00:00;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem;101;102",
+      "v8;2025-06-02 14:00:00;Unknown Challenger;atp;dur;;Player Z;Challenger;113;114"
     ].join("\n")
   }
 ];
@@ -21,21 +21,21 @@ const sackmann = [
   {
     filename: "atp_matches_2025.csv",
     content: [
-      "tourney_date,tourney_name,surface,winner_name,loser_name",
-      "20250106,Australian Open,Hard,Novak Djokovic,Rafael Nadal",
-      "20250303,Miami Open,Hard,Player C,Player D",
-      "20250304,Indian Wells,Hard,Player D,Player C",
-      "20250403,,Hard,Player E,Player F",
-      "20250404,Monte Carlo,Hard,Player F,Player E",
-      "20250407,Unknown Event,Wood,Player G,Player H"
+      "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+      "20250106,Australian Open,Hard,Novak Djokovic,Rafael Nadal,1,2",
+      "20250303,Miami Open,Hard,Player C,Player D,3,4",
+      "20250304,Indian Wells,Hard,Player D,Player C,4,3",
+      "20250403,,Hard,Player E,Player F,5,6",
+      "20250404,Monte Carlo,Hard,Player F,Player E,6,5",
+      "20250407,Unknown Event,Wood,Player G,Player H,7,8"
     ].join("\n")
   },
   {
     filename: "wta_matches_2025.csv",
     content: [
       "tourney_date,tourney_name,surface,winner_name,loser_name",
-      "20250127,Abu Dhabi,Hard,Ons Jabeur,Emma Raducanu",
-      "20250130,Doha,Hard,Ons Jabeur,Emma Raducanu"
+      "20250127,Abu Dhabi,Hard,Ons Jabeur,Emma Raducanu,22,21",
+      "20250130,Doha,Hard,Ons Jabeur,Emma Raducanu,22,21"
     ].join("\n")
   }
 ];
@@ -58,6 +58,9 @@ assert.equal(result.totals.ambiguous, 1);
 assert.equal(result.totals.linkagePct, 42.86);
 assert.equal(result.byTour.ATP.linkedUnique, 2);
 assert.equal(result.byTour.WTA.linkedUnique, 1);
+assert.equal(result.playerIdEvidence.matchRowsWithBothIdsEvidence, 3);
+assert.equal(result.playerIdEvidence.byTour.ATP.resolvedToSingleSackmannId, 4);
+assert.equal(result.playerIdEvidence.byTour.WTA.resolvedToSingleSackmannId, 2);
 assert.equal(result.byTourCategory["ATP::Grand Chelem"].linkedUnique, 1);
 assert.equal(result.byTourCategory["ATP::Main tour"].linkedUnique, 1);
 assert.equal(result.byTourCategory["WTA::Main tour"].linkedUnique, 1);
