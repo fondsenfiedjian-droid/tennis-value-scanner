@@ -21,8 +21,8 @@ test("3/7/14-day windows include lower boundary and exclude preceding day", () =
     row("d14", "2026-06-06"), row("d15", "2026-06-05")
   ]);
   assert.equal(out.players.A.matches_3d, 1);
-  assert.equal(out.players.A.matches_7d, 2);
-  assert.equal(out.players.A.matches_14d, 3);
+  assert.equal(out.players.A.matches_7d, 3);
+  assert.equal(out.players.A.matches_14d, 5);
 });
 
 test("two matches on one date count as two matches and one playing day", () => {
@@ -53,13 +53,14 @@ test("administrative outcomes are excluded from activity counts", () => {
 
 test("exact duplicate is ignored; conflicting duplicate causes abstention", () => {
   const original = row("same", "2026-06-19");
-  const exact = calculateAceFeatures(target, [original, { ...original }]);
+  const playerBHistory = row("b-history", "2026-06-19", "B", "Y");
+  const exact = calculateAceFeatures(target, [original, { ...original }, playerBHistory]);
   assert.equal(exact.status, "available");
-  const conflict = calculateAceFeatures(target, [original, row("same", "2026-06-18")]);
+  const conflict = calculateAceFeatures(target, [original, row("same", "2026-06-18"), playerBHistory]);
   assert.equal(conflict.status, "abstain");
 });
 
-test("no prior history returns insufficient_data, not a zero-load claim", () => {
+test("retirement may count as an appearance but duration is withheld", () => {\n  const out = calculateAceFeatures(target, [row("ret", "2026-06-19", "A", "X", "130", "RET"), row("b", "2026-06-19", "B", "Y", "90", "")]);\n  assert.equal(out.players.A.matches_7d, 1);\n  assert.equal(out.players.A.known_duration_sum_7d_min, 0);\n  assert.equal(out.players.A.duration_coverage_7d, 0);\n});\n\ntest("no prior history returns insufficient_data, not a zero-load claim", () => {
   const out = calculateAceFeatures(target, [row("same-day", "2026-06-20")]);
   assert.equal(out.status, "insufficient_data");
   assert.equal(out.players.A.matches_14d, 0);
