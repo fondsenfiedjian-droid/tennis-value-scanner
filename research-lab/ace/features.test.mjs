@@ -60,7 +60,14 @@ test("exact duplicate is ignored; conflicting duplicate causes abstention", () =
   assert.equal(conflict.status, "abstain");
 });
 
-test("retirement may count as an appearance but duration is withheld", () => {\n  const out = calculateAceFeatures(target, [row("ret", "2026-06-19", "A", "X", "130", "RET"), row("b", "2026-06-19", "B", "Y", "90", "")]);\n  assert.equal(out.players.A.matches_7d, 1);\n  assert.equal(out.players.A.known_duration_sum_7d_min, 0);\n  assert.equal(out.players.A.duration_coverage_7d, 0);\n});\n\ntest("no prior history returns insufficient_data, not a zero-load claim", () => {
+test("retirement may count as an appearance but duration is withheld", () => {
+  const out = calculateAceFeatures(target, [row("ret", "2026-06-19", "A", "X", "130", "RET"), row("b", "2026-06-19", "B", "Y", "90", "")]);
+  assert.equal(out.players.A.matches_7d, 1);
+  assert.equal(out.players.A.known_duration_sum_7d_min, 0);
+  assert.equal(out.players.A.duration_coverage_7d, 0);
+});
+
+test("no prior history returns insufficient_data, not a zero-load claim", () => {
   const out = calculateAceFeatures(target, [row("same-day", "2026-06-20")]);
   assert.equal(out.status, "insufficient_data");
   assert.equal(out.players.A.matches_14d, 0);
