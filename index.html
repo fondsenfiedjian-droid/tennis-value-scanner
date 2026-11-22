@@ -235,6 +235,16 @@
     .compare-result-player .compare-probability{display:block;color:#d58a8e;font-size:24px;font-weight:900}
     .compare-result-player small{display:block;margin-top:4px;color:#a9aeba;font-size:10px}
     .compare-result-summary{margin-top:10px;color:#c9c3c8;font-size:11px;line-height:1.5;text-align:center}
+    .compare-dossier-block{margin-top:12px;padding:12px;border:1px solid #353640;border-radius:11px;background:#101116}
+    .compare-dossier-block>b{display:block;color:#e1b7bd;font-size:12px;margin-bottom:8px}
+    .compare-dossier-block small{display:block;color:#9da3ae;font-size:10px;line-height:1.5;margin-top:7px}
+    .compare-form-grid,.compare-surface-records{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0}
+    .compare-form-grid span,.compare-surface-records span{padding:7px;border:1px solid #34343d;border-radius:7px;color:#d7d9df;font-size:10px}
+    .compare-history-list{margin-top:9px}
+    .compare-history-row{display:grid;grid-template-columns:24px minmax(0,1fr);gap:6px;padding:7px 0;border-top:1px solid #292a31;color:#c9cbd2;font-size:10px;line-height:1.4}
+    .compare-history-row small{grid-column:2;margin:0}
+    .history-win{color:#7fc7dd}.history-loss{color:#e3b455}
+    .compare-h2h-total{font-size:16px;font-weight:850;color:#e3b455}
     .compare-disclaimer{margin-top:16px}
     .more-modal .more-action{width:100%;padding:12px;border:1px solid #65404a;border-radius:10px;background:#211319;color:#f0dce0;text-align:left;font-weight:750}
     .more-note{margin-top:12px;color:var(--muted);font-size:11px;line-height:1.5}
@@ -1516,24 +1526,46 @@
     }
     return null;
   }
+  function deriveCompareHistory(payload,playerId){
+    const rows=Array.isArray(payload?.data)?payload.data:[];
+    const id=String(playerId);
+    const matches=rows.map(row=>{
+      const p1=row?.players?.p1||row?.player1||null,p2=row?.players?.p2||row?.player2||null;
+      const id1=String(p1?.id??p1?.player_id??''),id2=String(p2?.id??p2?.player_id??'');
+      const side=id1===id?'p1':id2===id?'p2':null;if(!side)return null;
+      const opponent=side==='p1'?p2:p1,winner=Number(row?.winner),decided=winner===1||winner===2;
+      const won=decided&&winner===(side==='p1'?1:2);
+      const surface=String(row?.surface||'').trim().toLowerCase();
+      const date=row?.scheduled_time||row?.date||row?.match_date||null;
+      const score=row?.score?.display||row?.score?.formatted||row?.score||'—';
+      return {date,tournament:row?.tournament?.name||row?.tournament||row?.competition||'Турнир не указан',surface,opponent:opponent?.name||'Соперник не указан',score,winner:decided?(won?'W':'L'):'?'};
+    }).filter(Boolean).sort((a,b)=>{const da=Date.parse(a.date||''),db=Date.parse(b.date||'');return (Number.isFinite(db)?db:0)-(Number.isFinite(da)?da:0);});
+    const decided=matches.filter(m=>m.winner==='W'||m.winner==='L');
+    const record=list=>({wins:list.filter(m=>m.winner==='W').length,losses:list.filter(m=>m.winner==='L').length,decided:list.length});
+    const last5=matches.slice(0,5),form10=record(decided.slice(0,10)),form20=record(decided.slice(0,20));
+    const bySurface={hard:record(decided.filter(m=>m.surface==='hard')),clay:record(decided.filter(m=>m.surface==='clay')),grass:record(decided.filter(m=>m.surface==='grass')),carpet:record(decided.filter(m=>m.surface==='carpet'))};
+    return {last5,form10,form20,bySurface,sample:matches.length,undecided:matches.length-decided.length,source:payload?.source||'Live Tennis API /history/matches',period:payload?.period||'2023-present',retrievedAt:payload?.retrievedAt||null};
+  }
+  function renderCompareHistory(history,label){
+    if(!history)return '<section class="compare-dossier-block"><b>'+escapeHtml(label)+'</b><small>История недоступна. Основное сравнение Elo сохранено.</small></section>';
+    const fmt=r=>r.wins+'–'+r.losses+' ('+r.decided+')';
+    const surfaces=[['hard','Хард'],['clay','Грунт'],['grass','Трава'],['carpet','Ковёр']];
+    const rows=history.last5.map(m=>{const d=m.date&&Number.isFinite(Date.parse(m.date))?new Date(m.date).toLocaleDateString('ru-RU'):'дата не указана';const score=typeof m.score==='string'?m.score:JSON.stringify(m.score);return '<div class="compare-history-row"><b class="'+(m.winner==='W'?'history-win':m.winner==='L'?'history-loss':'')+'">'+m.winner+'</b><span>'+escapeHtml(d+' · '+m.tournament+' · '+(m.surface||'покрытие неизвестно')+' · '+m.opponent)+'</span><small>'+escapeHtml(score||'—')+'</small></div>';}).join('')||'<small>Нет матчей в доступной выборке.</small>';
+    return '<section class="compare-dossier-block"><b>'+escapeHtml(label)+' · форма</b><div class="compare-form-grid"><span>Последние 10: '+fmt(history.form10)+'</span><span>Последние 20: '+fmt(history.form20)+'</span></div><div class="compare-surface-records">'+surfaces.map(([k,n])=>'<span>'+n+': '+fmt(history.bySurface[k])+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние матчи · '+history.last5.length+'/5</b>'+rows+'</div><small>Выборка: '+history.sample+' матчей · неопределённых: '+history.undecided+' · '+escapeHtml(history.period)+' · '+escapeHtml(history.source)+(history.retrievedAt?' · обновлено '+escapeHtml(new Date(history.retrievedAt).toLocaleString('ru-RU')):'')+'</small></section>';
+  }
+  function renderCompareH2H(payload,nameA,nameB){
+    const p1=String(payload?.players?.p1?.name||''),p2=String(payload?.players?.p2?.name||''),norm=v=>String(v||'').trim().toLocaleLowerCase();
+    if(!p1||!p2||norm(p1)!==norm(nameA)||norm(p2)!==norm(nameB))return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Идентичность игроков не подтверждена точным совпадением имён. Статистика скрыта.</small></section>';
+    const totals=payload.totals||{},meetings=Array.isArray(payload.meetings)?payload.meetings:[],surfaces=payload.by_surface&&typeof payload.by_surface==='object'?Object.entries(payload.by_surface):[];
+    return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><div class="compare-h2h-total">'+escapeHtml(p1)+' '+Number(totals.p1_wins||0)+' : '+Number(totals.p2_wins||0)+' '+escapeHtml(p2)+'</div><small>Встреч: '+Number(totals.meetings||meetings.length)+' · неопределённых: '+Number(totals.undecided||0)+' · период: '+escapeHtml(payload.period||'1968-present')+'</small><div class="compare-surface-records">'+surfaces.map(([k,v])=>'<span>'+escapeHtml(k)+': '+Number(v?.p1??v?.p1_wins??0)+'–'+Number(v?.p2??v?.p2_wins??0)+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние встречи</b>'+meetings.slice(0,5).map(m=>'<div class="compare-history-row"><span>'+escapeHtml(m.date||'дата не указана')+' · '+(m.winner===1?escapeHtml(p1):m.winner===2?escapeHtml(p2):'победитель не определён')+'</span><small>'+escapeHtml(m.outcome||'')+'</small></div>').join('')+'</div></section>';
+  }
   function renderCompareResult(result,nameA,nameB,surface){
     const node=$('#compareResult');
-    const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB);
-    const probA=Number(result.probabilityA),probB=Number(result.probabilityB);
+    const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB),probA=Number(result.probabilityA),probB=Number(result.probabilityB);
     const freshnessA=result.ratingFreshnessA?.status||'unknown',freshnessB=result.ratingFreshnessB?.status||'unknown';
     const freshnessLabel=status=>({fresh:'свежий рейтинг',recent:'недавний рейтинг',stale:'устаревший рейтинг',unknown:'дата рейтинга неизвестна',invalid:'некорректная дата'})[status]||'статус неизвестен';
-    const profileLine=profile=>{
-      if(!profile)return '<small>Официальный профиль недоступен</small>';
-      const rank=Number.isSafeInteger(profile.ranking)&&profile.ranking>0?'№'+profile.ranking:'не опубликован';
-      const tour=profile.tour==='atp'?'ATP':profile.tour==='wta'?'WTA':'тур не указан';
-      const country=profile.country?escapeHtml(profile.country):'страна не указана';
-      const completeness=profile.completeness&&Number.isFinite(profile.completeness.percent)
-        ? ' · заполнено '+profile.completeness.known+'/'+profile.completeness.of+' ('+profile.completeness.percent+'%)'
-        : '';
-      return '<small>Официальный рейтинг: '+rank+'</small><small>'+tour+' · '+country+escapeHtml(completeness)+'</small>';
-    };
-    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';
-    node.hidden=false;
+    const profileLine=profile=>{if(!profile)return '<small>Официальный профиль недоступен</small>';const rank=Number.isSafeInteger(profile.ranking)&&profile.ranking>0?'№'+profile.ranking:'не опубликован';const tour=profile.tour==='atp'?'ATP':profile.tour==='wta'?'WTA':'тур не указан';const country=profile.country?escapeHtml(profile.country):'страна не указана';const completeness=profile.completeness&&Number.isFinite(profile.completeness.percent)?' · заполнено '+profile.completeness.known+'/'+profile.completeness.of+' ('+profile.completeness.percent+'%)':'';return '<small>Официальный рейтинг: '+rank+'</small><small>'+tour+' · '+country+escapeHtml(completeness)+'</small>';};
+    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';node.hidden=false;
   }
   const compareSearchState={A:{timer:null,sequence:0},B:{timer:null,sequence:0}};
   function bindComparePlayerSearch(side){
@@ -1599,7 +1631,18 @@
       if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
       if(!Number.isFinite(Number(payload.probabilityA))||!Number.isFinite(Number(payload.probabilityB)))throw new Error('API не вернул корректные вероятности для этой пары.');
       renderCompareResult(payload,nameA,nameB,surface);
-      status.textContent='Сравнение рассчитано по текущей Elo-модели. Данные получены из Live Tennis API.';
+      status.textContent='Elo рассчитан. Загружаю историю и личные встречи…';
+      const exactNameA=String(payload.playerA||nameA),exactNameB=String(payload.playerB||nameB);
+      const optionalRequests=await Promise.allSettled([
+        fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idA)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
+        fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idB)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
+        fetchWithTimeout(API+'/player-h2h?p1='+encodeURIComponent(exactNameA)+'&p2='+encodeURIComponent(exactNameB)).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;})
+      ]);
+      const histA=optionalRequests[0].status==='fulfilled'?deriveCompareHistory(optionalRequests[0].value,idA):null;
+      const histB=optionalRequests[1].status==='fulfilled'?deriveCompareHistory(optionalRequests[1].value,idB):null;
+      const h2hHtml=optionalRequests[2].status==='fulfilled'?renderCompareH2H(optionalRequests[2].value,exactNameA,exactNameB):'<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Источник недоступен: '+escapeHtml(String(optionalRequests[2].reason?.message||'ошибка запроса'))+'</small></section>';
+      resultNode.insertAdjacentHTML('beforeend',renderCompareHistory(histA,exactNameA)+renderCompareHistory(histB,exactNameB)+h2hHtml);
+      status.textContent='Elo рассчитан · история: '+(Number(optionalRequests[0].status==='fulfilled')+Number(optionalRequests[1].status==='fulfilled'))+'/2 · H2H: '+(optionalRequests[2].status==='fulfilled'?'ответ получен, идентичность проверена':'недоступен')+'. История 2023–н.в.; H2H 1968–н.в.';
     }catch(error){
       status.textContent='Не удалось выполнить сравнение: '+String(error.message||error);
     }finally{button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
