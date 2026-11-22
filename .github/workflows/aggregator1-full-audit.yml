@@ -50,11 +50,18 @@ jobs:
           done
           for tour in atp wta; do
             for year in 2021 2022 2023 2024 2025 2026; do
-              file="${tour}_matches_${year}.csv"
-              url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${file}"
-              curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
-                "$url" --output "$ROOT/sackmann/$file"
-              test -s "$ROOT/sackmann/$file"
+              files=("${tour}_matches_${year}.csv")
+              if [[ "$tour" == "atp" ]]; then
+                files+=("atp_matches_qual_chall_${year}.csv" "atp_matches_futures_${year}.csv")
+              else
+                files+=("wta_matches_qual_itf_${year}.csv")
+              fi
+              for file in "${files[@]}"; do
+                url="https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/${tour}/${file}"
+                curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
+                  "$url" --output "$ROOT/sackmann/$file"
+                test -s "$ROOT/sackmann/$file"
+              done
             done
           done
           {
