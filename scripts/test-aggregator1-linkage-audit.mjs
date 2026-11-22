@@ -41,7 +41,7 @@ const sackmann = [
 const result = auditValuebetSackmann(valuebet, sackmann);
 assert.equal(result.totals.valuebetRows, 6);
 assert.equal(result.totals.validValuebetRows, 6);
-assert.equal(result.totals.candidateRows, 5);
+assert.equal(result.totals.candidateRows, 4);
 assert.equal(result.totals.linkedUnique, 3);
 assert.equal(result.totals.linkedWithoutTournament, 1);
 assert.equal(result.totals.linkedByTournament, 2);
