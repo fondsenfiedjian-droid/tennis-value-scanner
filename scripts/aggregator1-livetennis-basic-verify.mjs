@@ -18,8 +18,8 @@ const report = {
   generated_at:new Date().toISOString(),
   source:"Live Tennis API",
   mode:"stratified archive inventory; aggregate-only; no bulk export",
-  request_budget:25, requests_made:0, account:null, sample_page_size:20,
-  buckets:[], detail_samples:[], warnings:[]
+  request_budget:37, requests_made:0, account:null, sample_page_size:20,
+  buckets:[], detail_samples:[], major_draw_checks:[], warnings:[]
 };
 async function get(path) {
   report.requests_made++;
@@ -64,7 +64,47 @@ try {
         : {tour,era:label,http_status:d.status,error:d.json?.error||d.error||"request_failed"});
     }else report.detail_samples.push({tour,era:label,skipped:true,reason:"no sample match in page"});
   }
-  report.result=report.buckets.every(x=>x.http_status===200)&&report.detail_samples.every(x=>x.http_status===200||x.skipped)
+
+  // Targeted Grand Slam sample: verify stats-rich records and archive player/career lookups.
+  // Two broad eras, both tours; one result detail, one player bio and one career aggregate per bucket.
+  for(const tour of ["atp","wta"]) for(const [era,from,to] of [
+    ["1991-2000","1991-01-01","2000-12-31"],
+    ["2016-2022","2016-01-01","2022-12-31"]
+  ]){
+    const list=await get("/history/archive/matches?tour="+tour+"&level=G&from="+from+"&to="+to+"&limit=1");
+    if(!list.ok){
+      report.major_draw_checks.push({tour,era,http_status:list.status,error:list.json?.error||list.error||"request_failed"});
+      continue;
+    }
+    const match=Array.isArray(list.json.data)?list.json.data[0]:null;
+    if(!match?.id){
+      report.major_draw_checks.push({tour,era,http_status:list.status,empty:true});
+      continue;
+    }
+    const detail=await get("/history/archive/matches/"+encodeURIComponent(match.id));
+    const rec=detail.json?.data||detail.json;
+    const player=match.winner||{};
+    const bio=player.player_id!=null
+      ? await get("/history/archive/players?id="+encodeURIComponent(player.player_id)+"&tour="+tour)
+      : {ok:false,status:0,error:"winner_player_id_missing"};
+    const career=player.name
+      ? await get("/history/archive/career?name="+encodeURIComponent(player.name))
+      : {ok:false,status:0,error:"winner_name_missing"};
+    const bioRows=Array.isArray(bio.json?.data)?bio.json.data:[];
+    const careerRec=career.json?.data||career.json||{};
+    report.major_draw_checks.push({
+      tour,era,http_status:list.status,
+      list_meta:{count:list.json.meta?.count??null,has_more:list.json.meta?.has_more??null},
+      detail_http_status:detail.status,stats_present:detail.ok&&rec?.stats!=null,
+      winner_stat_fields:keys(rec?.stats?.winner),loser_stat_fields:keys(rec?.stats?.loser),
+      player_bio_http_status:bio.status,player_bio_rows:bioRows.length,
+      player_bio_fields:keys(bioRows[0]),
+      career_http_status:career.status,career_fields:keys(careerRec),
+      career_record_fields:keys(careerRec.record),career_serve_fields:keys(careerRec.serve)
+    });
+  }
+
+  report.result=report.buckets.every(x=>x.http_status===200)&&report.detail_samples.every(x=>x.http_status===200||x.skipped)&&report.major_draw_checks.every(x=>x.http_status===200&&x.detail_http_status===200&&x.player_bio_http_status===200&&x.career_http_status===200)
     ?"inventory_completed":"some_archive_checks_failed";
   await (await import("node:fs/promises")).writeFile("livetennis-archive-inventory.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
