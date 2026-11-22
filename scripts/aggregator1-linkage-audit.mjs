@@ -66,10 +66,17 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},offsets=[];
+  const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
     const m=basename(file.filename).match(VBT);
     if(!m)throw new Error("Unexpected Valuebetennis filename: "+basename(file.filename));
     const rows=parseCsv(file.content,{delimiter:";"});
+    if(!valuebetSchema.columns.length)valuebetSchema.columns=Object.keys(rows[0]||{});
+    const categoryKeys=Object.keys(rows[0]||{}).filter(k=>/(genre|surface|niveau|level|category|round|tour|type|competition|categorie)/i.test(k));
+    for(const key of categoryKeys){
+      const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
+      for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
+    }
     const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0});
     for(const row of rows){
       yearBucket.rows++;
@@ -115,6 +122,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
     },
     byTour,
+    valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     warnings:[
       "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
