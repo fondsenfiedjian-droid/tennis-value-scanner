@@ -1131,3 +1131,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Provider errors are sanitized, HTTP status and `Retry-After` are preserved, and malformed successful payloads are rejected rather than cached.
 - Added dedicated Worker regression coverage for validation, endpoint parameters, normalized caching, sanitized rate-limit errors and malformed payloads.
 - This is a preview-branch Worker change only. Frontend autocomplete is the next step; the existing manual ID entry and comparison flow remain unchanged for now. No Production Worker deployment or PR merge has been performed.
+
+### 2026-11-22 — Comparison player autocomplete (TVS 2.0)
+- Added name search to both player slots in the comparison view. Results are requested from the isolated Worker `/players/search` endpoint after a 350 ms typing pause; stale responses are ignored.
+- Selecting a result fills the player's display name and Live Tennis API roster ID. Manual ID entry remains available as a fallback.
+- Search results are rendered as selectable options with escaped player names; no search request is made until at least two characters are entered.
+- Added dedicated frontend regression checks for both search fields, debounce/stale-response handling, selection-to-ID mapping and manual fallback.
+- Existing Elo comparison still uses the same `/predict` endpoint. No Elo, probability, EV, PFE, reliability or production logic changed. The feature remains isolated on the TVS 2.0 draft PR branch; no merge or Production deployment.
