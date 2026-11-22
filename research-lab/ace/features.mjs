@@ -155,6 +155,7 @@ export function calculateAceFeatures(target, history, options = {}) {
   const byId = new Map();
   const conflicts = new Set();
   const unique = [];
+  let exactDuplicatesIgnored = 0;
 
   for (const row of normalized) {
     if (!row.id) continue;
@@ -164,6 +165,8 @@ export function calculateAceFeatures(target, history, options = {}) {
       unique.push(row);
     } else if (fingerprint(previous) !== fingerprint(row)) {
       conflicts.add(row.id);
+    } else {
+      exactDuplicatesIgnored += 1;
     }
     // Exact duplicate: ignore the repeated copy.
   }
@@ -203,7 +206,7 @@ export function calculateAceFeatures(target, history, options = {}) {
     data_cutoff_at: `${dayKey(new Date(targetDate.getTime() - DAY_MS))}T23:59:59`,
     source_snapshot_id: options.source_snapshot_id ?? null,
     source_rows: normalized.length,
-    exact_duplicates_ignored: normalized.filter(row => row.id && byId.has(row.id)).length - unique.length + 0,
+    exact_duplicates_ignored: exactDuplicatesIgnored,
     conflicted_match_ids_excluded: [...conflicts],
     malformed_rows_present: relevantMalformed,
     same_day_rows_excluded: normalized.filter(row =>
