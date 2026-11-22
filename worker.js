@@ -1035,12 +1035,12 @@ export default {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
       }
       const rawPlayerId = url.searchParams.get("id") || "";
-      if (!/^\\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
+      if (!/^\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
         return response({ error: "id must be a positive integer player identifier" }, 400);
       }
       const playerId = String(Number(rawPlayerId));
       const rawLimit = url.searchParams.get("limit") || "20";
-      if (!/^\\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 50) {
+      if (!/^\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 50) {
         return response({ error: "limit must be an integer from 1 to 50" }, 400);
       }
       const limit = Number(rawLimit);
