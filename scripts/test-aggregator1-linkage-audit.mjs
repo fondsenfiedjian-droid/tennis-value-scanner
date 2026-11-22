@@ -32,7 +32,8 @@ const sackmann = [
     filename: "wta_matches_2025.csv",
     content: [
       "tourney_date,tourney_name,surface,winner_name,loser_name",
-      "20250127,Abu Dhabi,Hard,Ons Jabeur,Emma Raducanu"
+      "20250127,Abu Dhabi,Hard,Ons Jabeur,Emma Raducanu",
+      "20250130,Doha,Hard,Ons Jabeur,Emma Raducanu"
     ].join("\n")
   }
 ];
@@ -40,10 +41,10 @@ const sackmann = [
 const result = auditValuebetSackmann(valuebet, sackmann);
 assert.equal(result.totals.valuebetRows, 6);
 assert.equal(result.totals.validValuebetRows, 6);
-assert.equal(result.totals.candidateRows, 4);
+assert.equal(result.totals.candidateRows, 5);
 assert.equal(result.totals.linkedUnique, 3);
-assert.equal(result.totals.linkedWithoutTournament, 2);
-assert.equal(result.totals.linkedByTournament, 1);
+assert.equal(result.totals.linkedWithoutTournament, 1);
+assert.equal(result.totals.linkedByTournament, 2);
 assert.equal(result.totals.noCandidate, 2);
 assert.equal(result.totals.unknownSurface, 1);
 assert.equal(result.totals.ambiguous, 1);
