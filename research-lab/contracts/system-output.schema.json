@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/tvs-research-lab/system-output.schema.json",
+  "$id": "https://github.com/fondsenfiedjian-droid/tennis-value-scanner/blob/research/tvs-research-lab-v1/research-lab/contracts/system-output.schema.json",
   "title": "TVS Research Lab SAS Output",
   "type": "object",
   "additionalProperties": false,
