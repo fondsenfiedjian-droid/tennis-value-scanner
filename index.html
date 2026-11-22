@@ -1354,8 +1354,10 @@
         if(row.model!=='general-elo-v2'||String(row.modelVersion)!=='2'||!['A','B'].includes(row.side))return false;
         if(row.captureStatus&&row.captureStatus!=='upcoming')return false;
         const odds=Number(row.odds),probability=Number(row.probability),ev=Number(row.ev),capturedAt=Number(row.capturedAt);
+        const quoteTimes=['quoteCapturedAt','quoteObservedAt'].map(key=>row[key]).filter(value=>value!==null&&value!==undefined&&String(value).trim()!=='');
+        const quoteTimesValid=quoteTimes.every(value=>Number.isFinite(Number(value))&&Number(value)>0&&Number(value)<matchStart);
         return Number.isFinite(odds)&&odds>1&&Number.isFinite(probability)&&probability>=0&&probability<=100&&
-          Number.isFinite(ev)&&Number.isFinite(capturedAt)&&capturedAt>0&&capturedAt<matchStart;
+          Number.isFinite(ev)&&Number.isFinite(capturedAt)&&capturedAt>0&&capturedAt<matchStart&&quoteTimesValid;
       });
       if(!candidates.length)continue;
       const latestAt=Math.max(...candidates.map(row=>Number(row.capturedAt)));
