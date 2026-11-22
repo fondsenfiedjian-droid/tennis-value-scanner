@@ -320,7 +320,7 @@ test("end-to-end schedule pipeline keeps official upcoming singles and diagnoses
   const sandbox = {};
   vm.runInNewContext(
     html.slice(filterStart, filterEnd) +
-      "\\nglobalThis.schedulePipeline = { matchTour, filterScheduleMatches };",
+      "\nglobalThis.schedulePipeline = { matchTour, filterScheduleMatches };",
     sandbox
   );
   const pipeline = sandbox.schedulePipeline;
