@@ -61,7 +61,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       if(!a||!b||a===b||date===null||!sf)continue;
       const pairKey=[tour,[a,b].sort().join("|")].join("::");
       const key=pairKey+"::"+sf;
-      const record={date,tier,year,surface:sf,event:tourney(row.tourney_name)};
+      const record={date,tier,year,surface:sf,event:tourney(row.tourney_name),winnerId:String(row.winner_id??"").trim(),loserId:String(row.loser_id??"").trim(),winnerName:a,loserName:b};
       if(!sackIndex.has(key))sackIndex.set(key,[]);
       sackIndex.get(key).push(record);
       if(!sackPairIndex.has(pairKey))sackPairIndex.set(pairKey,[]);
@@ -70,6 +70,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byCategory={},byTourCategory={},offsets=[];
+  const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()};
+  let matchRowsWithBothPlayerIdsEvidence=0;
   const valuebetSchema={columns:[],categorical:{}};
   for(const file of valuebetFiles){
     const m=basename(file.filename).match(VBT);
@@ -89,6 +91,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const cg=byCategory[category]||(byCategory[category]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       cg.rows++;
       const tour=String(row.genre??"").trim().toUpperCase();
+      if(["ATP","WTA"].includes(tour))for(const side of ["joueur1","joueur2"]){const id=String(row[side+"_id"]??"").trim();if(id)sourcePlayerIds[tour].add(id);}
       const tourCategoryKey=(tour||"(empty)")+"::"+category;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
@@ -121,12 +124,35 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         offsets.push(date-selected.date);
+        const source1=String(row.joueur1_id??"").trim(),source2=String(row.joueur2_id??"").trim();
+        const sackFor=(name)=>name===selected.winnerName?selected.winnerId:name===selected.loserName?selected.loserId:"";
+        const sack1=sackFor(a),sack2=sackFor(b);
+        if(source1&&source2&&sack1&&sack2){
+          if(!sourceIdEvidence[tour].has(source1))sourceIdEvidence[tour].set(source1,new Set());
+          if(!sourceIdEvidence[tour].has(source2))sourceIdEvidence[tour].set(source2,new Set());
+          sourceIdEvidence[tour].get(source1).add(sack1);
+          sourceIdEvidence[tour].get(source2).add(sack2);
+          matchRowsWithBothPlayerIdsEvidence++;
+        }
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;}
       else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
   totals.linkagePct=pct(totals.linkedUnique,totals.validValuebetRows);
+  const playerIdEvidence={};
+  for(const tour of ["ATP","WTA"]){
+    let resolvedToSingleSackmannId=0,conflictingSackmannIds=0;
+    for(const ids of sourceIdEvidence[tour].values()){if(ids.size===1)resolvedToSingleSackmannId++;else if(ids.size>1)conflictingSackmannIds++;}
+    playerIdEvidence[tour]={
+      distinctValuebetPlayerIds:sourcePlayerIds[tour].size,
+      withAcceptedMatchEvidence:sourceIdEvidence[tour].size,
+      resolvedToSingleSackmannId,
+      conflictingSackmannIds,
+      withoutAcceptedMatchEvidence:sourcePlayerIds[tour].size-sourceIdEvidence[tour].size,
+      resolutionPct:pct(resolvedToSingleSackmannId,sourcePlayerIds[tour].size)
+    };
+  }
   for(const [tour,g] of Object.entries(byTour))g.linkagePct=pct(g.linkedUnique,g.validRows);
   return {
     schemaVersion:2,
@@ -145,7 +171,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     warnings:[
       "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
       "Sackmann tourney_date is generally the event-week date, not the exact match date; the date window is a candidate filter, not a claim about match start time.",
-      "No initials/fuzzy-name matching is attempted. TennisMyLife ATP player IDs or a verified player crosswalk should be added before relaxing name matching.",
+      "No initials/fuzzy-name matching is attempted. Match-evidence player-ID links are emitted only as aggregate counts and never as raw crosswalk rows.",
       "Do not merge rows into Production. Use only the aggregate report to assess source overlap and data quality.",
       "Jeff Sackmann data is CC BY-NC-SA 4.0; non-commercial use, attribution and share-alike conditions apply."
     ]
