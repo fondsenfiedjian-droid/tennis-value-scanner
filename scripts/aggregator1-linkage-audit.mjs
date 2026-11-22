@@ -79,10 +79,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       if(date===null){totals.invalidDate++;g.invalidDate++;continue;}
       if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
-      if(!sf){totals.unknownSurface++;g.unknownSurface++;}
+      totals.validValuebetRows++;g.validRows++;
+      if(!sf){
+        totals.unknownSurface++;g.unknownSurface++;
+        totals.noCandidate++;g.noCandidate++;
+        continue;
+      }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
       const candidates=(sackIndex.get(key)||[]).filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      totals.validValuebetRows++;g.validRows++;
       if(candidates.length){totals.candidateRows++;g.candidateRows++;}
       const eventCandidates=candidates.filter(x=>x.event===ev);
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
@@ -99,7 +103,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   totals.linkagePct=pct(totals.linkedUnique,totals.validValuebetRows);
   for(const [tour,g] of Object.entries(byTour))g.linkagePct=pct(g.linkedUnique,g.validRows);
   return {
-    schemaVersion:1,
+    schemaVersion:2,
     purpose:"Conservative aggregate-only linkage audit; no match-level or player-level links are written.",
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannFiles:sackmannFiles.map(x=>basename(x.filename)).sort(),sackmannSourceRows:sourceRows},
     matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"not required for a single player-pair/surface/date candidate; exact normalized name or explicit alias is used only to resolve multiple candidates",surface:"normalized exact surface, including French Valuebetennis labels",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"one candidate is accepted; multiple candidates require exactly one tournament-name match, otherwise remain ambiguous"},
