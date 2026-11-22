@@ -111,3 +111,48 @@ The 2016–2022 selected ATP and WTA Grand Slam records exposed aces, double fau
 The archive player endpoint returned bios with country, DOB, hand, height, career-high rank and date. The career endpoint returned overall and by-surface/by-level W-L, titles, yearly records, and aggregate serve totals/ratios. These are accessible under BASIC and potentially useful as player-profile features, but they are career aggregates over the archive, not time-frozen pre-match features. Using full-career aggregates in a historical backtest would leak future information unless the feature is rebuilt only from matches before the target match.
 
 The run's report states 41 actual requests against a declared budget of 37; all returned checks succeeded. The account usage response showed Basic active and 994 daily calls remaining at its point of measurement. The discrepancy in the counter is documented; no more broad archive calls should be made until the next bounded task is defined.
+
+## 9. Project decision — prepare the unified historical corpus before full model training
+
+Decision dated 2026-11-22: complete source discovery, rights screening, data normalization, entity resolution, deduplication, and quality auditing before the main training campaign. Small diagnostic baselines may be used only to validate the pipeline; they are not the final model-training milestone.
+
+### Source admission register
+
+| Source | Current evidence | Intended role | Admission gate |
+|---|---|---|---|
+| Valuebetennis (2021–2026) | Local CSVs previously counted at about 478,606 rows; CC BY 4.0 | Core match results and chronology | Verify actual files, schema, duplicates, and attribution |
+| Jeff Sackmann ATP/WTA (2021–2026 currently audited) | 12 CSVs; CC BY-NC-SA 4.0 | Independent result cross-check and features | Preserve attribution/share-alike; non-commercial use only unless separately cleared |
+| TennisMyLife ATP/WTA | High linkage in prior audit; restrictive personal/educational/non-commercial terms | Supplementary player/event crosswalk and validation | Do not redistribute raw data; verify current terms and permitted local use |
+| Live Tennis API Basic archive | Endpoint verified; reported archive totals are not deduplicated; event_date is tournament start date | Coverage/field research; possible training source only after written permission | Written permission required for durable archive retention and ML training; no bulk crawl before clearance |
+| AcesAPI | Previously reviewed terms reportedly permit internal model training, with no resale/redistribution; free quota limited | Candidate supplementary results source | Recheck current terms, quota, coverage, and account access before ingestion |
+| Data for Tennis | Previously reviewed terms reportedly permit commercial ML research/training and local research archive within entitlement; paid plans | Potentially strongest additional licensed source | No purchase or account commitment without explicit user approval; obtain current written plan/coverage details |
+| Other providers | Not yet admitted | Gap filling only | Must add meaningful unique coverage and have explicit compatible rights |
+
+### Corpus preparation rules
+
+1. Keep each provider's raw files separate and immutable; never mix provider rows before provenance is attached.
+2. Create a canonical match table with source, source match ID, tour, event, event date, match date (nullable), round, surface, level, best-of, player IDs, winner/loser, score, and field-level provenance.
+3. Do not promote tournament-start dates to exact match dates. Archive rows without exact dates may be used only in analyses whose time ordering can be proven safe; otherwise exclude them from chronological model training.
+4. Resolve player identities with stable crosswalk tables and confidence levels. Do not silently fuzzy-merge ambiguous identities.
+5. Deduplicate using tour, normalized player pair, event identity, round, date evidence, and score; retain source links and conflict flags rather than deleting provenance.
+6. Keep match outcomes separate from pre-match features. Career aggregates must be recomputed strictly from matches earlier than the prediction cutoff; full-career API aggregates are not valid historical pre-match features.
+7. Treat missing serve statistics as missing, never as zero. Report coverage by tour, year, surface, level, and source.
+8. Respect each source's license independently. A combined dataset does not erase non-commercial, attribution, share-alike, retention, or redistribution restrictions.
+
+### Completion criteria before main training
+
+- Source and license register complete; no unresolved source is silently included.
+- Inventory by source/tour/year/level/surface with row counts, missingness, and date precision.
+- Player and tournament crosswalks include confidence and ambiguity counts.
+- Duplicate and conflicting-result report is produced with provenance preserved.
+- Chronological eligibility flag is explicit for every match.
+- Leakage audit confirms all pre-match features use information available before the target match.
+- A reproducible, aggregate-only quality report is committed; raw licensed datasets and API responses are not committed to GitHub.
+
+### Immediate next actions
+
+- Inspect the research branch for existing local-data ingestion workflows and available source files without touching Production.
+- Reuse existing Valuebetennis/Sackmann/TennisMyLife linkage results rather than repeat expensive scans.
+- Continue Live Tennis API work only with narrowly scoped metadata/field checks until written ML/storage permission is received.
+- Verify AcesAPI current entitlement and Data for Tennis licensing/coverage before any new download or payment.
+- Build the canonical schema and quality gates first; then ingest sources that pass their rights gates.
