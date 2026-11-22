@@ -91,7 +91,7 @@ test("assessment only includes evidence linked to the exact player and target ma
     { matchId: "match-9", startTime: targetMatchStart }
   );
   assert.equal(result.evidenceCount, 1);
-  assert.equal(result.classification, "possible_preparation_or_low_priority");
+  assert.equal(result.classification, "explicit_preparation_statement");
   assert.equal(result.evidence[0].type, "explicit_preparation");
   assert.match(result.evidence[0].source, /Official tournament interview/);
   assert.equal(result.probabilityAdjustment, null);
