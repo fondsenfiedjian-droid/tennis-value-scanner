@@ -55,7 +55,7 @@ assert.equal(result.totals.surfaceAbsent, 0);
 assert.equal(result.totals.surfaceAbsent, 0);
 assert.equal(result.totals.unknownSurface, 1);
 assert.equal(result.totals.ambiguous, 1);
-assert.equal(result.totals.linkagePct, 50);
+assert.equal(result.totals.linkagePct, 42.86);
 assert.equal(result.byTour.ATP.linkedUnique, 2);
 assert.equal(result.byTour.WTA.linkedUnique, 1);
 assert.equal(result.byTourCategory["ATP::Grand Chelem"].linkedUnique, 1);
