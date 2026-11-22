@@ -301,3 +301,24 @@ The expanded 30-file download and aggregate linkage run completed successfully (
 This is a major correction to the first main-draw-only audit: adding ATP Futures, ATP qualifying/Challenger, and WTA ITF qualifying raised unique linkage from 5.14% to 58.65%. This confirms that source coverage tier was the dominant cause of the earlier low result. It still does not mean all 189,567 unmatched rows are missing from Sackmann: remaining differences can include absent WTA ITF main draws, unrepresented levels, naming/ID mismatch, round/date differences, or genuine source gaps.
 
 The next diagnostic now breaks linkage down by Valuebetennis `categorie` (ITF, Challenger, Main tour, Grand Slam, Masters, Davis/BJK Cup, empty) so the remaining mismatch can be attributed by competition tier rather than guessed from the overall rate. The raw inputs remain temporary; the report contains aggregate statistics only.
+
+
+## 14. Competition-category linkage breakdown — 2026-11-22
+
+The category-level audit completed successfully (run `45081163906`):
+
+| Valuebetennis category | Rows | Unique links | Linkage |
+|---|---:|---:|---:|
+| ITF | 278,278 | 132,873 | 47.75% |
+| Challenger | 151,398 (5 rows fail basic player-name validity) | 111,179 | 73.44% |
+| Main tour | 23,091 | 18,237 | 78.98% |
+| Grand Slam | 11,113 | 9,111 | 81.99% |
+| Masters | 10,839 | 8,507 | 78.49% |
+| Davis Cup / BJK Cup | 1,168 | 790 | 67.64% |
+| Empty category | 2,719 | 1 | 0.04% |
+
+The largest residual gap is clearly in ITF: 141,532 ITF rows have no accepted unique link, and 3,873 are ambiguous. This is consistent with the known absence of WTA ITF main-draw files in the inspected Sackmann archive; ATP Futures and WTA ITF qualifying files do not fully cover the entire ITF inventory. Challenger linkage is materially higher, but 36,729 Challenger rows still have no candidate and 3,490 remain ambiguous.
+
+Main-tour, Grand Slam, and Masters linkage is approximately 78–82%, not 100%. These residuals require separate investigation of source coverage, tournament naming, date offsets, and player-name variants. Do not relax matching or force ambiguous rows into the registry.
+
+The next useful breakdown is tour × category (ATP ITF vs WTA ITF, ATP Challenger vs WTA Challenger, etc.). This will isolate the WTA ITF main-draw gap from other missing records before canonical match-level links are created.
