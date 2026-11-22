@@ -149,8 +149,21 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /\$\('#navMatches'\)\.onclick=showMatches;/);
 });
 
-test("forced schedule refresh bypasses both browser and Worker caches", () => {
-  assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
+test("schedule request includes a rolling seven-day date window and bypasses legacy unscoped cache", () => {
+  const start = html.indexOf("function buildScheduleDateParams(");
+  const end = html.indexOf("async function loadMatches(force=false)", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(html.slice(start, end) + "\nglobalThis.buildScheduleDateParams = buildScheduleDateParams;", sandbox);
+  const now = new Date("2026-11-22T12:34:56.000Z");
+  const params = new URLSearchParams(sandbox.buildScheduleDateParams(now));
+  const expectedFrom = new Date(now); expectedFrom.setHours(0,0,0,0);
+  const expectedTo = new Date(expectedFrom); expectedTo.setDate(expectedTo.getDate()+7); expectedTo.setMilliseconds(-1);
+  assert.equal(params.get("from"), expectedFrom.toISOString());
+  assert.equal(params.get("to"), expectedTo.toISOString());
+  assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200&'\+buildScheduleDateParams\(\)\+\(force\?'&fresh=true':''\)\)/);
+  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v2'\)/);
+  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v2'/);
 });
 
 test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
