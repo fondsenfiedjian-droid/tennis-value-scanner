@@ -3,13 +3,13 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const TML=/^(\\d{4})\\.csv$/i;
-const SACK=/^atp_matches_(\\d{4})\\.csv$/i;
-const norm=value=>String(value??"").normalize("NFKD").replace(/\\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
+const TML=/^(\d{4})\.csv$/i;
+const SACK=/^atp_matches_(\d{4})\.csv$/i;
+const norm=value=>String(value??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
 const surface=value=>norm(value);
 const dateDay=value=>{
   const s=String(value??"").trim();
-  if(!/^\\d{8}$/.test(s))return null;
+  if(!/^\d{8}$/.test(s))return null;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8),t=Date.UTC(y,m-1,d),dt=new Date(t);
   return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?t/86400000:null;
 };
