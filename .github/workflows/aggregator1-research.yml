@@ -1,0 +1,26 @@
+name: Aggregator 1 research checks
+on:
+  push:
+    branches:
+      - research/aggregator1-linkage-audit
+    paths:
+      - "scripts/aggregator1-linkage-audit.mjs"
+      - "scripts/download-aggregator1-free-data.mjs"
+      - "scripts/test-aggregator1-linkage-audit.mjs"
+      - ".github/workflows/aggregator1-research.yml"
+  workflow_dispatch:
+jobs:
+  audit-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax-check research scripts
+        run: |
+          node --check scripts/aggregator1-linkage-audit.mjs
+          node --check scripts/download-aggregator1-free-data.mjs
+          node --check scripts/test-aggregator1-linkage-audit.mjs
+      - name: Run synthetic linkage fixture
+        run: node scripts/test-aggregator1-linkage-audit.mjs
