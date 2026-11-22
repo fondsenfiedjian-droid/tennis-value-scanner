@@ -1091,3 +1091,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - PR #167: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/167 (draft, not merged). Regression workflow run 45008580926 passed: 477 tests, 477 passed, 0 failed. Project-state guard passed.
 - A Netlify Deploy Preview was initiated by the draft PR; it is not Production. Cloudflare build/check activity is also separate from any approved Production release. Do not merge or deploy without user review.
 - Next UI task: replace the separate “EV дня” panel with the “Дополнительные возможности” watchlist and make the Matches view show all upcoming matches with explicit quote-status labels instead of hiding matches without a fresh complete pair.
+
+
+### 2026-11-22 — Match-list visibility and quote-status labels
+- Updated the Matches list so every scheduled match matching the selected date and tour filters remains visible, even when the winner market is disabled or a fresh complete bookmaker pair is unavailable.
+- Each match now reports one of four states: complete fresh pair, one-sided/incomplete pair, no fresh complete pair, or winner market disabled. The list summary separately counts all displayed matches and those with a complete pair.
+- Prediction eligibility remains separate: matches without eligible odds are displayed but do not become model/value candidates. Existing odds freshness, same-event matching, model calculation and EV rules are unchanged.
+- Regression workflow run 45008710902 passed after this change: 477 tests, 477 passed, 0 failed. Draft PR #167 remains unmerged; no Production deployment has been authorized or performed.
