@@ -73,3 +73,18 @@ When the official draws are released:
 3. Search and capture sources using the fixed 15-minute protocol.
 4. Record evidence only if its publication and capture timestamps precede the target match start.
 5. Report coverage separately from classification. Do not fill gaps with assumptions.
+
+
+## Pre-pilot recheck — 22 November 2026
+
+- The official WTA Argentina Open draw page still states that the draw is not available. Its official player list remains provisional until publication of the draw. Therefore no exact WTA player–match observations can yet be frozen.
+- The official ITF W75 Playford acceptance list currently lists Shuai Zhang (WTA rank 95), Emerson Jones (132) and Maddison Inglis (135) among the direct acceptances. These remain candidate names only, not match observations.
+- The official ITF Playford fact sheet gives 22 November as the first qualifying day and 24 November as the first main-draw day. The public draws/results page did not expose a readable match draw in the checked page view. Do not create target match IDs from the acceptance list.
+- ATP Challenger entry information found in secondary entry-list reporting is not a substitute for the required official entry/draw and ranking-source reconciliation. No ATP observations are admitted on that basis.
+- Evidence records created remain 0. No positive, negative or no-evidence classification is assigned before the exact match frame and standardised search are complete.
+
+Additional official checks:
+- WTA draw status: https://www.wtatennis.com/tournaments/2052/buenos-aires-125/2026/draws/
+- ITF Playford fact sheet (qualifying/main-draw dates): https://www.world.tennis/en/tournament/w75-playford/aus/2026/w-itf-aus-2026-013/fact-sheet/
+- ITF Playford acceptance list: https://www.world.tennis/en/tournament/w75-playford/aus/2026/w-itf-aus-2026-013/acceptance-list/
+- ITF Playford draws and results: https://www.world.tennis/en/tournament/w75-playford/aus/2026/w-itf-aus-2026-013/draws-and-results/
