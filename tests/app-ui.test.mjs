@@ -421,7 +421,7 @@ test("mandatory recommendations and additional opportunities are separate plan t
   assert.match(html, /котировка недостаточно свежая/);
   assert.match(html, /не пройдена проверка качества value-сигнала/);
   assert.match(html, /не завершена строгая калибровка и независимое подтверждение/);
-  assert.match(html, /модель ещё не вернула проверенную вероятность/);
+  assert.match(html, /[Мм]одель ещё не вернула проверенную вероятность/);
   assert.match(html, /id="additionalCount"/);
   assert.doesNotMatch(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
   assert.doesNotMatch(html, /id="highestEv"/);
@@ -522,7 +522,7 @@ test("optional player statistics are not fetched during automatic prediction sca
 test("additional opportunities preserve bookmaker pair when prediction calculation fails", () => {
   assert.match(html, /const oddsFallback=matches\.map\(\(m,i\)=>/);
   assert.match(html, /Коэффициенты Winamax:/);
-  assert.match(html, /модель ещё не вернула проверенную вероятность/);
+  assert.match(html, /[Мм]одель ещё не вернула проверенную вероятность/);
   assert.match(html, /additionalFallbackOpen/);
   assert.match(html, /quote\.matchIndex/);
   assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
