@@ -435,3 +435,34 @@ Latest full audit run: `45083261249` — success.
 ### Next validation
 
 Add aggregate conflict-multiplicity diagnostics and compare direct name-registry assignments against accepted-match assignments. Report agreement, disagreement, and one-sided coverage separately. Keep raw source-ID mappings only in temporary runner memory/files and never upload them as artifacts. Once the crosswalk is stable, use it to improve match linkage and re-run the same tier-by-tier audit.
+
+
+## 19. Direct registry vs accepted-match player ID comparison — 2026-11-22
+
+The latest combined audit run `45083548490` completed successfully. It compares two independent candidate identity signals for each Valuebetennis player ID:
+1. Exact normalized full-name lookup against the Sackmann player registry (both first-last and last-first order).
+2. Identity evidence from accepted unique Valuebetennis–Sackmann match links, using the Sackmann winner/loser IDs.
+
+| Tour | Source player IDs | Both methods uniquely agree | Both methods uniquely disagree | Direct-only unique | Ambiguous in either |
+|---|---:|---:|---:|---:|---:|
+| ATP | 14,185 | 5,620 (39.62%) | 0 | 1,322 | 134 |
+| WTA | 9,791 | 7,191 (73.45%) | 0 | 281 | 630 |
+
+Additional method totals:
+- ATP: direct registry unique 6,942; match-evidence unique 5,679.
+- WTA: direct registry unique 7,472; match-evidence unique 7,692.
+- Neither method yields a unique mapping for 7,109 ATP and 1,689 WTA IDs.
+- Match-evidence unique mappings do not conflict with direct unique registry mappings in this audit. This is a useful independent consistency check, not proof that every accepted match is correct.
+
+### Interpretation and decision
+
+The zero-disagreement result is encouraging: where both methods independently return exactly one Sackmann ID, they agree for 5,620 ATP and 7,191 WTA source IDs. Those IDs form the highest-confidence candidate crosswalk cohort.
+
+Do not promote all direct-only IDs automatically. They lack accepted match corroboration in the current 2021–2026 overlap. Keep them marked as name-only candidates. Likewise, keep all 134 ATP and 630 WTA IDs ambiguous in a review queue; do not select among multiple IDs based on name similarity alone.
+
+The next refinement should focus on:
+- why 1,322 ATP and 281 WTA IDs have a unique name-registry candidate but no accepted-match evidence;
+- whether some of the 134/630 ambiguous IDs can be resolved with birth date, country, handedness, or additional independently linked match evidence;
+- whether source IDs remain stable across years and do not map to multiple Sackmann IDs over time.
+
+No player-level mappings have been committed or uploaded. The audit emits only aggregate counts. Raw CSVs and any in-memory ID sets remain temporary in the GitHub runner. The synthetic linkage and player-ID tests pass; the full aggregate audit and artifact upload succeeded.
