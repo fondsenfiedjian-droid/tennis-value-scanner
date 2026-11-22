@@ -1200,3 +1200,9 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Production Elo/K=32, probabilities, fair odds, EV and recommendation logic remain unchanged. Draft PR #167 only; no merge or Production deployment.
 
 - Follow-up test harness correction: normalized the embedded JavaScript newline separator in the new history-derivation unit test before CI validation.
+
+
+### 2026-11-22 — H2H verification status wording
+- QA found that the comparison footer claimed H2H player identity was verified whenever an H2H response arrived, even though the H2H panel separately performs the exact-name check and may reject a mismatch.
+- Corrected the footer to say the identity check is displayed in the H2H panel; added a regression assertion. No API calls, model calculations, or data eligibility rules changed.
+- This is an isolated draft-branch correction; no Production deployment or merge.
