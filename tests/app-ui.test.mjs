@@ -603,16 +603,16 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
 });
 
 test("match list keeps all scheduled matches visible and labels fresh quote-pair status", () => {
-  assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
+  assert.match(html, /function filterScheduleMatches\(all,day='today'/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=dateFiltered/);
+  assert.match(html, /const schedule=filterScheduleMatches\(all,selectedDay,selectedTours\(\),new Date\(\)\)/);\n  assert.match(html, /const filtered=schedule\.matches/);
   assert.match(html, /const completePairCount=filtered\.filter\(m=>winnerEnabled&&oddsForMatch\(m\)\.length>=2\)\.length/);
   assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
   assert.match(html, /Полная свежая пара/);
   assert.match(html, /Неполная пара · найден 1 исход/);
   assert.match(html, /Нет свежей полной пары/);
   assert.match(html, /class="match-quote-status /);
-  assert.match(html, /Матчи без свежих коэффициентов также отображаются в списке/);
+  assert.match(html, /Получено от API:/);\n  assert.match(html, /Без даты начала:/);
 });
 
 test("optional player statistics are not fetched during automatic prediction scans", () => {
