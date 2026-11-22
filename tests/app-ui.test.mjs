@@ -456,7 +456,11 @@ test("home screen follows the approved daily-pick reference order",()=>{
   assert.match(html,/selected\?\.photo_url\|\|selected\?\.image_url/);
 });
 
-test("independent player comparison calls the current Elo API and displays both players",()=>{
+
+test("player comparison does not expose a match simulator",()=>{
+  assert.doesNotMatch(html,/Сценарная симуляция BO|Симуляция не запускалась|simulationLabel|pfeScoreSimulation/);
+});
+\ntest("independent player comparison calls the current Elo API and displays both players",()=>{
   assert.match(html,/id="compareNameA"/);
   assert.match(html,/id="compareNameB"/);
   assert.match(html,/id="compareIdA"/);
