@@ -360,6 +360,60 @@ test("player history endpoint labels BASIC plan refusal and forwards rate-limit 
   assert.equal((await limited.json()).accessStatus, "rate_limited");
 });
 
+
+test("player H2H endpoint validates exact names and rejects identical players without upstream calls", async () => {
+  let calls = 0;
+  workerSandbox.fetch = async () => { calls++; throw new Error("unexpected request"); };
+  for (const query of ["p1=Al&p2=Sinner", "p1=Alcaraz", "p1=Alcaraz&p2=alcaraz"]) {
+    const result = await call("/player-h2h?" + query);
+    assert.equal(result.status, 400, query);
+  }
+  assert.equal(calls, 0);
+});
+
+test("player H2H endpoint uses BASIC H2H, caches the record and keeps meetings", async () => {
+  let requestedUrl = "";
+  let calls = 0;
+  let cached = null;
+  workerSandbox.caches.default.match = async () => cached ? cached.clone() : null;
+  workerSandbox.caches.default.put = async (key, value) => { cached = value.clone(); };
+  workerSandbox.fetch = async url => {
+    calls++;
+    requestedUrl = url;
+    return new Response(JSON.stringify({
+      players: { p1: { name: "Carlos Alcaraz" }, p2: { name: "Jannik Sinner" } },
+      totals: { p1_wins: 5, p2_wins: 4, meetings: 9, undecided: 0 },
+      by_surface: { hard: { p1: 4, p2: 3 } },
+      meetings: [{ date: "2026-01-01", winner: 1, outcome: "finished" }]
+    }), { status: 200 });
+  };
+  const result = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.period, "1968-present");
+  assert.equal(payload.totals.meetings, 9);
+  assert.equal(payload.meetings.length, 1);
+  assert.equal(new URL(requestedUrl).pathname, "/api/public/v1/h2h");
+  assert.equal(new URL(requestedUrl).searchParams.get("p1"), "Carlos Alcaraz");
+  assert.equal(new URL(requestedUrl).searchParams.get("p2"), "Jannik Sinner");
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=86400");
+  const cachedResult = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(cachedResult.headers.get("X-Data-Cache"), "HIT");
+  assert.equal(calls, 1);
+});
+
+test("player H2H endpoint reports BASIC entitlement and ambiguous-name errors distinctly", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  const denied = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).accessStatus, "basic_h2h_not_entitled");
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "ambiguous_name", candidates: ["Jannik Sinner", "Martin Sinner"] }), { status: 400 });
+  const ambiguous = await call("/player-h2h?p1=Sinner&p2=Carlos%20Alcaraz");
+  assert.equal(ambiguous.status, 400);
+  assert.equal((await ambiguous.json()).accessStatus, "ambiguous_or_invalid_player_name");
+});
+
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
