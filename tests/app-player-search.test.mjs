@@ -13,7 +13,7 @@ test("comparison view provides independent player autocomplete fields", () => {
 
 test("player autocomplete uses the Worker search proxy and waits for a short typing pause", () => {
   assert.match(html, /API\+'\/players\/search\?search='/);
-  assert.match(html, /encodeURIComponent\(query\).*limit=8/);
+  assert.match(html, /encodeURIComponent\(apiQuery\).*limit=8/);
   assert.match(html, /setTimeout\(async\(\)=>/);
   assert.match(html, /},350\)/);
   assert.match(html, /sequence!==state\.sequence/);
