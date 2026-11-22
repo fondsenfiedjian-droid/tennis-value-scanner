@@ -2,6 +2,9 @@ name: Deploy Cloudflare Worker Preview
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - ui/tennis-value-scanner-2
 
 permissions:
   contents: read
