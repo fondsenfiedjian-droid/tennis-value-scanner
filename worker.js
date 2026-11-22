@@ -947,7 +947,7 @@ export default {
         return response({ error: "search must contain between 2 and 80 characters" }, 400);
       }
       const rawLimit = url.searchParams.get("limit") || "10";
-      if (!/^\\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 20) {
+      if (!/^\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 20) {
         return response({ error: "limit must be an integer from 1 to 20" }, 400);
       }
       const limit = Number(rawLimit);
