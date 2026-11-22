@@ -17,11 +17,14 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     const rows=parseCsv(file.content),names=new Map();let validRows=0;
     for(const row of rows){
       const id=String(row.player_id??row.id??"").trim();
-      const full=norm([row.first_name,row.last_name].filter(Boolean).join(" "));
-      if(!id||!full)continue;
+      const first=String(row.first_name??"").trim(),last=String(row.last_name??"").trim();
+      const variants=[norm([first,last].filter(Boolean).join(" ")),norm([last,first].filter(Boolean).join(" "))].filter(Boolean);
+      if(!id||!variants.length)continue;
       validRows++;
-      if(!names.has(full))names.set(full,new Set());
-      names.get(full).add(id);
+      for(const full of new Set(variants)){
+        if(!names.has(full))names.set(full,new Set());
+        names.get(full).add(id);
+      }
     }
     registryByTour[tour]={names,rows:rows.length,validRows};
     registryNameCollisions[tour]=[...names.values()].filter(ids=>ids.size>1).length;
@@ -72,7 +75,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannPlayerRegistries:playerFiles.map(x=>basename(x.filename)).sort(),registryRows:Object.fromEntries(Object.entries(registryByTour).map(([tour,r])=>[tour,{rows:r.rows,validRows:r.validRows,distinctNormalizedNames:r.names.size}]))},
     totals,
     byTour,
-    matching:{method:"exact normalized full name (Unicode diacritics removed; punctuation and spaces removed); all source-name variants for one Valuebetennis player ID must resolve to exactly one Sackmann player ID",fuzzyMatching:false,initialsMatching:false},
+    matching:{method:"exact normalized full name in either first-last or last-first order (Unicode diacritics removed; punctuation and spaces removed); all source-name variants for one Valuebetennis player ID must resolve to exactly one Sackmann player ID",fuzzyMatching:false,initialsMatching:false},
     warnings:["A resolved name match is a candidate crosswalk, not yet an authoritative identity assertion; review DOB/country/hand where available before use.","Source-native IDs are preserved conceptually and are never overwritten by this audit.","No player names, source player IDs, or row-level mappings are written to the report.","Sackmann data is CC BY-NC-SA 4.0; non-commercial use, attribution and share-alike conditions apply."]
   };
 }
