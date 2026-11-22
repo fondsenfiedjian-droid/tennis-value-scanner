@@ -917,8 +917,8 @@
     const filtered=dateFiltered;
     const completePairCount=filtered.filter(m=>winnerEnabled&&oddsForMatch(m).length>=2).length;
     const noPairCount=filtered.length-completePairCount;
-    $('#matchCount').textContent=filtered.length;
-    $('#valueCount').textContent='—';
+    if($('#matchCount'))$('#matchCount').textContent=filtered.length;
+    if($('#valueCount'))$('#valueCount').textContent='—';
     if(!filtered.length){
       const message='Матчей на выбранную дату не найдено.';
       list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Проверь дату и выбранные туры. Матчи без свежих коэффициентов также отображаются в списке.</div></div>';return;
@@ -2378,8 +2378,8 @@
       }
     }
     if(renderId!==predictionRenderId)return;
-    $('#valueCount').textContent=positive;
-    if(!candidates.length)$('#valueCount').textContent='0';
+    if($('#valueCount'))$('#valueCount').textContent=positive;
+    if(!candidates.length&&$('#valueCount'))$('#valueCount').textContent='0';
     renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
