@@ -182,6 +182,24 @@
     .match-quote-status.partial{border-color:#80543d;color:#e9bd9d;background:#2b1d15}
     .match-quote-status.missing{border-color:#75404b;color:#efb7bd;background:#2a1517}
     .match-quote-status.disabled{border-color:#625954;color:var(--muted);background:#141110}
+
+    /* TVS 2.0 watchlist: secondary opportunities are not mandatory picks */
+    .additional-opportunities{margin:14px 0 18px;padding:13px;border:1px solid #353640;border-radius:14px;background:#121319}
+    .additional-opportunities-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .additional-opportunities-head h2{margin:0;font-size:14px;font-weight:850;color:var(--text)}
+    .additional-opportunities-head .muted{font-size:11px}
+    .additional-opportunities-content{display:grid;gap:9px}
+    .additional-opportunity,.additional-empty{padding:11px;border:1px solid #45404a;border-radius:11px;background:#17171e}
+    .additional-opportunity-top{display:flex;justify-content:space-between;gap:10px;color:#b8aab0;font-size:9px;font-weight:850;letter-spacing:.07em}
+    .additional-ev{color:#e3b455;font-size:11px}
+    .additional-opportunity-match{margin-top:7px;color:#f0f1f4;font-size:14px;font-weight:850}
+    .additional-opportunity-bet{margin-top:4px;color:#ddd2d4;font-size:11px}
+    .additional-opportunity-meta{margin-top:6px;color:var(--muted);font-size:10px}
+    .additional-opportunity-reasons{margin-top:8px;padding-top:7px;border-top:1px solid #39343b;color:#c9b8ba;font-size:10px;line-height:1.45}
+    .additional-opportunity-reasons b{color:#e3b455}
+    .additional-open{margin-top:9px;padding:7px 10px;border:1px solid #65404a;border-radius:8px;background:#211319;color:#f0dce0;font-size:10px;font-weight:750}
+    .additional-empty{color:var(--muted);font-size:11px;line-height:1.5}
+    .additional-empty b{display:block;margin-bottom:4px;color:var(--text);font-size:12px}
 </style>
 </head>
 <body>
@@ -215,7 +233,7 @@
 
   <div class="section-head"><h2>Найденные ставки</h2><span class="muted" id="filterSummary">Все турниры</span></div>
   <section id="bestBet" class="best-bet" role="region" aria-label="Обязательные ставки" aria-live="polite"><div class="best-bet-title">ОБЯЗАТЕЛЬНЫЕ СТАВКИ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></section>
-  <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">EV ДНЯ · РИСКОВЫЙ ШАНС</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
+  <section id="additionalOpportunities" class="additional-opportunities" aria-live="polite"><div class="additional-opportunities-head"><h2>Дополнительные возможности</h2><span class="muted" id="additionalCount">0</span></div><div id="additionalOpportunitiesContent" class="additional-opportunities-content"><div class="muted">Ожидаю проверки матчей…</div></div></section>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
@@ -1640,8 +1658,8 @@
   }
   let bestBetCarouselKey=null;
   function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets,oddsFallback=[]){
-    const box=$('#bestBet'),evBox=$('#highestEv');
-    if(!box||!evBox)return;
+    const box=$('#bestBet'),additionalBox=$('#additionalOpportunities');
+    if(!box||!additionalBox)return;
     const filters=currentValueFilters();
     const configuredBestBetMinOdds=Number(readSettings().bestBetMinOdds);
     const bestBetMinOdds=Number.isFinite(configuredBestBetMinOdds)?Math.max(1.5,Math.min(15,configuredBestBetMinOdds)):1.9;
@@ -1669,40 +1687,50 @@
         $('#bestBetNext').onclick=()=>{bestBetCarouselKey=betKey(bestBets[(bestBetCarouselIndex+1)%bestBets.length]);renderBestBet(bets,scanned,totalCandidates,failed,evBets,oddsFallback);};
       }
     }
-    const evContent=$('#highestEvContent'),evButton=$('#highestEvOpen');
-    if(!highest){
+    const additionalContent=$('#additionalOpportunitiesContent');
+    const strictKeys=new Set(bestBets.map(betKey));
+    const strictOddsFloor=Math.max(1.9,bestBetMinOdds,filters.minOdds);
+    const additionalCandidates=evBets.filter(bet=>!strictKeys.has(betKey(bet))).map(bet=>{
+      const reasons=[];
+      if(bet.ev<filters.minEv)reasons.push('EV ниже установленного порога '+filters.minEv.toFixed(1)+'%');
+      if(bet.odds<strictOddsFloor)reasons.push('коэффициент ниже порога обязательных ставок '+strictOddsFloor.toFixed(2));
+      if(bet.freshnessLevel!=='good')reasons.push('котировка недостаточно свежая');
+      if(bet.valueEligible!==true)reasons.push('не пройдена проверка качества value-сигнала');
+      if(bet.reliabilityScore<85)reasons.push('надёжность ниже 85/100');
+      else if(bet.reliabilityEligible!==true&&bet.valueEligible===true)reasons.push('не завершена строгая калибровка и независимое подтверждение');
+      return {...bet,additionalReasons:reasons.length?reasons:['не выполнено одно или несколько условий строгого отбора']};
+    }).sort((a,b)=>{
+      const aPass=(a.freshnessLevel==='good'?1:0)+(a.valueEligible===true?1:0)+(a.reliabilityScore>=85?1:0)+(a.ev>=filters.minEv?1:0)+(a.odds>=strictOddsFloor?1:0);
+      const bPass=(b.freshnessLevel==='good'?1:0)+(b.valueEligible===true?1:0)+(b.reliabilityScore>=85?1:0)+(b.ev>=filters.minEv?1:0)+(b.odds>=strictOddsFloor?1:0);
+      return bPass-aPass||b.reliabilityScore-a.reliabilityScore||b.ev-a.ev;
+    }).slice(0,3);
+    additionalBox.classList.toggle('has-items',additionalCandidates.length>0);
+    $('#additionalCount').textContent=String(additionalCandidates.length);
+    if(additionalCandidates.length){
+      additionalContent.innerHTML=additionalCandidates.map((candidate,index)=>{
+        const date=matchDate(candidate.match);
+        const when=date?date.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
+        return '<article class="additional-opportunity"><div class="additional-opportunity-top"><span>НАБЛЮДЕНИЕ · '+(index+1)+'</span><span class="additional-ev">EV +'+candidate.ev.toFixed(2)+'%</span></div><div class="additional-opportunity-match">'+escapeHtml(candidate.player)+' — '+escapeHtml(candidate.opponent)+'</div><div class="additional-opportunity-bet">Победа '+escapeHtml(candidate.player)+' · '+escapeHtml(candidate.bookmaker||'Winamax')+' · кэф '+candidate.odds.toFixed(2)+'</div><div class="additional-opportunity-meta">Вероятность '+candidate.probability.toFixed(1)+'% · надёжность '+candidate.reliabilityScore+'/100 · '+when+'</div><div class="additional-opportunity-reasons"><b>Почему пока не в основном плане:</b> '+escapeHtml(candidate.additionalReasons.join(' · '))+'</div><button type="button" class="additional-open" data-additional-index="'+index+'">Открыть анализ матча</button></article>';
+      }).join('');
+      additionalContent.querySelectorAll('[data-additional-index]').forEach(button=>{
+        button.onclick=()=>{
+          const candidate=additionalCandidates[Number(button.dataset.additionalIndex)];
+          if(!candidate)return;
+          const card=document.querySelector('.match-card[data-match-index="'+Number(candidate.matchIndex)+'"]');
+          if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
+        };
+      });
+    }else{
       const quote=oddsFallback[0]||null;
       if(quote){
-        evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(quote.player)+' — '+escapeHtml(quote.opponent)+'</div><div class="best-bet-meta">Коэффициенты Winamax: <b>'+quote.oddsA.toFixed(2)+'</b> / <b>'+quote.oddsB.toFixed(2)+'</b><br><b>EV не рассчитан:</b> модель не вернула проверенную вероятность. Это не подтверждённая валуйная ставка.</div>';
-        evButton.hidden=false;
-        evButton.textContent='Открыть матч';
-        evButton.onclick=()=>{
+        additionalContent.innerHTML='<div class="additional-empty"><b>'+escapeHtml(quote.player)+' — '+escapeHtml(quote.opponent)+'</b><div>Коэффициенты '+quote.oddsA.toFixed(2)+' / '+quote.oddsB.toFixed(2)+'. Модель ещё не вернула проверенную вероятность, поэтому EV не рассчитан и рекомендация не сформирована.</div><button type="button" class="additional-open" id="additionalFallbackOpen">Открыть матч</button></div>';
+        $('#additionalFallbackOpen').onclick=()=>{
           const card=document.querySelector('.match-card[data-match-index="'+Number(quote.matchIndex)+'"]');
           if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
         };
       }else{
-        evContent.textContent=scanned?'Пока нет положительного EV среди ставок с проверенными данными.':'Ожидаю расчёта вероятностей…';
-        evButton.hidden=true;evButton.onclick=null;
+        additionalContent.innerHTML='<div class="additional-empty">'+(scanned?'Сейчас нет положительных EV-кандидатов, ожидающих подтверждения.':'Ожидаю проверки матчей и расчёта вероятностей.')+' '+coverage+'</div>';
       }
-    }else{
-      const d=matchDate(highest.match);
-      const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
-      const tournament=highest.match.tournament_name||highest.match.tournament||highest.match.event_name||highest.match.competition||'Турнир не указан';
-      const fairOdds=100/highest.probability;
-      const impliedProbability=100/highest.odds;
-      const modelEdge=highest.probability-impliedProbability;
-      const freshnessLabel=highest.freshnessLevel==='good'?'свежие данные':'котировка может быть до 6 часов';
-      const riskNotes=[];
-      if(highest.reliabilityScore<85)riskNotes.push('качество данных ниже строгого фильтра «Ставки дня»');
-      if(highest.freshnessLevel==='medium')riskNotes.push('котировка не обязательно актуальна у букмекера');
-      if(highest.probability<50)riskNotes.push('вероятность прохода ниже 50%');
-      riskNotes.push('EV — оценка модели, а не гарантия прибыли');
-      evContent.innerHTML='<div class="best-bet-main">'+escapeHtml(highest.player)+' — '+escapeHtml(highest.opponent)+'</div><div class="best-bet-meta">'+escapeHtml(tournament)+' · '+escapeHtml(time)+'<br>Ставка: <b>'+escapeHtml(highest.player)+'</b> · '+escapeHtml(highest.bookmaker||'Winamax')+' <b>'+highest.odds.toFixed(2)+'</b><br><span class="best-bet-value">EV +'+highest.ev.toFixed(2)+'%</span> · вероятность модели '+highest.probability.toFixed(2)+'% · справедливый кэф '+fairOdds.toFixed(2)+'<br>Вероятность по коэффициенту: '+impliedProbability.toFixed(2)+'% · преимущество модели: '+(modelEdge>=0?'+':'')+modelEdge.toFixed(2)+' п.п.<br>Качество данных: '+highest.reliabilityScore+'/100 · '+freshnessLabel+'<br><b>Формат:</b> небольшая ставка ради возможного крупного выигрыша; не рекомендация для крупной суммы.<br><b>Риск:</b> '+escapeHtml(riskNotes.join('; '))+'</div>';
-      evButton.hidden=false;
-      evButton.onclick=()=>{
-        const card=document.querySelector('.match-card[data-match-index="'+Number(highest.matchIndex)+'"]');
-        if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}
-      };
     }
     const addButton=$('#addPortfolioToBank');
     if(addButton)addButton.onclick=()=>addPortfolioToBankroll(portfolio.suggestions);
