@@ -198,3 +198,42 @@ Official sources:
 5. Reject any source whose terms prohibit automated analysis/model training (including TennisData results site terms currently reviewed).
 
 No API keys, raw provider responses, or match-level datasets are stored in this audit.
+
+
+## 11. First full Valuebetennis–Sackmann run — 2026-11-22
+
+The research-branch GitHub Actions run `45080868022` completed successfully against the downloaded source files. A second run with expanded year-level diagnostics, `45080868022`, also completed successfully. Raw CSVs remained in the temporary runner; only the aggregate JSON and source checksum manifest were uploaded as a short-lived artifact.
+
+### Verified inventory and conservative linkage
+
+- Valuebetennis: 6 files (2021–2026), 478,606 rows; 478,601 passed the current basic row checks.
+- Sackmann: 12 files (ATP/WTA main-draw results, 2021–2026), 30,885 rows total (ATP 16,105; WTA 14,780).
+- Candidate pairs: 25,199; uniquely linked: 24,591 (5.14% of valid Valuebetennis rows); ambiguous: 608; no candidate: 453,407.
+- Tour split: WTA 198,356 rows, 11,456 unique links (5.78%); ATP 280,250 rows, 13,135 unique links (4.69%).
+- Among accepted links, the median date offset was 2 days and the 90th percentile was 5 days. This is consistent with the fact that Sackmann's `tourney_date` is generally the event-week date, not the exact match date.
+- Current checks found no invalid Valuebetennis dates, unknown tours, or unknown surfaces.
+
+### Year-level linkage
+
+| Year | Valuebetennis rows | Unique links | Linkage |
+|---|---:|---:|---:|
+| 2021 | 63,728 | 4,531 | 7.11% |
+| 2022 | 83,381 | 4,460 | 5.35% |
+| 2023 | 89,826 | 4,675 | 5.20% |
+| 2024 | 79,910 | 3,970 | 4.97% |
+| 2025 | 80,412 | 4,859 | 6.04% |
+| 2026 | 81,349 | 2,096 | 2.58% |
+
+### Interpretation and limits
+
+This is not yet a valid measure of full-dataset overlap. The current Sackmann download includes only `atp_matches_YYYY.csv` and `wta_matches_YYYY.csv` main-draw files. It does not include the archive's qualifying, Challenger, Futures, or other tier-specific files. Valuebetennis contains a much broader match inventory, so the 5.14% figure substantially understates potential overlap across all levels. Do not use this number to reject either source or to estimate how many Valuebetennis matches are absent from Sackmann.
+
+The audit script now emits year-level counts and a privacy-safe schema/level diagnostic (column names and aggregate value frequencies for categorical fields, never player names or match rows). This diagnostic is being used to determine the tournament-level composition of Valuebetennis before broadening Sackmann ingestion.
+
+### Next controlled steps
+
+1. Complete the aggregate Valuebetennis category/level inspection.
+2. Expand Sackmann only to the relevant qualifying/Challenger/Futures files, after verifying file availability and tier semantics; preserve the same temporary-runner/raw-data policy.
+3. Re-run linkage by tour, year, and competition tier. Do not loosen player/date matching until tier coverage is corrected.
+4. Add a canonical match registry only after the source-level and identity crosswalks are sufficiently understood. Every row must retain source ID, date precision, tier, and provenance; ambiguous links remain separate.
+5. Keep TennisMyLife quarantined from model-training inputs until its restrictive license is cleared for the intended use. Do not bulk-download Live Tennis API history until written retention/training permission is received.
