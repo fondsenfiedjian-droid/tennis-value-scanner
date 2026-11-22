@@ -497,9 +497,9 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
 test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /oddsMatchDiagnostic\\(m\\)\\.label/);
+  assert.match(html, /const matchedMatches=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · с полной парой: '\+matchedMatches\.length/);
+  assert.match(html, /oddsMatchDiagnostic\(m\)\.label/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
