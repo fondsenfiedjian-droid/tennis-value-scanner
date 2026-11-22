@@ -1,0 +1,36 @@
+name: Deploy Cloudflare Worker Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/ui/tennis-value-scanner-2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: ui/tennis-value-scanner-2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy isolated Preview Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_PREVIEW_API_TOKEN"
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          fi
+          npx --yes wrangler@4.165.0 deploy --config wrangler.preview.toml
