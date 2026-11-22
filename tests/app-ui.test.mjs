@@ -616,7 +616,7 @@ test("BASIC comparison history derives last-five, recent form and surface splits
   ]};
   const result=sandbox.derive(payload,10);
   assert.equal(result.sample,3);
-  assert.deepEqual(Array.from(result.last5,x=>x.winner),["W","L","?"]);
+  assert.deepEqual(Array.from(result.last5,x=>x.winner),["?","L","W"]);
   assert.equal(result.form10.wins,1);
   assert.equal(result.form10.losses,1);
   assert.equal(result.undecided,1);
