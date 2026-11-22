@@ -3,15 +3,15 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const VBT=/^valuebetennis-matchs-(\\d{4})\\.csv$/i;
-const SACK=/^(atp|wta)_matches_(?:(futures|qual_chall|qual_itf)_)?(\\d{4})\\.csv$/i;
-const normalize=value=>String(value??"").normalize("NFKD").replace(/\\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
+const VBT=/^valuebetennis-matchs-(\d{4})\.csv$/i;
+const SACK=/^(atp|wta)_matches_(?:(futures|qual_chall|qual_itf)_)?(\d{4})\.csv$/i;
+const normalize=value=>String(value??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
 const surface=value=>{
   const s=normalize(value);
-  if(["hard","dur","hardcourt","indoorhard","outdoorhard"].includes(s))return "hard";
+  if(["hard","dur","durinterieur","hardcourt","indoorhard","outdoorhard"].includes(s))return "hard";
   if(["clay","terrebattue","terre","redclay"].includes(s))return "clay";
   if(["grass","gazon"].includes(s))return "grass";
-  if(["carpet","moquette","indoorcarpet"].includes(s))return "carpet";
+  if(["carpet","moquette","moquetteinterieur","indoorcarpet"].includes(s))return "carpet";
   return s;
 };
 const tourney=value=>{
@@ -31,7 +31,7 @@ const tourney=value=>{
 };
 const parseVbtDate=value=>{
   const s=String(value??"").trim();
-  const m=s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(!m)return null;
   const t=Date.UTC(+m[1],+m[2]-1,+m[3]);
   const d=new Date(t);
@@ -39,7 +39,7 @@ const parseVbtDate=value=>{
 };
 const parseSackDate=value=>{
   const s=String(value??"").trim();
-  if(!/^\\d{8}$/.test(s))return null;
+  if(!/^\d{8}$/.test(s))return null;
   const y=+s.slice(0,4),m=+s.slice(4,6),d=+s.slice(6,8),t=Date.UTC(y,m-1,d),dt=new Date(t);
   return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?t/86400000:null;
 };
@@ -58,12 +58,12 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const a=normalize(row.winner_name),b=normalize(row.loser_name);
       const date=parseSackDate(row.tourney_date);
       if(!a||!b||a===b||date===null)continue;
-      const key=[tour,[a,b].sort().join("|"),surface(row.surface),tourney(row.tourney_name)].join("::");
+      const key=[tour,[a,b].sort().join("|"),surface(row.surface)].join("::");
       if(!sackIndex.has(key))sackIndex.set(key,[]);
-      sackIndex.get(key).push({date,tier,year});
+      sackIndex.get(key).push({date,tier,year,event:tourney(row.tourney_name)});
     }
   }
-  const totals={valuebetRows:0,validValuebetRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0};
+  const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},offsets=[];
   for(const file of valuebetFiles){
     const m=basename(file.filename).match(VBT);
@@ -73,18 +73,24 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       totals.valuebetRows++;
       const tour=String(row.genre??"").trim().toUpperCase();
       const date=parseVbtDate(row.date),a=normalize(row.joueur1),b=normalize(row.joueur2);
-      if(!byTour[tour])byTour[tour]={rows:0,validRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
+      if(!byTour[tour])byTour[tour]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;continue;}
       if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       if(!sf){totals.unknownSurface++;g.unknownSurface++;}
-      const key=[tour,[a,b].sort().join("|"),sf,ev].join("::");
+      const key=[tour,[a,b].sort().join("|"),sf].join("::");
       const candidates=(sackIndex.get(key)||[]).filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
       totals.validValuebetRows++;g.validRows++;
-      if(candidates.length===1){
-        totals.linkedUnique++;g.linkedUnique++;offsets.push(date-candidates[0].date);
+      if(candidates.length){totals.candidateRows++;g.candidateRows++;}
+      const eventCandidates=candidates.filter(x=>x.event===ev);
+      const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
+      if(selected){
+        totals.linkedUnique++;g.linkedUnique++;
+        if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
+        else{totals.linkedByTournament++;g.linkedByTournament++;}
+        offsets.push(date-selected.date);
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;}
       else{totals.noCandidate++;g.noCandidate++;}
     }
@@ -96,14 +102,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     schemaVersion:1,
     purpose:"Conservative aggregate-only linkage audit; no match-level or player-level links are written.",
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannFiles:sackmannFiles.map(x=>basename(x.filename)).sort(),sackmannSourceRows:sourceRows},
-    matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"exact normalized tournament name plus a small explicit alias map",surface:"normalized exact surface",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"only exactly one candidate is counted as linked; multiple candidates are ambiguous"},
+    matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"not required for a single player-pair/surface/date candidate; exact normalized name or explicit alias is used only to resolve multiple candidates",surface:"normalized exact surface, including French Valuebetennis labels",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"one candidate is accepted; multiple candidates require exactly one tournament-name match, otherwise remain ambiguous"},
     totals:{
       ...totals,
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
     },
     byTour,
     warnings:[
-      "This is a conservative first-pass linkage. It will undercount when source player or tournament names differ.",
+      "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
       "Sackmann tourney_date is generally the event-week date, not the exact match date; the date window is a candidate filter, not a claim about match start time.",
       "No initials/fuzzy-name matching is attempted. TennisMyLife ATP player IDs or a verified player crosswalk should be added before relaxing name matching.",
       "Do not merge rows into Production. Use only the aggregate report to assess source overlap and data quality.",
