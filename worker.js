@@ -1531,7 +1531,7 @@ export default {
 
     return response({
       service: "tennis-value-api",
-      endpoints: ["/health", "/matches", "/player-stats", "/odds", "/historical", "/predict"]
+      endpoints: ["/health", "/matches", "/player-history", "/player-stats", "/players/search", "/odds", "/historical", "/predict"]
     });
   }
 };
