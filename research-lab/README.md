@@ -170,9 +170,11 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 ## Current research documents
 
 - `BASELINE-INVENTORY.md`: existing repository research assets and gaps.
+- `SMA-RESULTS-AUDIT.md`: retrieved 2025–2026 fixed-holdout and annual walk-forward results for the existing SMA research.
 - `PFE-CONTROLS.md`: separates the live Worker baseline from offline historical Elo experiments.
 - `DATA-FEASIBILITY.md`: source availability and constraints for ACE, SMA and HFA.
 - `ACE-SPEC-v0.1.md`: leakage-safe calendar workload features, coverage and acceptance tests.
+- `ace/README.md`: ACE v0.1 implementation API and validation history.
 - `HFA-PROTOCOL-v0.1.md`: source registry, evidence tiers and blinded coding rules.
 - `schema.sql`: normalized SQLite ledger schema, append-only result revisions and immutable forecast / quote snapshots.
 - `contracts/system-output.schema.json`: standard SAS output contract.
@@ -180,10 +182,9 @@ A SAS is not promoted because it improves accuracy alone or wins on one small se
 ## Current research readiness
 
 - PFE: live and offline controls must be reported separately.
-- SMA: an existing walk-forward experiment and tests are present; retrieve and inspect the latest workflow report before rebuilding.
-- ACE: v0.1 specification exists; implementation and historical coverage audit are pending. Only calendar workload candidates are currently defensible; true recovery hours and verified injury data are not established.
+- SMA: the existing 730-day surface-residual candidate improved Brier and LogLoss on both ATP and WTA fixed holdout and annual walk-forward samples against offline K=32 Elo. See `SMA-RESULTS-AUDIT.md`; live PFE comparison, deeper strata and source coverage remain open.
+- ACE: v0.1 feature module is implemented; GitHub Actions passed all 9 unit tests after the final accounting refinement. Historical archive coverage and predictive value are not yet measured. Only calendar workload indicators are defensible; true recovery hours and verified injury data are not established.
 - HFA: v0.1 evidence protocol exists; no validated timestamped evidence corpus is established; default to insufficient data / abstention.
 - Aggregator: design is specified, but implementation is gated on source audits and a frozen PFE control.
 
 The schema and contract are specifications at this stage. They have not yet been executed against SQLite or run through a JSON Schema validator in this branch.
-- ACE: v0.1 feature module and nine unit tests are implemented in `ace/`; the initial GitHub Actions run passed 9/9 tests. A subsequent accounting refinement is awaiting CI. Historical archive coverage and predictive value have not yet been measured.
