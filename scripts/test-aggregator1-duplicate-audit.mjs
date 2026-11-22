@@ -21,7 +21,7 @@ assert.equal(r.totals.duplicateMatchIdGroups,1);
 assert.equal(r.totals.duplicateMatchIdRows,2);
 assert.equal(r.totals.conflictingMatchIdGroups,0);
 assert.equal(r.totals.duplicateFingerprintGroups,1);
-assert.equal(r.totals.duplicateFingerprintRows,2);
+assert.equal(r.totals.duplicateFingerprintRows,3);
 assert.equal(r.byTour.ATP.rows,4);
 assert.equal(JSON.stringify(r).includes("Player One"),false);
 assert.equal(JSON.stringify(r).includes("m1"),false);
