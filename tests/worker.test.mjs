@@ -3315,6 +3315,9 @@ test("preferred bookmaker mode defaults safely and never silently mixes books", 
 });
 test("preferred bookmaker setting is persisted and restored in the settings form", () => {
   assert.match(frontendSource, /id="preferredBookmaker"/);
+  assert.match(frontendSource, /Betclic · ограниченное покрытие/);
+  assert.match(frontendSource, /NetBet · ограниченное покрытие/);
+  assert.match(frontendSource, /покрытие Betclic\/NetBet ограничено турниром ATP Finals/);
   assert.match(frontendSource, /data\.preferredBookmaker=normalizePreferredBookmaker/);
   assert.match(frontendSource, /normalizePreferredBookmaker\(current\.preferredBookmaker\)/);
   assert.match(frontendSource, /normalizePreferredBookmaker\(saved\.preferredBookmaker\)/);
