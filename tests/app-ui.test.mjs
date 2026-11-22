@@ -623,6 +623,8 @@ test("BASIC comparison history derives last-five, recent form and surface splits
   assert.equal(result.bySurface.hard.wins,1);
   assert.equal(result.bySurface.clay.losses,1);
   assert.equal(result.bySurface.grass.decided,0);
+  assert.equal(Object.hasOwn(result.bySurface,"carpet"),false);
+  assert.doesNotMatch(html,/\[\x27carpet\x27,\x27Ковёр\x27\]/);
 });
 test("Compare loads both histories and H2H independently after Elo, and rejects mismatched H2H identities",()=>{
   assert.match(html,/Promise\.allSettled\(\[/);
