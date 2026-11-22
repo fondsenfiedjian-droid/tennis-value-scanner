@@ -610,4 +610,5 @@ test("Compare loads both histories and H2H independently after Elo, and rejects 
   assert.match(html,/Идентичность игроков не подтверждена точным совпадением имён/);
   assert.match(html,/История недоступна\. Основное сравнение Elo сохранено/);
   assert.match(html,/История 2023–н\.в\.; H2H 1968–н\.в\./);
+  assert.match(html,/проверка имён показана в блоке H2H/);
 });
