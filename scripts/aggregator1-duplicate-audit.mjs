@@ -24,6 +24,7 @@ export function auditValuebetDuplicates(files){
       totals.rows++;yb.rows++;
       const tour=String(row.genre??"").trim().toUpperCase()||"(empty)";
       const tb=byTour[tour]||(byTour[tour]={rows:0,rowsInDuplicateMatchIdGroups:0,rowsInDuplicateFingerprintGroups:0,invalidCoreRows:0});
+      tb.rows++;
       const id=String(row.match_id??"").trim();
       if(id){totals.rowsWithMatchId++;if(!ids.has(id))ids.set(id,[]);ids.get(id).push({year,tour,row});}
       else{totals.missingMatchId++;}
