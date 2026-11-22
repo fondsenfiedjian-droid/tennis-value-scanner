@@ -237,3 +237,35 @@ The audit script now emits year-level counts and a privacy-safe schema/level dia
 3. Re-run linkage by tour, year, and competition tier. Do not loosen player/date matching until tier coverage is corrected.
 4. Add a canonical match registry only after the source-level and identity crosswalks are sufficiently understood. Every row must retain source ID, date precision, tier, and provenance; ambiguous links remain separate.
 5. Keep TennisMyLife quarantined from model-training inputs until its restrictive license is cleared for the intended use. Do not bulk-download Live Tennis API history until written retention/training permission is received.
+
+
+## 12. Valuebetennis competition-level composition and expanded Sackmann coverage — 2026-11-22
+
+The full aggregate schema inspection identified why the first overlap result was misleading:
+
+| Valuebetennis category | Rows | Share |
+|---|---:|---:|
+| ITF | 278,278 | 58.1% |
+| Challenger | 151,398 | 31.6% |
+| Main tour | 23,091 | 4.8% |
+| Grand Slam | 11,113 | 2.3% |
+| Masters | 10,839 | 2.3% |
+| Davis Cup / BJK Cup | 1,168 | 0.2% |
+| Empty category | 2,719 | 0.6% |
+
+The first comparison used only Sackmann main-draw files, so it compared a dataset dominated by ITF and Challenger matches against a narrow main-tour archive. That is the primary known coverage mismatch; the 5.14% linkage rate is not a meaningful estimate of total source overlap.
+
+The source repository inventory was checked directly. For 2021–2026 it contains:
+- ATP main-draw files;
+- ATP qualifying/Challenger files (`atp_matches_qual_chall_YYYY.csv`);
+- ATP Futures files (`atp_matches_futures_YYYY.csv`);
+- WTA main-draw files;
+- WTA ITF qualifying files (`wta_matches_qual_itf_YYYY.csv`).
+
+The research workflow has now been expanded to download these 30 Sackmann files (5 series × 6 years), in addition to the six Valuebetennis files. The audit parser already recognizes the tier-specific filenames and reports row counts by tour/tier/year. This expanded run is the next decisive overlap measurement.
+
+Important residual gap: the inspected Sackmann WTA archive lists WTA main-draw and ITF qualifying files, but no separate WTA ITF main-draw series. Therefore even the expanded Sackmann comparison will not fully cover the 278,278 Valuebetennis ITF rows. The expanded result must be interpreted by tier, not as complete coverage.
+
+Valuebetennis schema fields confirmed: `match_id`, `date`, `tournoi`, `tournoi_id`, `categorie`, `genre`, `surface`, `tour`, player names and IDs, opening/closing odds, winner ID, score, and duration. This provides useful source-native IDs and match metadata for a future canonical registry. Odds and outcomes must remain segregated from pre-match model features to avoid target leakage.
+
+Surface distribution: clay 213,143; outdoor hard 207,997; indoor hard 42,804; grass 9,967; carpet 4,695. All five surface labels are recognized by the current normalization map.
