@@ -2445,9 +2445,11 @@
       setConnectionStatus('ПРОВЕРКА API');
       $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
       try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
-      oddsUpdated=await loadOdds();
-      // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
+      // Odds providers run independently: a slow bookmaker must not block the match schedule.
+      const oddsPromise=loadOdds();
+      // Reuse recent match data for fifteen minutes; wait for odds only on this cache path.
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
+        oddsUpdated=await oddsPromise;
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
@@ -2464,6 +2466,7 @@
       setConnectionStatus('Live Tennis API · '+scheduleCacheLabel);
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
+      oddsPromise.then(()=>{if(window.cachedMatches===matches)renderMatches(matches);}).catch(()=>{});
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
