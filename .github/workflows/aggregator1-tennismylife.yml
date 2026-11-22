@@ -92,12 +92,14 @@ jobs:
       - name: Test Valuebetennis linkage through TennisMyLife IDs
         shell: bash
         run: |
+          DATE_WINDOW="${{ inputs.date_window }}"
+          if [[ -z "$DATE_WINDOW" ]]; then DATE_WINDOW=14; fi
           node scripts/aggregator1-valuebet-id-bridge.mjs \
             --valuebet-dir "$RUNNER_TEMP/aggregator1-tnm/valuebetennis" \
             --tml-dir "$RUNNER_TEMP/aggregator1-tnm/tml" \
             --sackmann-dir "$RUNNER_TEMP/aggregator1-tnm/sackmann" \
             --registry "$RUNNER_TEMP/aggregator1-tnm/ATP_Database.csv" \
-            --date-window "${{ inputs.date_window }}" \
+            --date-window "$DATE_WINDOW" \
             --out audit-output/aggregator1-valuebet-id-bridge.json
 
       - name: Validate aggregate reports
