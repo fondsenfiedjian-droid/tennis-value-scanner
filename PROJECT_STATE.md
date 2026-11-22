@@ -1061,3 +1061,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added dedicated regression tests for provider isolation, incomplete pairs, duplicate outcomes, stale/unsynchronised timestamps and fallback event identity.
 - This is diagnostic only: it does not alter quote selection, EV, PFE, model probabilities, Apify task configuration, or Production. The existing frontend still has separate provider-selection work in draft PR #157; this branch does not replace or merge that work.
 - Validation pending GitHub Actions on the branch head.
+
+- Follow-up on the same PR: the frontend odds-source status now displays the new bookmaker-specific pair coverage counts (complete, fresh, incomplete, stale/unsynchronised) when supplied by the Worker; older cached payloads remain compatible and simply omit this segment.
