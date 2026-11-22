@@ -1661,7 +1661,7 @@
     }).filter(Boolean).sort((a,b)=>{const da=Date.parse(a.date||''),db=Date.parse(b.date||'');return (Number.isFinite(db)?db:0)-(Number.isFinite(da)?da:0);});
     const decided=matches.filter(m=>m.winner==='W'||m.winner==='L');
     const record=list=>({wins:list.filter(m=>m.winner==='W').length,losses:list.filter(m=>m.winner==='L').length,decided:list.length});
-    const last5=matches.slice(0,5),form10=record(decided.slice(0,10)),form20=record(decided.slice(0,20));
+    const last5=matches.slice(0,5).reverse(),form10=record(decided.slice(0,10)),form20=record(decided.slice(0,20));
     const bySurface={hard:record(decided.filter(m=>m.surface==='hard')),clay:record(decided.filter(m=>m.surface==='clay')),grass:record(decided.filter(m=>m.surface==='grass')),carpet:record(decided.filter(m=>m.surface==='carpet'))};
     return {last5,form10,form20,bySurface,sample:matches.length,undecided:matches.length-decided.length,source:payload?.source||'Live Tennis API /history/matches',period:payload?.period||'2023-present',retrievedAt:payload?.retrievedAt||null};
   }
