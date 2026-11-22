@@ -58,12 +58,12 @@ function makeWinamaxQuote(overrides = {}) {
   };
 }
 
-const recommendationStart = html.indexOf("function selectBestBet(");
+const recommendationStart = html.indexOf("function selectBestBets(");
 const recommendationEnd = html.indexOf("function renderBestBet(", recommendationStart);
 const recommendationSource = html.slice(recommendationStart, recommendationEnd);
 function runSelectBestBet(bets, minEv=3, minOdds=1.9) {
   const sandbox = {};
-  vm.runInNewContext(recommendationSource + "\nglobalThis.selectBestBet = selectBestBet;", sandbox);
+  vm.runInNewContext(recommendationSource + "\nglobalThis.selectBestBet = selectBestBet; globalThis.selectBestBets = selectBestBets;", sandbox);
   return sandbox.selectBestBet(bets, minEv, minOdds);
 }
 
@@ -373,6 +373,28 @@ test("Bet of the Day enforces the full odds range and valid model probability", 
   assert.equal(runSelectBestBet([{ ...valid, probability: 0 }], 3, 1.5), null);
   assert.equal(runSelectBestBet([{ ...valid, probability: 100.01 }], 3, 1.5), null);
   assert.equal(runSelectBestBet([{ ...valid, probability: Number.NaN }], 3, 1.5), null);
+});
+
+test("strict recommendations return the full reliability-ranked list for manual carousel navigation",()=>{
+  const base={ev:6,odds:2.4,probability:71,reliabilityEligible:true,reliabilityScore:91,freshnessLevel:"good",valueEligible:true};
+  const lower={...base,ev:12,probability:66,reliabilityScore:88,player:"Player B"};
+  const higher={...base,ev:4,probability:74,reliabilityScore:95,player:"Player A"};
+  const blocked={...base,reliabilityScore:84,player:"Blocked"};
+  const sandbox={};
+  vm.runInNewContext(recommendationSource+"\\nglobalThis.selectBestBets=selectBestBets;",sandbox);
+  const selected=sandbox.selectBestBets([lower,blocked,higher],3,1.9);
+  assert.deepEqual(Array.from(selected).map(x=>x.player),["Player A","Player B"]);
+  assert.equal(selected.length,2);
+});
+
+test("strict recommendation carousel is manually navigated and does not auto-rotate",()=>{
+  assert.match(html,/id="bestBetPrev"/);
+  assert.match(html,/id="bestBetNext"/);
+  assert.match(html,/bestBetCarouselKey/);
+  assert.match(html,/renderBestBet\(bets,scanned,totalCandidates,failed,evBets,oddsFallback\)/);
+  assert.doesNotMatch(html,/setInterval\([^)]*bestBet|bestBet[^;]*setInterval/);
+  assert.match(html,/размер ставки не рассчитан/);
+  assert.match(html,/aria-label="Обязательные ставки"/);
 });
 
 test("best bet of the day prioritizes validated reliability and opens its match from the whole feature card", () => {
