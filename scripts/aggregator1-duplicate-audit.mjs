@@ -10,7 +10,7 @@ const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 export function auditValuebetDuplicates(files){
   if(!files.length)throw new Error("Valuebetennis files are required");
   const ids=new Map(),fingerprints=new Map(),byYear={},byTour={};
-  const totals={rows:0,rowsWithMatchId:0,missingMatchId:0,duplicateMatchIdRows:0,duplicateMatchIdGroups:0,conflictingMatchIdGroups:0,duplicateFingerprintRows:0,duplicateFingerprintGroups:0,duplicateFingerprintScoreConflictGroups:0,duplicateFingerprintWinnerConflictGroups:0,duplicateFingerprintIdenticalPayloadGroups:0,invalidCoreRows:0};
+  const totals={rows:0,rowsWithMatchId:0,missingMatchId:0,duplicateMatchIdRows:0,duplicateMatchIdGroups:0,conflictingMatchIdGroups:0,duplicateFingerprintRows:0,duplicateFingerprintGroups:0,duplicateFingerprintScoreConflictGroups:0,duplicateFingerprintWinnerConflictGroups:0,duplicateFingerprintWinnerSamePlayerGroups:0,duplicateFingerprintWinnerDifferentPlayerGroups:0,duplicateFingerprintWinnerUnresolvedGroups:0,duplicateFingerprintIdenticalPayloadGroups:0,invalidCoreRows:0};
   const required=["match_id","date","genre","surface","joueur1","joueur2"];
   let columns=[];
   for(const file of files){
@@ -57,7 +57,19 @@ export function auditValuebetDuplicates(files){
     totals.duplicateFingerprintRows+=group.length-1;
     const hasConflict=fields=>fields.some(field=>new Set(group.map(x=>String(x.row[field]??"").trim()).filter(Boolean)).size>1);
     if(hasConflict(scoreFields))totals.duplicateFingerprintScoreConflictGroups++;
-    if(hasConflict(winnerFields))totals.duplicateFingerprintWinnerConflictGroups++;
+    if(hasConflict(winnerFields)){
+      totals.duplicateFingerprintWinnerConflictGroups++;
+      const winnerNames=new Set(),unresolved=[];
+      for(const x of group){
+        const winnerId=String(x.row.vainqueur_id??x.row.winner_id??"").trim();
+        const p1=String(x.row.joueur1_id??"").trim(),p2=String(x.row.joueur2_id??"").trim();
+        const winnerName=winnerId&&winnerId===p1?norm(x.row.joueur1):winnerId&&winnerId===p2?norm(x.row.joueur2):"";
+        if(winnerName)winnerNames.add(winnerName);else unresolved.push(x);
+      }
+      if(unresolved.length)totals.duplicateFingerprintWinnerUnresolvedGroups++;
+      else if(winnerNames.size===1)totals.duplicateFingerprintWinnerSamePlayerGroups++;
+      else if(winnerNames.size>1)totals.duplicateFingerprintWinnerDifferentPlayerGroups++;
+    }
     const payloads=new Set(group.map(x=>{
       const payload=Object.fromEntries(Object.entries(x.row).filter(([key])=>key!=="match_id").sort(([a],[b])=>a.localeCompare(b)));
       return JSON.stringify(payload);
@@ -74,7 +86,7 @@ export function auditValuebetDuplicates(files){
     methods:{
       matchId:"Repeated source match_id across all input years; conflicting groups have more than one tour/date/event/player-pair/surface signature.",
       fingerprint:"Same tour, calendar date, tournament_id (preferred) or normalized tournament name, surface, and unordered normalized player pair. This is a duplicate candidate, not an automatic deletion rule.",
-      payloadComparison:{scoreFields,winnerFields,identicalPayload:"All columns except match_id are byte-for-byte equal after CSV parsing; this is a strong duplicate signal, not an automatic deletion rule.",conflicts:"A score or winner conflict means the corresponding detected field has more than one non-empty normalized value within the same fingerprint group."},
+      payloadComparison:{scoreFields,winnerFields,winnerIdentityMethod:"vainqueur_id (or winner_id) is matched to joueur1_id/joueur2_id and converted to the normalized player side; no player name or ID is exported.",identicalPayload:"All columns except match_id are byte-for-byte equal after CSV parsing; this is a strong duplicate signal, not an automatic deletion rule.",conflicts:"A score or winner conflict means the corresponding detected field has more than one non-empty normalized value within the same fingerprint group."},
       exclusions:"Rows with missing date/player pair/surface/event or identical normalized player names are counted as invalid core rows and excluded from composite fingerprinting."
     },
     warnings:["Repeated composite fingerprints may represent genuine same-day repeats or source revisions; inspect before deduplication.","Match IDs are checked across all yearly files; do not assume they are globally unique until this report is reviewed."]
