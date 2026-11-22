@@ -1123,3 +1123,11 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Regression run 45009364529 passed: 481 tests, 481 passed, 0 failed. Project-state documentation guard passed on the previous code commit; this documentation update will trigger a fresh guard.
 - The app shell was restored from the last fully validated pre-navigation snapshot before the navigation work was reapplied. The current file is a complete HTML document; the latest regression suite validates the restored shell and comparison feature.
 - Draft PR #167 remains unmerged. No Production deploy was authorized or performed.
+
+### 2026-11-22 — Cached player-name search proxy (TVS 2.0)
+- Added the isolated Worker endpoint `GET /players/search?search={name}&limit=10` using the official Live Tennis API `GET /players` directory search (FREE tier).
+- Validates query length (2–80 characters) and result limit (1–20); validates player IDs and names before returning rows.
+- Caches successful searches for 15 minutes using a case-normalized cache key; concurrent/repeated searches therefore avoid unnecessary daily quota use.
+- Provider errors are sanitized, HTTP status and `Retry-After` are preserved, and malformed successful payloads are rejected rather than cached.
+- Added dedicated Worker regression coverage for validation, endpoint parameters, normalized caching, sanitized rate-limit errors and malformed payloads.
+- This is a preview-branch Worker change only. Frontend autocomplete is the next step; the existing manual ID entry and comparison flow remain unchanged for now. No Production Worker deployment or PR merge has been performed.
