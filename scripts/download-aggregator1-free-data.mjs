@@ -68,7 +68,7 @@ if(index?.files){
   for(const item of selected){
     const url=String(item.url||"");
     const name=safePath(item.name||item.path||"");
-    if(!/^https:\/\/\//i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
+    if(!/^https:\/\/i.test(url)){manifest.errors.push("TennisMyLife file has invalid URL: "+name);continue;}
     try{await save(url,"tennismylife/"+name,"TennisMyLife");}
     catch(e){manifest.errors.push(String(e));console.error("FAILED "+String(e));}
   }
@@ -76,6 +76,6 @@ if(index?.files){
 manifest.files.sort((a,b)=>a.source.localeCompare(b.source)||a.path.localeCompare(b.path));
 await mkdir(root,{recursive:true});
 await writeFile(join(root,"manifest.json"),JSON.stringify(manifest,null,2)+"\n");
-console.log("\\nSaved "+manifest.files.length+" files to "+root);
+console.log("\nSaved "+manifest.files.length+" files to "+root);
 console.log("Manifest: "+join(root,"manifest.json"));
 if(manifest.errors.length){console.error(manifest.errors.length+" download/index warnings; inspect manifest.json");process.exitCode=1;}
