@@ -52,8 +52,8 @@ function diagnoseOddsItems(items, now = Date.now()) {
 function diagnoseOddsPairs(items, now = Date.now()) {
   const groups = new Map();
   const normalize = value => String(value || "").normalize("NFKD")
-    .replace(/[\\u0300-\\u036f]/g, "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+    .replace(/[\u0300-\\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
   for (const item of items) {
     if (!item || typeof item !== "object" || Array.isArray(item)) continue;
     const bookmaker = String(item.bookmaker || "").trim().toLowerCase();
@@ -69,7 +69,7 @@ function diagnoseOddsPairs(items, now = Date.now()) {
     const eventId = String(item.eventId || "").trim();
     const eventKey = eventId
       ? bookmaker + "|id|" + eventId
-      : [bookmaker, "pair", [home, away].sort().join("|"), new Date(start).toISOString(),
+      : [bookmaker, "pair", home + "|" + away, new Date(start).toISOString(),
           String(item.competition || "").trim().toLowerCase()].join("|");
     if (!groups.has(eventKey)) groups.set(eventKey, { bookmaker, rows: [] });
     groups.get(eventKey).rows.push(item);
