@@ -94,8 +94,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;cg.validRows++;
       if(!sf){
-        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;
-        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;
+        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;cg.unknownSurface++;
+        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
@@ -109,7 +109,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         offsets.push(date-selected.date);
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;cg.ambiguous++;}
-      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;}
+      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
@@ -125,6 +125,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
     },
     byTour,
+    byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     warnings:[
