@@ -2440,7 +2440,7 @@
       const matches=extractMatches(payload);
       if(matches===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
       window.cachedMatches=matches;
-      setConnectionStatus('API: ОНЛАЙН');
+      setConnectionStatus('Live Tennis API · '+scheduleCacheLabel);
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
     }catch(err){
