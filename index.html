@@ -590,7 +590,7 @@
     };
     const tourA=tourOf(a),tourB=tourOf(b);
     if(tourA&&tourB&&tourA!==tourB)return false;
-    const ignored=new Set(['atp','wta','itf','challenger','men','women','main','draw','qualifying','qualification','series']);
+    const ignored=new Set(['atp','wta','itf','challenger','men','women','main','draw','qualifying','qualification','series','open','cup','masters','finals','championship','championships','classic','trophy']);
     const tokens=name=>name.split(' ').filter(token=>token.length>2&&!ignored.has(token));
     const tokensA=tokens(a),tokensB=new Set(tokens(b));
     return tokensA.some(token=>tokensB.has(token));
