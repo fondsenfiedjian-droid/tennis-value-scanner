@@ -617,13 +617,36 @@
   const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    let timer;
+    let rejectTimeout;
+    const timeout=new Promise((resolve,reject)=>{
+      rejectTimeout=reject;
+      timer=setTimeout(()=>{
+        controller.abort();
+        reject(new Error('Превышено время ожидания API ('+Math.round(timeoutMs/1000)+' с).'));
+      },timeoutMs);
+    });
     try{
-      return await fetch(url,{...options,signal:controller.signal});
+      const response=await Promise.race([
+        fetch(url,{...options,signal:controller.signal}),
+        timeout
+      ]);
+      // Keep the same deadline active while the response body is being downloaded.
+      const body=await Promise.race([response.text(),timeout]);
+      return {
+        ok:response.ok,
+        status:response.status,
+        statusText:response.statusText,
+        headers:response.headers,
+        json:async()=>JSON.parse(body),
+        text:async()=>body
+      };
     }catch(error){
       if(controller.signal.aborted)throw new Error('Превышено время ожидания API ('+Math.round(timeoutMs/1000)+' с).');
       throw error;
-    }finally{clearTimeout(timer);}
+    }finally{
+      clearTimeout(timer);
+    }
   }
   function setConnectionStatus(label){
     const node=$('#connectionStatus');
