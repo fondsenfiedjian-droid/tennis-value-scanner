@@ -18,7 +18,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     registryColumns[tour]=Object.keys(rows[0]||{});
     for(const row of rows){
       const id=String(row.player_id??row.id??"").trim();
-      const first=String(row.first_name??"").trim(),last=String(row.last_name??"").trim();
+      const first=String(row.name_first??row.first_name??"").trim(),last=String(row.name_last??row.last_name??"").trim();
       const variants=[norm([first,last].filter(Boolean).join(" ")),norm([last,first].filter(Boolean).join(" "))].filter(Boolean);
       if(!id||!variants.length)continue;
       validRows++;
