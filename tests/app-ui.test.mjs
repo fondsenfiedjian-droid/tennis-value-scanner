@@ -397,34 +397,24 @@ test("strict recommendation carousel is manually navigated and does not auto-rot
   assert.match(html,/aria-label="Обязательные ставки"/);
 });
 
-test("mandatory bets carousel prioritizes validated reliability and opens the selected match", () => {
+test("mandatory recommendations and additional opportunities are separate plan tiers", () => {
   assert.match(html, /id="bestBet" class="best-bet" role="region" aria-label="Обязательные ставки"/);
-  assert.match(html, /ОБЯЗАТЕЛЬНЫЕ СТАВКИ/);
-  assert.match(html, /best-bet-odds/);
-  assert.match(html, /best-bet-pair/);
+  assert.match(html, /function selectBestBets\(/);
   assert.match(html, /reliabilityEligible===true/);
   assert.match(html, /reliabilityScore>=85/);
-  assert.match(html, /calibrationEligible=calibrationSampleSize>=50&&brier<=0\.22/);
-  assert.match(html, /calibrationReady=reliability\.calibrationEligible===true/);
-  assert.match(html, /не менее 50 проверенных матчей калибровки/);
-  assert.match(html, /Brier score выше 0\.22/);
-  assert.match(html, /\.sort\(\(a,b\)=>b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\|\|b\.ev-a\.ev\)/);
-  assert.match(html, /\$\('#bestBetOpen'\)\.onclick=openDetails/);
-  assert.match(html, /id="bestBetPrev"/);
-  assert.match(html, /id="bestBetNext"/);
-  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
-  assert.match(html, /x\.reliabilityScore>=65/);
-  assert.match(html, /x\.valueEligible===true/);
-  assert.match(html, /Качество данных:/);
-  assert.match(html, /EV — оценка модели, а не гарантия прибыли/);
-  assert.match(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
-  assert.match(html, /const impliedProbability=100\/highest\.odds/);
-  assert.match(html, /const modelEdge=highest\.probability-impliedProbability/);
-  assert.match(html, /Вероятность по коэффициенту:/);
-  assert.match(html, /преимущество модели:/);
-  assert.match(html, /небольшая ставка ради возможного крупного выигрыша; не рекомендация для крупной суммы/);
-  assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\)/);
-  assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
+  assert.match(html, /freshnessLevel==='good'/);
+  assert.match(html, /valueEligible===true/);
+  assert.match(html, /id="additionalOpportunities"/);
+  assert.match(html, /Дополнительные возможности/);
+  assert.match(html, /Почему пока не в основном плане/);
+  assert.match(html, /EV ниже установленного порога/);
+  assert.match(html, /котировка недостаточно свежая/);
+  assert.match(html, /не пройдена проверка качества value-сигнала/);
+  assert.match(html, /не завершена строгая калибровка и независимое подтверждение/);
+  assert.match(html, /не возвращала проверенную вероятность/);
+  assert.match(html, /id="additionalCount"/);
+  assert.doesNotMatch(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
+  assert.doesNotMatch(html, /id="highestEv"/);
 });
 
 test("bankroll tab and assets are fully removed from the application shell", () => {
