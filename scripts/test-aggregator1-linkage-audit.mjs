@@ -10,7 +10,7 @@ const valuebet = [
       "v2;2025-01-13 14:00:00;Australian Open;atp;dur;Carlos Alcaraz;Jannik Sinner",
       "v3;2025-02-01 14:00:00;WTA 500 Abu Dhabi;wta;dur intérieur;Emma Raducanu;Ons Jabeur",
       "v4;2025-03-10 14:00:00;Miami Open;atp;dur;Player C;Player D",
-      "v5;2025-04-10 14:00:00;Madrid Open;atp;dur;Player E;Player F",
+      "v5;2025-04-10 14:00:00;;atp;dur;Player E;Player F",
       "v6;2025-04-11 14:00:00;Unknown Event;atp;wood;Player G;Player H"
     ].join("\n")
   }
@@ -23,7 +23,7 @@ const sackmann = [
       "20250106,Australian Open,Hard,Novak Djokovic,Rafael Nadal",
       "20250303,Miami Open,Hard,Player C,Player D",
       "20250304,Indian Wells,Hard,Player D,Player C",
-      "20250403,Barcelona,Hard,Player E,Player F",
+      "20250403,,Hard,Player E,Player F",
       "20250404,Monte Carlo,Hard,Player F,Player E",
       "20250407,Unknown Event,Wood,Player G,Player H"
     ].join("\n")
