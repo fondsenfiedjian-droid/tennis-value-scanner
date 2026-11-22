@@ -498,13 +498,17 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
+test("match list keeps all scheduled matches visible and labels fresh quote-pair status", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
-  assert.match(html, /const allMatched=oddsForMatch\(m\)/);
+  assert.match(html, /const filtered=dateFiltered/);
+  assert.match(html, /const completePairCount=filtered\.filter\(m=>winnerEnabled&&oddsForMatch\(m\)\.length>=2\)\.length/);
+  assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
+  assert.match(html, /Полная свежая пара/);
+  assert.match(html, /Неполная пара · найден 1 исход/);
+  assert.match(html, /Нет свежей полной пары/);
+  assert.match(html, /class="match-quote-status /);
+  assert.match(html, /Матчи без свежих коэффициентов также отображаются в списке/);
 });
 
 test("optional player statistics are not fetched during automatic prediction scans", () => {
