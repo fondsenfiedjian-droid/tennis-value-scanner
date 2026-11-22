@@ -232,6 +232,26 @@ test("odds matching accepts a first-name initial but rejects conflicting full na
   assert.equal(matching.oddsForMatch(conflicting).length, 0);
 });
 
+test("tournament matching ignores generic suffixes that would join unrelated events", () => {
+  const home = makeWinamaxQuote({ competition: "ATP China Open", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Japan Open" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+
+  const paris = [
+    makeWinamaxQuote({ competition: "ATP Paris Masters", outcome: "home" }),
+    makeWinamaxQuote({ competition: "ATP Paris Masters", outcome: "away", oddsDecimal: 1.8 })
+  ];
+  assert.equal(getOddsMatching(paris).oddsForMatch({ ...match, tournament_name: "ATP Rome Masters" }).length, 0);
+});
+
+test("tournament matching still accepts shared distinctive location tokens", () => {
+  const home = makeWinamaxQuote({ competition: "ATP Rome Masters", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "Rome Masters" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 2);
+});
+
 test("odds matching rejects quotes from different event IDs or mismatched competitions", () => {
   const home = makeWinamaxQuote({ outcome: "home" });
   const awayDifferentEvent = makeWinamaxQuote({ outcome: "away", eventId: "event-2" });
