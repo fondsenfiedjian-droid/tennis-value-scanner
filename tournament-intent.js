@@ -1,9 +1,8 @@
 /**
  * Tournament-intent evidence classifier.
  *
- * Classifies documented pre-match evidence that a tournament may be a
- * preparation/secondary-priority event for a player. It does not infer intent
- * from results, ranking, odds or reputation, and never changes probabilities.
+ * Reports the type of documented pre-match evidence. It does not infer
+ * willingness to win, private motivation, or a match outcome.
  */
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -30,6 +29,9 @@ function timestamp(value) {
  * { type, observedAt, source, detail, verified, eventDate? }
  * All evidence must be available before the target match. A source and
  * observation timestamp are mandatory; verified must be true.
+ *
+ * The numeric weights are descriptive research tallies only. Classification
+ * is based on evidence type, never on a summed score or a calendar-only score.
  */
 export function assessTournamentIntent(evidence, options = {}) {
   const asOf = timestamp(options.asOf);
@@ -69,10 +71,21 @@ export function assessTournamentIntent(evidence, options = {}) {
   const positiveWeight = positive.reduce((sum, x) => sum + x.weight, 0);
   const contraryWeight = contrary.reduce((sum, x) => sum + Math.abs(x.weight), 0);
   const net = positiveWeight - contraryWeight;
+
+  const hasPreparationStatement = accepted.some(x => x.type === "explicit_preparation");
+  const hasLaterPriorityStatement = accepted.some(x => x.type === "explicit_next_event_priority");
+  const hasCurrentTitleStatement = accepted.some(x => x.type === "explicit_title_focus");
+  const hasReturnContext = accepted.some(x => ["official_return_cautious", "recent_injury_return"].includes(x.type));
+  const hasCalendarOrHomeContext = accepted.some(x => ["major_event_soon", "schedule_bridge", "home_event_commitment"].includes(x.type));
+  const hasDirectPreparationEvidence = hasPreparationStatement || hasLaterPriorityStatement;
+
   let classification = "unknown";
-  if (net >= 6 && positive.length >= 2) classification = "strong_preparation_or_low_priority_signals";
-  else if (net >= 3) classification = "possible_preparation_or_low_priority";
-  else if (net <= -3) classification = "evidence_of_high_event_priority";
+  if (hasDirectPreparationEvidence && hasCurrentTitleStatement) classification = "mixed_direct_statements";
+  else if (hasLaterPriorityStatement) classification = "explicit_later_event_priority_statement";
+  else if (hasPreparationStatement) classification = "explicit_preparation_statement";
+  else if (hasCurrentTitleStatement) classification = "explicit_current_event_priority_statement";
+  else if (hasReturnContext) classification = "return_or_readiness_context_only";
+  else if (hasCalendarOrHomeContext) classification = "calendar_or_home_context_only";
   else if (accepted.length) classification = "mixed_or_weak_evidence";
 
   return {
@@ -84,9 +97,10 @@ export function assessTournamentIntent(evidence, options = {}) {
     positiveWeight,
     contraryWeight,
     netEvidenceWeight: net,
+    weightInterpretation: "unvalidated_descriptive_tally_not_probability_or_motivation_score",
     evidence: accepted,
     rejected,
-    interpretation: "evidence_triage_only_not_player_intent_or_win_probability",
+    interpretation: "sourced_context_only_does_not_establish_effort_or_willingness_to_win",
     probabilityAdjustment: null
   };
 }
@@ -95,7 +109,7 @@ export function compareTournamentIntent(playerA, playerB) {
   const a = Number(playerA?.netEvidenceWeight);
   const b = Number(playerB?.netEvidenceWeight);
   return {
-    status: Number.isFinite(a) && Number.isFinite(b) ? "comparable_evidence_weights" : "insufficient_data",
+    status: Number.isFinite(a) && Number.isFinite(b) ? "comparable_descriptive_tallies" : "insufficient_data",
     differenceAminusB: Number.isFinite(a) && Number.isFinite(b) ? a - b : null,
     interpretation: "descriptive_only_not_a_probability_adjustment"
   };
