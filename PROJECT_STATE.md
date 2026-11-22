@@ -1183,3 +1183,9 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Fixed a regex escaping defect found by the first CI run; the initial run had 493 passing / 2 failing tests because valid numeric IDs were rejected.
 - Re-ran regression tests on commit `9d34cf7e`: 495 passed, 0 failed. Project-state documentation guard also passed.
 - Added `/player-history` to the Worker health endpoint inventory. BASIC history proxy remains isolated to the draft branch; no frontend wiring or production deployment.
+
+### 2026-11-22 — BASIC H2H Worker proxy
+- Added isolated `GET /player-h2h?p1={fullName}&p2={fullName}` to proxy the documented BASIC `/h2h` endpoint.
+- Validates two distinct names, caches successful records for 24 hours, preserves totals/surface splits/meetings and exposes ambiguous-name and tier errors without turning them into zero records.
+- Added regression tests for validation, exact query mapping, cache behavior, BASIC entitlement refusal and ambiguous-name responses.
+- Updated the Worker endpoint inventory. No frontend integration, Production deployment, PR merge or Elo/model change.
