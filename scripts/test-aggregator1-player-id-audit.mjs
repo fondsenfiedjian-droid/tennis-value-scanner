@@ -26,7 +26,7 @@ const report=auditPlayerIdCrosswalk(valuebet,registries);
 assert.equal(report.byTour.ATP.distinctSourcePlayerIds,3);
 assert.equal(report.byTour.ATP.resolved,2);
 assert.equal(report.byTour.ATP.ambiguous,1);
-assert.equal(report.byTour.ATP.registryNameCollisions,1);
+assert.equal(report.byTour.ATP.registryNameCollisions,2);
 assert.equal(report.byTour.WTA.distinctSourcePlayerIds,2);
 assert.equal(report.byTour.WTA.resolved,1);
 assert.equal(report.byTour.WTA.unmapped,1);
