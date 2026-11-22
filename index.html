@@ -934,8 +934,17 @@
     return null;
   }
   function matchTour(m){
-    const candidates=[m?.tour,m?.tour_name,m?.competition_type,m?.event_type,m?.gender,m?.tournament?.tour,m?.tournament?.name,m?.event?.tour];
-    for(const value of candidates){const normalized=normalizeTour(value);if(normalized)return normalized;}
+    const direct=[m?.tour,m?.tour_name,m?.competition_type,m?.event_type,m?.tournament?.tour,m?.event?.tour];
+    for(const value of direct){const normalized=normalizeTour(value);if(normalized)return normalized;}
+    const tier=String(m?.tier||m?.tournament_tier||m?.level||'').trim().toLowerCase();
+    if(tier.startsWith('challenger_')||tier==='wta_125')return 'challenger';
+    if(tier.startsWith('itf_'))return 'itf';
+    if(tier.startsWith('atp_')||tier==='atp_finals'||tier==='next_gen_finals')return 'atp';
+    if(tier.startsWith('wta_')||tier==='wta_finals'||tier==='wta_elite_trophy')return 'wta';
+    if(tier==='juniors')return 'juniors';
+    const gender=String(m?.gender||'').trim().toLowerCase();
+    if(['men','male','mens',"men's",'m'].includes(gender))return 'atp';
+    if(['women','female','womens',"women's",'w'].includes(gender))return 'wta';
     return null;
   }
   let predictionRenderId=0;
@@ -944,7 +953,7 @@
     const list=$('#matchList');const today=new Date();today.setHours(0,0,0,0);
     const target=new Date(today);if(selectedDay==='tomorrow')target.setDate(target.getDate()+1);
     const tours=selectedTours().map(normalizeTour).filter(Boolean);
-    const byTour=all.filter(m=>{const tour=matchTour(m);return tour!==null&&tours.includes(tour);});
+    const byTour=all.filter(m=>{const tour=matchTour(m);return tour===null||tours.includes(tour);});
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
     // Keep every scheduled match visible; quote availability is a status, not a list filter.
