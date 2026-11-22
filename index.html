@@ -640,7 +640,10 @@
       const eventName=String(o.eventName||'').trim();
       const eventParts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||(playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
-      if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
+      const aHome=playerNamesMatch(home,a),aAway=playerNamesMatch(away,a);
+      const bHome=playerNamesMatch(home,b),bAway=playerNamesMatch(away,b);
+      // Each scheduled player must resolve to exactly one, opposite event participant.
+      if(aHome===aAway||bHome===bAway||aHome===bHome)return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||eventStart.getTime()<=now||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
