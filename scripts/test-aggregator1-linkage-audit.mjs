@@ -93,4 +93,25 @@ assert.equal(result.byTourCategory["ATP::Grand Chelem"].dateWindowMiss, 1);
 assert.equal(result.byCategory["Main tour"].pairAbsent, 1);
 assert.equal(result.byTourCategory["ATP::Challenger"].invalidPlayerPair, 1);
 assert.equal(result.byCategory["Main tour"].rows, 3);
-console.log("Aggregator 1 linkage audit fixtures: PASS");
+
+const conflictValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie;joueur1_id;joueur2_id",
+  "c1;2025-01-12;Australian Open;atp;dur;Novak Djokovic;Rafael Nadal;Grand Chelem;900;901",
+  "c2;2025-02-10;Rotterdam;atp;dur;Novak Djokovic;Player Q;Main tour;900;902"
+].join("\n")}];
+const conflictSackmann=[{filename:"atp_matches_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250106,Australian Open,Hard,Novak Djokovic,Rafael Nadal,1,2",
+  "20250203,Rotterdam,Hard,Player Q,Novak Djokovic,3,99"
+].join("\n")}];
+const conflictPlayers=[{filename:"atp_players.csv",content:[
+  "player_id,name_first,name_last,hand,dob,ioc,height",
+  "1,Novak,Djokovic,R,19870522,SRB,188",
+  "2,Rafael,Nadal,L,19860603,ESP,185",
+  "3,Player,Q,R,19900101,USA,180",
+  "99,Novak,Djokovic,R,19900101,AUS,188"
+].join("\n")}];
+const conflictReport=auditValuebetSackmann(conflictValuebet,conflictSackmann,{playerFiles:conflictPlayers});
+assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannIds,1);
+assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentBirthDateOrCountry,1);
+\nconsole.log("Aggregator 1 linkage audit fixtures: PASS");
