@@ -628,6 +628,7 @@ test("TVS 2.0 bottom navigation opens five independent screens",()=>{
   assert.match(html,/\$\('#navMore'\)\.onclick=showMore;/);
   assert.match(html,/\$\('#matchesRefreshBtn'\)\.addEventListener\('click',\(\)=>loadMatches\(true\)\)/);
   assert.match(html,/\$\('#moreScreenSettings'\)\.addEventListener\('click'/);
-  assert.match(html,/\$\('#openArchiveFromMore'\)\.addEventListener\('click',showStats\)/);
+  assert.match(html,/id=\"moreArchiveMount\"/);
+  assert.match(html,/\[\$\('#archiveOddsByBookmaker'\),archiveQuality,\$\('\.stats-actions'\),archiveLastHead,\$\('#archiveList'\)\]\.filter\(Boolean\)\.forEach\(node=>archiveMount\.appendChild\(node\)\)/);
   assert.doesNotMatch(html,/\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
 });
