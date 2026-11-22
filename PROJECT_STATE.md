@@ -1189,3 +1189,12 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Validates two distinct names, caches successful records for 24 hours, preserves totals/surface splits/meetings and exposes ambiguous-name and tier errors without turning them into zero records.
 - Added regression tests for validation, exact query mapping, cache behavior, BASIC entitlement refusal and ambiguous-name responses.
 - Updated the Worker endpoint inventory. No frontend integration, Production deployment, PR merge or Elo/model change.
+
+
+### 2026-11-22 — BASIC history and H2H integrated into Compare
+- Compare now requests both cached BASIC `/player-history` feeds and `/player-h2h` in parallel only after the existing Elo prediction succeeds.
+- Derives last five match rows, W/L records over the latest 10 and 20 decided matches, and Hard/Clay/Grass/Carpet splits from participant IDs and winner-relative-to-p1/p2. Undecided matches are excluded from W/L denominators and disclosed separately; missing surface is not inferred.
+- Displays date, tournament, surface, opponent, result and score for recent matches, with sample size and history source/period/retrieval time.
+- H2H is displayed only after exact case-insensitive confirmation of provider-resolved p1/p2 names against the selected players. Identity mismatch and source failures are explicit.
+- History/H2H failures do not remove the Elo result or the other successfully retrieved source. No background polling or automatic bets added.
+- Production Elo/K=32, probabilities, fair odds, EV and recommendation logic remain unchanged. Draft PR #167 only; no merge or Production deployment.
