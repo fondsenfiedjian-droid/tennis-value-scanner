@@ -22,6 +22,23 @@ CREATE TABLE IF NOT EXISTS matches (
   CHECK (winner_id IS NULL OR winner_id IN (player_a_id, player_b_id))
 );
 
+CREATE TABLE IF NOT EXISTS match_results (
+  result_id TEXT PRIMARY KEY,
+  match_id TEXT NOT NULL REFERENCES matches(match_id),
+  result_version INTEGER NOT NULL CHECK (result_version >= 1),
+  match_status TEXT NOT NULL CHECK (match_status IN ('completed','retired','walkover','default','abandoned','cancelled','unknown')),
+  winner_id TEXT,
+  score TEXT,
+  source TEXT NOT NULL,
+  source_published_at TEXT,
+  verified_at TEXT NOT NULL,
+  is_official INTEGER NOT NULL DEFAULT 0 CHECK (is_official IN (0,1)),
+  UNIQUE (match_id, result_version),
+  CHECK (winner_id IS NULL OR winner_id IN (
+    SELECT player_a_id FROM matches WHERE match_id = match_results.match_id
+  ))
+);
+
 CREATE TABLE IF NOT EXISTS model_versions (
   model_version_id TEXT PRIMARY KEY,
   system_id TEXT NOT NULL CHECK (system_id IN ('PFE','ACE','SMA','HFA','AGG','MVE')),
@@ -140,4 +157,78 @@ WHEN NOT EXISTS (
 )
 BEGIN
   SELECT RAISE(ABORT, 'quote selection must belong to the match');
+END;
+
+CREATE INDEX IF NOT EXISTS idx_match_results_match_version
+  ON match_results(match_id, result_version);
+
+CREATE TRIGGER IF NOT EXISTS validate_match_result_winner_insert
+BEFORE INSERT ON match_results
+WHEN NEW.winner_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM matches
+  WHERE match_id = NEW.match_id
+    AND NEW.winner_id IN (player_a_id, player_b_id)
+)
+BEGIN
+  SELECT RAISE(ABORT, 'result winner must belong to the match');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_match_result_update
+BEFORE UPDATE ON match_results
+BEGIN
+  SELECT RAISE(ABORT, 'match results are append-only; insert a new result_version');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_match_result_delete
+BEFORE DELETE ON match_results
+BEGIN
+  SELECT RAISE(ABORT, 'match results are append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_system_output_update
+BEFORE UPDATE ON system_outputs
+BEGIN
+  SELECT RAISE(ABORT, 'system outputs are immutable; create a new model version or prediction');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_system_output_delete
+BEFORE DELETE ON system_outputs
+BEGIN
+  SELECT RAISE(ABORT, 'system outputs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_aggregator_run_update
+BEFORE UPDATE ON aggregator_runs
+BEGIN
+  SELECT RAISE(ABORT, 'aggregator runs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_aggregator_run_delete
+BEFORE DELETE ON aggregator_runs
+BEGIN
+  SELECT RAISE(ABORT, 'aggregator runs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_market_quote_update
+BEFORE UPDATE ON market_quotes
+BEGIN
+  SELECT RAISE(ABORT, 'market quote snapshots are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_market_quote_delete
+BEFORE DELETE ON market_quotes
+BEGIN
+  SELECT RAISE(ABORT, 'market quote snapshots are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_model_version_update
+BEFORE UPDATE ON model_versions
+BEGIN
+  SELECT RAISE(ABORT, 'model versions are immutable; create a new version');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_model_version_delete
+BEFORE DELETE ON model_versions
+BEGIN
+  SELECT RAISE(ABORT, 'model versions are immutable');
 END;
