@@ -269,3 +269,35 @@ Important residual gap: the inspected Sackmann WTA archive lists WTA main-draw a
 Valuebetennis schema fields confirmed: `match_id`, `date`, `tournoi`, `tournoi_id`, `categorie`, `genre`, `surface`, `tour`, player names and IDs, opening/closing odds, winner ID, score, and duration. This provides useful source-native IDs and match metadata for a future canonical registry. Odds and outcomes must remain segregated from pre-match model features to avoid target leakage.
 
 Surface distribution: clay 213,143; outdoor hard 207,997; indoor hard 42,804; grass 9,967; carpet 4,695. All five surface labels are recognized by the current normalization map.
+
+
+## 13. Expanded all-available Sackmann tier audit — 2026-11-22
+
+The expanded 30-file download and aggregate linkage run completed successfully (run `45081063910`).
+
+### Inventory
+
+| Sackmann series | Rows |
+|---|---:|
+| ATP main draw | 16,105 |
+| ATP Futures | 88,988 |
+| ATP qualifying / Challenger | 56,740 |
+| WTA main draw | 14,780 |
+| WTA ITF qualifying | 160,487 |
+| **Total** | **337,100** |
+
+### Updated linkage
+
+- Valuebetennis valid rows: 478,601.
+- Candidate rows: 289,039.
+- Uniquely linked rows: 280,698 (58.65%).
+- Ambiguous rows: 8,341.
+- No candidate: 189,567.
+- WTA unique linkage: 141,115 / 198,351 valid rows (71.14%).
+- ATP unique linkage: 139,583 / 280,250 rows (49.81%).
+- Median accepted date offset: 2 days; p90: 4 days.
+- Invalid dates, unknown tours, and unknown surfaces remained zero.
+
+This is a major correction to the first main-draw-only audit: adding ATP Futures, ATP qualifying/Challenger, and WTA ITF qualifying raised unique linkage from 5.14% to 58.65%. This confirms that source coverage tier was the dominant cause of the earlier low result. It still does not mean all 189,567 unmatched rows are missing from Sackmann: remaining differences can include absent WTA ITF main draws, unrepresented levels, naming/ID mismatch, round/date differences, or genuine source gaps.
+
+The next diagnostic now breaks linkage down by Valuebetennis `categorie` (ITF, Challenger, Main tour, Grand Slam, Masters, Davis/BJK Cup, empty) so the remaining mismatch can be attributed by competition tier rather than guessed from the overall rate. The raw inputs remain temporary; the report contains aggregate statistics only.
