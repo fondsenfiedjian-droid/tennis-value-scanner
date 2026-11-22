@@ -46,7 +46,7 @@ Run after placing Valuebetennis season CSVs and Sackmann CSVs in separate folder
 node scripts/aggregator1-linkage-audit.mjs --valuebet-dir ./research-data/valuebetennis --sackmann-dir ./research-data/sackmann --out ./research-data/aggregator1-linkage-audit.json
 ```
 
-The script uses exact normalized full-name pairs, normalized surface, exact tournament name (with a small explicit alias list), and a date window around Sackmann's event-week date. Only a single candidate is counted as linked; ambiguous pairs are excluded. It writes aggregate counts only, not player names, match IDs, or row-level links. This conservative approach intentionally undercounts rather than silently joining the wrong match.
+The script uses exact normalized full-name pairs, normalized surface, exact tournament name (with a small explicit alias list), and a date window around Sackmann's event-week date. Only a single candidate is counted as linked; ambiguous pairs are excluded. It writes aggregate counts only, not player names, match IDs, or row-level links. This conservative approach intentionally undercounts rather than silently joining the wrong match. A synthetic fixture test is included and can be run with `node scripts/test-aggregator1-linkage-audit.mjs`.
 
 ## Important separation
 
