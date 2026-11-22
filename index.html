@@ -1686,6 +1686,22 @@
     const profileLine=profile=>{if(!profile)return '<small>Официальный профиль недоступен</small>';const rank=Number.isSafeInteger(profile.ranking)&&profile.ranking>0?'№'+profile.ranking:'не опубликован';const tour=profile.tour==='atp'?'ATP':profile.tour==='wta'?'WTA':'тур не указан';const country=profile.country?escapeHtml(profile.country):'страна не указана';const completeness=profile.completeness&&Number.isFinite(profile.completeness.percent)?' · заполнено '+profile.completeness.known+'/'+profile.completeness.of+' ('+profile.completeness.percent+'%)':'';return '<small>Официальный рейтинг: '+rank+'</small><small>'+tour+' · '+country+escapeHtml(completeness)+'</small>';};
     node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';node.hidden=false;
   }
+  const compareSearchAliases={
+    'алькарас':'Carlos Alcaraz','карлос алькарас':'Carlos Alcaraz',
+    'джокович':'Novak Djokovic','новак джокович':'Novak Djokovic',
+    'синнер':'Jannik Sinner','янник синнер':'Jannik Sinner',
+    'медведев':'Daniil Medvedev','даниил медведев':'Daniil Medvedev',
+    'зверев':'Alexander Zverev','александр зверев':'Alexander Zverev',
+    'рублёв':'Andrey Rublev','рублев':'Andrey Rublev','андрей рублёв':'Andrey Rublev','андрей рублев':'Andrey Rublev',
+    'хачанов':'Karen Khachanov','карен хачанов':'Karen Khachanov',
+    'рууд':'Casper Ruud','каспер рууд':'Casper Ruud',
+    'циципас':'Stefanos Tsitsipas','стефанос циципас':'Stefanos Tsitsipas',
+    'фриц':'Taylor Fritz','тейлор фриц':'Taylor Fritz',
+    'шелтон':'Ben Shelton','бен шелтон':'Ben Shelton',
+    'соболенко':'Aryna Sabalenka','арина соболенко':'Aryna Sabalenka',
+    'свёнтек':'Iga Swiatek','свентек':'Iga Swiatek','ига свёнтек':'Iga Swiatek','ига свентек':'Iga Swiatek',
+    'гаспарян':'Margarita Gasparyan'
+  };
   const compareSearchState={A:{timer:null,sequence:0},B:{timer:null,sequence:0}};
   function bindComparePlayerSearch(side){
     const suffix=side==='A'?'A':'B';
@@ -1712,12 +1728,13 @@
       idInput.value='';
       if(state.timer)clearTimeout(state.timer);
       const query=nameInput.value.trim();
+      const apiQuery=compareSearchAliases[query.toLocaleLowerCase('ru-RU')]||query;
       const sequence=++state.sequence;
       if(query.length<2){close();return;}
       list.hidden=false;list.innerHTML='<div class="compare-hint">Поиск игроков…</div>';
       state.timer=setTimeout(async()=>{
         try{
-          const response=await fetchWithTimeout(API+'/players/search?search='+encodeURIComponent(query)+'&limit=8');
+          const response=await fetchWithTimeout(API+'/players/search?search='+encodeURIComponent(apiQuery)+'&limit=8');
           const payload=await response.json();
           if(sequence!==state.sequence)return;
           if(!response.ok)throw new Error(payload.error||('API '+response.status));
