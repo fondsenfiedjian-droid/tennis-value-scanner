@@ -1610,7 +1610,14 @@
       .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev);
   }
   function selectBestBet(bets,minEv=3,minOdds=1.9,maxOdds=15){
-    return selectBestBets(bets,minEv,minOdds,maxOdds)[0]||null;
+    const threshold=Number.isFinite(Number(minEv))?Math.max(0,Number(minEv)):3;
+    const oddsFloor=Number.isFinite(Number(minOdds))?Math.max(1.5,Math.min(100,Number(minOdds))):1.9;
+    const oddsCeiling=Number.isFinite(Number(maxOdds))?Math.max(oddsFloor,Math.min(100,Number(maxOdds))):15;
+    return bets.filter(x=>Number.isFinite(x.ev)&&x.ev>=threshold&&Number.isFinite(x.odds)&&x.odds>=oddsFloor&&x.odds<=oddsCeiling&&x.odds<=15&&
+      Number.isFinite(x.probability)&&x.probability>0&&x.probability<=100&&
+      x.reliabilityEligible===true&&Number.isFinite(x.reliabilityScore)&&x.reliabilityScore>=85&&
+      x.freshnessLevel==='good'&&x.valueEligible===true)
+      .sort((a,b)=>b.reliabilityScore-a.reliabilityScore||b.probability-a.probability||b.ev-a.ev)[0]||null;
   }
   function selectHighestEvBet(bets,minOdds=1.9,maxOdds=15){
     const threshold=0;
@@ -1629,6 +1636,7 @@
     const filters=currentValueFilters();
     const configuredBestBetMinOdds=Number(readSettings().bestBetMinOdds);
     const bestBetMinOdds=Number.isFinite(configuredBestBetMinOdds)?Math.max(1.5,Math.min(15,configuredBestBetMinOdds)):1.9;
+    const legacyBest=selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
     const bestBets=selectBestBets(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
     const highest=selectHighestEvBet(evBets,filters.minOdds,filters.maxOdds);
     const betKey=bet=>[bet.match?.id||bet.match?.event_id||bet.matchIndex,bet.side,bet.player].join('|');
