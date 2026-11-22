@@ -81,7 +81,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
       for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
     }
-    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0});
     for(const row of rows){
       yearBucket.rows++;
       totals.valuebetRows++;
