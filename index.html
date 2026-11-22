@@ -1716,8 +1716,8 @@
           const payload=await response.json();
           if(sequence!==state.sequence)return;
           if(!response.ok)throw new Error(payload.error||('API '+response.status));
-          const players=Array.isArray(payload.players)?payload.players:[];
-          if(!players.length){list.innerHTML='<div class="compare-hint">Совпадений не найдено. Уточни имя.</div>';return;}
+          const players=(Array.isArray(payload.players)?payload.players:[]).filter(player=>player?.is_doubles_team!==true);
+          if(!players.length){list.innerHTML='<div class="compare-hint">Одиночные игроки не найдены. Уточни имя.</div>';return;}
           list.innerHTML=players.map(player=>{
             const id=Number(player.id),name=String(player.name||'');
             if(!Number.isSafeInteger(id)||id<=0||!name.trim())return '';
