@@ -41,6 +41,22 @@ const tourney=value=>{
     unitedcupaustralia:"unitedcup",abiertomexicanotelcelacapulco:"acapulco",
     tennisinthelandcleveland:"cleveland",porschetennisgrandprixstuttgart:"stuttgart",
     w15sandiego:"w15sandiegoca",m15sandiego:"m15sandiegoca",francavillach:"francavillaalmarech",
+    nordeaopenbastad:"bastad",copacolsanitasbogota:"bogota",cinchchampionshipslondon:"queensclub",
+    sttropezch:"sainttropezch",grandprixhassaniimarrakech:"marrakech",qatarexxonmobilopendoha:"doha",
+    moselleopenmetz:"metz",abiertognpsegurosmonterrey:"monterrey",internationauxdestrasbourgstrasbourg:"strasbourg",
+    hobartinternationalhobart:"hobart",gonetgenevaopengeneva:"geneva",plavalagunacroatiaopenumag:"umag",
+    mallorcachampionshipsmallorca:"mallorca",usmensclaycourtchampionshiphouston:"houston",
+    nationalbankopentoronto:"canadamasters",erstebankopenvienna:"vienna",palermoladiesopenpalermo:"palermo",
+    genovach:"genoach",delraybeachopendelraybeach:"delraybeach",generaliopenkitzbuhel:"kitzbuhel",
+    transylvaniaopenclujnapoca:"clujnapoca",adelaideinternational1adelaide:"adelaide1",
+    meridaopenakronmerida:"merida",argentinaopenbuenosaires:"buenosaires",hungariangrandprixbudapest:"budapest",
+    europeanopenhamburg:"hamburg",open13provencemarseille:"marseille",omniumbanquenationalemontreal:"montreal",
+    guadalajaraopenakronguadalajara:"guadalajara",upperaustrialadieslinzlinz:"linz",
+    w100bonitasprings:"w100bonitaspringsfl",m15fayetteville:"m15fayettevillear",w60rome:"w60romega",
+    w25orlando:"w25orlandofl",w25bocaraton:"w25bocaratonfl",m15ithaca:"m15ithacany",
+    w100landisville:"w100landisvillepa",w80tyler:"w80tylertx",m25calabasas:"m25calabasasca",
+    m25austin:"m25austintx",m25bakersfield:"m25bakersfieldca",w60orlando:"w60orlandofl",
+    m25columbus:"m25columbusoh",w60charlottesville:"w60charlottesvilleva",w15hiltonhead:"w15hiltonheadsc",
     w35bocaraton:"w35bocaratonfl",w100charleston:"w100charlestonsc"
   };
   if(aliases[s])return aliases[s];
