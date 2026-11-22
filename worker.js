@@ -1023,7 +1023,7 @@ export default {
         const retryAfter = upstream.headers.get("Retry-After");
         const extraHeaders = retryAfter ? { "Retry-After": retryAfter } : {};
         if (upstream.ok) {
-          const cacheSeconds = path === "/history/coverage" ? 21600 : 3600;
+          const cacheSeconds = path === "/history/coverage" ? 21600 : (path === "/history/tape" || isTapePath ? 30 : 3600);
           await cache.put(finalCacheKey, new Response(JSON.stringify(body), {
             status: 200,
             headers: {
