@@ -43,3 +43,15 @@ node scripts/import-tournament-intent-evidence.mjs --input incoming-evidence.jso
 ```
 
 Use a separate incoming file for each review batch. Back up the registry before replacing it. Keep source URLs and timestamps; never backdate the capture time. The output contains normalized accepted records and the most recent batch's rejection report.
+
+## Player–match search coverage ledger
+
+The separate `tournament-intent-observations.js` module validates one row for every sampled player–target-match, including observations where no admissible evidence is found. It records the pre-event ranking snapshot, exact target match, reviewer, search duration and status of each standard source category.
+
+The four outcomes are mutually distinct:
+- `evidence_found`: one or more linked evidence IDs exist.
+- `no_evidence_found`: all five source categories were searched and no admissible record was found.
+- `source_unavailable`: at least one source category was unavailable and none was left unsearched.
+- `search_incomplete`: at least one source category was not searched.
+
+The validator rejects post-match search completion, ranking snapshots after the target match, ranks outside the predeclared top-150 frame, incomplete status records and inconsistent outcome/evidence combinations. The summary function reports coverage by tour and ranking band. A no-evidence observation is a coverage result, never a negative motivation label.
