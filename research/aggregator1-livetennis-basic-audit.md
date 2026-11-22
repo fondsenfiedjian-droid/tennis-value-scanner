@@ -575,3 +575,26 @@ Decision:
 - Re-run linkage and measure how many mismatches are resolved, how many candidates become ambiguous, and whether any links are rejected.
 
 This check reinforces why the 58.65% linkage rate is a candidate-linkage statistic, not a verified match-level accuracy score.
+
+
+## 24. Duplicate candidate score-orientation and winner-identity refinement — 2026-11-22
+
+The duplicate audit now distinguishes score orientation from material score disagreement and checks whether different winner IDs still refer to the same Valuebetennis player identity. Run `45084701092` completed successfully, including aggregate validation and artifact upload; synthetic fixtures for both checks passed.
+
+| Refined diagnostic across 54 fingerprint groups | Groups |
+|---|---:|
+| Score/result values differ | 2 |
+| Score differences explained only by reversing set-score orientation | 0 |
+| Material score conflicts after allowing orientation reversal | 2 |
+| Score conflict unresolved due to missing/unsupported format | 0 |
+| Winner IDs differ | 10 |
+| Winner IDs differ but map to the same source player | 10 |
+| Winner IDs map to different source players | 0 |
+| Winner identity unresolved | 0 |
+
+Interpretation:
+- The 10 winner-ID discrepancies do not appear to change the actual winner identity when the source winner ID is checked against the two source player IDs. They are likely ID/record variants, but the records still remain candidates until the crosswalk is accepted.
+- Two groups have genuine score-field disagreements even after allowing a simple player-side score reversal. These require manual review; do not select one result automatically.
+- No fingerprint group is byte-identical across every source column except `match_id`.
+
+This narrows the review queue: 52 groups have no detected score disagreement, while 2 have material score conflicts. It does not establish that the other 52 are safe to merge; event/round/date semantics and source provenance must still be checked.
