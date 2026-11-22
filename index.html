@@ -292,6 +292,21 @@
     .compare-dossier-block>b{color:#8DDFEA}.compare-form-grid span,.compare-surface-records span{border-color:#353640;color:#D7D9DF}
     .history-win{color:#8DDFEA}.history-loss{color:#E3B455}
     .more-modal .more-action{border-color:#75404B;background:#29151C;color:#F1C4C8}
+    .screen-view{display:none;max-width:760px;margin:0 auto;padding:16px 16px 100px;min-height:70vh}
+    .screen-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
+    .screen-header .brand{font-size:13px;letter-spacing:.12em;font-weight:900;color:var(--text)}
+    .screen-header .sub{margin-top:4px;color:var(--muted);font-size:11px}
+    .screen-refresh{width:auto;white-space:nowrap;padding:10px 12px}
+    .more-screen-grid{display:grid;gap:12px}
+    .more-screen-card{padding:15px;border:1px solid #353640;border-radius:14px;background:#14151B}
+    .more-screen-card h2{margin:0 0 7px;font-size:15px;color:#F0F1F4}
+    .more-screen-card p{margin:5px 0 11px;color:#9DA3AE;font-size:12px;line-height:1.5}
+    .more-screen-action{padding:10px 12px;border:1px solid #75404B;border-radius:9px;background:#211319;color:#F0DCE0;font-weight:800}
+    #moreLabMount{display:grid;gap:10px}
+    #moreLabMount #humanFactorAudit{justify-self:start;padding:10px 12px;border:1px solid #75404B;border-radius:9px;background:#211319;color:#F0DCE0;font-weight:800}
+    #moreLabMount #humanFactorAuditPanel{display:block}
+    #statsView h1{font-size:20px}
+    @media(min-width:700px){.more-screen-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -412,6 +427,34 @@
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
+
+  // TVS 2.0: promote the bottom navigation into five real, independent screens.
+  function mountIndependentScreens(){
+    const app=$('.app');
+    if(!app||$('#matchesView'))return;
+    const matches=document.createElement('main');
+    matches.id='matchesView';matches.className='screen-view';
+    matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div><button type="button" class="refresh screen-refresh" id="matchesRefreshBtn">↻ ОБНОВИТЬ</button></header>';
+    const direct=[...app.children];
+    const marketHead=direct.find(el=>el.classList?.contains('section-head')&&el.textContent.includes('Рынки'));
+    const foundHead=direct.find(el=>el.classList?.contains('section-head')&&el.textContent.includes('Найденные ставки'));
+    const moveToMatches=[app.querySelector('.tabs'),marketHead,app.querySelector('#marketChips'),foundHead,app.querySelector('#matchList'),app.querySelector('.notice')];
+    moveToMatches.filter(Boolean).forEach(node=>matches.appendChild(node));
+    app.after(matches);
+
+    const more=document.createElement('main');
+    more.id='moreView';more.className='screen-view';
+    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Инструменты, архив и параметры системы</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки и аудит доступного архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card"><h2>Архив прогнозов</h2><p>Сохранённые снимки прогнозов, проверка результатов и резервные копии.</p><button type="button" class="more-screen-action" id="openArchiveFromMore">Открыть статистику и архив →</button></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
+    matches.after(more);
+    const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
+    const labMount=$('#moreLabMount');
+    if(labButton)labMount.appendChild(labButton);
+    if(labPanel)labMount.appendChild(labPanel);
+    $('#matchesRefreshBtn').addEventListener('click',()=>loadMatches(true));
+    $('#openArchiveFromMore').addEventListener('click',showStats);
+    $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
+  }
+  mountIndependentScreens();
   const now = new Date();
   $('#dateText').textContent = now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
   let selectedDay = 'all';
@@ -1543,18 +1586,32 @@
   function setActiveNavigation(activeId){
     document.querySelectorAll('.nav button').forEach(button=>button.classList.toggle('active',button.id===activeId));
   }
+  function hideAllScreens(){
+    ['.app','#matchesView','#compareView','#statsView','#moreView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+  }
   function showMain(){
-    $('.app').style.display='block';$('#statsView').style.display='none';$('#compareView').style.display='none';
+    hideAllScreens();$('.app').style.display='block';
     setActiveNavigation('navHome');
   }
+  function showMatches(){
+    hideAllScreens();$('#matchesView').style.display='block';
+    setActiveNavigation('navMatches');
+    if(!window.cachedMatches||!window.cachedMatches.length)loadMatches(true);
+  }
   function showStats(){
-    $('.app').style.display='none';$('#statsView').style.display='block';$('#compareView').style.display='none';
+    hideAllScreens();$('#statsView').style.display='block';
     setActiveNavigation('navStats');
     archiveStorageReady.then(renderArchive);
   }
   function showCompare(){
-    $('.app').style.display='none';$('#statsView').style.display='none';$('#compareView').style.display='block';
+    hideAllScreens();$('#compareView').style.display='block';
     setActiveNavigation('navCompare');
+  }
+  function showMore(){
+    hideAllScreens();$('#moreView').style.display='block';
+    setActiveNavigation('navMore');
+    const status=$('#moreSystemStatus');
+    if(status)status.textContent=$('#connectionStatus')?.textContent+' · '+($('#oddsStatus')?.textContent||'Статус котировок не получен');
   }
   function findScheduledPlayerId(name){
     const target=String(name||'').trim();
@@ -2365,8 +2422,9 @@
   $('#refreshBtn').onclick=()=>loadMatches(true);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navHome').onclick=showMain;
-  $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
+  $('#navMatches').onclick=showMatches;
   $('#navStats').onclick=showStats;
+  $('#navMore').onclick=showMore;
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
