@@ -58,7 +58,10 @@ export function auditValuebetDuplicates(files){
     const hasConflict=fields=>fields.some(field=>new Set(group.map(x=>String(x.row[field]??"").trim()).filter(Boolean)).size>1);
     if(hasConflict(scoreFields))totals.duplicateFingerprintScoreConflictGroups++;
     if(hasConflict(winnerFields))totals.duplicateFingerprintWinnerConflictGroups++;
-    const payloads=new Set(group.map(x=>JSON.stringify(Object.fromEntries(Object.entries(x.row).filter(([key])=>key!=="match_id").sort(([a],[b])=>a.localeCompare(b)))));
+    const payloads=new Set(group.map(x=>{
+      const payload=Object.fromEntries(Object.entries(x.row).filter(([key])=>key!=="match_id").sort(([a],[b])=>a.localeCompare(b)));
+      return JSON.stringify(payload);
+    }));
     if(payloads.size===1)totals.duplicateFingerprintIdenticalPayloadGroups++;
     for(const x of group){byYear[x.year].rowsInDuplicateFingerprintGroups++;byTour[x.tour].rowsInDuplicateFingerprintGroups++;}
   }
