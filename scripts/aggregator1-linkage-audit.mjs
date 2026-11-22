@@ -80,7 +80,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;
       if(!sf){
