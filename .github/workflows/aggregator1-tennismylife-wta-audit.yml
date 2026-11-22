@@ -8,6 +8,8 @@ on:
       - '.github/workflows/aggregator1-tennismylife-wta-audit.yml'
       - 'scripts/aggregator1-wta-tnm-linkage.mjs'
       - 'scripts/test-aggregator1-wta-tnm-linkage.mjs'
+      - 'scripts/aggregator1-wta-valuebet-bridge.mjs'
+      - 'scripts/test-aggregator1-wta-valuebet-bridge.mjs'
   workflow_dispatch:
     inputs:
       date_window:
@@ -35,12 +37,15 @@ jobs:
           node --check scripts/aggregator1-wta-tnm-linkage.mjs
           node --check scripts/test-aggregator1-wta-tnm-linkage.mjs
           node scripts/test-aggregator1-wta-tnm-linkage.mjs
+          node --check scripts/aggregator1-wta-valuebet-bridge.mjs
+          node --check scripts/test-aggregator1-wta-valuebet-bridge.mjs
+          node scripts/test-aggregator1-wta-valuebet-bridge.mjs
       - name: Download official WTA and Sackmann datasets
         shell: bash
         run: |
           set -euo pipefail
           ROOT="$RUNNER_TEMP/aggregator1-wta"
-          mkdir -p "$ROOT/tml" "$ROOT/sackmann" audit-output
+          mkdir -p "$ROOT/tml" "$ROOT/sackmann" "$ROOT/valuebetennis" audit-output
           curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
             "https://stats.tennismylife.org/api/data-files" --output "$ROOT/manifest.json"
           python - "$ROOT/manifest.json" "$ROOT/wta-files.tsv" <<'PY'
@@ -58,6 +63,10 @@ jobs:
             test -s "$ROOT/tml/$name"
           done < "$ROOT/wta-files.tsv"
           for year in 2021 2022 2023 2024 2025; do
+            vfile="valuebetennis-matchs-$year.csv"
+            curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \\
+              "https://www.valuebetennis.com/datasets/$vfile" --output "$ROOT/valuebetennis/$vfile"
+            test -s "$ROOT/valuebetennis/$vfile"
             file="wta_matches_$year.csv"
             curl --fail --location --retry 2 --user-agent "TennisValueScanner-Aggregator1-Research/1.0" \
               "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/wta/$file" \
@@ -70,7 +79,7 @@ jobs:
             echo "TennisMyLife terms: https://github.com/Tennismylife/TML-Database"
             echo "Sackmann mirror: https://github.com/Aneeshers/tennis-sackmann-archive"
             echo "Raw CSVs are not included in the artifact."
-            sha256sum "$ROOT"/tml/*.csv "$ROOT"/sackmann/*.csv
+            sha256sum "$ROOT"/tml/*.csv "$ROOT"/sackmann/*.csv "$ROOT"/valuebetennis/*.csv
           } > audit-output/wta-source-manifest.txt
       - name: Run aggregate WTA linkage audit
         shell: bash
@@ -82,9 +91,20 @@ jobs:
             --sackmann-dir "$RUNNER_TEMP/aggregator1-wta/sackmann" \
             --date-window "$DATE_WINDOW" \
             --out audit-output/aggregator1-wta-linkage.json
+      - name: Test Valuebetennis WTA linkage through TennisMyLife IDs
+        shell: bash
+        run: |
+          DATE_WINDOW="${{ inputs.date_window }}"
+          if [[ -z "$DATE_WINDOW" ]]; then DATE_WINDOW=14; fi
+          node scripts/aggregator1-wta-valuebet-bridge.mjs \\
+            --valuebet-dir "$RUNNER_TEMP/aggregator1-wta/valuebetennis" \\
+            --tml-dir "$RUNNER_TEMP/aggregator1-wta/tml" \\
+            --sackmann-dir "$RUNNER_TEMP/aggregator1-wta/sackmann" \\
+            --date-window "$DATE_WINDOW" \\
+            --out audit-output/aggregator1-wta-valuebet-bridge.json
       - name: Validate aggregate report
         run: |
-          node -e "const r=require('./audit-output/aggregator1-wta-linkage.json'); if(r.schemaVersion!==1 || !r.totals || r.totals.tmlRows===0 || r.totals.validRows===0) process.exit(1); console.log(JSON.stringify(r.totals));"
+          node -e "const r=require('./audit-output/aggregator1-wta-linkage.json'); const b=require('./audit-output/aggregator1-wta-valuebet-bridge.json'); if(r.schemaVersion!==1 || !r.totals || r.totals.tmlRows===0 || r.totals.validRows===0 || b.schemaVersion!==1 || !b.totals || b.totals.validRows===0) process.exit(1); console.log('TML WTA/Sackmann:',JSON.stringify(r.totals)); console.log('VBT WTA ID bridge:',JSON.stringify(b.totals));"
       - name: Upload aggregate report only
         uses: actions/upload-artifact@v4
         with:
