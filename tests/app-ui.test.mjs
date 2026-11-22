@@ -408,7 +408,7 @@ test("settings preview and immediately persist skin changes", () => {
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v133"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v134"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -617,7 +617,7 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
 
 test("match list keeps all scheduled matches visible and labels fresh quote-pair status", () => {
   assert.match(html, /function filterScheduleMatches\(all,day='today'/);
-  assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
+  assert.match(html, /const winnerButton=\$\('\[data-market="winner"\]'\);[\s\S]*const winnerEnabled=!winnerButton\|\|winnerButton\.classList\.contains\('on'\)/);
   assert.match(html, /const schedule=filterScheduleMatches\(all,selectedDay,selectedTours\(\),new Date\(\)\)/);
   assert.match(html, /const filtered=schedule\.matches/);
   assert.match(html, /const completePairCount=filtered\.filter\(m=>winnerEnabled&&oddsForMatch\(m\)\.length>=2\)\.length/);
