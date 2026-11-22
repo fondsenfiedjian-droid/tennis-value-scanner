@@ -734,7 +734,7 @@
     const byTour=all.filter(m=>{const tour=normalizeTour(m.tour);return tour!==null&&tours.includes(tour);});
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
-    // Show only matches with a complete, fresh match-winner quote pair from an enabled bookmaker.
+    // Keep scheduled matches visible; only complete fresh pairs enter prediction and EV processing.
     const matchedMatches=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length>=2):[];
     const filtered=winnerEnabled?dateFiltered:[];
     $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · матчей: '+filtered.length+' · с полной парой: '+matchedMatches.length;
@@ -784,7 +784,7 @@
       card.addEventListener('click',toggle);
       card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
     });
-    loadPredictions(matchedMatches);
+    loadPredictions(filtered);
   }
 
   const ARCHIVE_KEY='tvs-prediction-archive-v1';
