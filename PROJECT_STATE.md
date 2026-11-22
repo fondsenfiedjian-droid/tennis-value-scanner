@@ -1164,3 +1164,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Decision: do not spend the limited history allowance during routine refreshes or comparison. Keep FREE Compare on Elo plus FREE profile metadata. Do not fabricate last-five form from scheduled matches or represent plan-restricted responses as zero statistics.
 - Documented capability-gated activation for any future paid-tier access. No subscription, history calls, production deployment, model change or merge performed.
 - Latest verified PR #167 head before this documentation commit: 78c387874ce293ba0dc367e045bb0c3556d49c15; regression tests and project-state guard both passed on that head.
+
+### 2026-11-22 — Subscription tier correction (BASIC confirmed)
+- The user explicitly confirmed that the active Live Tennis API subscription is BASIC ($9.99/month). This supersedes the earlier FREE-only assumption recorded in the comparison tier audit.
+- Official documentation confirms BASIC access to completed-match history (2023→now), H2H (1968→now), archive results/career data (1968–2022), and history coverage. Prebuilt per-player W/L/surface/recent-match statistics at `/players/{id}/stats` remain PRO-only.
+- The comparison dossier may derive last-5/10/20 form from BASIC `/history/matches?player={id}&draw=singles`, and H2H from `/h2h?p1=&p2=`, with strict identity matching, sample-size/date-range disclosure and cache protection.
+- `/usage` remains the authoritative live-key tier/quota check. Direct runtime verification was not possible in this documentation pass; the user's explicit BASIC confirmation is the current working assumption.
+- No calls were made against the user's paid API quota, and no production deployment, merge or Elo/model change was performed.
