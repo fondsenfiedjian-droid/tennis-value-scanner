@@ -668,8 +668,12 @@
     const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
     const outcome=String(o.outcome||'').toLowerCase();
-    if(playerNamesMatch(a,home))return outcome==='home'?'1':outcome==='away'?'2':null;
-    if(playerNamesMatch(a,away))return outcome==='away'?'1':outcome==='home'?'2':null;
+    const matchesHome=playerNamesMatch(a,home),matchesAway=playerNamesMatch(a,away);
+    // Initial-only names can match both participants (for example, J. Sinner).
+    // Never guess a side when participant identity is ambiguous.
+    if(matchesHome===matchesAway)return null;
+    if(matchesHome)return outcome==='home'?'1':outcome==='away'?'2':null;
+    if(matchesAway)return outcome==='away'?'1':outcome==='home'?'2':null;
     return null;
   }
   function normalizeTour(value){
