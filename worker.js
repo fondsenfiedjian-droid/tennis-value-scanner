@@ -1275,7 +1275,7 @@ export default {
         }
         const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/matches/" + id, {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
-        });
+        }, env);
         const body = await upstream.json();
         const result = response(body, upstream.status);
         if (upstream.ok) {
