@@ -1064,3 +1064,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #153 remains open and unmerged. Production deployment has not been attempted. Do not merge until the production deploy implications and current Netlify publishing/credit state are confirmed with the user.
 - Audit finding corrected: the earlier selector could fall back to an older positive-EV quote after a later snapshot turned negative; it also did not independently enforce the authoritative result version. Both cases now have regression tests.
 - Next: finish CI review, then continue with a separate production-model and odds-integrity audit. Historical archive is local to each device/browser; old predictions are not automatically imported from another device.
+
+- Follow-up integrity hardening: paper ROI now rejects a row when a supplied source quote-capture or quote-observation timestamp is malformed or not strictly before match start. Legacy rows with no source timestamp remain eligible only if their archive capture itself is pre-match. Dedicated tests cover post-start and malformed source timestamps.
