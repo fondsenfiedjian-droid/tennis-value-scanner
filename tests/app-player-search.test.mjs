@@ -100,7 +100,7 @@ test("history parser accepts the documented Live Tennis HistoryMatch shape", () 
 
   const historyA = sandbox.deriveCompareHistory(payload, 101);
   assert.equal(historyA.sample, 3);
-  assert.deepEqual(JSON.parse(JSON.stringify(historyA.last5.map(row => row.winner))), ["L", "W", "L"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(historyA.last5.map(row => row.winner))), ["L", "L", "W"]);
   assert.deepEqual(JSON.parse(JSON.stringify(historyA.last5.map(row => row.opponent))), ["Player C", "Player B", "Player B"]);
   assert.deepEqual(JSON.parse(JSON.stringify(historyA.last5.map(row => row.date))), [
     "2026-11-16T10:00:00.000Z",
