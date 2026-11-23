@@ -776,7 +776,7 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
   assert.match(html,/Стальной синий · холодные акценты/);
-  assert.match(html,/Электронное табло · чёрный и оранжевый неон/);
+  assert.match(html,/Amber Equalizer · чёрный и янтарный неон/);
   assert.match(html,/body\[data-skin="amber-led"\]/);
   assert.match(html,/led-digit/);
   assert.match(html,/let activeSkin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(saved\.skin\)\?saved\.skin:'black'/);
