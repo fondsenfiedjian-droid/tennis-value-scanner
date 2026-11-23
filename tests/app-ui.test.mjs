@@ -162,8 +162,8 @@ test("schedule request includes a rolling seven-day date window and bypasses leg
   assert.equal(params.get("from"), expectedFrom.toISOString());
   assert.equal(params.get("to"), expectedTo.toISOString());
   assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200&'\+buildScheduleDateParams\(\)\+\(force\?'&fresh=true':''\)\)/);
-  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v2'\)/);
-  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v2'/);
+  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
+  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
 });
 
 test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
@@ -779,4 +779,16 @@ test("player comparison search maps common Russian player names to canonical Liv
 test("singles player search excludes doubles teams returned by Live Tennis API",()=>{
   assert.match(html,/const players=\(Array\.isArray\(payload\.players\)\?payload\.players:\[\]\)\.filter\(player=>player\?\.is_doubles_team!==true\)/);
   assert.match(html,/Одиночные игроки не найдены/);
+});
+
+test("upcoming schedule follows API pagination and warns when the page cap is reached", () => {
+  assert.match(html, /async function fetchUpcomingSchedule\(force=false\)/);
+  assert.match(html, /for\(let page=0;page<4;page\+\+\)/);
+  assert.match(html, /meta\.has_more===true/);
+  assert.match(html, /offset=currentOffset\+count/);
+  assert.match(html, /const rawId=match\?\.id\?\?match\?\.matchId\?\?match\?\.match_id/);
+  assert.match(html, /window\.scheduleCoverage=\{loaded:matches\.length,total:scheduleResult\.total,pages:scheduleResult\.pagesLoaded,truncated:scheduleResult\.hasMore\}/);
+  assert.match(html, /Расписание загружено не полностью/);
+  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
+  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
 });
