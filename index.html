@@ -2856,8 +2856,11 @@
     try{
       let saved=null;
       try{const raw=localStorage.getItem('tvs-live-cache-v1');if(raw)saved=JSON.parse(raw);}catch(e){}
+      if(saved&&Array.isArray(saved.matches)){
+        liveMatchesCache=saved.matches;
+        liveMatchesUpdatedAt=Number.isFinite(Number(saved.savedAt))?Number(saved.savedAt):0;
+      }
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,60*1000)){
-        liveMatchesCache=saved.matches;liveMatchesUpdatedAt=saved.savedAt;
         renderLiveMatches(liveMatchesCache,liveMatchesUpdatedAt,'локальный кэш');
         return;
       }
