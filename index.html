@@ -33,7 +33,7 @@
     .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
     .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#080808ed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
-    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
     .nav b{display:block;font-size:18px;margin-bottom:3px}
     .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
     .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#1b1715;border:1px solid var(--line);border-radius:22px;padding:18px}
@@ -820,9 +820,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 </div>
 
 <div class="bottom"><div class="nav">
-  <button id="navHome" class="active"><b>⌂</b>Главная</button>
-  <button id="navMatches"><b>▦</b>Матчи</button>
-  <button id="navCompare"><b>⚖</b>Сравнение</button>
+  <button id="navBalance"><b>€</b>Баланс</button>
+  <button id="navHistory"><b>▤</b>История</button>
   <button id="navStats"><b>▥</b>Статистика</button>
   <button id="navSettings"><b>⚙</b>Настройки</button>
 </div></div>
@@ -895,6 +894,24 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     more.id='moreView';more.className='screen-view';
     more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
     matches.after(more);
+
+    const balance=document.createElement('main');
+    balance.id='balanceView';balance.className='screen-view';
+    balance.innerHTML='<header class="screen-header"><div><div class="brand">БАЛАНС</div><div class="sub">Виртуальный банк · стартовый капитал 1 000 €</div></div></header><section class="stats" style="margin-top:8px"><div class="panel"><div class="muted">Текущий баланс</div><div class="stat-num" id="virtualBalance">1 000,00 €</div></div><div class="panel"><div class="muted">Прибыль / убыток</div><div class="stat-num" id="virtualProfit">0,00 €</div></div><div class="panel"><div class="muted">Открытые ставки</div><div class="stat-num" id="virtualOpen">0</div></div><div class="panel"><div class="muted">Расчётные ставки</div><div class="stat-num" id="virtualSettled">0</div></div></section><section class="more-screen-card"><h2>Виртуальная стратегия</h2><p id="virtualBankStatus">Симулятор готовит подключение к строгому отбору рекомендаций. Реальные деньги не используются.</p><div class="archive-meta">Стартовый капитал: 1 000 € · ставки фиксируются по коэффициенту и времени снимка · результаты не переписываются задним числом.</div></section>';
+    more.after(balance);
+
+    const history=document.createElement('main');
+    history.id='historyView';history.className='screen-view';
+    history.innerHTML='<header class="screen-header"><div><div class="brand">ИСТОРИЯ СТАВОК</div><div class="sub">Полный журнал виртуальных ставок</div></div></header><div class="archive-list" id="virtualBetHistory"><div class="panel empty">Виртуальных ставок пока нет.</div></div>';
+    balance.after(history);
+
+    const settings=document.createElement('main');
+    settings.id='settingsView';settings.className='screen-view';
+    settings.innerHTML='<header class="screen-header"><div><div class="brand">НАСТРОЙКИ</div><div class="sub">Параметры модели и виртуальной стратегии</div></div></header><section class="more-screen-card"><h2>Параметры системы</h2><p>Пороги EV, коэффициентов, надёжности, автообновление, фильтр ITF и оформление.</p><button type="button" class="more-screen-action" id="settingsScreenOpen">Открыть настройки →</button></section>';
+    history.after(settings);
+    const openSettings=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
+    $('#settingsScreenOpen').addEventListener('click',openSettings);
+
     const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
     const labMount=$('#moreLabMount');
     if(labButton)labMount.appendChild(labButton);
@@ -2112,7 +2129,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     document.querySelectorAll('.nav button').forEach(button=>button.classList.toggle('active',button.id===activeId));
   }
   function hideAllScreens(){
-    ['.app','#matchesView','#compareView','#statsView','#moreView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    ['.app','#matchesView','#compareView','#statsView','#moreView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
   }
   function showMain(){
     hideAllScreens();$('.app').style.display='block';
@@ -2128,6 +2145,31 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     setActiveNavigation('navStats');
     archiveStorageReady.then(renderArchive);
   }
+  const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
+  function readVirtualBank(){
+    try{
+      const data=JSON.parse(localStorage.getItem(VIRTUAL_BANK_KEY)||'{}');
+      return {initial:1000,bets:Array.isArray(data.bets)?data.bets:[]};
+    }catch(error){return {initial:1000,bets:[]};}
+  }
+  function renderVirtualBank(){
+    const bank=readVirtualBank(),bets=bank.bets;
+    const settled=bets.filter(b=>b.status==='settled');
+    const open=bets.filter(b=>b.status==='open');
+    const profit=settled.reduce((sum,b)=>sum+Number(b.profitLoss||0),0);
+    const balance=bank.initial+profit;
+    const put=(id,value)=>{const node=$('#'+id);if(node)node.textContent=value;};
+    put('virtualBalance',balance.toLocaleString('ru-RU',{style:'currency',currency:'EUR'}));
+    put('virtualProfit',(profit>=0?'+':'')+profit.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+    put('virtualOpen',String(open.length));put('virtualSettled',String(settled.length));
+    const status=$('#virtualBankStatus');
+    if(status)status.textContent=open.length+' открытых ставок · '+settled.length+' рассчитанных. Пока нет подтверждённых виртуальных ставок, банк сохраняет стартовые 1 000 €.';
+    const list=$('#virtualBetHistory');
+    if(list)list.innerHTML=bets.length?bets.slice().sort((a,b)=>Number(b.placedAt)-Number(a.placedAt)).map(b=>'<article class="archive-item"><b>'+escapeHtml(b.player||'Игрок не указан')+'</b> — '+escapeHtml(b.opponent||'соперник не указан')+'<div class="archive-meta">'+escapeHtml(b.tournament||'Турнир не указан')+' · '+(Number(b.odds)||0).toFixed(2)+' · ставка '+(Number(b.stake)||0).toFixed(2)+' € · '+escapeHtml(b.status||'open')+'</div><div class="archive-meta">Прогноз '+(Number(b.probability)||0).toFixed(1)+'% · EV '+(Number(b.ev)||0).toFixed(2)+'% · '+(b.status==='settled'?'P/L '+Number(b.profitLoss||0).toFixed(2)+' €':'ожидает результата')+'</div></article>').join(''):'<div class="panel empty">Виртуальных ставок пока нет. Ставки будут появляться автоматически только после прохождения строгих критериев.</div>';
+  }
+  function showBalance(){hideAllScreens();$('#balanceView').style.display='block';setActiveNavigation('navBalance');renderVirtualBank();}
+  function showHistory(){hideAllScreens();$('#historyView').style.display='block';setActiveNavigation('navHistory');renderVirtualBank();}
+  function showSettingsScreen(){hideAllScreens();$('#settingsView').style.display='block';setActiveNavigation('navSettings');}
   function showCompare(){
     hideAllScreens();$('#compareView').style.display='block';
     setActiveNavigation('navCompare');
@@ -3225,9 +3267,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   $('#refreshBtn').onclick=()=>{loadMatches(true);loadLiveMatches(true);};
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
-  $('#navHome').onclick=showMain;
-  $('#navMatches').onclick=showMatches;
+  $('#navBalance').onclick=showBalance;
+  $('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
+  $('#navSettings').onclick=showSettingsScreen;
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
