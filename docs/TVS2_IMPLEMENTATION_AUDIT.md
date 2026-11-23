@@ -55,3 +55,18 @@ Scope: read-only audit; no production code or model logic changed.
 - No production deployment or merge to `main`.
 - No automatic betting, bookmaker account integration, money movement, or stop-loss behavior.
 - No assumption that example amounts from mockups are actual user settings.
+
+## Live scoreboard implementation — Preview only (2026-11-23)
+
+- Added the LIVE scoreboard at the top of the home screen, before the pre-match Bet of the Day.
+- Uses one `GET /matches?status=live&draw=singles&limit=200` slate request; no per-match score requests.
+- Renders only rows whose lifecycle `status` is `live`.
+- Reads the documented player-major score fields: `score.sets`, `score.games`, `score.points`, `score.server`, and `score.is_tiebreak`. Unknown or withheld values remain unavailable; no score is inferred.
+- Shows tournament, round, surface, sets, per-set games, current points and serving player where supplied.
+- Does not display live win probability, EV, betting recommendations or in-play statistics. The provider documents in-play statistics and live model probabilities as ULTRA-only; the UI does not imply they are available on BASIC.
+- Browser cache: 60 seconds. Worker cache: 20 seconds. Manual refresh bypasses the Worker cache; automatic refresh follows the existing user-configured refresh interval (30/60/180 minutes) and is disabled when refresh is off.
+- On API failure, the last cached slate remains visible with an explicit stale-data label; 429 responses display quota guidance and do not trigger rapid retries.
+- Added regression tests for home-screen ordering, score-field orientation, server mapping, empty/unknown scores, quota-conscious refresh, and stale-cache fallback.
+- Service-worker shell cache advanced to v135.
+- No Worker, production API, odds ingestion, Apify scraper, prediction model, Elo, EV or production deployment changes were made for this UI feature.
+- Latest code remains in draft PR #167. Netlify Deploy Preview success is separate from GitHub Actions regression-test status; CI must be confirmed before this feature is treated as fully validated.
