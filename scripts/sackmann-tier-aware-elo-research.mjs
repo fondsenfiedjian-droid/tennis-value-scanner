@@ -134,18 +134,30 @@ function applyDayUpdates(ratings, matches, kForMatch) {
 export function runTierAwareEloResearch(rows, options = {}) {
   const mainK = Number.isFinite(options.mainK) ? options.mainK : 32;
   const lowerKs = Array.isArray(options.lowerKs) && options.lowerKs.length ? options.lowerKs : [8, 16, 24, 32];
+  const historyLagDays = Number.isInteger(options.historyLagDays) ? options.historyLagDays : 0;
+  if (historyLagDays < 0 || historyLagDays > 30) throw new RangeError("historyLagDays must be between 0 and 30");
   const evaluationStart = validDate(options.from ?? "20000101");
   const evaluationEnd = validDate(options.to ?? "20260525");
   if (!evaluationStart || !evaluationEnd || evaluationStart > evaluationEnd) throw new RangeError("Invalid evaluation date window");
+  const addDays = (date, days) => {
+    const value = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8)) + days));
+    return value.getUTCFullYear().toString().padStart(4, "0") +
+      String(value.getUTCMonth() + 1).padStart(2, "0") +
+      String(value.getUTCDate()).padStart(2, "0");
+  };
   const report = {};
   for (const tour of ["ATP", "WTA"]) {
     const tourRows = rows.filter(row => row.tour === tour);
-    const byDay = new Map();
+    const matchesByDate = new Map();
+    const updatesByEffectiveDate = new Map();
     for (const row of tourRows) {
-      if (!byDay.has(row.date)) byDay.set(row.date, []);
-      byDay.get(row.date).push(row);
+      if (!matchesByDate.has(row.date)) matchesByDate.set(row.date, []);
+      matchesByDate.get(row.date).push(row);
+      const effectiveDate = addDays(row.date, historyLagDays);
+      if (!updatesByEffectiveDate.has(effectiveDate)) updatesByEffectiveDate.set(effectiveDate, []);
+      updatesByEffectiveDate.get(effectiveDate).push(row);
     }
-    const dates = [...byDay.keys()].sort();
+    const dates = [...new Set([...matchesByDate.keys(), ...updatesByEffectiveDate.keys()])].sort();
     const baselineRatings = new Map();
     const tierRatingsByK = new Map(lowerKs.map(k => [k, new Map()]));
     const lowerHistory = new Map();
@@ -155,9 +167,9 @@ export function runTierAwareEloResearch(rows, options = {}) {
     }]));
     let evaluatedMainMatches = 0, lowerMatchesBeforeEvaluation = 0;
     for (const date of dates) {
-      const day = byDay.get(date);
-      const mainToday = day.filter(row => row.sourceType === "main");
-      const lowerToday = day.filter(row => row.sourceType !== "main");
+      const mainToday = (matchesByDate.get(date) ?? []).filter(row => row.sourceType === "main");
+      const updatesToday = updatesByEffectiveDate.get(date) ?? [];
+      const lowerAvailableToday = updatesToday.filter(row => row.sourceType !== "main");
       const predictions = [];
       if (date >= evaluationStart && date <= evaluationEnd) {
         for (const match of mainToday) {
@@ -192,12 +204,13 @@ export function runTierAwareEloResearch(rows, options = {}) {
           addMetric(exposureBucket.tierAware, probability, item.outcome);
         }
       }
-      // Same-day matches all use the pre-date state; all updates are applied only after predictions.
-      applyDayUpdates(baselineRatings, mainToday, () => mainK);
+      // A result becomes available only after its configured lag. Predictions on
+      // the effective date are still made before that date's updates are applied.
+      applyDayUpdates(baselineRatings, updatesToday.filter(row => row.sourceType === "main"), () => mainK);
       for (const k of lowerKs) {
-        applyDayUpdates(tierRatingsByK.get(k), day, match => match.sourceType === "main" ? mainK : k);
+        applyDayUpdates(tierRatingsByK.get(k), updatesToday, match => match.sourceType === "main" ? mainK : k);
       }
-      for (const match of lowerToday) {
+      for (const match of lowerAvailableToday) {
         lowerHistory.set(match.winner, (lowerHistory.get(match.winner) ?? 0) + 1);
         lowerHistory.set(match.loser, (lowerHistory.get(match.loser) ?? 0) + 1);
         if (date < evaluationStart) lowerMatchesBeforeEvaluation++;
@@ -229,13 +242,15 @@ export function runTierAwareEloResearch(rows, options = {}) {
     purpose: "Research-only comparison of main-tour Elo against a shared tier-aware Elo that also learns from lower-tier results.",
     source: "Jeff Sackmann ATP/WTA archive mirror, pinned separately by workflow",
     license: "CC BY-NC-SA 4.0; attribution required; non-commercial only; share-alike",
-    updateProtocol: "Predictions use only pre-date ratings. Same-day matches are predicted from one shared pre-date state and updates are applied after all matches on that date.",
+    updateProtocol: "Predictions use only results whose effective availability date is strictly earlier than the prediction date. Same-effective-date matches are predicted from one shared pre-date state and updates are applied after all predictions on that date.",
+    historyLagDays,
     baseline: "Main-tour matches only, fixed main-tour K.",
     candidate: "Main-tour K remains fixed; lower-tier matches update the shared player rating using the tested lower-tier K.",
     warnings: [
       "This is an aggregate research experiment, not a production model or betting ROI test.",
       "ATP and WTA are evaluated separately; player ID namespaces are never mixed.",
       "The candidate is a single shared Elo stream with a lower-tier update weight. It is not a separate tier rating or a full hierarchical model.",
+      "Sackmann tourney_date is generally the event-week date, not the exact match date. A 7- or 14-day history lag is a conservative timing sensitivity check, not an exact match-time reconstruction.",
       "Do not change production K or prediction logic without independent-period replication and calibration review."
     ],
     diagnostics: options.diagnostics ?? null,
