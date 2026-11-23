@@ -428,7 +428,7 @@ test("settings preview changes are committed only by Save and Cancel restores sa
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v138"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v141"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -776,7 +776,7 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
   assert.match(html,/Стальной синий · холодные акценты/);
-  assert.match(html,/Music Play Bar Control · графит, зелёный, терракота/);
+  assert.match(html,/Электронное табло · чёрный и оранжевый неон/);\n  assert.match(html,/body\\[data-skin="amber-led"\\]/);\n  assert.match(html,/led-digit/);
   assert.match(html,/let activeSkin=\['black','steel','neon','terracotta'\]\.includes\(saved\.skin\)\?saved\.skin:'terracotta'/);
   assert.match(html,/if\(saved\.skin==='black'&&saved\.musicPaletteDefaultApplied!==true\)/);
   assert.match(html,/data\.musicPaletteDefaultApplied=true/);
