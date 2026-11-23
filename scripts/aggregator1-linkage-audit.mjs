@@ -185,7 +185,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},byTourYearCategory={},offsets=[],eventMismatchPairs=new Map(),eventMismatchBreakdown=new Map();
   const ambiguousDiagnostics={rows:0,exactEventDisambiguated:0,noExactEventMatch:0,multipleExactEventMatches:0,candidateRows:0,rowsWithCrossTierDuplicateCandidate:0,rowsWithSameTierDuplicateCandidate:0,rowsWithMultipleDistinctEventDates:0,duplicateCandidateExtraRows:0,distinctCandidateSignatures:0,rowsWithTiedNearestCandidateDate:0,rowsWithUniqueNearestCandidateDate:0,rowsWithExactDateCandidate:0};
-  const ambiguousResolutionStrategies={unresolvedRows:0,uniqueNearestDate:0,singleNearestSignature:0,uniquePlayerIdPair:0,completePlayerIds:0,nearestSignatureAndUniqueIds:0,strictCandidate:0};
+  const ambiguousResolutionStrategies={unresolvedRows:0,uniqueNearestDate:0,singleNearestSignature:0,uniquePlayerIdPair:0,completePlayerIds:0,nearestSignatureAndUniqueIds:0,strictCandidate:0,strictCandidateSingleRow:0,strictCandidateDuplicateRows:0,strictCandidateSingleTier:0,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0};
   const ambiguousCandidateBreakdown=new Map();
   const ambiguousNearestOffsetCounts=new Map(),ambiguousNearestGapCounts=new Map(),ambiguousDistinctDateCounts=new Map();
   const nearestDateCandidateRowsCounts=new Map(),nearestDateDistinctSignaturesCounts=new Map();
@@ -321,7 +321,16 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           if(uniquePlayerIdPair)ambiguousResolutionStrategies.uniquePlayerIdPair++;
           if(completePlayerIds)ambiguousResolutionStrategies.completePlayerIds++;
           if(singleNearestSignature&&uniquePlayerIdPair)ambiguousResolutionStrategies.nearestSignatureAndUniqueIds++;
-          if(uniqueNearestDate&&singleNearestSignature&&uniquePlayerIdPair&&completePlayerIds)ambiguousResolutionStrategies.strictCandidate++;
+          if(uniqueNearestDate&&singleNearestSignature&&uniquePlayerIdPair&&completePlayerIds){
+            ambiguousResolutionStrategies.strictCandidate++;
+            const strictTiers=new Set(nearestDateCandidates.map(x=>x.tier));
+            if(nearestDateCandidates.length===1)ambiguousResolutionStrategies.strictCandidateSingleRow++;
+            else ambiguousResolutionStrategies.strictCandidateDuplicateRows++;
+            if(strictTiers.size===1)ambiguousResolutionStrategies.strictCandidateSingleTier++;
+            else ambiguousResolutionStrategies.strictCandidateMultipleTiers++;
+            if(strictTiers.size>1)ambiguousResolutionStrategies.strictCandidateCrossTierDuplicate++;
+            if(strictTiers.size===1&&nearestDateCandidates.length>1)ambiguousResolutionStrategies.strictCandidateSameTierDuplicate++;
+          }
         }
         if(crossTierDuplicate)ambiguousDiagnostics.rowsWithCrossTierDuplicateCandidate++;
         if(sameTierDuplicate)ambiguousDiagnostics.rowsWithSameTierDuplicateCandidate++;
