@@ -505,7 +505,118 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 @media(prefers-reduced-motion:no-preference){.live-board-dot{animation:livePulse 1.8s ease-in-out infinite}.best-bet:not(.empty-daily-pick){animation:dailyGlow 5s ease-in-out infinite}.match-card,.panel,.plan-summary-item{transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease}.match-card:active{transform:scale(.995)}}
 @keyframes livePulse{50%{opacity:.55;box-shadow:0 0 3px #f05a72}}@keyframes dailyGlow{50%{box-shadow:inset 0 1px #ffffff12,0 12px 34px #0009,0 0 28px #9d24402b}}
 
-</style>
+
+    /* Neon Blue palette skin — color-only variant; existing layout and components stay unchanged */
+    body[data-skin="neon"]{
+      --bg:#080b14;--panel:#111827;--panel2:#172235;--line:#29445d;
+      --muted:#91a8c2;--text:#edf6ff;--amber:#ffbf62;--yellow:#ffbf62;
+      --ice:#55dff2;--cyan:#35cde8;--ruby:#a65cff;--copper-pink:#c18aff;
+      background:
+        radial-gradient(ellipse at 12% -10%,#12344a 0,transparent 35%),
+        radial-gradient(ellipse at 100% 5%,#2a1748 0,transparent 30%),
+        linear-gradient(180deg,#0b1020,#080b14 58%,#090b13);
+      color:var(--text)
+    }
+    body[data-skin="neon"] .main-header{border-bottom-color:#29445d}
+    body[data-skin="neon"] .main-header:after{background:linear-gradient(90deg,#55dff2,transparent);box-shadow:0 0 10px #55dff288}
+    body[data-skin="neon"] .brand-ball{background:linear-gradient(145deg,#142c42,#101827);border-color:#39718b;box-shadow:0 0 18px #35cde833,inset 0 1px #ffffff22}
+    body[data-skin="neon"] .brand em{color:#55dff2}
+    body[data-skin="neon"] .header-actions #headerSettings{border-color:#38617b;color:#73e5f5;background:#111c2b}
+    body[data-skin="neon"] .status{background:#102333;border-color:#347c98;color:#8cecff}
+    body[data-skin="neon"] .datebar{background:#0e1522;border-color:#344b67}
+    body[data-skin="neon"] .date-controls,.tabs{background:#0d1420;border-color:#29445d}
+    body[data-skin="neon"] .tab{color:#a8bbd0}
+    body[data-skin="neon"] .tab.active,
+    body[data-skin="neon"] .date-controls .tab.active{background:linear-gradient(135deg,#17445b,#245c80);border-color:#48cde7;color:#f1fcff;box-shadow:inset 0 1px #d7fbff44,0 0 14px #35cde833}
+    body[data-skin="neon"] .live-board{background:linear-gradient(145deg,#122334,#0b121e 78%);border-color:#32627d}
+    body[data-skin="neon"] .live-match-card{background:linear-gradient(120deg,#122033,#0d1522)!important;border-color:#294e68!important}
+    body[data-skin="neon"] .live-match-state{background:#27182e!important;border-color:#9856c9!important;color:#d7a5ff!important}
+    body[data-skin="neon"] .live-match-score{color:#ffcf79!important}
+    body[data-skin="neon"] .panel,
+    body[data-skin="neon"] .match-card,
+    body[data-skin="neon"] .archive-item{background:linear-gradient(145deg,#172235,#101725 78%)!important;border-color:#2b4963!important;box-shadow:inset 0 1px #ffffff12,0 8px 22px #0008!important}
+    body[data-skin="neon"] .match-card.expanded{background:linear-gradient(145deg,#1b3045,#111d2d)!important;border-color:#49cce7!important}
+    body[data-skin="neon"] .refresh,
+    body[data-skin="neon"] .actions .primary,
+    body[data-skin="neon"] .plan-refresh{background:linear-gradient(110deg,#123d55,#176b88 55%,#253e70)!important;border:1px solid #55dff2!important;color:#e9fcff!important;box-shadow:0 0 10px #35cde855,0 0 23px #35cde82b,inset 0 1px #d7fbff55!important}
+    body[data-skin="neon"] .plan-refresh::after{color:#e9fcff!important;text-shadow:0 0 8px #55dff2aa!important}
+    body[data-skin="neon"] .linkbtn{color:#69dff2}
+    body[data-skin="neon"] .chip{background:#142033;border-color:#34516b;color:#d5e7f8}
+    body[data-skin="neon"] .chip.on{background:#1c3b54;border-color:#55dff2;color:#e9fcff;box-shadow:0 0 10px #35cde833}
+    body[data-skin="neon"] .notice{background:#152235;border-color:#3b6681;color:#c3d9eb}
+    body[data-skin="neon"] .bottom{background:#080d17ed!important;border-top-color:#29445d!important}
+    body[data-skin="neon"] .nav button{color:#8fa7bf}
+    body[data-skin="neon"] .nav button.active{color:#65e3f3!important;background:#132b3b!important;box-shadow:inset 0 0 0 1px #34718a,0 0 15px #35cde82b}
+    body[data-skin="neon"] .best-bet,
+    body[data-skin="neon"] .daily-pick{background:linear-gradient(135deg,#21152e,#101522 70%)!important;border-color:#9256c5!important;box-shadow:0 0 15px #8d52c533,inset 0 1px #fff2!important}
+    body[data-skin="neon"] .best-bet:before{background:linear-gradient(120deg,#55dff2,#4a83ed 30%,#a65cff 66%,#ffbf62)!important}
+    body[data-skin="neon"] .best-bet-title,
+    body[data-skin="neon"] .best-bet-value,
+    body[data-skin="neon"] .daily-pick .best-bet-title{color:#d29aff!important}
+    body[data-skin="neon"] .best-bet-main,
+    body[data-skin="neon"] .best-bet-pair{color:#f0f6ff!important}
+    body[data-skin="neon"] .best-bet-empty,
+    body[data-skin="neon"] .best-bet-meta,
+    body[data-skin="neon"] .best-bet-sub{color:#b4c4d8!important}
+    body[data-skin="neon"] .best-bet-odds,
+    body[data-skin="neon"] .daily-pick-metrics .daily-odds{color:#ffcb70!important;text-shadow:0 0 9px #ffbf6266!important}
+    body[data-skin="neon"] .daily-pick-confidence{color:#65e3f3!important}
+    body[data-skin="neon"] .daily-pick-metrics b{color:#f0f6ff!important}
+    body[data-skin="neon"] .plan-summary,
+    body[data-skin="neon"] .mandatory-bets,
+    body[data-skin="neon"] .additional-opportunities,
+    body[data-skin="neon"] .plan-summary-item{background:linear-gradient(145deg,#151f30,#0e1521)!important;border-color:#2d4a64!important}
+    body[data-skin="neon"] .plan-summary-item b,
+    body[data-skin="neon"] .stat-num,
+    body[data-skin="neon"] .mandatory-bet-row b{color:#65dff2}
+    body[data-skin="neon"] #planStakeTotal,
+    body[data-skin="neon"] .additional-ev{color:#ffbf62!important}
+    body[data-skin="neon"] #planMandatoryCount{color:#d29aff!important}
+    body[data-skin="neon"] .mandatory-stake{background:#201a34;border-color:#8557ad}
+    body[data-skin="neon"] .additional-opportunity,
+    body[data-skin="neon"] .additional-empty{background:#151d2c;border-color:#354a65}
+    body[data-skin="neon"] .additional-opportunity-reasons{border-top-color:#34465c}
+    body[data-skin="neon"] .compare-player,
+    body[data-skin="neon"] .compare-result{background:linear-gradient(145deg,#1b1a30,#101725)!important;border-color:#8055aa!important}
+    body[data-skin="neon"] .compare-player-title,
+    body[data-skin="neon"] .compare-result-player .compare-probability{color:#cf96ff!important}
+    body[data-skin="neon"] .compare-player input,
+    body[data-skin="neon"] .compare-surface-field select,
+    body[data-skin="neon"] .compare-suggestions,
+    body[data-skin="neon"] .compare-result-player,
+    body[data-skin="neon"] .compare-dossier-block{background:#101827!important;border-color:#344d68!important;color:#edf6ff!important}
+    body[data-skin="neon"] .compare-intro{background:#121d2c;border-color:#344d68;color:#bfd0e2}
+    body[data-skin="neon"] .compare-result-player .compare-rating,
+    body[data-skin="neon"] .compare-h2h-total{color:#ffbf62!important}
+    body[data-skin="neon"] .model-result{background:#0e1623!important;border-color:#35536d!important;color:#c8d8e8}
+    body[data-skin="neon"] .model-result strong,
+    body[data-skin="neon"] .model-positive,
+    body[data-skin="neon"] .match-quote-status.complete{color:#ffbf62!important}
+    body[data-skin="neon"] .model-negative{color:#e58bc6!important}
+    body[data-skin="neon"] .data-freshness.good{background:#102b37!important;border-color:#347c98!important;color:#8cecff!important}
+    body[data-skin="neon"] .data-freshness.medium{background:#292117!important;border-color:#87663b!important;color:#ffd18a!important}
+    body[data-skin="neon"] .data-freshness.limited,
+    body[data-skin="neon"] .match-quote-status.missing{background:#29182d!important;border-color:#9256a8!important;color:#e5b2f4!important}
+    body[data-skin="neon"] .bookmaker-tag{background:#172236!important;border-color:#4a6d8a!important;color:#ffbf62!important}
+    body[data-skin="neon"] .match-quote-status{background:#142033!important;border-color:#34516b!important;color:#a8bbd0!important}
+    body[data-skin="neon"] .modal{background:linear-gradient(145deg,#182438,#0d1420)!important;border-color:#3d5a74!important;color:var(--text)}
+    body[data-skin="neon"] input[type=number],
+    body[data-skin="neon"] input[type=text],
+    body[data-skin="neon"] select,
+    body[data-skin="neon"] .check,
+    body[data-skin="neon"] .actions button,
+    body[data-skin="neon"] .stats-actions button{background:#101a29!important;border-color:#35516c!important;color:#edf6ff!important}
+    body[data-skin="neon"] .actions .primary{background:linear-gradient(110deg,#123d55,#176b88 55%,#253e70)!important;border-color:#55dff2!important}
+    body[data-skin="neon"] .screen-header .brand,
+    body[data-skin="neon"] .more-screen-card h2{color:#e8f4ff}
+    body[data-skin="neon"] .more-screen-card{background:#121d2c!important;border-color:#344d68!important}
+    body[data-skin="neon"] .more-screen-action,
+    body[data-skin="neon"] .more-modal .more-action{background:#1b1930!important;border-color:#8055aa!important;color:#e5c8ff!important}
+    body[data-skin="neon"] .compare-suggestions button:active{background:#26354d!important}
+    body[data-skin="neon"] button:focus-visible,
+    body[data-skin="neon"] .match-card:focus-visible{outline-color:#55dff2!important}
+
+  </style>
 </head>
 <body>
 <div class="app">
@@ -609,7 +720,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="modal-back" id="settingsModal">
   <div class="modal">
     <h2>Настройки сканера</h2>
-    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
+    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option><option value="neon">Неоновый синий · бирюза и фиолетовый</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV для «Ставки дня», %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="100" step="0.1" value="5.00"></div>
@@ -718,7 +829,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const defaults={minEv:3,minOdds:1.9,maxOdds:5,bestBetMinOdds:1.5};
     Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
-    $('#skinSelect').value=(current.skin==='steel'||current.skin==='olive')?'steel':'black';
+    $('#skinSelect').value=['steel','neon'].includes(current.skin)?current.skin:'black';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
     tourChecks.forEach(input=>input.checked=tours.includes(input.dataset.tour));
   }
@@ -763,19 +874,19 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  let activeSkin=(saved.skin==='steel'||saved.skin==='olive')?'steel':'black';
+  let activeSkin=['steel','neon'].includes(saved.skin)?saved.skin:'black';
   function applySkin(skin){
-    const selected=(skin==='steel'||skin==='olive')?'steel':'black';
+    const selected=['steel','neon'].includes(skin)?skin:'black';
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
-    if(themeColor)themeColor.content=selected==='steel'?'#687482':'#080808';
+    if(themeColor)themeColor.content=selected==='steel'?'#cbd2d9':selected==='neon'?'#080b14':'#080808';
   }
   applySkin(activeSkin);
   $('#skinSelect').value=activeSkin;
   // Preview theme immediately; Cancel restores the last saved skin.
   $('#skinSelect').addEventListener('change',()=>{
-    const selected=($('#skinSelect').value==='steel'||$('#skinSelect').value==='olive')?'steel':'black';
+    const selected=['steel','neon'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     applySkin(selected);
   });
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
@@ -807,7 +918,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
-    data.skin=$('#skinSelect').value==='steel'?'steel':'black';
+    data.skin=['steel','neon'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     data.tours=tours;
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
