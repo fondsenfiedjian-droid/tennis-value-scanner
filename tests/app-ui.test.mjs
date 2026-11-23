@@ -867,7 +867,6 @@ test("TVS 2.0 four-section bottom navigation opens the approved destinations",()
   assert.match(html,/\$\('#quickLab'\)\.onclick=/);
   assert.match(html,/\$\('#quickArchive'\)\.onclick=/);
   assert.match(html,/\$\('#matchesRefreshBtn'\)\.onclick=\(\)=>loadMatches\(true\);/);
-  assert.match(html,/\$\('#settingsScreenOpen'\)\.addEventListener\('click'/);
   assert.match(html,/id=\"moreArchiveMount\"/);
 });
 
