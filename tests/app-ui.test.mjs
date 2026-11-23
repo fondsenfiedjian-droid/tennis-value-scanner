@@ -967,3 +967,13 @@ test("settings sliders use a fine custom track with visible scale ticks and a co
     assert.match(html, new RegExp('id="' + id + '" type="range"'));
   }
 });
+
+test("independent API diagnostics and status-tab navigation fallback are present", () => {
+  assert.ok(html.includes("const worker=location.hostname.startsWith('deploy-preview-')"));
+  assert.ok(html.includes("fetch(worker+'/health',{cache:'no-store'})"));
+  assert.ok(html.includes("API: LIVE OK"));
+  assert.ok(html.includes("APIFY_TOKEN. Источник коэффициентов недоступен."));
+  assert.ok(html.includes("event.target.closest('#topLive,#topUpcoming,#topTomorrow')"));
+  assert.ok(html.includes("openStatusScreen('liveView')"));
+  assert.ok(html.includes("openStatusScreen('matchesView')"));
+});
