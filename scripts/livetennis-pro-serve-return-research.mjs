@@ -26,6 +26,7 @@ const ROLLING_MATCHES = 20;
 const MIN_PRIOR_STATS_MATCHES = 5;
 
 const num = value => {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
@@ -171,9 +172,8 @@ function makeFeatureMatch(match, ratings, histories) {
   };
 }
 
-function loadMatches(rows, tour, inventory) {
+function loadMatches(rows, tour, inventory, seen) {
   const matches = [];
-  const seen = new Set();
   for (const row of rows) {
     if (String(row.tour ?? "").toLowerCase() !== tour) continue;
     if (!MAIN_LEVELS[tour].has(String(row.level ?? "").toUpperCase())) continue;
@@ -324,22 +324,28 @@ async function main() {
   const files = (await readdir(dataDir)).filter(file => /^\d{4}\.csv\.gz$/.test(file)).sort();
   if (!files.length) throw new Error("No yearly archive CSV.gz packages found in " + dataDir);
 
-  const allRows = [];
-  for (const file of files) {
-    const bytes = await readFile(join(dataDir, file));
-    allRows.push(...parseCsv(gunzipSync(bytes).toString("utf8")));
-  }
+  const matchesByTour = { atp: [], wta: [] };
+  const seenByTour = { atp: new Set(), wta: new Set() };
   const inventory = {
     source: "Live Tennis API PRO /history/packages?kind=archive",
     archiveFiles: files.length,
-    sourceRows: allRows.length,
+    sourceRows: 0,
     completedMatchesByTour: { atp: 0, wta: 0 },
     statsMatchesByTour: { atp: 0, wta: 0 },
     rollingFeatureRowsByTour: { atp: 0, wta: 0 }
   };
+  for (const file of files) {
+    const bytes = await readFile(join(dataDir, file));
+    const rows = parseCsv(gunzipSync(bytes).toString("utf8"));
+    inventory.sourceRows += rows.length;
+    for (const tour of ["atp", "wta"]) {
+      matchesByTour[tour].push(...loadMatches(rows, tour, inventory, seenByTour[tour]));
+    }
+    process.stderr.write("Prepared serve-stat rows from " + file + "\n");
+  }
   const reports = {};
   for (const tour of ["atp", "wta"]) {
-    const matches = loadMatches(allRows, tour, inventory);
+    const matches = matchesByTour[tour].sort((a, b) => a.date.localeCompare(b.date) || a.tournamentId.localeCompare(b.tournamentId) || a.matchNum.localeCompare(b.matchNum));
     const kFactor = tour === "atp" ? 32 : 80;
     const featureRows = runTour(matches, tour, kFactor);
     inventory.rollingFeatureRowsByTour[tour] = featureRows.length;
