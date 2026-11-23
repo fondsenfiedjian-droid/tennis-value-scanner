@@ -863,12 +863,30 @@ test("TVS 2.0 four-section bottom navigation opens the approved destinations",()
   assert.match(html,/\$\('#navBalance'\)\.onclick=showBalance;/);
   assert.match(html,/\$\('#navHistory'\)\.onclick=showHistory;/);
   assert.match(html,/\$\('#navStats'\)\.onclick=showStats;/);
-  assert.match(html,/\$\('#navSettings'\)\.onclick=showSettingsScreen;/);
+  assert.match(html,/\$\('#navSettings'\)\.onclick=\(\)=>\{populateSettingsForm\(\);\$\('#settingsModal'\)\.classList\.add\('show'\);\};/);
   assert.match(html,/\$\('#quickLab'\)\.onclick=/);
   assert.match(html,/\$\('#quickArchive'\)\.onclick=/);
-  assert.match(html,/\$\('#matchesRefreshBtn'\)\.addEventListener\('click',\(\)=>loadMatches\(true\)\)/);
+  assert.match(html,/\$\('#matchesRefreshBtn'\)\.onclick=\(\)=>loadMatches\(true\);/);
   assert.match(html,/\$\('#settingsScreenOpen'\)\.addEventListener\('click'/);
   assert.match(html,/id=\"moreArchiveMount\"/);
+});
+
+test("model research test journal is structured and visible in Statistics",()=>{
+  const journal=JSON.parse(readFileSync(new URL("../research/test-journal.json",import.meta.url),"utf8"));
+  assert.equal(journal.schemaVersion,1);
+  assert.ok(journal.tests.length>=6);
+  for(const row of journal.tests){
+    for(const key of ["id","date","status","tour","baseline","candidate","trainingWindow","evaluationPeriod","selection","notes"]){
+      assert.ok(Object.hasOwn(row,key),"journal row "+row.id+" must include "+key);
+    }
+  }
+  assert.match(html,/id="researchTestJournal"/);
+  assert.match(html,/id="researchJournalRows"/);
+  assert.match(html,/async function loadResearchTestJournal\(force=false\)/);
+  assert.match(html,/loadResearchTestJournal\(\);/);
+  assert.match(html,/researchJournalRefresh/);
+  assert.match(html,/Brier до → после/);
+  assert.match(html,/LogLoss до → после/);
 });
 
 test("mobile player suggestion taps prevent blur from closing the result list before selection",()=>{
