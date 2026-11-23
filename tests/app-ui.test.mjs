@@ -430,7 +430,7 @@ test("settings form reloads persisted values whenever opened and verifies every 
   const populateAt=html.indexOf("function populateSettingsForm()");
   const saveAt=html.indexOf("const savedAgain=readSettings();");
   assert.ok(openAt>0&&populateAt>0&&saveAt>0);
-  assert.match(html.slice(populateAt,openAt), /const defaults=\{minEv:3,minOdds:1\.9,maxOdds:5,bestBetMinOdds:1\.5\}/);
+  assert.match(html.slice(populateAt,openAt), /const defaults=\{minEv:3,minOdds:1\.9,maxOdds:5,bestBetMinOdds:1\.5,bankMaxStakePercent:1\.5,bankMaxExposurePercent:5,bankMaxDailyStakePercent:5,bankKellyFraction:25\}/);
   assert.match(html.slice(populateAt,openAt), /Object\.entries\(defaults\)/);
   assert.match(html.slice(saveAt,saveAt+550), /Number\(savedAgain\.minEv\)!==minEv/);
   assert.match(html, /JSON\.stringify\(savedTourValues\)!==JSON\.stringify\(expectedTourValues\)/);
