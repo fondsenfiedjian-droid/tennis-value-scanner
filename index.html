@@ -857,6 +857,44 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="amber-led"] .actions button:focus,
     body[data-skin="amber-led"] .chip:focus{outline:2px solid #ff9a55;outline-offset:2px}
 
+    /* Amber Equalizer refinements: warm match-day panel and refresh control */
+    body[data-skin="amber-led"] .daily-pick{
+      background:linear-gradient(125deg,#2b1a0d 0%,#1d120b 48%,#0d0b09 100%);
+      border:1px solid #a96332;
+      box-shadow:0 0 16px #d9783026,inset 0 1px #ffd49a18,0 8px 24px #000b
+    }
+    body[data-skin="amber-led"] .daily-pick:before{
+      background:linear-gradient(120deg,#ffd18a,#a65b2b 22%,#e18a3d 52%,#6b351b 78%,#f2bd78)
+    }
+    body[data-skin="amber-led"] .daily-pick .best-bet-title,
+    body[data-skin="amber-led"] .daily-pick .best-bet-value{color:#ffc071}
+    body[data-skin="amber-led"] .daily-pick .best-bet-value-pill{
+      background:#2b190d;border-color:#a96332;color:#ffd08a
+    }
+    body[data-skin="amber-led"] .daily-pick-photo{
+      background:radial-gradient(ellipse at 50% 30%,#75401e,#2a180d 68%,#0b0908);
+      color:#fff0dc
+    }
+    body[data-skin="amber-led"] .daily-pick-initials{
+      color:#ffe0b5;text-shadow:0 0 16px #e18a3d88
+    }
+    body[data-skin="amber-led"] .daily-pick-event,
+    body[data-skin="amber-led"] .daily-pick-metrics span,
+    body[data-skin="amber-led"] .daily-pick-confidence{color:#d0ae8d}
+    body[data-skin="amber-led"] .daily-pick-metrics span{border-color:#684126}
+    body[data-skin="amber-led"] .daily-pick-metrics .daily-odds{color:#ffc071}
+    body[data-skin="amber-led"] .daily-pick-metrics .daily-ev,
+    body[data-skin="amber-led"] .daily-ev{color:#ffd078}
+    body[data-skin="amber-led"] .plan-refresh{
+      border:1px solid #b86b32;
+      background:linear-gradient(110deg,#4a260f,#8c451c 52%,#5b2d12);
+      color:#fff0d9;
+      box-shadow:0 0 16px #d9783028,inset 0 1px #ffd49a30
+    }
+    body[data-skin="amber-led"] .plan-refresh:active{
+      background:linear-gradient(110deg,#63300f,#a65320 52%,#713812)
+    }
+
     /* True seven-segment digits: fixed geometry, independent of surrounding font metrics. */
     body[data-skin="amber-led"] .led-digit{
       display:inline-block;position:relative;vertical-align:-.13em;
