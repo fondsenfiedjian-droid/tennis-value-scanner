@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-preview-worker
+  group: livetennis-pro-history-research
   cancel-in-progress: false
 
 jobs:
@@ -115,6 +115,7 @@ jobs:
           NODE
       - name: Run chronological ATP and WTA rank-age experiments
         run: node scripts/livetennis-pro-rank-age-research.mjs /tmp/livetennis-pro-archive /tmp/livetennis-pro-rank-age-report.json
+      # Raw licensed source packages remain on the ephemeral runner and are never uploaded.
       - name: Upload aggregate research report only
         uses: actions/upload-artifact@v4
         with:
