@@ -2588,7 +2588,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       if(requestId===compareRequestSequence){button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
     }
   };
-  $('#navCompare').onclick=showCompare;
+  const navCompareButton=$('#navCompare');
+  if(navCompareButton)navCompareButton.onclick=showCompare;
   $('#compareBack').onclick=showMain;
   let archiveAutoCheckRunning=false;
   let archiveAutoCheckLastAt=0;
