@@ -445,7 +445,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/matches?status=completed", "/history/packages?kind=tape", "/history/packages?kind=archive", "/history/packages/2026-11", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
       });
     }
 
@@ -950,6 +950,80 @@ export default {
         return response(payload, 200, headers);
       } catch {
         return response({ error: "Could not reach The Odds API" }, 502);
+      }
+    }
+
+    // Live Tennis PRO bulk history packages: monthly point tapes and yearly archive results.
+    // Package files are streamed unchanged; API keys remain server-side.
+    const historyPackageMatch = path.match(/^\\/history\\/packages(?:\\/(\\d{4}(?:-\\d{2})?))?$/);
+    if (historyPackageMatch) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const period = historyPackageMatch[1] || null;
+      const params = new URLSearchParams();
+      const kind = (url.searchParams.get("kind") || "tape").trim().toLowerCase();
+      const allowedKinds = ["tape", "rankings", "rally", "archive", "elo", "archive_tape"];
+      if (!allowedKinds.includes(kind)) return response({ error: "Invalid history package kind", allowed: allowedKinds }, 400);
+      if (period && ["rankings", "rally", "archive", "elo", "archive_tape"].includes(kind)) {
+        if (!/^\\d{4}$/.test(period)) return response({ error: "Yearly package period must be YYYY" }, 400);
+      } else if (period && !/^\\d{4}-\\d{2}$/.test(period)) {
+        return response({ error: "Monthly tape package period must be YYYY-MM" }, 400);
+      }
+      params.set("kind", kind);
+      const year = url.searchParams.get("year");
+      if (year !== null) {
+        if (!/^\\d{4}$/.test(year)) return response({ error: "year must be YYYY" }, 400);
+        if (period) return response({ error: "year cannot be combined with a package period" }, 400);
+        params.set("year", year);
+      }
+      const format = url.searchParams.get("format");
+      if (format !== null) {
+        if (!period) return response({ error: "format requires a package period" }, 400);
+        if (!["jsonl", "csv", "corrections"].includes(format)) {
+          return response({ error: "format must be jsonl, csv or corrections" }, 400);
+        }
+        params.set("format", format);
+      }
+      const upstreamPath = period
+        ? "/history/packages/" + encodeURIComponent(period) + "?" + params.toString()
+        : "/history/packages?" + params.toString();
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(cacheKeyUrl(env, "/__history-packages/v1" + upstreamPath));
+        const cacheable = format === null;
+        const cached = cacheable ? await cache.match(cacheKey) : null;
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1" + upstreamPath,
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        const headers = new Headers(cors);
+        for (const name of ["Content-Type", "Content-Disposition", "Content-Length", "Content-Encoding", "Cache-Control", "Retry-After"]) {
+          const value = upstream.headers.get(name);
+          if (value) headers.set(name, value);
+        }
+        if (format !== null && upstream.ok) {
+          headers.set("Cache-Control", "private, no-store");
+          return new Response(upstream.body, { status: upstream.status, headers });
+        }
+        let body;
+        try { body = await upstream.json(); }
+        catch { return response({ error: "Live Tennis history package returned invalid JSON" }, 502); }
+        if (upstream.ok && cacheable) {
+          headers.set("Content-Type", "application/json; charset=utf-8");
+          headers.set("Cache-Control", "public, max-age=21600");
+          headers.set("X-Data-Cache", "MISS");
+          await cache.put(cacheKey, new Response(JSON.stringify(body), { status: 200, headers }));
+        }
+        return response(body, upstream.status, Object.fromEntries(headers.entries()));
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis history packages", accessStatus: "unavailable" }, 502);
       }
     }
 
