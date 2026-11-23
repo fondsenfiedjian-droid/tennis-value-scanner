@@ -830,7 +830,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="modal-back" id="settingsModal">
   <div class="modal">
     <h2>Настройки сканера</h2>
-    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option><option value="neon">Неоновый синий · бирюза и фиолетовый</option><option value="terracotta">Лесной зелёный · терракота</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
+    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option><option value="neon">Неоновый синий · бирюза и фиолетовый</option><option value="terracotta">Music Play Bar Control · графит, зелёный, терракота</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV для «Ставки дня», %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="100" step="0.1" value="5.00"></div>
@@ -990,7 +990,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
-    if(themeColor)themeColor.content=selected==='steel'?'#cbd2d9':selected==='neon'?'#080b14':selected==='terracotta'?'#18251b':'#080808';
+    if(themeColor)themeColor.content=selected==='steel'?'#cbd2d9':selected==='neon'?'#080b14':selected==='terracotta'?'#202020':'#080808';
   }
   applySkin(activeSkin);
   $('#skinSelect').value=activeSkin;
