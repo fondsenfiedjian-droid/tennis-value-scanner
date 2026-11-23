@@ -267,6 +267,10 @@ assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.n
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMissingPlayerIds,0);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsWithinSignature,0);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultipleWinnerIds,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultipleLoserIds,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsAcrossTiers,0);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsWithinTierOnly,1);
 
 const sameSignatureIdConflictSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
   "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
@@ -279,6 +283,10 @@ assert.equal(sameSignatureIdDiagnostics.rowsWithSingleSignature,1);
 assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairs,1);
 assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsWithinSignature,1);
 assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly,0);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultipleWinnerIds,1);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultipleLoserIds,1);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsAcrossTiers,0);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsWithinTierOnly,1);
 
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
