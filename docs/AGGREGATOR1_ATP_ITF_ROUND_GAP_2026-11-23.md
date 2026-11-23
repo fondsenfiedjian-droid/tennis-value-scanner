@@ -60,7 +60,7 @@ Mirrors/forks of Sackmann data do not create independent provenance or additiona
 ## Sources
 
 - Valuebetennis dataset schema and CC BY 4.0 licence: https://www.valuebetennis.com/en/donnees.htm
-- MatchStat API round-code table (external corroboration only): https://matchstat.com/tennis/api/documentation/
+- MatchStat API round-code table (external corroboration only): https://tennisapidoc.matchstat.com/misc
 - TennisMyLife database and usage terms: https://stats.tennismylife.org/tennis-match-database
 - Live Tennis API historical archive: https://docs.livetennisapi.com/historical-results-archive.html
 - Live Tennis API Terms of Use: https://livetennisapi.com/terms
