@@ -800,6 +800,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="stats-view" id="statsView">
   <h1>Статистика прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
+  <section class="panel" id="virtualStrategyStats" style="margin-top:16px"><b>Эффективность виртуальной стратегии</b><div class="muted">Отдельно от точности прогнозной модели. Считаются только реальные записи виртуального журнала с подтверждёнными исходами.</div><div class="stats" style="margin-top:12px"><div><div class="muted">ROI</div><div class="stat-num" id="strategyRoi">—</div></div><div><div class="muted">Победы</div><div class="stat-num" id="strategyWinRate">—</div></div><div><div class="muted">Рассчитано ставок</div><div class="stat-num" id="strategySettled">0</div></div><div><div class="muted">Оборот</div><div class="stat-num" id="strategyTurnover">0 €</div></div><div><div class="muted">Максимальная просадка</div><div class="stat-num" id="strategyDrawdown">0 €</div></div><div><div class="muted">Фактор прибыли</div><div class="stat-num" id="strategyProfitFactor">—</div></div></div><div class="archive-list" id="strategySegments"><div class="archive-item">Пока нет рассчитанных виртуальных ставок.</div></div></section>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
     <div class="panel"><div class="muted">Сторон с положительным EV</div><div class="stat-num" id="archivePositive">0</div></div>
@@ -910,7 +911,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
     const balance=document.createElement('main');
     balance.id='balanceView';balance.className='screen-view';
-    balance.innerHTML='<header class="screen-header"><div><div class="brand">БАЛАНС</div><div class="sub">Виртуальный банк · стартовый капитал 1 000 €</div></div></header><section class="stats" style="margin-top:8px"><div class="panel"><div class="muted">Текущий баланс</div><div class="stat-num" id="virtualBalance">1 000,00 €</div></div><div class="panel"><div class="muted">Прибыль / убыток</div><div class="stat-num" id="virtualProfit">0,00 €</div></div><div class="panel"><div class="muted">Открытые ставки</div><div class="stat-num" id="virtualOpen">0</div></div><div class="panel"><div class="muted">Расчётные ставки</div><div class="stat-num" id="virtualSettled">0</div></div></section><section class="more-screen-card"><h2>Виртуальная стратегия</h2><p id="virtualBankStatus">Симулятор готовит подключение к строгому отбору рекомендаций. Реальные деньги не используются.</p><div class="archive-meta">Стартовый капитал: 1 000 € · ставки фиксируются по коэффициенту и времени снимка · результаты не переписываются задним числом.</div></section>';
+    balance.innerHTML='<header class="screen-header"><div><div class="brand">БАЛАНС</div><div class="sub">Виртуальный банк · стартовый капитал 1 000 €</div></div></header><section class="stats" style="margin-top:8px"><div class="panel"><div class="muted">Текущий баланс</div><div class="stat-num" id="virtualBalance">1 000,00 €</div></div><div class="panel"><div class="muted">Прибыль / убыток</div><div class="stat-num" id="virtualProfit">0,00 €</div></div><div class="panel"><div class="muted">Открытые ставки</div><div class="stat-num" id="virtualOpen">0</div></div><div class="panel"><div class="muted">Расчётные ставки</div><div class="stat-num" id="virtualSettled">0</div></div><div class="panel"><div class="muted">ROI стратегии</div><div class="stat-num" id="virtualRoi">—</div></div><div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="virtualDrawdown">0,00 €</div></div><div class="panel"><div class="muted">Оборот ставок</div><div class="stat-num" id="virtualTurnover">0,00 €</div></div></section><section class="more-screen-card"><h2>Виртуальная стратегия</h2><p id="virtualBankStatus">Симулятор готовит подключение к строгому отбору рекомендаций. Реальные деньги не используются.</p><div class="archive-meta">Стартовый капитал: 1 000 € · ставки фиксируются по коэффициенту и времени снимка · результаты не переписываются задним числом.</div></section>';
     more.after(balance);
 
     const history=document.createElement('main');
@@ -2096,8 +2097,32 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     });
   }
 
+  function renderVirtualStrategyStats(archiveRows=[]){
+    const put=(id,value)=>{const node=$('#'+id);if(node)node.textContent=value;};
+    try{
+      const state=readVirtualBankState(),summary=TVSBankroll.getSummary(state),sequence=TVSBankroll.getOutcomeSequenceStats(state);
+      const money=value=>Number(value||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+      put('strategyRoi',summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%');
+      put('strategyWinRate',sequence.winRatePercent===null?'—':sequence.winRatePercent.toFixed(1)+'%');
+      put('strategySettled',String(sequence.settledBets));
+      put('strategyTurnover',money(summary.settledStake));
+      put('strategyDrawdown',money(summary.maxDrawdown)+' ('+summary.maxDrawdownPercent.toFixed(1)+'%)');
+      put('strategyProfitFactor',sequence.profitFactor===null?'—':sequence.profitFactor.toFixed(2));
+      const segments=TVSBankroll.getSegmentPerformance(state,archiveRows);
+      const labels={tour:'Турниры',surface:'Покрытия',oddsBand:'Коэффициенты',evBand:'EV'};
+      const node=$('#strategySegments');
+      if(node)node.innerHTML=Object.entries(labels).map(([key,label])=>{
+        const items=segments[key]||[];
+        return '<div class="archive-item"><b>'+label+'</b>'+(items.length?items.map(item=>'<div class="archive-meta">'+escapeHtml(item.name)+' · '+item.settledBets+' ставок · '+item.wins+'–'+item.losses+' · ROI '+(item.roiPercent===null?'—':item.roiPercent.toFixed(1)+'%')+'</div>').join(''):'<div class="archive-meta">Недостаточно завершённых ставок для анализа.</div>')+'</div>';
+      }).join('');
+    }catch(error){
+      put('strategyRoi','—');put('strategyWinRate','—');put('strategySettled','0');put('strategyTurnover','0 €');put('strategyDrawdown','—');put('strategyProfitFactor','—');
+      const node=$('#strategySegments');if(node)node.textContent='Статистика виртуальной стратегии пока недоступна: '+String(error.message||error);
+    }
+  }
   function renderArchive(){
     const rows=readPredictionArchive().sort((a,b)=>Number(b.capturedAt)-Number(a.capturedAt));
+    renderVirtualStrategyStats(rows);
     const avg=key=>rows.length?rows.reduce((sum,row)=>sum+Number(row[key]||0),0)/rows.length:null;
     $('#archiveCount').textContent=rows.length;
     $('#archivePositive').textContent=rows.filter(row=>Number(row.ev)>0).length;
@@ -2182,7 +2207,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   const VIRTUAL_BANK_OPTIONS={maxStakePercent:1.5,maxExposurePercent:5,maxDailyStakePercent:5,kellyFraction:0.25,minEv:3,minOdds:1.9};
   function readVirtualBankState(){
     const raw=localStorage.getItem(VIRTUAL_BANK_KEY);
-    if(raw===null)return TVSBankroll.createInitialState(1000);
+    if(raw===null){const initial=TVSBankroll.createInitialState(1000);localStorage.setItem(VIRTUAL_BANK_KEY,JSON.stringify(initial));return initial;}
     const state=JSON.parse(raw);
     return TVSBankroll.validateState(state);
   }
@@ -2252,6 +2277,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     put('virtualProfit',(summary.realizedProfit>=0?'+':'')+money(summary.realizedProfit));
     put('virtualOpen',String(summary.openBets));
     put('virtualSettled',String(summary.settledBets));
+    put('virtualRoi',summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%');
+    put('virtualDrawdown',money(summary.maxDrawdown));
+    put('virtualTurnover',money(summary.totalStaked));
     put('headerBalance',Math.round(summary.equity).toLocaleString('ru-RU')+' €');
     const status=$('#virtualBankStatus');
     if(status)status.textContent='Свободно: '+money(summary.balance)+' · в открытых ставках: '+money(summary.openStake)+' · риск банка: '+summary.exposurePercent.toFixed(1)+'% · ROI: '+(summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%')+'. Виртуальные ставки формируются автоматически только по строгим рекомендациям.';
