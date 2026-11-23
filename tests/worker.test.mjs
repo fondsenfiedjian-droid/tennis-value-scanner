@@ -3321,14 +3321,17 @@ test("PFE does not understate uncertainty inside correlated dependency groups", 
   assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
 });
 
-test("settings provide a persistent app-wide switch between black and steel-blue skins", () => {
+test("settings provide persistent app-wide selectable skins including Music Play Bar Control", () => {
   assert.ok(frontendSource.includes('id="skinSelect"'));
   assert.ok(frontendSource.includes('value="black"'));
   assert.ok(frontendSource.includes('value="steel"'));
-  assert.ok(frontendSource.includes("saved.skin==='steel'||saved.skin==='olive'"));
+  assert.ok(frontendSource.includes('value="terracotta"'));
+  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta'].includes(saved.skin)?saved.skin:'terracotta'"));
+  assert.ok(frontendSource.includes("saved.skin==='black'&&saved.musicPaletteDefaultApplied!==true"));
   assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
-  assert.ok(frontendSource.includes("data.skin=$('#skinSelect').value==='steel'?'steel':'black'"));
+  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta'"));
   assert.ok(frontendSource.includes('body[data-skin="steel"]'));
+  assert.ok(frontendSource.includes('body[data-skin="terracotta"]'));
   assert.ok(frontendSource.includes('--amber:#65b7ff'));
 });
 
