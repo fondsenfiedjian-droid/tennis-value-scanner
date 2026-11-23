@@ -3914,8 +3914,13 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   const observer=new MutationObserver(records=>{
     for(const record of records){
       const target=record.target.nodeType===1?record.target:record.target.parentElement;
-      if(target?.matches?.(targets)){target.dataset.ledPainted="";paint(target);}
-      target?.querySelectorAll?.(targets).forEach(node=>{node.dataset.ledPainted="";paint(node);});
+      if(target?.matches?.(targets)){
+        if(target.dataset.ledPainted==="1")target.dataset.ledPainted="";
+        else paint(target);
+      }
+      target?.querySelectorAll?.(targets).forEach(node=>{
+        if(node.dataset.ledPainted!=="1")paint(node);
+      });
     }
   });
   observer.observe(document.body,{subtree:true,childList:true,characterData:true});
