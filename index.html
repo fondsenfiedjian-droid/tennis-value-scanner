@@ -1872,8 +1872,9 @@
     const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB),probA=Number(result.probabilityA),probB=Number(result.probabilityB);
     const freshnessA=result.ratingFreshnessA?.status||'unknown',freshnessB=result.ratingFreshnessB?.status||'unknown';
     const freshnessLabel=status=>({fresh:'свежий рейтинг',recent:'недавний рейтинг',stale:'устаревший рейтинг',unknown:'дата рейтинга неизвестна',invalid:'некорректная дата'})[status]||'статус неизвестен';
+    const fairOdds=(value,probability)=>{const n=Number(value);return Number.isFinite(n)&&n>1?n.toFixed(2):Number.isFinite(probability)&&probability>0?(100/probability).toFixed(2):'—';};
     const profileLine=profile=>{if(!profile)return '<small>Официальный профиль недоступен</small>';const rank=Number.isSafeInteger(profile.ranking)&&profile.ranking>0?'№'+profile.ranking:'не опубликован';const tour=profile.tour==='atp'?'ATP':profile.tour==='wta'?'WTA':'тур не указан';const country=profile.country?escapeHtml(profile.country):'страна не указана';const completeness=profile.completeness&&Number.isFinite(profile.completeness.percent)?' · заполнено '+profile.completeness.known+'/'+profile.completeness.of+' ('+profile.completeness.percent+'%)':'';return '<small>Официальный рейтинг: '+rank+'</small><small>'+tour+' · '+country+escapeHtml(completeness)+'</small>';};
-    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsA).toFixed(2)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+Number(result.fairOddsB).toFixed(2)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';node.hidden=false;
+    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsA,probA)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsB,probB)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';node.hidden=false;
   }
   const compareSearchAliases={
     'алькарас':'Carlos Alcaraz','карлос алькарас':'Carlos Alcaraz',
@@ -1944,7 +1945,25 @@
   }
   bindComparePlayerSearch('A');
   bindComparePlayerSearch('B');
+  let compareRequestSequence=0;
+  async function loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB){
+    const resultNode=$('#compareResult'),status=$('#compareStatus');
+    const optionalRequests=await Promise.allSettled([
+      fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idA)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
+      fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idB)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
+      fetchWithTimeout(API+'/player-h2h?p1='+encodeURIComponent(exactNameA)+'&p2='+encodeURIComponent(exactNameB)).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;})
+    ]);
+    if(requestId!==compareRequestSequence)return;
+    const histA=optionalRequests[0].status==='fulfilled'?deriveCompareHistory(optionalRequests[0].value,idA):null;
+    const histB=optionalRequests[1].status==='fulfilled'?deriveCompareHistory(optionalRequests[1].value,idB):null;
+    const h2hHtml=optionalRequests[2].status==='fulfilled'
+      ?renderCompareH2H(optionalRequests[2].value,exactNameA,exactNameB)
+      :'<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Источник недоступен: '+escapeHtml(String(optionalRequests[2].reason?.message||'ошибка запроса'))+'</small></section>';
+    resultNode.insertAdjacentHTML('beforeend',renderCompareHistory(histA,exactNameA)+renderCompareHistory(histB,exactNameB)+h2hHtml);
+    status.textContent='Elo рассчитан · история: '+(Number(optionalRequests[0].status==='fulfilled')+Number(optionalRequests[1].status==='fulfilled'))+'/2 · H2H: '+(optionalRequests[2].status==='fulfilled'?'ответ получен; идентичность проверяется в блоке H2H':'недоступен')+'. Дополнительные данные не влияют на расчёт Elo.';
+  }
   $('#compareRun').onclick=async()=>{
+    const requestId=++compareRequestSequence;
     const button=$('#compareRun'),status=$('#compareStatus'),resultNode=$('#compareResult');
     const nameA=$('#compareNameA').value.trim(),nameB=$('#compareNameB').value.trim();
     const typedA=$('#compareIdA').value.trim(),typedB=$('#compareIdB').value.trim();
@@ -1954,28 +1973,29 @@
     if(!Number.isSafeInteger(idA)||idA<=0||!Number.isSafeInteger(idB)||idB<=0){status.textContent='Выбери обоих игроков из поиска или введи их ID Live Tennis API вручную.';resultNode.hidden=true;return;}
     if(idA===idB){status.textContent='Выбраны одинаковые ID игроков. Проверь данные.';resultNode.hidden=true;return;}
     const surface=$('#compareSurface').value;
-    button.disabled=true;button.textContent='СРАВНЕНИЕ…';status.textContent='Запрашиваю профили и рассчитываю вероятности…';resultNode.hidden=true;
+    button.disabled=true;button.textContent='СРАВНЕНИЕ…';status.textContent='Запрашиваю профили и рассчитываю Elo…';resultNode.hidden=true;
     try{
       const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
       const payload=await response.json();
       if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
-      if(!Number.isFinite(Number(payload.probabilityA))||!Number.isFinite(Number(payload.probabilityB)))throw new Error('API не вернул корректные вероятности для этой пары.');
+      const probabilityA=Number(payload.probabilityA),probabilityB=Number(payload.probabilityB);
+      if(!Number.isFinite(probabilityA)||!Number.isFinite(probabilityB)||probabilityA<=0||probabilityA>=100||probabilityB<=0||probabilityB>=100||Math.abs(probabilityA+probabilityB-100)>0.05)
+        throw new Error('API вернул некорректные или несогласованные вероятности для этой пары.');
+      if(!Number.isFinite(Number(payload.ratingA))||Number(payload.ratingA)<=0||!Number.isFinite(Number(payload.ratingB))||Number(payload.ratingB)<=0)
+        throw new Error('API не вернул два корректных Elo-рейтинга.');
+      if(requestId!==compareRequestSequence)return;
       renderCompareResult(payload,nameA,nameB,surface);
-      status.textContent='Elo рассчитан. Загружаю историю и личные встречи…';
       const exactNameA=String(payload.playerA||nameA),exactNameB=String(payload.playerB||nameB);
-      const optionalRequests=await Promise.allSettled([
-        fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idA)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
-        fetchWithTimeout(API+'/player-history?id='+encodeURIComponent(idB)+'&limit=20').then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;}),
-        fetchWithTimeout(API+'/player-h2h?p1='+encodeURIComponent(exactNameA)+'&p2='+encodeURIComponent(exactNameB)).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error||b.accessStatus||('HTTP '+r.status));return b;})
-      ]);
-      const histA=optionalRequests[0].status==='fulfilled'?deriveCompareHistory(optionalRequests[0].value,idA):null;
-      const histB=optionalRequests[1].status==='fulfilled'?deriveCompareHistory(optionalRequests[1].value,idB):null;
-      const h2hHtml=optionalRequests[2].status==='fulfilled'?renderCompareH2H(optionalRequests[2].value,exactNameA,exactNameB):'<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Источник недоступен: '+escapeHtml(String(optionalRequests[2].reason?.message||'ошибка запроса'))+'</small></section>';
-      resultNode.insertAdjacentHTML('beforeend',renderCompareHistory(histA,exactNameA)+renderCompareHistory(histB,exactNameB)+h2hHtml);
-      status.textContent='Elo рассчитан · история: '+(Number(optionalRequests[0].status==='fulfilled')+Number(optionalRequests[1].status==='fulfilled'))+'/2 · H2H: '+(optionalRequests[2].status==='fulfilled'?'ответ получен; проверка имён показана в блоке H2H':'недоступен')+'. История 2023–н.в.; H2H 1968–н.в.';
+      status.textContent='Elo рассчитан. История и личные встречи загружаются отдельно…';
+      button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';
+      loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB).catch(error=>{
+        if(requestId===compareRequestSequence)status.textContent='Elo рассчитан; дополнительные данные не загрузились: '+String(error.message||error);
+      });
     }catch(error){
-      status.textContent='Не удалось выполнить сравнение: '+String(error.message||error);
-    }finally{button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
+      if(requestId===compareRequestSequence){status.textContent='Не удалось выполнить сравнение: '+String(error.message||error);resultNode.hidden=true;}
+    }finally{
+      if(requestId===compareRequestSequence){button.disabled=false;button.textContent='СРАВНИТЬ ИГРОКОВ';}
+    }
   };
   $('#navCompare').onclick=showCompare;
   $('#compareBack').onclick=showMain;
