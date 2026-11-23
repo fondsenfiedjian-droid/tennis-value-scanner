@@ -2622,7 +2622,7 @@ test("PFE player stats remain connected read-only without exposing a match simul
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v143/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v144/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
