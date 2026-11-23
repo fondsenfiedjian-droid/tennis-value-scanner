@@ -438,4 +438,4 @@ const dateMissDiagnostics=dateMissReport.noCandidateDiagnostics.byReason.dateWin
 assert.equal(dateMissDiagnostics.rows,1);
 assert.equal(dateMissDiagnostics.bothNamesInRegistry,1);
 assert.equal(dateMissDiagnostics.bothSourceIdsInRegistry,1);
-assert.deepEqual(dateMissReport.noCandidateDiagnostics.dateWindowMissNearestOffsetBuckets,{"15-30":0,"31-60":0,"61-180":1,">180":0});
+assert.deepEqual(dateMissReport.noCandidateDiagnostics.dateWindowMissNearestOffsetDays,{"72":1});
