@@ -463,3 +463,6 @@ assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].linkagePct,0);
 assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].validRows,1);
 assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].candidateRows,0);
 assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].linkagePct,0);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].distinctEvents,1);
+assert.deepEqual(roundReport.byTourCategoryRound["ATP::ITF::0"].eventRowDistribution,{one:1,twoToFive:0,sixToTwenty:0,twentyOneToFifty:0,overFifty:0});
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].distinctEvents,1);
