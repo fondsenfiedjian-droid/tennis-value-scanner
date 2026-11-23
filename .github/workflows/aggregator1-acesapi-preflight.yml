@@ -1,0 +1,52 @@
+name: Aggregator 1 AcesAPI bounded preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aggregator1-acesapi-preflight
+  cancel-in-progress: false
+
+jobs:
+  bounded-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/aggregator1-linkage-audit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify API secret is configured
+        env:
+          ACESAPI_API_KEY: ${{ secrets.ACESAPI_API_KEY }}
+        run: |
+          if [[ -z "$ACESAPI_API_KEY" ]]; then
+            echo "Missing repository Actions secret ACESAPI_API_KEY."
+            exit 1
+          fi
+
+      - name: Run exactly two bounded sample requests
+        env:
+          ACESAPI_API_KEY: ${{ secrets.ACESAPI_API_KEY }}
+          ACESAPI_OUT_DIR: ${{ runner.temp }}/acesapi-sample
+        run: |
+          set -euo pipefail
+          node scripts/aggregator1-acesapi-preflight.mjs --confirm-live-calls
+          mkdir -p audit-output
+          cp "$ACESAPI_OUT_DIR/acesapi-preflight-report.json" audit-output/
+          rm -rf "$ACESAPI_OUT_DIR"
+
+      - name: Upload aggregate preflight report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregator1-acesapi-preflight-report
+          path: audit-output/acesapi-preflight-report.json
+          if-no-files-found: error
+          retention-days: 14
