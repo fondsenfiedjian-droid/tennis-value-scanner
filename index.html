@@ -935,8 +935,13 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
     const more=document.createElement('main');
     more.id='moreView';more.className='screen-view';
-    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · виртуальная стратегия активна.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
+    more.innerHTML='<header class="screen-header"><div><div class="brand">АРХИВ И СИСТЕМА</div><div class="sub">История прогнозов, источники данных и состояние API</div></div></header><section class="more-screen-grid"><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · виртуальная стратегия активна.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
     live.after(more);
+
+    const lab=document.createElement('main');
+    lab.id='labView';lab.className='screen-view';
+    lab.innerHTML='<header class="screen-header"><div><div class="brand">ЛАБОРАТОРИЯ</div><div class="sub">Экспериментальные проверки архива · без изменения рабочей модели</div></div></header><section class="more-screen-card"><h2>Аналитическая лаборатория</h2><p>Экспериментальные проверки качества и полноты архивных данных. Результаты не меняют рабочую модель.</p><div id="moreLabMount"></div></section>';
+    more.after(lab);
 
     const balance=document.createElement('main');
     balance.id='balanceView';balance.className='screen-view';
@@ -1048,7 +1053,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#quickMatches').onclick=showMatches;
   $('#quickCompare').onclick=showCompare;
   $('#quickStats').onclick=showStats;
-  $('#quickLab').onclick=()=>{showMore();$('#moreLabMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
+  $('#quickLab').onclick=showLab;
   $('#quickArchive').onclick=()=>{showMore();$('#moreArchiveMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
   $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
   $('#cancelSettings').onclick=cancelSettings;
@@ -2245,13 +2250,14 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   function hideAllScreens(){
     const app=$('.app');if(app)app.classList.add('screen-open');
-    ['#matchesView','#liveView','#compareView','#statsView','#moreView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    ['#matchesView','#liveView','#compareView','#statsView','#moreView','#labView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
     document.querySelectorAll('.top-status-nav button').forEach(button=>button.classList.remove('active'));
   }
   function showMain(){
     hideAllScreens();$('.app').classList.remove('screen-open');
     setActiveNavigation('navHome');
   }
+  function showLab(){hideAllScreens();$('#labView').style.display='block';setActiveNavigation('');}
   function showMatches(){
     hideAllScreens();$('#matchesView').style.display='block';
     setActiveNavigation('');
