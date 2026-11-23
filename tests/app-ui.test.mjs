@@ -423,6 +423,8 @@ test("settings form reloads persisted values whenever opened and verifies every 
   assert.ok(openAt>0&&populateAt>0&&saveAt>0);
   assert.match(html.slice(populateAt,openAt), /\['minEv','minOdds','maxOdds','bestBetMinOdds'\]/);
   assert.match(html.slice(saveAt,saveAt+550), /Number\(savedAgain\.minEv\)!==minEv/);
+  assert.match(html, /JSON\.stringify\(savedTourValues\)!==JSON\.stringify\(expectedTourValues\)/);
+  assert.match(html, /кэф «Ставки дня» — 1\.50–15/);
 });
 
 test("Winamax empty-state diagnostics expose upstream dataset coverage", () => {
