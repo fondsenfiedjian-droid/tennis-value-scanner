@@ -13,7 +13,12 @@ const validDate = value => {
     ? null : text.replaceAll("-", "");
 };
 const validId = value => /^\d+$/.test(String(value ?? "")) && Number(value) > 0;
-const MAIN_LEVELS = new Set(["G", "M", "A", "F", "D", "O"]);
+const MAIN_LEVELS = {
+  atp: new Set(["G", "M", "A", "F", "D", "O"]),
+  // Historical WTA source codes: Premier Mandatory, Premier, International,
+  // Finals and legacy Tier I-V, in addition to Slams/team/Olympics.
+  wta: new Set(["G", "PM", "P", "I", "W", "F", "D", "O", "T1", "T2", "T3", "T4", "T5", "A", "M"])
+};
 
 function parseStats(value) {
   if (!value) return null;
@@ -81,7 +86,8 @@ async function main() {
     agePairs: 0,
     surfaceRows: 0,
     byTour: { atp: 0, wta: 0 },
-    byLevel: {}
+    byLevel: {},
+    byTourLevel: { atp: {}, wta: {} }
   };
 
   for (const file of files) {
@@ -94,7 +100,8 @@ async function main() {
       if (tour !== "atp" && tour !== "wta") continue;
       const level = String(row.level ?? "").toUpperCase();
       inventory.byLevel[level || "unknown"] = (inventory.byLevel[level || "unknown"] || 0) + 1;
-      if (!MAIN_LEVELS.has(level)) {
+      inventory.byTourLevel[tour][level || "unknown"] = (inventory.byTourLevel[tour][level || "unknown"] || 0) + 1;
+      if (!MAIN_LEVELS[tour].has(level)) {
         inventory.skippedNonMainLevels++;
         continue;
       }
@@ -144,7 +151,7 @@ async function main() {
       to: options.evaluationEnd,
       kFactor: 32,
       windows: ["all_history", "5_seasons", "3_seasons"],
-      population: "ATP/WTA main-tour levels G, M, A, F, D, O only; Challenger and futures excluded from this first comparison"
+      population: "ATP main-tour levels G, M, A, F, D, O; WTA main-tour levels G, PM, P, I, W, F, D, O and legacy Tier I-V; Challenger and futures excluded from this first comparison"
     },
     inventory,
     reports,
