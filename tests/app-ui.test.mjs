@@ -722,7 +722,7 @@ test("additional opportunities preserve bookmaker pair when prediction calculati
 });
 
 test("minimum EV setting gates mandatory recommendations while lower positive EV remains watchlist eligible",()=>{
-  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/Минимальный EV для «Ставки дня»:/);
   assert.match(html,/selectBestBets\(bets,filters\.minEv,/);
   assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
   assert.match(html,/if\(oddsInRange&&bet\.odds>=1\.9&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)dayBets\.push\(bet\)/);
@@ -733,7 +733,7 @@ test("minimum EV setting gates mandatory recommendations while lower positive EV
 
 
 test("minimum EV setting is exclusive to Bet of the Day",()=>{
-  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/Минимальный EV для «Ставки дня»:/);
   assert.match(html,/selectBestBet\(bets,filters\.minEv,/);
   assert.match(html,/selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
