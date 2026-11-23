@@ -2235,7 +2235,8 @@
     const mandatoryCount=$('#planMandatoryCount');
     if(mandatoryCount)mandatoryCount.textContent=String(bestBets.length);
     box.classList.toggle('has-pick',!!best);
-    const pending=Math.max(0,totalCandidates-scanned-failed);\n    const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.'+(pending?' В очереди: '+pending+'.':'')+(failed?' Ошибок расчёта: '+failed+'.':'');
+    const pending=Math.max(0,totalCandidates-scanned-failed);
+    const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.'+(pending?' В очереди: '+pending+'.':'')+(failed?' Ошибок расчёта: '+failed+'.':'');
     if(!best){
       box.innerHTML='<div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Сегодня нет ставки, прошедшей строгий отбор.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
       const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
