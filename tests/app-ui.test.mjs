@@ -82,14 +82,16 @@ test("result checks retry pending matches every 30 minutes and settled matches d
 });
 
 
-test("daily plan financial summary never invents stake size, bankroll or exposure", () => {
+test("daily plan financial summary reads stake and exposure from the virtual bankroll engine", () => {
   assert.match(html, /class="plan-summary"/);
   assert.match(html, /id="planMandatoryCount"/);
   assert.match(html, /id="planStakeTotal">—/);
-  assert.match(html, /не рассчитана/);
+  assert.match(html, /открытые ставки/);
   assert.match(html, /id="planExposure">—/);
-  assert.match(html, /банк не задан/);
+  assert.match(html, /от банка/);
   assert.match(html, /mandatoryCount\.textContent=String\(bestBets\.length\)/);
+  assert.match(html, /put\('planStakeTotal',money\(summary\.openStake\)\)/);
+  assert.match(html, /put\('planExposure',summary\.exposurePercent\.toFixed\(1\)\+'%'\)/);
   assert.match(html, /id="planUpdated"/);
 });
 test("match cards expose current bookmaker odds without opening the details", () => {
