@@ -147,13 +147,13 @@ test("odds status distinguishes quote scrape time from upstream dataset retrieva
 test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /async function loadMatches\(force=false\)/);
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
-  assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
+  assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>\{loadMatches\(true\);loadLiveMatches\(true\);\}/);
   assert.match(html, /\$\('#navMatches'\)\.onclick=showMatches;/);
 });
 
 test("schedule request includes a rolling seven-day date window and bypasses legacy unscoped cache", () => {
   const start = html.indexOf("function buildScheduleDateParams(");
-  const end = html.indexOf("async function loadMatches(force=false)", start);
+  const end = html.indexOf("async function fetchUpcomingSchedule(force=false)", start);
   assert.ok(start >= 0 && end > start);
   const sandbox = {};
   vm.runInNewContext(html.slice(start, end) + "\nglobalThis.buildScheduleDateParams = buildScheduleDateParams;", sandbox);
