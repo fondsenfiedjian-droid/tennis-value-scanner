@@ -126,19 +126,23 @@ async function main() {
   }
 
   const reports = {};
+  const kFactors = [32, 80];
   for (const tour of ["atp", "wta"]) {
     reports[tour] = {};
     for (const windowYears of [null, 5, 3]) {
       const label = windowYears === null ? "all_history" : String(windowYears) + "_seasons";
-      reports[tour][label] = runRankAgeWalkForward(rowsByTour[tour], {
-        tour,
-        evaluationStart: options.evaluationStart,
-        evaluationEnd: options.evaluationEnd,
-        kFactor: 32,
-        trainingWindowYears: windowYears,
-        minTrainingMatches: options.minTrainingMatches,
-        maxTrainingRows: options.maxTrainingRows
-      });
+      reports[tour][label] = {};
+      for (const kFactor of kFactors) {
+        reports[tour][label]["k" + kFactor] = runRankAgeWalkForward(rowsByTour[tour], {
+          tour,
+          evaluationStart: options.evaluationStart,
+          evaluationEnd: options.evaluationEnd,
+          kFactor,
+          trainingWindowYears: windowYears,
+          minTrainingMatches: options.minTrainingMatches,
+          maxTrainingRows: options.maxTrainingRows
+        });
+      }
     }
   }
 
@@ -149,7 +153,7 @@ async function main() {
     evaluation: {
       from: options.evaluationStart,
       to: options.evaluationEnd,
-      kFactor: 32,
+      kFactors: [32, 80],
       windows: ["all_history", "5_seasons", "3_seasons"],
       population: "ATP main-tour levels G, M, A, F, D, O; WTA main-tour levels G, PM, P, I, W, F, D, O and legacy Tier I-V; Challenger and futures excluded from this first comparison"
     },
@@ -174,7 +178,9 @@ async function main() {
     wta: inventory.byTour.wta,
     serveStatsRows: inventory.serveStatsRows,
     summary: Object.fromEntries(Object.entries(reports).map(([tour, windows]) => [
-      tour, Object.fromEntries(Object.entries(windows).map(([window, result]) => [window, result.summary]))
+      tour, Object.fromEntries(Object.entries(windows).map(([window, byK]) => [
+        window, Object.fromEntries(Object.entries(byK).map(([k, result]) => [k, result.summary]))
+      ]))
     ]))
   }, null, 2));
 }
