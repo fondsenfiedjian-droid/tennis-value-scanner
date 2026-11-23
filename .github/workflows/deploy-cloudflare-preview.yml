@@ -66,6 +66,9 @@ jobs:
           if (health.liveTennisApiConfigured !== true) {
             throw new Error("Preview Worker is missing LIVE_TENNIS_API_KEY; player search and Elo comparison cannot work");
           }
+          if (health.researchAccessConfigured !== true) {
+            throw new Error("Preview Worker research download token is not configured after secret rotation");
+          }
           const endpoints = Array.isArray(health.endpoints) ? health.endpoints : [];
           if (!endpoints.some(endpoint => endpoint.startsWith("/players/search"))) {
             throw new Error("Preview Worker does not advertise /players/search");
@@ -186,6 +189,10 @@ jobs:
             read("/history/packages?kind=tape"),
             read("/history/packages?kind=archive")
           ]);
+          const coverage = await read("/history/coverage");
+          if (!coverage.buckets || !coverage.totals) {
+            throw new Error("History coverage endpoint returned no measured tour/draw buckets");
+          }
           if (!Array.isArray(tape.data) || !Array.isArray(archive.data) ||
               tape.data.length === 0 || archive.data.length === 0) {
             throw new Error("PRO package inventory is empty or malformed: tape=" +
@@ -213,7 +220,9 @@ jobs:
               signal: AbortSignal.timeout(30000)
             });
           if (!downloadResponse.ok) {
-            throw new Error("Protected archive package download returned HTTP " + downloadResponse.status);
+            const errorBody = await downloadResponse.text();
+            throw new Error("Protected archive package download returned HTTP " + downloadResponse.status +
+              "; response=" + errorBody.slice(0, 300));
           }
           const reader = downloadResponse.body.getReader();
           const firstChunk = await reader.read();
@@ -227,6 +236,11 @@ jobs:
           }
           console.log("Archive file stream OK: " + archiveCsv.filename + "; compressed bytes=" +
             archiveCsv.bytes + "; first chunk=" + firstChunk.value.length + " bytes.");
+          console.log("History coverage snapshot: as_of=" + (coverage.as_of || "unknown") +
+            "; ATP singles=" + (coverage.buckets.atp_singles?.matches ?? "unknown") +
+            "; WTA singles=" + (coverage.buckets.wta_singles?.matches ?? "unknown") +
+            "; Challenger singles=" + (coverage.buckets.challenger_singles?.matches ?? "unknown") +
+            "; ITF singles=" + (coverage.buckets.itf_singles?.matches ?? "unknown") + ".");
           console.log("Live Tennis PRO bulk history verified: monthly tape packages=" + tape.data.length +
             "; newest tape=" + latestTape.period + "; matches=" + (latestTape.match_count ?? "unknown") +
             "; archive years=" + archive.data.length + "; newest archive year=" + latestArchive.period +
