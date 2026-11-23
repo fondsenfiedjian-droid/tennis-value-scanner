@@ -608,6 +608,15 @@ test("virtual bet history provides player, tournament, date and result filters",
   assert.match(html,/allRows\.filter\(b=>/);
 });
 
+test("virtual balance exposes day, week, month and all-time financial summaries",()=>{
+  assert.match(html,/id="balancePeriod"/);
+  for(const value of ["day","week","month","all"])assert.match(html,new RegExp('<option value="'+value+'"'));
+  assert.match(html,/periodSettlements/);
+  assert.match(html,/periodTurnover/);
+  assert.match(html,/periodDrawdown/);
+  assert.match(html,/periodRoi/);
+});
+
 
 test("archive result checker reports status counts without removed bankroll references", () => {
   const start = html.indexOf("$('#archiveCheckResults').onclick=async()=>{");
