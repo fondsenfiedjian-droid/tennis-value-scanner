@@ -97,7 +97,7 @@ A source or derived feature cannot enter the training corpus until all applicabl
 - Independent player-ID methods agree on 5,620 ATP and 7,191 WTA uniquely mapped source IDs; 62 ATP and 120 WTA IDs have conflicting match-evidence mappings and remain quarantined.
 - Sackmann is CC BY-NC-SA 4.0. TennisMyLife has non-commercial/personal-educational restrictions. Live Tennis API offline archive retention and ML-training rights are not established. Do not assume these sources are commercially trainable.
 - Valuebetennis is CC BY 4.0; preserve attribution.
-- AcesAPI remains a possible source for a later rights-and-coverage review; no account or key has been created.
+- AcesAPI account and API key are now present. Its conditional rights and limited 2025 preflight evidence are documented in [`aggregator1-source-admission-update-2026-11-23.md`](aggregator1-source-admission-update-2026-11-23.md); that dated addendum supersedes the earlier account-status statement. AcesAPI is not admitted to the canonical corpus pending coverage, tier, identity, chronology, and upstream-rights validation.
 
 ## 5. Next implementation sequence
 
