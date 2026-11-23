@@ -19,12 +19,14 @@ export async function runAcesApiTournamentPreflight({apiKey,outDir,fetchImpl=fet
     const json=await response.json(),data=json?.data??json;
     if(!Array.isArray(data?.tournaments))throw new Error("AcesAPI "+spec.tour+" response has no tournaments array");
     const tournaments=data.tournaments, surfaces={},majorCounts={major:0,nonMajor:0,unknown:0},statusCounts={};
-    let minStart=null,maxEnd=null,completeRows=0;\n    const coreFields=["tournament_id","name","start_date","end_date","surface","city","country"];\n    const missingCoreFields=Object.fromEntries(coreFields.map(k=>[k,0]));
+    let minStart=null,maxEnd=null,completeRows=0;
+    const coreFields=["tournament_id","name","start_date","end_date","surface","city","country"];\n    const missingCoreFields=Object.fromEntries(coreFields.map(k=>[k,0]));
     for(const t of tournaments){
       const s=String(t.surface??"(missing)").toLowerCase();surfaces[s]=(surfaces[s]||0)+1;
       const mk=t.major===true?"major":t.major===false?"nonMajor":"unknown";majorCounts[mk]++;
       const st=String(t.status??"(missing)").toLowerCase();statusCounts[st]=(statusCounts[st]||0)+1;
-      for(const key of coreFields)if(t[key]===null||t[key]===undefined||t[key]==="")missingCoreFields[key]++;\n      if(coreFields.every(key=>t[key]!==null&&t[key]!==undefined&&t[key]!==""))completeRows++;
+      for(const key of coreFields)if(t[key]===null||t[key]===undefined||t[key]==="")missingCoreFields[key]++;
+      if(coreFields.every(key=>t[key]!==null&&t[key]!==undefined&&t[key]!==""))completeRows++;
       if(t.start_date&&(!minStart||t.start_date<minStart))minStart=t.start_date;
       if(t.end_date&&(!maxEnd||t.end_date>maxEnd))maxEnd=t.end_date;
     }
