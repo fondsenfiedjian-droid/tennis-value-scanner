@@ -343,7 +343,7 @@ function cacheKeyUrl(env, pathname) {
 
 async function fetchLiveTennis(url, options = {}, env = {}) {
   const cache = caches.default;
-  const guardKey = new Request(cacheKeyUrl(env, "/__live-tennis-quota-guard"), { method: "GET" });
+  const guardKey = new Request(cacheKeyUrl(env, "/__live-tennis-quota-guard/v2"), { method: "GET" });
   const guard = await cache.match(guardKey);
   if (guard) {
     const payload = await guard.json();
