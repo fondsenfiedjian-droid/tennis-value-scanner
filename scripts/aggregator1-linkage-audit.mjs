@@ -265,6 +265,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   return {
     schemaVersion:2,
     purpose:"Conservative aggregate-only linkage audit; no match-level or player-level links are written.",
+    coverageInterpretation:{denominator:"Observed Valuebetennis archive rows with valid tour, date and player pair; this is not an official tournament-schedule denominator.",sourceTierCounts:"Sackmann source row counts are reported by tour/year/file tier and are not interchangeable with Valuebetennis competition labels.",partialYear:"2026 is a current/partial archive snapshot and must not be compared with completed historical years as if it were complete.",completeness:"No year is certified complete by this linkage audit; source row counts describe only the files downloaded for this run."},
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannFiles:sackmannFiles.map(x=>basename(x.filename)).sort(),sackmannSourceRows:sourceRows,sackmannSourceRowsByYear:sourceRowsByYear,sackmannSourceRowsByYearTier:sourceRowsByYearTier},
     matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"not required for a single player-pair/surface/date candidate; exact normalized name or explicit alias is used only to resolve multiple candidates",surface:"normalized exact surface, including French Valuebetennis labels",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"one candidate is accepted; multiple candidates require exactly one tournament-name match, otherwise remain ambiguous"},
     eventNameDiagnostics:{method:"For accepted links, compare normalized source tournament name with Sackmann tournament name; a mismatch is diagnostic only and does not automatically reject a unique pair/surface/date candidate.",topMismatchPairs:[...eventMismatchPairs].sort((a,b)=>b[1]-a[1]).slice(0,50).map(([pair,count])=>({pair,count}))},
@@ -283,6 +284,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     byTourYearCategory:Object.fromEntries(Object.entries(byTourYearCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     warnings:[
       "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
+      "Coverage percentages use observed archive rows, not official event or match schedule denominators; 2026 is a partial snapshot, and no year is certified complete.",
       "Sackmann tourney_date is generally the event-week date, not the exact match date; the date window is a candidate filter, not a claim about match start time.",
       "No initials/fuzzy-name matching is attempted. Match-evidence player-ID links are emitted only as aggregate counts and never as raw crosswalk rows.",
       "Do not merge rows into Production. Use only the aggregate report to assess source overlap and data quality.",
