@@ -1039,7 +1039,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
   .research-journal{overflow:hidden}
   .research-table-wrap{overflow-x:auto;margin-top:12px;max-width:100%;-webkit-overflow-scrolling:touch}
-  .research-table{border-collapse:collapse;width:100%;min-width:1120px;font-size:11px;line-height:1.45}
+  .research-table{border-collapse:collapse;width:100%;min-width:1320px;font-size:11px;line-height:1.45}
   .research-table th,.research-table td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
   .research-table th{position:sticky;top:0;background:#171311;color:var(--amber);font-weight:800;white-space:nowrap}
   .research-table td{color:var(--text);max-width:250px}
@@ -1120,8 +1120,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     <div class="section-head" style="margin-top:0"><h2>Журнал исследований модели</h2><button type="button" class="linkbtn" id="researchJournalRefresh">Обновить</button></div>
     <div class="muted" id="researchJournalMeta">Загрузка протоколов тестирования…</div>
     <div class="research-table-wrap"><table class="research-table"><thead><tr>
-      <th>ID теста</th><th>Статус</th><th>Тур</th><th>Базовая модель → вариант</th><th>K</th><th>Окно обучения</th><th>Период оценки</th><th>Brier до → после</th><th>LogLoss до → после</th><th>Выборка и параметры</th>
-    </tr></thead><tbody id="researchJournalRows"><tr><td colspan="10">Загрузка журнала…</td></tr></tbody></table></div>
+      <th>ID теста</th><th>Статус</th><th>Тур</th><th>Базовая модель → вариант</th><th>K</th><th>Окно обучения</th><th>Период оценки</th><th>Выборка N</th><th>Brier до → после</th><th>LogLoss до → после</th><th>ROI</th><th>Выборка и параметры</th>
+    </tr></thead><tbody id="researchJournalRows"><tr><td colspan="12">Загрузка журнала…</td></tr></tbody></table></div>
     <div class="archive-meta" id="researchJournalFootnote">Brier и LogLoss: меньше — лучше. ROI не рассчитывается, если в карточке теста он не указан. Исследовательские тесты не меняют рабочую модель автоматически.</div>
   </section>
   <section class="panel" id="virtualStrategyStats" style="margin-top:16px"><b>Эффективность виртуальной стратегии</b><div class="muted">Отдельно от точности прогнозной модели. Считаются только реальные записи виртуального журнала с подтверждёнными исходами.</div><div class="stats" style="margin-top:12px"><div><div class="muted">ROI</div><div class="stat-num" id="strategyRoi">—</div></div><div><div class="muted">Победы</div><div class="stat-num" id="strategyWinRate">—</div></div><div><div class="muted">Рассчитано ставок</div><div class="stat-num" id="strategySettled">0</div></div><div><div class="muted">Оборот</div><div class="stat-num" id="strategyTurnover">0 €</div></div><div><div class="muted">Максимальная просадка</div><div class="stat-num" id="strategyDrawdown">0 €</div></div><div><div class="muted">Фактор прибыли</div><div class="stat-num" id="strategyProfitFactor">—</div></div></div><div class="archive-list" id="strategySegments"><div class="archive-item">Пока нет рассчитанных виртуальных ставок.</div></div></section>
@@ -2652,7 +2652,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       meta.textContent='Обновлено: '+(journal.updatedAt||'—')+' · Тестов: '+rows.length+' · Источник: '+(journal.source||'—')+' · Архив: '+(journal.sourceCoverage?.annualPackages||'—')+' годовых пакетов, '+Number(journal.sourceCoverage?.manifestMatchCount||0).toLocaleString('ru-RU')+' записей.';
       researchJournalLoaded=true;
     }catch(error){
-      const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=10;td.textContent='Не удалось загрузить журнал: '+String(error.message||error);tr.appendChild(td);body.appendChild(tr);meta.textContent='Журнал временно недоступен. Нажмите «Обновить».';
+      const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=12;td.textContent='Не удалось загрузить журнал: '+String(error.message||error);tr.appendChild(td);body.appendChild(tr);meta.textContent='Журнал временно недоступен. Нажмите «Обновить».';
     }
   }
   $('#researchJournalRefresh')?.addEventListener('click',()=>loadResearchTestJournal(true));
