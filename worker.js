@@ -442,6 +442,7 @@ export default {
         service: "tennis-value-api",
         buildId: WORKER_BUILD_ID,
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
+        researchAccessConfigured: Boolean(env.TVS_RESEARCH_ACCESS_TOKEN),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
