@@ -13,6 +13,8 @@ on:
       - "scripts/test-aggregator1-linkage-audit.mjs"
       - "scripts/aggregator1-acesapi-audit.mjs"
       - "scripts/test-aggregator1-acesapi-audit.mjs"
+      - "scripts/aggregator1-acesapi-preflight.mjs"
+      - "scripts/test-aggregator1-acesapi-preflight.mjs"
       - ".github/workflows/aggregator1-research.yml"
   workflow_dispatch:
 jobs:
@@ -34,11 +36,15 @@ jobs:
           node --check scripts/test-aggregator1-linkage-audit.mjs
           node --check scripts/aggregator1-acesapi-audit.mjs
           node --check scripts/test-aggregator1-acesapi-audit.mjs
+          node --check scripts/aggregator1-acesapi-preflight.mjs
+          node --check scripts/test-aggregator1-acesapi-preflight.mjs
       - name: Run synthetic linkage fixture
         run: node scripts/test-aggregator1-linkage-audit.mjs
       - name: Run synthetic player ID fixture
         run: node scripts/test-aggregator1-player-id-audit.mjs
       - name: Run synthetic AcesAPI audit fixture
         run: node scripts/test-aggregator1-acesapi-audit.mjs
+      - name: Run synthetic AcesAPI preflight fixture
+        run: node scripts/test-aggregator1-acesapi-preflight.mjs
       - name: Run synthetic duplicate audit fixture
         run: node scripts/test-aggregator1-duplicate-audit.mjs
