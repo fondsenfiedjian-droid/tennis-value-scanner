@@ -409,7 +409,7 @@ test("settings preview changes are committed only by Save and Cancel restores sa
   assert.match(skinChange, /applySkin\(selected\)/);
   assert.doesNotMatch(skinChange, /localStorage\.setItem|activeSkin=selected/);
   assert.match(settingsSource, /const cancelSettings=\(\)=>\{populateSettingsForm\(\);applySkin\(activeSkin\)/);
-  assert.match(settingsSource, /data\.skin=\$\('#skinSelect'\)\.value==='steel'\?'steel':'black'/);
+  assert.match(settingsSource, /data\.skin=\['black','steel','neon','terracotta'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'terracotta'/);
   assert.match(settingsSource, /const tours=selectedTours\(\)/);
   assert.match(settingsSource, /if\(!tours\.length\)/);
   assert.match(settingsSource, /Выбери хотя бы один турнир/);
@@ -693,13 +693,15 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
   assert.match(html,/Стальной синий · холодные акценты/);
+  assert.match(html,/Music Play Bar Control · графит, зелёный, терракота/);
+  assert.match(html,/let activeSkin=\['black','steel','neon','terracotta'\]\.includes\(saved\.skin\)\?saved\.skin:'terracotta'/);
   assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
   const start=html.indexOf("$('#skinSelect').addEventListener('change'");
   const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
   const preview=html.slice(start,end);
   assert.match(preview,/applySkin\(selected\)/);
   assert.doesNotMatch(preview,/localStorage\.setItem|activeSkin=selected/);
-  assert.match(html,/data\.skin=\$\('#skinSelect'\)\.value==='steel'\?'steel':'black'/);
+  assert.match(html,/data\.skin=\['black','steel','neon','terracotta'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'terracotta'/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
 });
 
