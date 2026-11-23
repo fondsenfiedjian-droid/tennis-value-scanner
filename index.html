@@ -2647,7 +2647,7 @@
       hasMore=meta.has_more===true;
       if(!hasMore)break;
       const count=Number(meta.count);
-      if(!Number.isInteger(count)||count<=0||pageRows.length===0){hasMore=false;break;}
+      if(!Number.isInteger(count)||count<=0||pageRows.length===0)throw new Error('API сообщил о следующей странице, но метаданные пагинации некорректны.');
       const currentOffset=Number.isInteger(Number(meta.offset))?Number(meta.offset):offset;
       offset=currentOffset+count;
     }
@@ -2673,7 +2673,7 @@
       // Schedule loading must not wait for local prediction-archive initialization.
       setConnectionStatus('ПРОВЕРКА API');
       $('#matchList').innerHTML='<div class="panel loading">Загружаю расписание матчей…</div>';
-      try{const raw=localStorage.getItem('tvs-match-cache-v2');if(raw)saved=JSON.parse(raw);}catch(e){}
+      try{const raw=localStorage.getItem('tvs-match-cache-v3');if(raw)saved=JSON.parse(raw);}catch(e){}
       // Odds providers run independently: a slow bookmaker must not block the match schedule.
       const oddsPromise=loadOdds();
       // Show a fresh schedule cache immediately; odds refresh must never hold the schedule.
@@ -2698,7 +2698,7 @@
       setConnectionStatus(scheduleResult.hasMore
         ?'РАСПИСАНИЕ ЧАСТИЧНО · '+matches.length+'/'+(scheduleResult.total??'?')
         :'Live Tennis API · '+scheduleCacheLabel+' · '+matches.length+' матчей');
-      localStorage.setItem('tvs-match-cache-v2',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds,scheduleCoverage:window.scheduleCoverage}));
+      localStorage.setItem('tvs-match-cache-v3',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds,scheduleCoverage:window.scheduleCoverage}));
       renderMatches(matches);
       oddsPromise.then(()=>{if(window.cachedMatches===matches)renderMatches(matches);}).catch(()=>{});
     }catch(err){
