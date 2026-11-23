@@ -315,7 +315,7 @@
     const current=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(current[id]!==undefined)$('#'+id).value=current[id];});
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
-    $('#skinSelect').value=current.skin==='olive'?'olive':'black';
+    $('#skinSelect').value=['olive','amber-led'].includes(current.skin)?current.skin:'black';
     if(Array.isArray(current.tours))tourChecks.forEach(input=>input.checked=current.tours.includes(input.dataset.tour));
   }
   const open=()=>{populateSettingsForm();modal.classList.add('show');};
