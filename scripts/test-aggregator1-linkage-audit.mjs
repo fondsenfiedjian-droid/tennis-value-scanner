@@ -383,3 +383,15 @@ assert.equal(scoreConflictDiagnostics.strictCandidateAllScoresPresent,1);
 assert.equal(scoreConflictDiagnostics.strictCandidateOneDistinctScore,0);
 assert.equal(scoreConflictDiagnostics.strictCandidateScoreConflict,1);
 assert.equal(scoreConflictDiagnostics.strictCandidateOneDistinctRound,1);
+
+// Whitespace-only score formatting differences must normalize to one score.
+const scoreWhitespaceSack=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id,score,round",
+  "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4  6-4,R32",
+  "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32"
+].join("\n")}];
+const scoreWhitespaceReport=auditValuebetSackmann(tierDuplicateValuebet,scoreWhitespaceSack);
+const scoreWhitespaceDiagnostics=scoreWhitespaceReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies;
+assert.equal(scoreWhitespaceDiagnostics.strictCandidate,1);
+assert.equal(scoreWhitespaceDiagnostics.strictCandidateOneDistinctScore,1);
+assert.equal(scoreWhitespaceDiagnostics.strictCandidateScoreConflict,0);
