@@ -153,4 +153,27 @@ assert.equal(stTropezReport.totals.linkedUnique,1);
 assert.equal(stTropezReport.totals.eventNameExactMatch,1);
 assert.equal(stTropezReport.totals.eventNameMismatch,0);
 
-console.log("Aggregator 1 linkage audit fixtures: PASS");
+
+const handConflictValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie;joueur1_id;joueur2_id",
+  "h1;2025-01-12;Australian Open;atp;dur;Alex Smith;Player B;Main tour;700;701",
+  "h2;2025-02-10;Rotterdam;atp;dur;Alex Smith;Player C;Main tour;700;702"
+].join("\\n")}];
+const handConflictSack=[{filename:"atp_matches_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250106,Australian Open,Hard,Alex Smith,Player B,71,72",
+  "20250203,Rotterdam,Hard,Player C,Alex Smith,73,79"
+].join("\\n")}];
+const handConflictPlayers=[{filename:"atp_players.csv",content:[
+  "player_id,name_first,name_last,hand,dob,ioc,height",
+  "71,Alex,Smith,R,19900101,USA,180",
+  "79,Alex,Smith,L,19900101,USA,180",
+  "72,Player,B,R,19910101,USA,181",
+  "73,Player,C,R,19920101,USA,182"
+].join("\\n")}];
+const handConflictReport=auditValuebetSackmann(handConflictValuebet,handConflictSack,{playerFiles:handConflictPlayers});
+assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannIds,1);
+assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.sameDobIocDifferentHand,1);
+assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentHandOnly,1);
+assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.identicalAvailableSignature,0);
+\nconsole.log("Aggregator 1 linkage audit fixtures: PASS");
