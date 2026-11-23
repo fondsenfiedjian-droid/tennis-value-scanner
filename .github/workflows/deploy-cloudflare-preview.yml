@@ -5,20 +5,21 @@ on:
   push:
     branches:
       - ui/tennis-value-scanner-2
+      - integration/live-tennis-pro-markets
 
 permissions:
   contents: read
 
 jobs:
   deploy-preview:
-    if: github.ref == 'refs/heads/ui/tennis-value-scanner-2'
+    if: github.ref == 'refs/heads/ui/tennis-value-scanner-2' || github.ref == 'refs/heads/integration/live-tennis-pro-markets'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out preview branch
         uses: actions/checkout@v4
         with:
-          ref: ui/tennis-value-scanner-2
+          ref: ${{ github.ref_name }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -56,7 +57,12 @@ jobs:
             throw new Error("Preview Worker does not advertise /players/search");
           }
           if (!endpoints.includes("/predict")) throw new Error("Preview Worker does not advertise /predict");
-          console.log("Preview Worker health OK; Live Tennis API configured; player search and Elo comparison routes advertised.");
+          if (!endpoints.includes("/markets?match_id=123") ||
+              !endpoints.includes("/markets/123/prices") ||
+              !endpoints.includes("/matches/123/prices")) {
+            throw new Error("Preview Worker does not advertise Live Tennis PRO market routes");
+          }
+          console.log("Preview Worker health OK; Live Tennis API configured; player search, Elo and PRO market routes advertised.");
           NODE
 
       - name: End-to-end player comparison smoke test (uses cached API reads)
@@ -96,6 +102,26 @@ jobs:
           }
           const usage = await read("/usage");
           const tier = String(usage.tier || usage.base_tier || "unknown").toLowerCase();
+          if (!["pro", "ultra"].includes(tier)) throw new Error("Preview Live Tennis API key is not PRO-entitled; reported tier=" + tier);
+          const marketSchedule = await read("/matches?status=upcoming&limit=200&has_market=true");
+          const marketMatch = (Array.isArray(marketSchedule.data) ? marketSchedule.data : [])
+            .find(match => match?.has_market === true && Number.isSafeInteger(Number(match.id)) && Number(match.id) > 0);
+          if (marketMatch) {
+            const marketResponse = await fetch(base + "/markets?match_id=" + encodeURIComponent(marketMatch.id), {
+              signal: AbortSignal.timeout(15000)
+            });
+            let marketPayload = {};
+            try { marketPayload = await marketResponse.json(); } catch {}
+            if (marketResponse.status === 403) throw new Error("Live Tennis PRO markets returned HTTP 403; key entitlement is not active");
+            if (![200, 404].includes(marketResponse.status)) throw new Error("Live Tennis market smoke test returned HTTP " + marketResponse.status);
+            if (marketResponse.ok) {
+              const pricesResponse = await fetch(base + "/markets/" + encodeURIComponent(marketMatch.id) + "/prices?limit=5", {
+                signal: AbortSignal.timeout(15000)
+              });
+              if (pricesResponse.status === 403) throw new Error("Live Tennis PRO price history returned HTTP 403");
+              if (![200, 404].includes(pricesResponse.status)) throw new Error("Live Tennis price-history smoke test returned HTTP " + pricesResponse.status);
+            }
+          }
           const productionUsageResponse = await fetch("https://tennis-value-api.fonds-enfiedjian.workers.dev/usage", {
             signal: AbortSignal.timeout(15000)
           });
