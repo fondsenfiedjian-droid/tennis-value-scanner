@@ -412,7 +412,7 @@ test("settings preview changes are committed only by Save and Cancel restores sa
   assert.match(skinChange, /applySkin\(selected\)/);
   assert.doesNotMatch(skinChange, /localStorage\.setItem|activeSkin=selected/);
   assert.match(settingsSource, /const cancelSettings=\(\)=>\{populateSettingsForm\(\);applySkin\(activeSkin\)/);
-  assert.match(settingsSource, /data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'amber-led'/);
+  assert.match(settingsSource, /data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'black'/);
   assert.match(settingsSource, /const tours=selectedTours\(\)/);
   assert.match(settingsSource, /if\(!tours\.length\)/);
   assert.match(settingsSource, /Выбери хотя бы один турнир/);
@@ -779,16 +779,15 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/Электронное табло · чёрный и оранжевый неон/);
   assert.match(html,/body\[data-skin="amber-led"\]/);
   assert.match(html,/led-digit/);
-  assert.match(html,/let activeSkin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(saved\.skin\)\?saved\.skin:'amber-led'/);
-  assert.match(html,/if\(saved\.amberLedDefaultApplied!==true\)/);
-  assert.match(html,/data\.amberLedDefaultApplied=true/);
+  assert.match(html,/let activeSkin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(saved\.skin\)\?saved\.skin:'black'/);
+  assert.doesNotMatch(html,/saved\.skin='amber-led'|amberLedDefaultApplied/);
   assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
   const start=html.indexOf("$('#skinSelect').addEventListener('change'");
   const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
   const preview=html.slice(start,end);
   assert.match(preview,/applySkin\(selected\)/);
   assert.doesNotMatch(preview,/localStorage\.setItem|activeSkin=selected/);
-  assert.match(html,/data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'amber-led'/);
+  assert.match(html,/data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'black'/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
 });
 
