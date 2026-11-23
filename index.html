@@ -761,8 +761,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     <div class="plan-summary-heading"><b>▥ &nbsp; ПЛАН СТАВОК НА СЕГОДНЯ</b><span id="planUpdated">Ожидаю данные</span></div>
     <div class="plan-summary-grid">
       <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ СТАВКИ</span><b id="planMandatoryCount">0</b></div>
-      <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>не рассчитана</small></div>
-      <div class="plan-summary-item"><span>РИСК БАНКА</span><b id="planExposure">—</b><small>банк не задан</small></div>
+      <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>открытые ставки</small></div>
+      <div class="plan-summary-item"><span>РИСК БАНКА</span><b id="planExposure">—</b><small>от банка</small></div>
       <div class="plan-summary-item"><span>В НАБЛЮДЕНИИ</span><b id="additionalCountSummary">0</b></div>
     </div>
   </section>
@@ -910,7 +910,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
     const more=document.createElement('main');
     more.id='moreView';more.className='screen-view';
-    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
+    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · виртуальная стратегия активна.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
     live.after(more);
 
     const balance=document.createElement('main');
@@ -920,7 +920,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
     const history=document.createElement('main');
     history.id='historyView';history.className='screen-view';
-    history.innerHTML='<header class="screen-header"><div><div class="brand">ИСТОРИЯ СТАВОК</div><div class="sub">Полный журнал виртуальных ставок</div></div></header><div class="archive-list" id="virtualBetHistory"><div class="panel empty">Виртуальных ставок пока нет.</div></div>';
+    history.innerHTML='<header class="screen-header"><div><div class="brand">ИСТОРИЯ СТАВОК</div><div class="sub">Полный журнал виртуальных ставок</div></div></header><section class="more-screen-card"><div class="field"><label for="historyPlayerFilter">Игрок</label><input id="historyPlayerFilter" type="search" placeholder="Имя игрока"></div><div class="field"><label for="historyTournamentFilter">Турнир</label><input id="historyTournamentFilter" type="search" placeholder="Название турнира"></div><div class="field"><label for="historyResultFilter">Результат</label><select id="historyResultFilter"><option value="all">Все ставки</option><option value="open">Открытые</option><option value="won">Выигрыш</option><option value="lost">Проигрыш</option><option value="void">Возврат</option></select></div><div class="field"><label for="historyFromDate">Дата с</label><input id="historyFromDate" type="date"></div><div class="field"><label for="historyToDate">Дата по</label><input id="historyToDate" type="date"></div></section><div class="archive-list" id="virtualBetHistory"><div class="panel empty">Виртуальных ставок пока нет.</div></div>';
     balance.after(history);
 
     const settings=document.createElement('main');
@@ -929,6 +929,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     history.after(settings);
     const openSettings=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
     $('#settingsScreenOpen').addEventListener('click',openSettings);
+    ['historyPlayerFilter','historyTournamentFilter','historyResultFilter','historyFromDate','historyToDate'].forEach(id=>$('#'+id).addEventListener('input',renderVirtualBank));
 
     const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
     const labMount=$('#moreLabMount');
@@ -2300,6 +2301,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     put('virtualRoi',summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%');
     put('virtualDrawdown',money(summary.maxDrawdown));
     put('virtualTurnover',money(summary.totalStaked));
+    put('planStakeTotal',money(summary.openStake));
+    put('planExposure',summary.exposurePercent.toFixed(1)+'%');
     put('headerBalance',Math.round(summary.equity).toLocaleString('ru-RU')+' €');
     const status=$('#virtualBankStatus');
     if(status)status.textContent='Свободно: '+money(summary.balance)+' · в открытых ставках: '+money(summary.openStake)+' · риск банка: '+summary.exposurePercent.toFixed(1)+'% · ROI: '+(summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%')+'. Виртуальные ставки формируются автоматически только по строгим рекомендациям.';
@@ -2307,8 +2310,21 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(list){
       const open=state.openBets.map(b=>({...b,status:'open'}));
       const settled=state.transactions.filter(tx=>tx.type==='settlement'&&tx.betSnapshot).map(tx=>({...tx.betSnapshot,status:'settled',profitLoss:tx.profit,outcome:tx.outcome,settledAt:tx.at}));
-      const rows=[...open,...settled].sort((a,b)=>Date.parse(b.placedAt||b.settledAt||0)-Date.parse(a.placedAt||a.settledAt||0));
-      list.innerHTML=rows.length?rows.map(b=>'<article class="archive-item"><b>'+escapeHtml(b.player||'Игрок не указан')+'</b> — '+escapeHtml(b.opponent||'соперник не указан')+'<div class="archive-meta">'+escapeHtml(b.tournament||'Турнир не указан')+' · '+(Number(b.odds)||0).toFixed(2)+' · ставка '+money(b.stake)+' · '+(b.status==='settled'?'рассчитана':'открыта')+'</div><div class="archive-meta">Прогноз '+(Number(b.probability)*100).toFixed(1)+'% · EV '+(Number(b.ev)||0).toFixed(2)+'% · '+(b.status==='settled'?'P/L '+money(b.profitLoss):'ожидает официального результата')+'</div></article>').join(''):'<div class="panel empty">Виртуальных ставок пока нет. Они появятся автоматически после прохождения строгих критериев и проверки свежести Winamax.</div>';
+      const allRows=[...open,...settled].sort((a,b)=>Date.parse(b.placedAt||b.settledAt||0)-Date.parse(a.placedAt||a.settledAt||0));
+      const playerNeedle=String($('#historyPlayerFilter')?.value||'').trim().toLocaleLowerCase();
+      const tournamentNeedle=String($('#historyTournamentFilter')?.value||'').trim().toLocaleLowerCase();
+      const resultNeedle=String($('#historyResultFilter')?.value||'all');
+      const from=String($('#historyFromDate')?.value||''),to=String($('#historyToDate')?.value||'');
+      const rows=allRows.filter(b=>{
+        const date=String(b.placedAt||b.settledAt||'').slice(0,10);
+        if(playerNeedle&&!String(b.player||'').toLocaleLowerCase().includes(playerNeedle)&&!String(b.opponent||'').toLocaleLowerCase().includes(playerNeedle))return false;
+        if(tournamentNeedle&&!String(b.tournament||'').toLocaleLowerCase().includes(tournamentNeedle))return false;
+        if(resultNeedle==='open'&&b.status!=='open')return false;
+        if(['won','lost','void'].includes(resultNeedle)&&b.outcome!==resultNeedle)return false;
+        if(from&&date<from)return false;if(to&&date>to)return false;
+        return true;
+      });
+      list.innerHTML=rows.length?rows.map(b=>'<article class="archive-item"><b>'+escapeHtml(b.player||'Игрок не указан')+'</b> — '+escapeHtml(b.opponent||'соперник не указан')+'<div class="archive-meta">'+escapeHtml(b.tournament||'Турнир не указан')+' · '+(Number(b.odds)||0).toFixed(2)+' · ставка '+money(b.stake)+' · '+(b.status==='settled'?'рассчитана':'открыта')+'</div><div class="archive-meta">Прогноз '+(Number(b.probability)*100).toFixed(1)+'% · EV '+(Number(b.ev)||0).toFixed(2)+'% · '+(b.status==='settled'?'P/L '+money(b.profitLoss):'ожидает официального результата')+'</div><div class="archive-meta">Зафиксировано: '+escapeHtml(new Date(b.placedAt||b.settledAt).toLocaleString('ru-RU'))+'</div></article>').join(''):allRows.length?'<div class="panel empty">По выбранным фильтрам ставок нет.</div>':'<div class="panel empty">Виртуальных ставок пока нет. Они появятся автоматически после прохождения строгих критериев и проверки свежести Winamax.</div>';
     }
   }
   function showBalance(){hideAllScreens();$('#balanceView').style.display='block';setActiveNavigation('navBalance');renderVirtualBank();}
@@ -2823,6 +2839,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const legacyBest=selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
     const bestBets=selectBestBets(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
     recordVirtualPortfolio(bestBets);
+    renderVirtualBank();
     const highest=selectHighestEvBet(evBets,filters.minOdds,filters.maxOdds);
     const betKey=bet=>[bet.match?.id||bet.match?.event_id||bet.matchIndex,bet.side,bet.player].join('|');
     let bestBetCarouselIndex=bestBetCarouselKey?bestBets.findIndex(bet=>betKey(bet)===bestBetCarouselKey):0;
