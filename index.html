@@ -3213,7 +3213,74 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
           :pfeServeInputs.status==='invalid'?'Подача/приём: несовпадение идентификаторов игроков'
            :'Подача/приём: данные не запрашивались';
         for(const bet of [betA,betB]){bet.freshnessLevel=freshness.level;bet.stakeMultiplier=freshnessStakeMultiplier(freshness.level);}
-        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+(valueGateBlocked?'limited':'good')+'">'+escapeHtml(valueGateLabel)+'</div>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div><details class="compare-dossier-block match-player-comparison"><summary>Сравнение игроков</summary><div class="compare-form-grid"><span><b>'+escapeHtml(playerA)+'</b><small>'+(result.ratingTypeA==='surface'?'Elo покрытия':'Общий Elo')+': '+escapeHtml(result.ratingA)+'</small><small>Вероятность: '+escapeHtml(result.probabilityA)+'%</small><small>Справедливый кэф: '+escapeHtml(result.fairOddsA)+'</small><small>Winamax: '+(el.dataset.oddsA?escapeHtml(Number(el.dataset.oddsA).toFixed(2)):'—')+'</small><small>EV: '+(result.evA===null?'—':fmt(result.evA)+'%')+'</small></span><span><b>'+escapeHtml(playerB)+'</b><small>'+(result.ratingTypeB==='surface'?'Elo покрытия':'Общий Elo')+': '+escapeHtml(result.ratingB)+'</small><small>Вероятность: '+escapeHtml(result.probabilityB)+'%</small><small>Справедливый кэф: '+escapeHtml(result.fairOddsB)+'</small><small>Winamax: '+(el.dataset.oddsB?escapeHtml(Number(el.dataset.oddsB).toFixed(2)):'—')+'</small><small>EV: '+(result.evB===null?'—':fmt(result.evB)+'%')+'</small></span></div><small>Покрытие: '+escapeHtml(m.surface||m.court||'не указано')+' · свежесть данных: '+escapeHtml(freshness.label)+' · надёжность: '+reliability.normalized+'/100.</small><small>Текущая форма и личные встречи (H2H) не запрашивались в этом автоматическом расчёте. Они не выдумываются и не влияют на показанные вероятности.</small></details>';
+        el.innerHTML='<strong>Модель Elo</strong> · '+escapeHtml(result.ratingA)+' / '+escapeHtml(result.ratingB)+' · '+(result.ratingTypeA==='surface'&&result.ratingTypeB==='surface'?'Elo покрытия':'общий Elo / fallback')+'<br>'+escapeHtml(result.probabilityA)+'% : '+escapeHtml(result.probabilityB)+'% · справедливые кэфы '+escapeHtml(result.fairOddsA)+' / '+escapeHtml(result.fairOddsB)+'<br><small>Дата рейтинга: '+escapeHtml(dateA)+' ('+escapeHtml(ratingAuditA)+') / '+escapeHtml(dateB)+' ('+escapeHtml(ratingAuditB)+')'+'</small><br>'+(ratingQualityWarning?'<small class="data-freshness stale">Проверка Elo: '+escapeHtml(ratingQualityA)+' / '+escapeHtml(ratingQualityB)+(result.ratingQualityGap==='review'?' · большая разница между рейтингами':'')+'. Значения не исключены автоматически.</small><br>':'')+'<span class="'+classA+'">Игрок 1: '+escapeHtml(evA)+'</span> · <span class="'+classB+'">Игрок 2: '+escapeHtml(evB)+'</span><div class="data-freshness '+(valueGateBlocked?'limited':'good')+'">'+escapeHtml(valueGateLabel)+'</div>'+marketLabel+'<div class="data-freshness '+freshness.level+'"><b>Свежесть данных: '+freshness.label+'</b><br>'+escapeHtml(freshness.details)+'.</div><div class="data-freshness '+(reliability.normalized>=85?'good':reliability.normalized>=65?'medium':'limited')+'"><b>Надёжность исходных данных: '+reliability.score+'/'+reliability.maxScore+' · '+reliability.tier+'</b><br>'+reliability.components.map(item=>escapeHtml(item.name)+': '+item.score+'/'+item.max).join(' · ')+'<br>'+escapeHtml(reliability.reasons.join('; ')||'Критических замечаний по доступным данным нет')+'<br><small>Диагностический индекс качества данных, не вероятность победы и не рекомендация по размеру ставки.</small></div><div class="data-freshness limited"><b>PFE: '+escapeHtml(pfeLabel)+'</b><br>Оценка игрока 1: '+(pfeAssessment.probability===null?'—':(pfeAssessment.probability*100).toFixed(2)+'%')+' · независимых групп: '+pfeAssessment.independentGroups+pfeDisagreementLabel+'<br>'+escapeHtml(pfeSourceLabels||'Источники пока не доступны')+'<br>Реестр PFE: '+pfeRegistry.length+' моделей, активных: '+pfeActiveCount+'<br>История Elo: '+pfeHistory.records.filter(row=>row.modelId==='general-elo-v2').length+' подтверждённых матчей · '+escapeHtml(pfeHistoryLabel)+'<br>История рынка: '+pfeMarketHistory.records.length+' матчей · '+escapeHtml(pfeMarketHistoryLabel)+'<br>Сравнение на общей выборке: '+escapeHtml(pfePairedLabel)+'<br>'+escapeHtml(pfeCombinedLabel)+'<br>Сегменты: '+escapeHtml(pfeSegmentLabel)+'<br>Чувствительность весов (только диагностика): '+escapeHtml(pfeWeightSensitivityLabel)+'<br>Устойчивость рынка: '+escapeHtml(pfeStabilityLabel)+'<br>'+escapeHtml(accessLabel)+'<br>'+escapeHtml(recentFormLabel)+'<br>'+escapeHtml(serveProfileLabel)+'<br>'+escapeHtml(serveInputLabel)+'<br><small>Рыночная история строится только по парным котировкам одного букмекера до начала матча и подтверждённому результату. Кандидатные веса пока не применяются автоматически. PFE не меняет исходную вероятность, EV или размер ставки. Форма игроков требует PRO-историю завершённых матчей и учитывается как зависимая от Elo информация. Подача и приём требуют агрегатов ULTRA; без них модель не активируется. Симуляция счёта остаётся сценарной и требует проверенных вероятностей очка на подаче.</small></div><details class="compare-dossier-block match-player-comparison"><summary>Сравнение игроков</summary><div class="compare-form-grid"><span><b>'+escapeHtml(playerA)+'</b><small>'+(result.ratingTypeA==='surface'?'Elo покрытия':'Общий Elo')+': '+escapeHtml(result.ratingA)+'</small><small>Вероятность: '+escapeHtml(result.probabilityA)+'%</small><small>Справедливый кэф: '+escapeHtml(result.fairOddsA)+'</small><small>Winamax: '+(el.dataset.oddsA?escapeHtml(Number(el.dataset.oddsA).toFixed(2)):'—')+'</small><small>EV: '+(result.evA===null?'—':fmt(result.evA)+'%')+'</small></span><span><b>'+escapeHtml(playerB)+'</b><small>'+(result.ratingTypeB==='surface'?'Elo покрытия':'Общий Elo')+': '+escapeHtml(result.ratingB)+'</small><small>Вероятность: '+escapeHtml(result.probabilityB)+'%</small><small>Справедливый кэф: '+escapeHtml(result.fairOddsB)+'</small><small>Winamax: '+(el.dataset.oddsB?escapeHtml(Number(el.dataset.oddsB).toFixed(2)):'—')+'</small><small>EV: '+(result.evB===null?'—':fmt(result.evB)+'%')+'</small></span></div><small>Покрытие: '+escapeHtml(m.surface||m.court||'не указано')+' · свежесть данных: '+escapeHtml(freshness.label)+' · надёжность: '+reliability.normalized+'/100.</small><small>Текущая форма и личные встречи (H2H) не запрашивались в этом автоматическом расчёте. Они не выдумываются и не влияют на показанные вероятности.</small><button type="button" class="compare-load-button">Загрузить статистику игроков</button><div class="compare-live-profiles" aria-live="polite"></div></details>';
+        const compareButton=el.querySelector('.compare-load-button');
+        const compareOutput=el.querySelector('.compare-live-profiles');
+        const comparePlayerIdA=getPlayerId(m.players?.p1||m.player1);
+        const comparePlayerIdB=getPlayerId(m.players?.p2||m.player2);
+        if(compareButton&&compareOutput){
+          if(!comparePlayerIdA||!comparePlayerIdB){
+            compareButton.disabled=true;
+            compareButton.textContent='ID игроков недоступны';
+            compareOutput.textContent='Источник не предоставил оба числовых ID. Запрос не отправлялся.';
+          }else{
+            compareButton.addEventListener('click',async()=>{
+              if(compareButton.disabled)return;
+              compareButton.disabled=true;
+              compareButton.textContent='Загрузка…';
+              compareOutput.textContent='Запрашиваю профили двух игроков. Результат не меняет вероятность, EV или виртуальную ставку.';
+              try{
+                const [profileA,profileB]=await Promise.all([
+                  loadPfePlayerStats(comparePlayerIdA),loadPfePlayerStats(comparePlayerIdB)
+                ]);
+                const blocks=[];
+                for(const [name,profile] of [[playerA,profileA],[playerB,profileB]]){
+                  const section=document.createElement('section');
+                  const heading=document.createElement('b');
+                  heading.textContent=name;
+                  section.append(heading);
+                  if(profile.accessStatus!=='available'||!profile.recent){
+                    const status=document.createElement('p');
+                    status.textContent='Статистика недоступна: '+accessStatusLabel(profile.accessStatus,profile)+(profile.retryAfterSeconds?' · повтор через '+profile.retryAfterSeconds+' сек.':'');
+                    section.append(status);
+                  }else{
+                    const recent=profile.recent;
+                    const form=document.createElement('p');
+                    form.textContent='Последние завершённые матчи за 180 дней: '+recent.sampleSize+' · победы '+recent.wins+' · поражения '+recent.losses+' · доля побед '+(recent.winRate===null?'нет данных':(recent.winRate*100).toFixed(1)+'%');
+                    section.append(form);
+                    const surfaceRows=Object.entries(recent.bySurface||{}).filter(([surface])=>surface!=='unknown');
+                    if(surfaceRows.length){
+                      const surface=document.createElement('p');
+                      surface.textContent='По покрытиям: '+surfaceRows.map(([key,value])=>({hard:'хард',clay:'грунт',grass:'трава'}[key]+' '+value.wins+'/'+value.matches+' ('+(value.winRate*100).toFixed(1)+'%)')).join(' · ');
+                      section.append(surface);
+                    }
+                    const recentRows=document.createElement('p');
+                    recentRows.textContent='Пять последних: '+recent.records.slice(0,5).map(row=>(row.won?'В':'П')+' '+new Date(row.date).toLocaleDateString()+' · '+({hard:'хард',clay:'грунт',grass:'трава',unknown:'покрытие не указано'}[row.surface])).join(' | ');
+                    section.append(recentRows);
+                    const serve=profile.serve;
+                    const serveLine=document.createElement('p');
+                    const metricLabels={firstServeIn:'Первая подача в корте',firstServePointsWon:'Выигрыш очков на первой',secondServePointsWon:'Выигрыш очков на второй',serviceGamesWon:'Выигранные геймы на подаче',breakPointsSaved:'Отражённые брейк-пойнты',firstServeReturnPointsWon:'Выигрыш очков на приёме первой',secondServeReturnPointsWon:'Выигрыш очков на приёме второй',returnGamesWon:'Выигранные геймы на приёме',breakPointsConverted:'Реализованные брейк-пойнты'};
+                    const serveMetrics=Object.entries(serve?.metrics||{}).filter(([,metric])=>typeof metric?.pct==='number').map(([key,metric])=>(metricLabels[key]||key)+': '+metric.pct.toFixed(1)+'%');
+                    serveLine.textContent=serveMetrics.length?'Подача/приём ULTRA: '+serveMetrics.join(' · '):'Показатели подачи/приёма ULTRA недоступны на текущем тарифе или отсутствуют в ответе API.';
+                    section.append(serveLine);
+                    if(recent.status!=='ready_for_modeling'){
+                      const note=document.createElement('small');
+                      note.textContent='Недостаточная выборка для моделирования формы: требуется минимум '+recent.minMatches+' завершённых матчей.';
+                      section.append(note);
+                    }
+                  }
+                  blocks.push(section);
+                }
+                compareOutput.replaceChildren(...blocks);
+              }catch(error){
+                compareOutput.textContent='Не удалось загрузить профили: '+String(error?.message||error);
+              }finally{
+                compareButton.disabled=false;
+                compareButton.textContent='Обновить статистику игроков';
+              }
+            });
+          }
+        }
         checked++;
         renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
         if(valueGateA.eligible&&result.evA!==null&&result.evA>0)positive++;
