@@ -16,5 +16,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Audit Preview Winamax-to-match linkage
+        if: github.ref == 'refs/heads/ui/tennis-value-scanner-2' || github.event_name == 'pull_request'
+        env:
+          APP_URL: https://deploy-preview-167--fascinating-paprenjak-1aa9b3.netlify.app
+          API_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
+        run: node scripts/preview-odds-matching-audit.mjs
       - name: Run regression tests
         run: node --test tests/*.test.mjs
