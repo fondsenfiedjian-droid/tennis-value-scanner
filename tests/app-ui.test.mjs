@@ -147,8 +147,9 @@ test("odds status distinguishes quote scrape time from upstream dataset retrieva
 test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /async function loadMatches\(force=false\)/);
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
-  assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>\{loadMatches\(true\);loadLiveMatches\(true\);\}/);
-  assert.match(html, /\$\('#navMatches'\)\.onclick=showMatches;/);
+  assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
+  assert.match(html, /\$\('#topUpcoming'\)\.onclick=showUpcoming;/);
+  assert.match(html, /\$\('#topTomorrow'\)\.onclick=showTomorrow;/);
 });
 
 test("schedule request includes a rolling seven-day date window and bypasses legacy unscoped cache", () => {
@@ -490,7 +491,7 @@ test("daily-pick carousel rotates only qualifying bets and never substitutes ord
   assert.match(html,/bestBetCarouselKey/);
   assert.match(html,/bestBetCarouselTimer=setInterval/);
   assert.match(html,/},9000\)/);
-  assert.match(html,/Нет ставок, прошедших строгий отбор\. Матчи без рекомендации здесь не показываются/);
+  assert.match(html,/Сегодня нет ставок, прошедших строгий отбор\. Матчи без рекомендации здесь не показываются/);
   assert.doesNotMatch(html,/const shownFeatured=startFeaturedMatchCarousel\(\)/);
   assert.match(html,/[Рр]азмер ставки не рассчитан/);
   assert.match(html,/aria-label="Ставка дня"/);
@@ -825,7 +826,7 @@ test("home screen places a live scoreboard above the pre-match Bet of the Day", 
   const betAt = html.indexOf('id="bestBet"');
   assert.ok(liveAt >= 0 && betAt > liveAt);
   assert.match(html, /id="liveMatchList"/);
-  assert.match(html, /id="liveRefreshBtn"/);
+  assert.match(html, /id="liveRefreshPageBtn"/);
   assert.match(html, /LIVE · МАТЧИ СЕЙЧАС/);
 });
 
