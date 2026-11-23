@@ -163,17 +163,19 @@ test("schedule request includes a rolling seven-day date window and bypasses leg
   const expectedTo = new Date(expectedFrom); expectedTo.setDate(expectedTo.getDate()+7); expectedTo.setMilliseconds(-1);
   assert.equal(params.get("from"), expectedFrom.toISOString());
   assert.equal(params.get("to"), expectedTo.toISOString());
-  assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200&'\+buildScheduleDateParams\(\)\+\(force\?'&fresh=true':''\)\)/);
+  assert.match(html, /new URLSearchParams\('status=upcoming&draw=singles&limit=200&'\+buildScheduleDateParams\(\)\)/);
+  assert.match(html, /params\.set\('offset',String\(offset\)\)/);
+  assert.match(html, /if\(force\)baseParams\.set\('fresh','true'\)/);
   assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
   assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
 });
 
 test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
-  assert.match(html, /res\.headers\.get\('X-Data-Cache'\)/);
+  assert.match(html, /response\.headers\.get\('X-Data-Cache'\)/);
+  assert.match(html, /cacheMiss\?'MISS':'HIT'/);
   assert.match(html, /'источник обновлён'/);
   assert.match(html, /'кэш Worker'/);
-  assert.match(html, /'режим кэша неизвестен'/);
-  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel/);
+  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel\+' · '\+matches\.length\+' матчей/);
 });
 
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
@@ -368,7 +370,7 @@ test("valid empty match schedules are distinct from malformed API payloads", () 
 test("empty valid schedules are cached and can be reused or shown offline", () => {
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\)&&isFreshCacheTimestamp/);
   assert.match(html, /if\(saved&&Array\.isArray\(saved\.matches\)\)/);
-  assert.match(html, /if\(matches===null\)throw new Error/);
+  assert.match(html, /if\(pageRows===null\)throw new Error/);
   assert.doesNotMatch(html, /if\(!matches\.length\)throw new Error/);
 });
 
