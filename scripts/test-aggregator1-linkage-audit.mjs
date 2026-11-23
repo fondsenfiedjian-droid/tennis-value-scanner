@@ -247,7 +247,7 @@ const ambiguousValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
 const ambiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
   "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
   "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
-  "20250310,M15 Tampa FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
+  "20250310,M15 Tampa FL,Hard,Ambiguous Player A,Ambiguous Player B,811,812",
   "20250313,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802"
 ].join("\n")}];
 const ambiguousReport=auditValuebetSackmann(ambiguousValuebet,ambiguousSackmann);
@@ -263,6 +263,8 @@ assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResoluti
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDistinctSignatures,[{signatures:2,count:1}]);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultipleSignatures,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithSingleSignature,0);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMissingPlayerIds,0);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
  
