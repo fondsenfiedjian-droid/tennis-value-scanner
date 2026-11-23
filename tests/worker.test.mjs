@@ -1796,11 +1796,13 @@ test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", 
 test("prediction scanner reuses all fresh cached candidates and caps only uncached API lookups", () => {
   assert.match(frontendSource, /const allCandidates=matches\.map/);
   assert.match(frontendSource, /const cachedCandidates=\[\],uncachedCandidates=\[\]/);
-  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,7\)\]/);
+  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,newMatchLimit\)\]/);
   assert.match(frontendSource, /forbidden_or_plan_restricted'\?6\*60\*60\*1000/);
   assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
-  assert.match(frontendSource, /cap new profile lookups at seven per scan/);
+  assert.match(frontendSource, /cap new profile lookups using the configured refresh interval/);
   assert.match(frontendSource, /const pending=Math\.max\(0,totalCandidates-scanned-failed\)/);
+  assert.match(frontendSource, /const newMatchLimit=maxNewMatchesPerScan\(\)/);
+  assert.match(frontendSource, /uncachedCandidates\.slice\(0,newMatchLimit\)/);
   assert.match(frontendSource, /В очереди:/);
   assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
@@ -3438,4 +3440,17 @@ test("TVS 2.0 preview deployment is isolated from Production", () => {
   assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
   assert.match(deployWorkflow, /wrangler\.preview\.toml/);
   assert.match(deployWorkflow, /push:\s*branches:\s*-\s*ui\/tennis-value-scanner-2/);
+});
+
+test("scanner batch size adapts to refresh interval within the BASIC daily quota", () => {
+  const start=frontendSource.indexOf("function normalizeRefreshRate(");
+  const end=frontendSource.indexOf("function currentValueFilters()",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={readSettings:()=>({refreshRate:60})};
+  vm.runInNewContext(frontendSource.slice(start,end)+"\\nglobalThis.maxBatch=maxNewMatchesPerScan;",sandbox);
+  assert.equal(sandbox.maxBatch(0),20);
+  assert.equal(sandbox.maxBatch(30),7);
+  assert.equal(sandbox.maxBatch(60),14);
+  assert.equal(sandbox.maxBatch(180),42);
+  assert.equal(sandbox.maxBatch("invalid"),14);
 });
