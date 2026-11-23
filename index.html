@@ -659,7 +659,7 @@
   }
   function maxNewMatchesPerScan(refreshRate=readSettings().refreshRate){
     const minutes=normalizeRefreshRate(refreshRate);
-    // Reserve up to 672 of BASIC's 1,000 daily calls for two profile reads per newly evaluated match.
+    // Adapt new profile lookups to the configured refresh interval; reserve up to 672 of BASIC's 1,000 daily calls for profile reads.
     if(minutes===0)return 20;
     return Math.max(1,Math.floor(336/(1440/minutes)));
   }
