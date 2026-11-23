@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "tvs2-player-search-2026-11-22-1";
+const WORKER_BUILD_ID = "tvs2-live-tennis-markets-2026-11-23-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -445,7 +445,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
       });
     }
 
@@ -955,6 +955,88 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    // Live Tennis API PRO match-winner markets and price history.
+    // Only match-winner prices are exposed; derivative markets are not supported by the provider.
+    if (path === "/markets" || /^\\/markets\\/\\d+\\/prices$/.test(path) || /^\\/matches\\/\\d+\\/prices$/.test(path)) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+
+      let upstreamPath;
+      let cacheTtl = 60;
+      if (path === "/markets") {
+        const rawMatchId = url.searchParams.get("match_id") || "";
+        if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match_id must be a positive integer" }, 400);
+        }
+        upstreamPath = "/markets?match_id=" + encodeURIComponent(String(Number(rawMatchId)));
+      } else {
+        const match = path.match(/^\\/(markets|matches)\\/(\\d+)\\/prices$/);
+        const rawMatchId = match?.[2] || "";
+        if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match ID must be a positive integer" }, 400);
+        }
+        const isMarketRoute = match[1] === "markets";
+        const params = new URLSearchParams();
+        const rawLimit = url.searchParams.get("limit") || (isMarketRoute ? "50" : "100");
+        const maxLimit = isMarketRoute ? 200 : 500;
+        if (!/^\\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
+          return response({ error: "limit must be an integer from 1 to " + maxLimit }, 400);
+        }
+        params.set("limit", String(Number(rawLimit)));
+        if (!isMarketRoute) {
+          const minutes = url.searchParams.get("minutes");
+          if (minutes !== null) {
+            if (!/^\\d{1,4}$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 1440) {
+              return response({ error: "minutes must be an integer from 1 to 1440" }, 400);
+            }
+            params.set("minutes", String(Number(minutes)));
+          }
+          const cursor = url.searchParams.get("cursor");
+          if (cursor !== null) {
+            if (!cursor.trim() || cursor.length > 500) return response({ error: "cursor must contain 1 to 500 characters" }, 400);
+            params.set("cursor", cursor);
+          }
+        }
+        upstreamPath = isMarketRoute
+          ? "/markets/" + String(Number(rawMatchId)) + "/prices?" + params.toString()
+          : "/matches/" + String(Number(rawMatchId)) + "/prices?" + params.toString();
+        cacheTtl = 20;
+      }
+
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(cacheKeyUrl(env, "/__live-tennis-markets/v1" + path + "?" + url.searchParams.toString()), { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1" + upstreamPath, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); }
+        catch { body = { error: "Live Tennis API returned a non-JSON response" }; }
+        const retryAfter = upstream.headers.get("Retry-After");
+        const headers = {};
+        if (retryAfter) headers["Retry-After"] = retryAfter;
+        if (upstream.ok) {
+          headers["Cache-Control"] = "public, max-age=" + cacheTtl;
+          headers["X-Data-Cache"] = "MISS";
+          await cache.put(cacheKey, new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=" + cacheTtl }
+          }));
+        }
+        return response(body, upstream.status, headers);
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis market prices", accessStatus: "upstream_unavailable" }, 502);
       }
     }
 
