@@ -395,3 +395,8 @@ const scoreWhitespaceDiagnostics=scoreWhitespaceReport.eventNameDiagnostics.ambi
 assert.equal(scoreWhitespaceDiagnostics.strictCandidate,1);
 assert.equal(scoreWhitespaceDiagnostics.strictCandidateOneDistinctScore,1);
 assert.equal(scoreWhitespaceDiagnostics.strictCandidateScoreConflict,0);
+const conflictBreakdown=scoreConflictReport.eventNameDiagnostics.ambiguousCandidateResolution.scoreRoundConflictBreakdown;
+assert.equal(conflictBreakdown.crossTierDuplicate.candidates,1);
+assert.equal(conflictBreakdown.crossTierDuplicate.scoreConflict,1);
+assert.equal(conflictBreakdown.crossTierDuplicate.roundConflict,0);
+assert.equal(conflictBreakdown.sameTierDuplicate.candidates,0);
