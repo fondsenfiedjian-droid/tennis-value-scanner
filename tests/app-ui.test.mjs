@@ -395,15 +395,20 @@ test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_tim
   assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
 
-test("settings preview and immediately persist skin changes", () => {
+test("settings preview changes are committed only by Save and Cancel restores saved values", () => {
   const saveStart = html.indexOf("$('#saveSettings').onclick=");
   const saveEnd = html.indexOf("const API=", saveStart);
   const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
-  assert.match(settingsSource, /document\.body\.dataset\.skin=selected/);
-  assert.match(settingsSource, /document\.documentElement\.dataset\.skin=selected/);
-  assert.match(settingsSource, /settings\.skin=selected/);
-  assert.match(settingsSource, /activeSkin=selected/);
-  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+  const skinChangeStart=settingsSource.indexOf("$('#skinSelect').addEventListener('change'");
+  const skinChangeEnd=settingsSource.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",skinChangeStart);
+  const skinChange=settingsSource.slice(skinChangeStart,skinChangeEnd);
+  assert.match(skinChange, /applySkin\(selected\)/);
+  assert.doesNotMatch(skinChange, /localStorage\.setItem|activeSkin=selected/);
+  assert.match(settingsSource, /const cancelSettings=\(\)=>\{populateSettingsForm\(\);applySkin\(activeSkin\)/);
+  assert.match(settingsSource, /data\.skin=\$\('#skinSelect'\)\.value==='steel'\?'steel':'black'/);
+  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
+  assert.match(settingsSource, /Tournament filters are previewed while the modal is open and committed only by Save/);
+  assert.match(settingsSource, /tourChecks\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{if\(window\.cachedMatches\)renderMatches\(window\.cachedMatches\);\}\)\)/);
   assert.ok(saveStart >= 0);
 });
 
