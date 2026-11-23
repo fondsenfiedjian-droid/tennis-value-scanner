@@ -228,18 +228,30 @@ jobs:
             throw new Error("Protected archive package download returned HTTP " + downloadResponse.status +
               "; response=" + errorBody.slice(0, 300));
           }
-          const reader = downloadResponse.body.getReader();
-          const firstChunk = await reader.read();
-          await reader.cancel();
-          if (!firstChunk.value || firstChunk.value.length < 2) {
-            throw new Error("Archive package download returned an empty stream");
-          }
+          const { gunzipSync } = await import("node:zlib");
+          const { parseCsv } = await import("./scripts/backtest.mjs");
+          const archiveBytes = Buffer.from(await downloadResponse.arrayBuffer());
           if (archiveCsv.compression === "gzip" &&
-              !(firstChunk.value[0] === 0x1f && firstChunk.value[1] === 0x8b)) {
+              !(archiveBytes[0] === 0x1f && archiveBytes[1] === 0x8b)) {
             throw new Error("Archive package compression does not match its manifest");
           }
-          console.log("Archive file stream OK: " + archiveCsv.filename + "; compressed bytes=" +
-            archiveCsv.bytes + "; first chunk=" + firstChunk.value.length + " bytes.");
+          const archiveText = archiveCsv.compression === "gzip"
+            ? gunzipSync(archiveBytes).toString("utf8") : archiveBytes.toString("utf8");
+          const archiveRows = parseCsv(archiveText);
+          if (archiveRows.length !== Number(latestArchive.match_count)) {
+            throw new Error("2022 archive CSV rows (" + archiveRows.length +
+              ") do not match manifest count (" + latestArchive.match_count + ")");
+          }
+          const fieldCoverage = field => archiveRows.filter(row =>
+            row[field] !== undefined && row[field] !== null && row[field] !== "").length;
+          const completedRows = archiveRows.filter(row => row.outcome === "completed");
+          console.log("Archive CSV parsed: " + archiveCsv.filename + "; rows=" + archiveRows.length +
+            "; completed=" + completedRows.length +
+            "; winner IDs=" + fieldCoverage("winner.player_id") +
+            "; loser IDs=" + fieldCoverage("loser.player_id") +
+            "; both ranks=" + archiveRows.filter(row => row["winner.rank"] && row["loser.rank"]).length +
+            "; both ages=" + archiveRows.filter(row => row["winner.age"] && row["loser.age"]).length +
+            "; surface known=" + fieldCoverage("surface") + ".");
           console.log("History coverage snapshot: as_of=" + (coverage.as_of || "unknown") +
             "; ATP singles=" + (coverage.buckets.atp_singles?.completed ?? "unknown") +
             "; WTA singles=" + (coverage.buckets.wta_singles?.completed ?? "unknown") +
