@@ -261,7 +261,7 @@ export function runTierAwareEloResearch(rows, options = {}) {
 async function main() {
   const args = process.argv.slice(2), options = {}, files = [];
   for (let i = 0; i < args.length; i++) {
-    if (["--input-dir", "--from", "--to", "--main-k", "--lower-k", "--out"].includes(args[i])) {
+    if (["--input-dir", "--from", "--to", "--main-k", "--lower-k", "--history-lag-days", "--out"].includes(args[i])) {
       const key = args[i].slice(2), value = args[++i];
       if (!value) throw new Error("Missing value for " + args[i - 1]);
       options[key] = value;
@@ -274,7 +274,7 @@ async function main() {
     if (!names.length) throw new Error("No main-tour or lower-tier Sackmann CSV files found");
     for (const name of names) files.push(join(dir, name));
   }
-  if (!files.length) throw new Error("Usage: node scripts/sackmann-tier-aware-elo-research.mjs --input-dir DIR [--from YYYYMMDD] [--to YYYYMMDD] [--main-k 32] [--lower-k 8,16,24,32] [--out report.json]");
+  if (!files.length) throw new Error("Usage: node scripts/sackmann-tier-aware-elo-research.mjs --input-dir DIR [--from YYYYMMDD] [--to YYYYMMDD] [--main-k 32] [--lower-k 4,8,12,16,20,24,28,32] [--history-lag-days 0|7|14] [--out report.json]");
   const inputs = [];
   for (const file of files) inputs.push({ filename: basename(file), content: await readFile(file, "utf8") });
   const normalized = normalizeTieredRows(inputs);
@@ -283,6 +283,7 @@ async function main() {
   const report = runTierAwareEloResearch(normalized.rows, {
     mainK: Number(options["main-k"] ?? 32), lowerKs,
     from: options.from ?? "20000101", to: options.to ?? "20260525",
+    historyLagDays: Number(options["history-lag-days"] ?? 0),
     diagnostics: normalized.diagnostics
   });
   const json = JSON.stringify(report, null, 2) + "\n";
