@@ -779,6 +779,9 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/Amber Equalizer · чёрный и янтарный неон/);
   assert.match(html,/body\[data-skin="amber-led"\]/);
   assert.match(html,/led-digit/);
+  assert.match(html,/clip-path:polygon/);
+  assert.match(html,/const isAmber=\(\)=>document\.body\?\.dataset\.skin==="amber-led"/);
+  assert.match(html,/else \[\.\.\.tracked\]\.forEach\(restore\)/);
   assert.match(html,/let activeSkin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(saved\.skin\)\?saved\.skin:'black'/);
   assert.doesNotMatch(html,/saved\.skin='amber-led'|amberLedDefaultApplied/);
   assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
