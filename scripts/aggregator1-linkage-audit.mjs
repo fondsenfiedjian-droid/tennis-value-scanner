@@ -349,7 +349,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   for(const tour of ["ATP","WTA"]){
     let resolvedToSingleSackmannId=0,conflictingSackmannIds=0;
     const conflictProfile={sameBirthDateAndCountry:0,differentBirthDateOrCountry:0,differentHandOnly:0,sameDobIocDifferentHand:0,identicalAvailableSignature:0,missingRegistryMetadata:0,missingDob:0,missingIoc:0,missingHand:0};
-    const crosswalk={conflictingSourceIds:0,directNameNoMatch:0,directNameUnique:0,directNameAmbiguous:0,matchIdsAllInDirectCandidates:0,matchIdsPartiallyOverlapDirectCandidates:0,matchIdsDoNotOverlapDirectCandidates:0,matchCandidateIdCounts:{},directCandidateIdCounts:{},registrySignatureCounts:{}};
+    const crosswalk={conflictingSourceIds:0,directNameNoMatch:0,directNameUnique:0,directNameAmbiguous:0,matchIdsAllInDirectCandidates:0,matchIdsPartiallyOverlapDirectCandidates:0,matchIdsDoNotOverlapDirectCandidates:0,matchCandidateIdCounts:{},directCandidateIdCounts:{},registrySignatureCounts:{},candidateMetadataCompleteness:{},distinctDobCounts:{},distinctIocCounts:{},distinctHandCounts:{},metadataRelationshipProfiles:{}};
     for(const [sourceId,ids] of sourceIdEvidence[tour]){
       if(ids.size===1)resolvedToSingleSackmannId++;
       else if(ids.size>1){
@@ -378,6 +378,18 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         const signatures=new Set(metas.map(m=>(m?.dob||"(missing)")+"::"+(m?.ioc||"(missing)")+"::"+(m?.hand||"(missing)")));
         const signatureCount=String(signatures.size);
         crosswalk.registrySignatureCounts[signatureCount]=(crosswalk.registrySignatureCounts[signatureCount]||0)+1;
+        const completeCandidateCount=metas.filter(m=>m?.dob&&m?.ioc&&m?.hand).length;
+        const completenessKey=String(completeCandidateCount);
+        crosswalk.candidateMetadataCompleteness[completenessKey]=(crosswalk.candidateMetadataCompleteness[completenessKey]||0)+1;
+        const distinctKnown=(field)=>new Set(metas.map(m=>m?.[field]).filter(Boolean)).size;
+        for(const [bucket,count] of [["distinctDobCounts",distinctKnown("dob")],["distinctIocCounts",distinctKnown("ioc")],["distinctHandCounts",distinctKnown("hand")]]){
+          const key=String(count);crosswalk[bucket][key]=(crosswalk[bucket][key]||0)+1;
+        }
+        const relationship=!metas.every(m=>m?.dob&&m?.ioc)?"insufficient_dob_or_ioc":
+          dobIoc.size===1?(full.size===1?"same_dob_ioc_and_hand":"same_dob_ioc_different_hand"):
+          new Set(metas.map(m=>m?.dob).filter(Boolean)).size===1?"same_dob_different_ioc":
+          new Set(metas.map(m=>m?.ioc).filter(Boolean)).size===1?"different_dob_same_ioc":"different_dob_and_ioc";
+        crosswalk.metadataRelationshipProfiles[relationship]=(crosswalk.metadataRelationshipProfiles[relationship]||0)+1;
         if(!missingDob&&!missingIoc&&dobIoc.size===1)conflictProfile.sameBirthDateAndCountry++;
         else if(!missingDob&&!missingIoc)conflictProfile.differentBirthDateOrCountry++;
         if(!missingDob&&!missingIoc&&dobIoc.size===1&&!missingHand&&full.size>1)conflictProfile.sameDobIocDifferentHand++;
