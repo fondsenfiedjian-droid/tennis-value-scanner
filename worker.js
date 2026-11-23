@@ -960,7 +960,7 @@ export default {
 
     // Live Tennis API PRO match-winner markets and price history.
     // Only match-winner prices are exposed; derivative markets are not supported by the provider.
-    if (path === "/markets" || /^\\/markets\\/\\d+\\/prices$/.test(path) || /^\\/matches\\/\\d+\\/prices$/.test(path)) {
+    if (path === "/markets" || /^\/markets\/\d+\/prices$/.test(path) || /^\/matches\/\d+\/prices$/.test(path)) {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
@@ -970,28 +970,28 @@ export default {
       let cacheTtl = 60;
       if (path === "/markets") {
         const rawMatchId = url.searchParams.get("match_id") || "";
-        if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
           return response({ error: "match_id must be a positive integer" }, 400);
         }
         upstreamPath = "/markets?match_id=" + encodeURIComponent(String(Number(rawMatchId)));
       } else {
-        const match = path.match(/^\\/(markets|matches)\\/(\\d+)\\/prices$/);
+        const match = path.match(/^\/(markets|matches)\/(\d+)\/prices$/);
         const rawMatchId = match?.[2] || "";
-        if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
           return response({ error: "match ID must be a positive integer" }, 400);
         }
         const isMarketRoute = match[1] === "markets";
         const params = new URLSearchParams();
         const rawLimit = url.searchParams.get("limit") || (isMarketRoute ? "50" : "100");
         const maxLimit = isMarketRoute ? 200 : 500;
-        if (!/^\\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
+        if (!/^\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
           return response({ error: "limit must be an integer from 1 to " + maxLimit }, 400);
         }
         params.set("limit", String(Number(rawLimit)));
         if (!isMarketRoute) {
           const minutes = url.searchParams.get("minutes");
           if (minutes !== null) {
-            if (!/^\\d{1,4}$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 1440) {
+            if (!/^\d{1,4}$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 1440) {
               return response({ error: "minutes must be an integer from 1 to 1440" }, 400);
             }
             params.set("minutes", String(Number(minutes)));
