@@ -129,7 +129,15 @@ jobs:
           if (!odds.diagnostics || !Number.isFinite(Number(odds.diagnostics.validDecimalOdds))) {
             throw new Error("Winamax odds diagnostics are missing or malformed");
           }
+          const meta = schedule.meta || {};
+          const hasMore = meta.has_more === true;
+          const total = Number.isFinite(Number(meta.total)) ? Number(meta.total) : "unknown";
+          const freshQuotes = Number.isFinite(Number(odds.diagnostics.freshScrapedAt))
+            ? Number(odds.diagnostics.freshScrapedAt) : "unknown";
           console.log("Scanner sources OK: schedule rows=" + scheduleRows.length +
+            "; schedule total=" + total + "; schedule has_more=" + hasMore +
             "; Winamax rows=" + odds.items.length +
-            "; valid decimal quotes=" + Number(odds.diagnostics.validDecimalOdds) + ".");
+            "; valid decimal quotes=" + Number(odds.diagnostics.validDecimalOdds) +
+            "; fresh quotes=" + freshQuotes +
+            "; newest scraped=" + (odds.diagnostics.newestScrapedAt || "unknown") + ".");
           NODE
