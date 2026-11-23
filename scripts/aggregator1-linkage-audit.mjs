@@ -274,7 +274,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
-    byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),\n    byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
+    byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
+    byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     warnings:[
       "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
       "Sackmann tourney_date is generally the event-week date, not the exact match date; the date window is a candidate filter, not a claim about match start time.",
