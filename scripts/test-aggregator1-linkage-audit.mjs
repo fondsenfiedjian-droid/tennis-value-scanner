@@ -79,7 +79,7 @@ assert.equal(result.totals.ambiguous, 1);
 assert.equal(result.totals.linkagePct, 42.86);
 assert.equal(result.byTour.ATP.linkedUnique, 2);
 assert.equal(result.byTour.WTA.linkedUnique, 1);
-assert.equal(result.byTourYear["ATP::2025"].rows, 6);
+assert.equal(result.byTourYear["ATP::2025"].rows, 7);
 assert.equal(result.byTourYear["ATP::2025"].linkedUnique, 2);
 assert.equal(result.byTourYear["ATP::2025"].pairAbsent, 1);
 assert.equal(result.byTourYear["ATP::2025"].dateWindowMiss, 1);
