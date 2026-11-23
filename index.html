@@ -2583,12 +2583,13 @@
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   let autoRefreshTimer=null;
   let nextAutoRefreshAt=0;
-  function scheduleAutoRefresh(){
+  function scheduleAutoRefresh(preserveDeadline=false){
     if(autoRefreshTimer)clearInterval(autoRefreshTimer);
     autoRefreshTimer=null;
+    const previousDeadline=nextAutoRefreshAt;
     const minutes=normalizeRefreshRate(readSettings().refreshRate);
     $('#refreshRate').value=String(minutes);
-    nextAutoRefreshAt=minutes>0?Date.now()+minutes*60*1000:0;
+    nextAutoRefreshAt=minutes>0?(preserveDeadline&&previousDeadline?previousDeadline:Date.now()+minutes*60*1000):0;
     if(minutes>0){
       autoRefreshTimer=setInterval(()=>{
         if(nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt&&!document.hidden){
@@ -2610,7 +2611,13 @@
     }
   });
   window.addEventListener('pageshow',()=>{
-    scheduleAutoRefresh();
+    const minutes=normalizeRefreshRate(readSettings().refreshRate);
+    const due=minutes>0&&nextAutoRefreshAt>0&&Date.now()>=nextAutoRefreshAt;
+    if(due&&!document.hidden){
+      nextAutoRefreshAt=Date.now()+minutes*60*1000;
+      loadMatches(true);
+    }
+    scheduleAutoRefresh(true);
   });
   function buildScheduleDateParams(now=new Date()){
     const from=new Date(now);from.setHours(0,0,0,0);
