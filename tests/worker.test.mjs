@@ -684,7 +684,7 @@ test("live matches use Preview quota namespace and a short cache TTL", async () 
   };
   const result = await call("/matches?status=live");
   assert.equal(result.status, 200);
-  assert.equal(guardKey, "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard");
+  assert.equal(guardKey, "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard/v2");
   assert.equal(result.headers.get("Cache-Control"), "public, max-age=20");
   assert.equal(storedHeaders["cache-control"], "public, max-age=20");
   env.CACHE_NAMESPACE = previousNamespace;
