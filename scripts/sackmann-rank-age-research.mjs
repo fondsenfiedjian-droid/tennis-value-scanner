@@ -237,6 +237,10 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
   const tour = options.tour ?? "atp";
   if (!["atp", "wta"].includes(tour)) throw new RangeError("tour must be atp or wta");
   const kFactor = Number.isFinite(options.kFactor) ? options.kFactor : 32;
+  const trainingWindowYears = options.trainingWindowYears == null ? null : Number(options.trainingWindowYears);
+  if (trainingWindowYears !== null && (!Number.isInteger(trainingWindowYears) || trainingWindowYears < 1 || trainingWindowYears > 50)) {
+    throw new RangeError("trainingWindowYears must be null or an integer from 1 to 50");
+  }
   const evaluationSurface = options.evaluationSurface == null ? null : String(options.evaluationSurface).trim().toLowerCase();
   const trainingSurface = options.trainingSurface == null ? null : String(options.trainingSurface).trim().toLowerCase();
   const allowedSurfaces = new Set(["hard", "clay", "grass", "carpet"]);
@@ -266,6 +270,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     const models = {};
     for (const [name, definition] of Object.entries(DEFINITIONS)) {
       const training = history.filter(row =>
+        (trainingWindowYears === null || Number(row.year) >= Number(year) - trainingWindowYears) &&
         (!trainingSurface || row.surface.trim().toLowerCase() === trainingSurface) && definition.filter(row)
       );
       const baseline = fitLogistic(training, ["eloScaled"], {
@@ -363,6 +368,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
     researchOnly: true,
     tour,
     kFactor,
+    trainingWindowYears,
     evaluationStart,
     evaluationEnd,
     evaluationSurface,
@@ -388,8 +394,9 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
       "All matches on the same date use the same pre-date Elo state; same-day results do not leak into other same-day predictions.",
       "Each candidate is compared with an Elo-only logistic baseline on the exact same eligible matches.",
       "Training is deterministically capped per model/year for runtime; evaluation uses all eligible matches.",
-      "Sackmann ranking fields are tournament-date snapshots and are not guaranteed to be exact match-start snapshots. Verify timing before interpreting them as strictly pre-match.",
-      "This is non-commercial research under CC BY-NC-SA 4.0, not a production model or evidence of profitability."
+      "Ranking and age fields are used exactly as published by the selected source; verify their point-in-time availability before treating them as strict pre-match inputs.",
+      trainingWindowYears === null ? "Training uses all available earlier seasons." : "Training uses only the " + trainingWindowYears + " complete calendar seasons before each evaluation year.",
+      "This is research-only, not a production model or evidence of profitability."
     ]
   };
 }
@@ -397,7 +404,7 @@ export function runRankAgeWalkForward(inputRows, options = {}) {
 async function main() {
   const args = process.argv.slice(2), options = {}, files = [];
   for (let i = 0; i < args.length; i++) {
-    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--surface", "--training-surface", "--out"].includes(args[i])) {
+    if (["--tour", "--from", "--to", "--k", "--min-training", "--max-training", "--surface", "--training-surface", "--window-years", "--out"].includes(args[i])) {
       if (!args[i + 1]) throw new Error("Missing value after " + args[i]);
       const key = args[i].slice(2), value = args[++i];
       if (key === "tour") options.tour = value;
@@ -408,6 +415,7 @@ async function main() {
       else if (key === "max-training") options.maxTrainingRows = Number(value);
       else if (key === "surface") options.evaluationSurface = value;
       else if (key === "training-surface") options.trainingSurface = value;
+      else if (key === "window-years") options.trainingWindowYears = value.toLowerCase() === "all" ? null : Number(value);
       else if (key === "out") options.output = value;
     } else if (args[i].startsWith("--")) throw new Error("Unknown option: " + args[i]);
     else files.push(args[i]);
