@@ -6,7 +6,7 @@ import { parseCsv } from "./backtest.mjs";
 const VBT=/^valuebetennis-matchs-(\d{4})\.csv$/i;
 const ACES=/^acesapi-(atp|wta)-(\d{4})(?:-.*)?\.json$/i;
 const norm=v=>String(v??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
-const surf=v=>{const s=norm(v);if(["hard","dur","indoorhard","outdoorhard"].includes(s))return "hard";if(["clay","terrebattue","terre"].includes(s))return "clay";if(["grass","gazon"].includes(s))return "grass";if(["carpet","moquette"].includes(s))return "carpet";return null;};
+const surf=v=>{const s=norm(v);if(["hard","dur","durinterieur","duroutdoor","indoorhard","outdoorhard"].includes(s))return "hard";if(["clay","terrebattue","terre"].includes(s))return "clay";if(["grass","gazon"].includes(s))return "grass";if(["carpet","moquette","moquetteinterieur"].includes(s))return "carpet";return null;};
 const day=v=>{const s=String(v??"").trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return null;const t=Date.UTC(+m[1],+m[2]-1,+m[3]);const d=new Date(t);return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]?t/86400000:null;};
 const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 function extractMatches(obj){
