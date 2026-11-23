@@ -272,7 +272,7 @@ const sameSignatureIdConflictSackmann=[{filename:"atp_matches_futures_2025.csv",
   "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
   "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
   "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,811,812"
-].join("\\n")}];
+].join("\n")}];
 const sameSignatureIdConflictReport=auditValuebetSackmann(ambiguousValuebet,sameSignatureIdConflictSackmann);
 const sameSignatureIdDiagnostics=sameSignatureIdConflictReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics;
 assert.equal(sameSignatureIdDiagnostics.rowsWithSingleSignature,1);
