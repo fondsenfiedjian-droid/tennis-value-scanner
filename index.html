@@ -754,6 +754,109 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="terracotta"] button:focus-visible,
     body[data-skin="terracotta"] .match-card:focus-visible{outline-color:#8be83c!important}
 
+  
+    /* AMBER LED: early electronic scoreboard / seven-segment instrument panel */
+    body[data-skin="amber-led"]{
+      --bg:#070707;--panel:#101010;--panel2:#171513;--line:#8a4b28;
+      --muted:#b8a79b;--text:#f6eee7;--amber:#ffb04a;--yellow:#ffd078;
+      --terra:#d66a2c;--terra-bright:#ff8a3d;--copper-pink:#d58a68;
+      background:
+        radial-gradient(ellipse at 50% -18%,#51240f 0,#1a100b 32%,#080808 72%),
+        #080808;color:var(--text)
+    }
+    body[data-skin="amber-led"] .tabs{background:#090909;border-color:#744323}
+    body[data-skin="amber-led"] .tab{color:#c4a58f}
+    body[data-skin="amber-led"] .tab.active{
+      background:linear-gradient(135deg,#71300f,#bd541d 58%,#54230e);
+      color:#fff4e8;border:1px solid #e77b36;
+      box-shadow:inset 0 1px #ffd2a055,0 0 13px #e66a2838
+    }
+    body[data-skin="amber-led"] .panel,
+    body[data-skin="amber-led"] .match-card,
+    body[data-skin="amber-led"] .archive-item{
+      background:linear-gradient(145deg,#1b1714,#0b0b0b 75%);
+      border-color:#744323;box-shadow:inset 0 1px #ffffff10,0 7px 20px #000b
+    }
+    body[data-skin="amber-led"] .refresh,
+    body[data-skin="amber-led"] .actions .primary{
+      background:linear-gradient(110deg,#7b310f,#d45b1d 55%,#8b3512);
+      border:1px solid #f18a43;color:#fff6ed;
+      box-shadow:0 0 18px #d65b2533,inset 0 1px #ffd1a055
+    }
+    body[data-skin="amber-led"] .linkbtn{color:#ff9a55}
+    body[data-skin="amber-led"] .chip{background:#17110d;border-color:#704323;color:#e8c4a8}
+    body[data-skin="amber-led"] .chip.on{background:#3b1d0d;border-color:#e07832;color:#ffc18a}
+    body[data-skin="amber-led"] .bottom{background:#080808ed;border-top:1px solid #744323}
+    body[data-skin="amber-led"] .nav button.active{color:#ffad55;background:#321909}
+    body[data-skin="amber-led"] .modal{background:linear-gradient(145deg,#1c1713,#0a0a0a);border-color:#8a4b28}
+    body[data-skin="amber-led"] input[type=number],
+    body[data-skin="amber-led"] input[type=search],
+    body[data-skin="amber-led"] input[type=date],
+    body[data-skin="amber-led"] select,
+    body[data-skin="amber-led"] .check{background:#0d0b09;border-color:#704323;color:#f6eee7}
+    body[data-skin="amber-led"] .actions button,
+    body[data-skin="amber-led"] .stats-actions button{background:#21150e;border-color:#754323;color:#f8eee6}
+    body[data-skin="amber-led"] .status{background:#2a170b;border-color:#b96a2c;color:#ffd18b}
+    body[data-skin="amber-led"] .best-bet{
+      background:linear-gradient(145deg,#291307,#090909 72%);
+      box-shadow:inset 0 1px #fff3,0 0 18px #e66a2822,0 8px 24px #000b
+    }
+    body[data-skin="amber-led"] .best-bet:before{
+      background:linear-gradient(120deg,#f7c08a,#7e421f 16%,#f07832 42%,#54250f 68%,#f2b77d)
+    }
+    body[data-skin="amber-led"] .best-bet-title,
+    body[data-skin="amber-led"] .best-bet-value{color:#ff9a55}
+    body[data-skin="amber-led"] .best-bet-main,
+    body[data-skin="amber-led"] .best-bet-pair{color:#fff0e3}
+    body[data-skin="amber-led"] .best-bet-odds,
+    body[data-skin="amber-led"] .stat-num,
+    body[data-skin="amber-led"] .plan-summary-item b,
+    body[data-skin="amber-led"] .mandatory-bet-row b{
+      color:#ffad55!important;font-family:"Courier New",monospace;
+      font-weight:700;font-variant-numeric:tabular-nums;
+      letter-spacing:.075em;
+      text-shadow:0 0 4px #ff9a55bb,0 0 11px #f0783277,0 0 22px #d65b253d
+    }
+    body[data-skin="amber-led"] .best-bet-odds{color:#ffd078!important;font-size:38px}
+    body[data-skin="amber-led"] #planStakeTotal,
+    body[data-skin="amber-led"] .additional-ev{color:#ffd078!important}
+    body[data-skin="amber-led"] #planMandatoryCount{color:#ff9a55!important}
+    body[data-skin="amber-led"] .plan-summary-item,
+    body[data-skin="amber-led"] .additional-opportunities{
+      background:linear-gradient(145deg,#1a130e,#0c0b0a)!important;border-color:#684126!important
+    }
+    body[data-skin="amber-led"] .plan-summary-item span{color:#c6a58d}
+    body[data-skin="amber-led"] .plan-summary-item small{color:#9e8878}
+    body[data-skin="amber-led"] .mandatory-stake{background:#321a0d;border-color:#9c542b}
+    body[data-skin="amber-led"] .match-card.expanded{background:linear-gradient(145deg,#2b180e,#100d0a);border-color:#e07832}
+    body[data-skin="amber-led"] .bookmaker-tag{background:#1b1009;border-color:#a35b2b;color:#ffc078}
+    body[data-skin="amber-led"] .model-result{background:#100d0a;border-color:#744323}
+    body[data-skin="amber-led"] .model-result strong,
+    body[data-skin="amber-led"] .model-positive{color:#ffc078}
+    body[data-skin="amber-led"] .model-negative{color:#e99b87}
+    body[data-skin="amber-led"] .data-freshness.good{background:#21160d;color:#ffd18b;border-color:#a56a32}
+    body[data-skin="amber-led"] .data-freshness.medium{background:#2b1b10;color:#e9bd9d;border-color:#80543d}
+    body[data-skin="amber-led"] .data-freshness.limited{background:#2a1512;color:#efb7a5;border-color:#75443b}
+    body[data-skin="amber-led"] .team-tennis-panel{background:linear-gradient(145deg,#21140d,#0d0b09);border-color:#744323}
+    body[data-skin="amber-led"] .team-tennis-head{color:#ffbd70}
+    body[data-skin="amber-led"] .team-tennis-card{background:#100c09;border-color:#60402a}
+    body[data-skin="amber-led"] .team-tennis-teams b{color:#ff9a55}
+    body[data-skin="amber-led"] .team-tennis-odds b{color:#ffd078}
+    body[data-skin="amber-led"] .match-quote-status.complete{border-color:#a56a32;color:#ffd078;background:#21160d}
+    body[data-skin="amber-led"] .match-quote-status.partial{border-color:#80543d;color:#e9bd9d;background:#2b1b10}
+    body[data-skin="amber-led"] .match-quote-status.missing{border-color:#75443b;color:#efb7a5;background:#2a1512}
+    body[data-skin="amber-led"] .compare-player{background:linear-gradient(145deg,#21140d,#0d0b09);border-color:#80503a}
+    body[data-skin="amber-led"] .compare-player-title{color:#ff9a55}
+    body[data-skin="amber-led"] .compare-player input,
+    body[data-skin="amber-led"] .compare-surface-field select{background:#0c0907;border-color:#704323;color:#f6eee7}
+    body[data-skin="amber-led"] .additional-opportunity,
+    body[data-skin="amber-led"] .additional-empty{background:#15100c;border-color:#60402a}
+    body[data-skin="amber-led"] .additional-ev{color:#ffd078}
+    body[data-skin="amber-led"] .additional-open{background:#26150c;border-color:#8c4b2b;color:#ffd2aa}
+    body[data-skin="amber-led"] .stats-actions button:focus,
+    body[data-skin="amber-led"] .actions button:focus,
+    body[data-skin="amber-led"] .chip:focus{outline:2px solid #ff9a55;outline-offset:2px}
+
   </style>
 </head>
 <body>
@@ -858,7 +961,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="modal-back" id="settingsModal">
   <div class="modal">
     <h2>Настройки сканера</h2>
-    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option><option value="neon">Неоновый синий · бирюза и фиолетовый</option><option value="terracotta">Music Play Bar Control · графит, зелёный, терракота</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
+    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="steel">Стальной синий · холодные акценты</option><option value="neon">Неоновый синий · бирюза и фиолетовый</option><option value="terracotta">Music Play Bar Control · графит, зелёный, терракота</option><option value="amber-led">Электронное табло · чёрный и оранжевый неон</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV для «Ставки дня»: <output id="minEvValue">3%</output></label><input id="minEv" type="range" min="0" max="20" step="0.5" value="3"><small class="muted">Шкала 0–20% · минимальное ожидаемое преимущество.</small></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент: <output id="minOddsValue">1,9×</output></label><input id="minOdds" type="range" min="1.9" max="15" step="0.1" value="1.9"><small class="muted">Шкала 1,9–15.</small></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент: <output id="maxOddsValue">5×</output></label><input id="maxOdds" type="range" min="1.9" max="15" step="0.1" value="5"><small class="muted">Шкала 1,9–15.</small></div>
@@ -1046,7 +1149,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
     ['minEv','minOdds','maxOdds','bestBetMinOdds','bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{const output=$('#'+id+'Value');if(output)output.textContent=formatSettingValue(id);});
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
-    $('#skinSelect').value=['black','steel','neon','terracotta'].includes(current.skin)?current.skin:'terracotta';
+    $('#skinSelect').value=['black','steel','neon','terracotta','amber-led'].includes(current.skin)?current.skin:'amber-led';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
     tourChecks.forEach(input=>input.checked=tours.includes(input.dataset.tour));
   }
@@ -1092,9 +1195,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     saved.skin='terracotta';saved.musicPaletteDefaultApplied=true;
     try{localStorage.setItem('tvs-settings',JSON.stringify(saved));}catch(e){}
   }
-  let activeSkin=['black','steel','neon','terracotta'].includes(saved.skin)?saved.skin:'terracotta';
+  let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'amber-led';
   function applySkin(skin){
-    const selected=['black','steel','neon','terracotta'].includes(skin)?skin:'terracotta';
+    const selected=['black','steel','neon','terracotta','amber-led'].includes(skin)?skin:'amber-led';
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
@@ -1104,7 +1207,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#skinSelect').value=activeSkin;
   // Preview theme immediately; Cancel restores the last saved skin.
   $('#skinSelect').addEventListener('change',()=>{
-    const selected=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
+    const selected=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'amber-led';
     applySkin(selected);
   });
   ['minEv','minOdds','maxOdds','bestBetMinOdds','bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
@@ -1147,7 +1250,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     data.bankMaxStakePercent=bankMaxStakePercent;data.bankMaxExposurePercent=bankMaxExposurePercent;
     data.bankMaxDailyStakePercent=bankMaxDailyStakePercent;data.bankKellyFraction=bankKellyFraction;
     data.refreshRate=refreshRate;
-    data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
+    data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
     data.musicPaletteDefaultApplied=true;
     data.tours=tours;
     try{
