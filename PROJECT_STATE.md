@@ -1239,3 +1239,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Validation errors and storage failures still leave Settings open so the user can correct the values or retry.
 - Bumped the service-worker cache from v135 to v136 and added a regression assertion for close-after-verified-save ordering.
 - Preview branch only; CI and visual browser verification pending. Production untouched.
+
+ 
+### 2026-11-23 — Preview API diagnostics and status-tab fallback
+- Added an independent `/health` check that updates the header from actual Worker configuration, distinguishing Live Tennis API availability from missing Preview `APIFY_TOKEN`.
+- Added capture-phase navigation fallback for LIVE / СКОРО / ЗАВТРА. It directly activates the corresponding screen and triggers its refresh control even if primary navigation setup fails.
+- Missing Preview Apify configuration is shown explicitly in the odds status instead of leaving an unexplained empty feed.
+- Bumped the service-worker cache to v137 and added regression assertions. Preview branch only; CI and real-device verification pending. Production untouched.
