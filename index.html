@@ -303,6 +303,10 @@
     .history-win{color:#8DDFEA}.history-loss{color:#E3B455}
     .more-modal .more-action{border-color:#75404B;background:#29151C;color:#F1C4C8}
     .screen-view{display:none;max-width:760px;margin:0 auto;padding:16px 16px 100px;min-height:70vh}
+    .top-status-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 14px}
+    .top-status-nav button{border:1px solid var(--line);background:#171311;color:var(--text);border-radius:12px;padding:11px 6px;font-weight:800;font-size:12px;letter-spacing:.04em}
+    .top-status-nav button.active{border-color:#c98a70;background:#321e1b;color:#f4c2ad}
+    .app.screen-open>:not(.main-header):not(.top-status-nav){display:none!important}
     .screen-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
     .screen-header .brand{font-size:13px;letter-spacing:.12em;font-weight:900;color:var(--text)}
     .screen-header .sub{margin-top:4px;color:var(--muted);font-size:11px}
@@ -732,8 +736,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="app">
   <header class="main-header">
     <div class="brand-lockup"><div class="brand-ball">🎾</div><div><div class="brand">TENNIS<br>VALUE <em>SCANNER</em></div></div></div>
-    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><button type="button" id="headerSettings" aria-label="Настройки">⚙</button></div>
+    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><button type="button" id="headerBalance" aria-label="Виртуальный баланс">1 000 €</button></div>
   </header>
+  <nav class="top-status-nav" aria-label="Матчи по статусу"><button type="button" id="topLive">● LIVE</button><button type="button" id="topUpcoming">СКОРО</button><button type="button" id="topTomorrow">ЗАВТРА</button></nav>
 
   <div class="datebar">
     <div class="date-label"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
@@ -893,7 +898,17 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const more=document.createElement('main');
     more.id='moreView';more.className='screen-view';
     more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
-    matches.after(more);
+    const live=document.createElement('main');
+    live.id='liveView';live.className='screen-view';
+    live.innerHTML='<header class="screen-header"><div><div class="brand">LIVE</div><div class="sub">Матчи, идущие сейчас</div></div><button type="button" class="refresh screen-refresh" id="liveRefreshPageBtn">↻ ОБНОВИТЬ</button></header>';
+    const liveBoard=$('#liveBoard');
+    if(liveBoard)live.appendChild(liveBoard);
+    matches.after(live);
+
+    const more=document.createElement('main');
+    more.id='moreView';more.className='screen-view';
+    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
+    live.after(more);
 
     const balance=document.createElement('main');
     balance.id='balanceView';balance.className='screen-view';
@@ -921,6 +936,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
     [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
     $('#matchesRefreshBtn').addEventListener('click',()=>loadMatches(true));
+    $('#liveRefreshPageBtn').addEventListener('click',()=>loadLiveMatches(true));
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
   }
   mountIndependentScreens();
@@ -967,7 +983,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#moreSettings').onclick=()=>{closeMore();open();};
   $('#closeMore').onclick=closeMore;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
-  $('#headerSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
+  if($('#headerBalance'))$('#headerBalance').onclick=()=>showBalance();
   $('#quickMatches').onclick=showMatches;
   $('#quickCompare').onclick=showCompare;
   $('#quickStats').onclick=showStats;
@@ -2129,16 +2145,35 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     document.querySelectorAll('.nav button').forEach(button=>button.classList.toggle('active',button.id===activeId));
   }
   function hideAllScreens(){
-    ['.app','#matchesView','#compareView','#statsView','#moreView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    const app=$('.app');if(app)app.classList.add('screen-open');
+    ['#matchesView','#liveView','#compareView','#statsView','#moreView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    document.querySelectorAll('.top-status-nav button').forEach(button=>button.classList.remove('active'));
   }
   function showMain(){
-    hideAllScreens();$('.app').style.display='block';
-    setActiveNavigation('navHome');
+    hideAllScreens();$('.app').classList.remove('screen-open');
+    setActiveNavigation('');
   }
   function showMatches(){
     hideAllScreens();$('#matchesView').style.display='block';
-    setActiveNavigation('navMatches');
+    setActiveNavigation('');
     if(!window.cachedMatches||!window.cachedMatches.length)loadMatches(true);
+  }
+  function showLive(){
+    hideAllScreens();$('#liveView').style.display='block';
+    $('#topLive').classList.add('active');setActiveNavigation('');
+    if(!window.cachedLiveMatches)loadLiveMatches(true);
+  }
+  function showUpcoming(){
+    selectedDay='today';document.querySelectorAll('.tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.day==='today'));
+    $('#dayTitle').textContent='Сегодня';
+    const d=new Date();$('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+    showMatches();$('#topUpcoming').classList.add('active');if(window.cachedMatches)renderMatches(window.cachedMatches);
+  }
+  function showTomorrow(){
+    selectedDay='tomorrow';document.querySelectorAll('.tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.day==='tomorrow'));
+    $('#dayTitle').textContent='Завтра';
+    const d=new Date();d.setDate(d.getDate()+1);$('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+    showMatches();$('#topTomorrow').classList.add('active');if(window.cachedMatches)renderMatches(window.cachedMatches);
   }
   function showStats(){
     hideAllScreens();$('#statsView').style.display='block';
@@ -2160,6 +2195,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const balance=bank.initial+profit;
     const put=(id,value)=>{const node=$('#'+id);if(node)node.textContent=value;};
     put('virtualBalance',balance.toLocaleString('ru-RU',{style:'currency',currency:'EUR'}));
+    put('headerBalance',Math.round(balance).toLocaleString('ru-RU')+' €');
     put('virtualProfit',(profit>=0?'+':'')+profit.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
     put('virtualOpen',String(open.length));put('virtualSettled',String(settled.length));
     const status=$('#virtualBankStatus');
@@ -3265,7 +3301,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       btn.disabled=false;btn.textContent='↻';btn.setAttribute('aria-label','Обновить данные');
     }
   }
-  $('#refreshBtn').onclick=()=>{loadMatches(true);loadLiveMatches(true);};
+  $('#refreshBtn').onclick=()=>loadMatches(true);
+  $('#topLive').onclick=showLive;
+  $('#topUpcoming').onclick=showUpcoming;
+  $('#topTomorrow').onclick=showTomorrow;
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navBalance').onclick=showBalance;
   $('#navHistory').onclick=showHistory;
