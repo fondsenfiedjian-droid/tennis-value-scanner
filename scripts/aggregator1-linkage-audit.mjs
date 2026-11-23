@@ -239,7 +239,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const roundRaw=String(row.tour??"").trim();
       const roundKey=/^\d+$/.test(roundRaw)?String(Number(roundRaw)):(roundRaw||"(empty)");
       const tourCategoryRoundKey=(tour||"(empty)")+"::"+category+"::"+roundKey;
-      const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0});
+      const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcr.rows++;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
@@ -249,14 +249,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const date=parseVbtDate(row.date),a=normalize(row.joueur1),b=normalize(row.joueur2);
       if(!byTour[tour])byTour[tour]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
       const g=byTour[tour];g.rows++;
-      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;tycg.unknownTour++;continue;}
-      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;tycg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;continue;}
+      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;tycg.unknownTour++;tcr.unknownTour++;continue;}
+      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;tycg.invalidDate++;tcr.invalidDate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tcr.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;tcr.invalidPlayerPair++;tcr.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
-      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;tycg.validRows++;
+      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;tycg.validRows++;tcr.validRows++;
       if(!sf){
-        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;tycg.unknownSurface++;
-        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;
+        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;tycg.unknownSurface++;tcr.unknownSurface++;
+        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tcr.noCandidate++;
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
@@ -264,10 +264,10 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const samePair=sackPairIndex.get(pairKey)||[];
       const samePairSurface=samePair.filter(x=>x.surface===sf);
       const candidates=samePairSurface.filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;tycg.pairAbsent++;yearBucket.pairAbsent++;tourYearBucket.pairAbsent++;}
-      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;tycg.surfaceAbsent++;yearBucket.surfaceAbsent++;tourYearBucket.surfaceAbsent++;}
-      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;tycg.dateWindowMiss++;yearBucket.dateWindowMiss++;tourYearBucket.dateWindowMiss++;}
-      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;tourYearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;tycg.candidateRows++;}
+      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;tycg.pairAbsent++;yearBucket.pairAbsent++;tourYearBucket.pairAbsent++;tcr.pairAbsent++;}
+      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;tycg.surfaceAbsent++;yearBucket.surfaceAbsent++;tourYearBucket.surfaceAbsent++;tcr.surfaceAbsent++;}
+      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;tycg.dateWindowMiss++;yearBucket.dateWindowMiss++;tourYearBucket.dateWindowMiss++;tcr.dateWindowMiss++;}
+      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;tourYearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;tycg.candidateRows++;tcr.candidateRows++;}
       if(!candidates.length){
         const reason=!samePair.length?"pairAbsent":!samePairSurface.length?"surfaceAbsent":"dateWindowMiss";
         const stats=noCandidateDiagnostics.byReason[reason];
@@ -409,7 +409,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       }
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
       if(selected){
-        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;tourYearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;tycg.linkedUnique++;
+        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;tourYearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;tycg.linkedUnique++;tcr.linkedUnique++;
         if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         if(!ev){totals.sourceEventMissing++;g.sourceEventMissing++;}
@@ -427,7 +427,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           sourceIdEvidence[tour].get(source2).add(sack2);
           matchRowsWithBothPlayerIdsEvidence++;
         }
-      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;tycg.ambiguous++;}
+      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;tycg.ambiguous++;tcr.ambiguous++;}
       else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;}
     }
   }
@@ -538,7 +538,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     playerIdComparison,
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
-    byTourCategoryRound,
+    byTourCategoryRound:Object.fromEntries(Object.entries(byTourCategoryRound).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
