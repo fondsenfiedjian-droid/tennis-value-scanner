@@ -875,6 +875,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   window.addEventListener('error',event=>showScheduleStartupError(event.message||'Ошибка JavaScript при загрузке скрипта'));
   window.addEventListener('unhandledrejection',event=>showScheduleStartupError(event.reason?.message||event.reason||'Ошибка асинхронной операции'));
 </script>
+<script src="./bankroll.js"></script>
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
@@ -2178,27 +2179,89 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     archiveStorageReady.then(renderArchive);
   }
   const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
-  function readVirtualBank(){
+  const VIRTUAL_BANK_OPTIONS={maxStakePercent:1.5,maxExposurePercent:5,maxDailyStakePercent:5,kellyFraction:0.25,minEv:3,minOdds:1.9};
+  function readVirtualBankState(){
+    const raw=localStorage.getItem(VIRTUAL_BANK_KEY);
+    if(raw===null)return TVSBankroll.createInitialState(1000);
+    const state=JSON.parse(raw);
+    return TVSBankroll.validateState(state);
+  }
+  function saveVirtualBankState(state){
+    TVSBankroll.validateState(state);
+    localStorage.setItem(VIRTUAL_BANK_KEY,JSON.stringify(state));
+    return state;
+  }
+  function recordVirtualPortfolio(bets){
+    if(!window.TVSBankroll||!Array.isArray(bets)||!bets.length)return {placed:0,skipped:0};
+    let state;
+    try{state=readVirtualBankState();}catch(error){console.error('Виртуальный банк не изменён: ошибка чтения журнала.',error);return {placed:0,skipped:bets.length,error};}
+    const now=Date.now();
+    const candidates=bets.map(bet=>{
+      const match=bet.match||{},id=Number(match.id??match.event_id??match.match_id);
+      const start=matchDate(match);
+      const side=bet.side==='A'||bet.side==='B'?bet.side:null;
+      const probability=Number(bet.probability)/100,odds=Number(bet.odds);
+      if(!Number.isSafeInteger(id)||id<=0||!side||!start||!(start.getTime()>now)||
+        bet.freshnessLevel!=='good'||bet.valueEligible!==true||bet.reliabilityEligible!==true||
+        Number(bet.reliabilityScore)<85||!Number.isFinite(probability)||probability<=0||probability>=1||
+        !Number.isFinite(odds)||odds<=1)return null;
+      const players=match.players||{};
+      return {
+        matchId:id,matchKey:String(id),match:[bet.player,bet.opponent].join(' — '),
+        player:bet.player,opponent:bet.opponent,side,probability,odds,
+        bookmaker:bet.bookmaker||'Winamax',matchDate:start.toISOString(),
+        surface:match.surface||'',tour:String(match.tour||match.category||'').toLowerCase(),
+        tournament:match.tournament?.name||match.tournament_name||match.tournament||'',
+        freshnessLevel:'good',options:{...VIRTUAL_BANK_OPTIONS,minEv:Math.max(VIRTUAL_BANK_OPTIONS.minEv,Number(currentValueFilters().minEv)||0),minOdds:Math.max(VIRTUAL_BANK_OPTIONS.minOdds,Number(currentValueFilters().minOdds)||0)}
+      };
+    }).filter(Boolean);
+    if(!candidates.length)return {placed:0,skipped:bets.length};
     try{
-      const data=JSON.parse(localStorage.getItem(VIRTUAL_BANK_KEY)||'{}');
-      return {initial:1000,bets:Array.isArray(data.bets)?data.bets:[]};
-    }catch(error){return {initial:1000,bets:[]};}
+      const plan=TVSBankroll.recommendPortfolio(state,candidates,VIRTUAL_BANK_OPTIONS);
+      if(!plan.suggestions.length)return {placed:0,skipped:bets.length};
+      const pending=TVSBankroll.savePortfolioPlan(state,plan.suggestions);
+      const confirmed=TVSBankroll.confirmPortfolioPlan(pending,pending.pendingPlan.id);
+      saveVirtualBankState(confirmed.state);
+      if($('#balanceView')?.style.display!=='none'||$('#historyView')?.style.display!=='none')renderVirtualBank();
+      return {placed:confirmed.placedCount,skipped:bets.length-confirmed.placedCount};
+    }catch(error){
+      console.warn('Виртуальная ставка пропущена:',error);
+      return {placed:0,skipped:bets.length,error};
+    }
+  }
+  function reconcileVirtualBankResults(){
+    if(!window.TVSBankroll)return {updated:0};
+    try{
+      const state=readVirtualBankState();
+      const result=TVSBankroll.settleVerifiedResults(state,readPredictionArchive());
+      if(result.updated){saveVirtualBankState(result.state);renderVirtualBank();}
+      return result;
+    }catch(error){console.warn('Расчёт виртуального банка отложен:',error);return {updated:0,error};}
   }
   function renderVirtualBank(){
-    const bank=readVirtualBank(),bets=bank.bets;
-    const settled=bets.filter(b=>b.status==='settled');
-    const open=bets.filter(b=>b.status==='open');
-    const profit=settled.reduce((sum,b)=>sum+Number(b.profitLoss||0),0);
-    const balance=bank.initial+profit;
+    if(!window.TVSBankroll)return;
+    let state;
+    try{state=readVirtualBankState();}catch(error){
+      const status=$('#virtualBankStatus');if(status)status.textContent='Журнал банка не прочитан: '+String(error.message||error)+'. Новые операции заблокированы, исходные данные не перезаписываются.';
+      return;
+    }
+    const summary=TVSBankroll.getSummary(state);
     const put=(id,value)=>{const node=$('#'+id);if(node)node.textContent=value;};
-    put('virtualBalance',balance.toLocaleString('ru-RU',{style:'currency',currency:'EUR'}));
-    put('headerBalance',Math.round(balance).toLocaleString('ru-RU')+' €');
-    put('virtualProfit',(profit>=0?'+':'')+profit.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
-    put('virtualOpen',String(open.length));put('virtualSettled',String(settled.length));
+    const money=value=>Number(value||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    put('virtualBalance',money(summary.equity));
+    put('virtualProfit',(summary.realizedProfit>=0?'+':'')+money(summary.realizedProfit));
+    put('virtualOpen',String(summary.openBets));
+    put('virtualSettled',String(summary.settledBets));
+    put('headerBalance',Math.round(summary.equity).toLocaleString('ru-RU')+' €');
     const status=$('#virtualBankStatus');
-    if(status)status.textContent=open.length+' открытых ставок · '+settled.length+' рассчитанных. Пока нет подтверждённых виртуальных ставок, банк сохраняет стартовые 1 000 €.';
+    if(status)status.textContent='Свободно: '+money(summary.balance)+' · в открытых ставках: '+money(summary.openStake)+' · риск банка: '+summary.exposurePercent.toFixed(1)+'% · ROI: '+(summary.roiPercent===null?'—':summary.roiPercent.toFixed(2)+'%')+'. Виртуальные ставки формируются автоматически только по строгим рекомендациям.';
     const list=$('#virtualBetHistory');
-    if(list)list.innerHTML=bets.length?bets.slice().sort((a,b)=>Number(b.placedAt)-Number(a.placedAt)).map(b=>'<article class="archive-item"><b>'+escapeHtml(b.player||'Игрок не указан')+'</b> — '+escapeHtml(b.opponent||'соперник не указан')+'<div class="archive-meta">'+escapeHtml(b.tournament||'Турнир не указан')+' · '+(Number(b.odds)||0).toFixed(2)+' · ставка '+(Number(b.stake)||0).toFixed(2)+' € · '+escapeHtml(b.status||'open')+'</div><div class="archive-meta">Прогноз '+(Number(b.probability)||0).toFixed(1)+'% · EV '+(Number(b.ev)||0).toFixed(2)+'% · '+(b.status==='settled'?'P/L '+Number(b.profitLoss||0).toFixed(2)+' €':'ожидает результата')+'</div></article>').join(''):'<div class="panel empty">Виртуальных ставок пока нет. Ставки будут появляться автоматически только после прохождения строгих критериев.</div>';
+    if(list){
+      const open=state.openBets.map(b=>({...b,status:'open'}));
+      const settled=state.transactions.filter(tx=>tx.type==='settlement'&&tx.betSnapshot).map(tx=>({...tx.betSnapshot,status:'settled',profitLoss:tx.profit,outcome:tx.outcome,settledAt:tx.at}));
+      const rows=[...open,...settled].sort((a,b)=>Date.parse(b.placedAt||b.settledAt||0)-Date.parse(a.placedAt||a.settledAt||0));
+      list.innerHTML=rows.length?rows.map(b=>'<article class="archive-item"><b>'+escapeHtml(b.player||'Игрок не указан')+'</b> — '+escapeHtml(b.opponent||'соперник не указан')+'<div class="archive-meta">'+escapeHtml(b.tournament||'Турнир не указан')+' · '+(Number(b.odds)||0).toFixed(2)+' · ставка '+money(b.stake)+' · '+(b.status==='settled'?'рассчитана':'открыта')+'</div><div class="archive-meta">Прогноз '+(Number(b.probability)*100).toFixed(1)+'% · EV '+(Number(b.ev)||0).toFixed(2)+'% · '+(b.status==='settled'?'P/L '+money(b.profitLoss):'ожидает официального результата')+'</div></article>').join(''):'<div class="panel empty">Виртуальных ставок пока нет. Они появятся автоматически после прохождения строгих критериев и проверки свежести Winamax.</div>';
+    }
   }
   function showBalance(){hideAllScreens();$('#balanceView').style.display='block';setActiveNavigation('navBalance');renderVirtualBank();}
   function showHistory(){hideAllScreens();$('#historyView').style.display='block';setActiveNavigation('navHistory');renderVirtualBank();}
@@ -2711,6 +2774,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const bestBetMinOdds=Number.isFinite(configuredBestBetMinOdds)?Math.max(1.5,Math.min(15,configuredBestBetMinOdds)):1.9;
     const legacyBest=selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
     const bestBets=selectBestBets(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds);
+    recordVirtualPortfolio(bestBets);
     const highest=selectHighestEvBet(evBets,filters.minOdds,filters.maxOdds);
     const betKey=bet=>[bet.match?.id||bet.match?.event_id||bet.matchIndex,bet.side,bet.player].join('|');
     let bestBetCarouselIndex=bestBetCarouselKey?bestBets.findIndex(bet=>betKey(bet)===bestBetCarouselKey):0;
@@ -3314,6 +3378,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   scheduleAutoRefresh();
   archiveStorageReady.then(()=>{
     if($('#statsView').style.display!=='none')renderArchive();
+    reconcileVirtualBankResults();
     runAutomaticArchiveResultCheck();
   });
   document.addEventListener('visibilitychange',()=>{
