@@ -259,6 +259,10 @@ assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.r
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestCandidateOffsetDays,[{days:0,count:1}]);
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestCandidateGapDays,[{days:3,count:1}]);
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.distinctCandidateDates,[{dates:2,count:1}]);
+assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateCandidateRows,[{rows:2,count:1}]);
+assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDistinctSignatures,[{signatures:2,count:1}]);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultipleSignatures,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithSingleSignature,0);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
  
@@ -281,4 +285,9 @@ const tierDuplicateReport=auditValuebetSackmann(tierDuplicateValuebet,tierDuplic
 assert.equal(tierDuplicateReport.totals.ambiguous,1);
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithCrossTierDuplicateCandidate,1);
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.duplicateCandidateExtraRows,1);
+assert.deepEqual(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateCandidateRows,[{rows:2,count:1}]);
+assert.deepEqual(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDistinctSignatures,[{signatures:1,count:1}]);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithSingleSignature,1);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.duplicateExtraRows,1);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithCrossTierDuplicate,1);
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.topReasonBreakdown[0].crossTierDuplicate,"cross-tier-duplicate");
