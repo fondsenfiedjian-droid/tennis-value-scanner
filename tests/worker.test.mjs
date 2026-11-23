@@ -3329,10 +3329,10 @@ test("settings provide persistent app-wide selectable skins including amber LED 
   assert.ok(frontendSource.includes('value="amber-led"'));
   assert.ok(frontendSource.includes('body[data-skin="amber-led"]'));
   assert.ok(frontendSource.includes("led-digit"));
-  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'amber-led'"));
-  assert.ok(frontendSource.includes("saved.amberLedDefaultApplied!==true"));
+  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'black'"));
+  assert.ok(!frontendSource.includes("saved.amberLedDefaultApplied"));
   assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
-  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'amber-led'"));
+  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black'"));
   assert.ok(frontendSource.includes('body[data-skin="steel"]'));
   assert.ok(frontendSource.includes('body[data-skin="terracotta"]'));
 });
