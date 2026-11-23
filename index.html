@@ -1960,7 +1960,7 @@
       ?renderCompareH2H(optionalRequests[2].value,exactNameA,exactNameB)
       :'<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Источник недоступен: '+escapeHtml(String(optionalRequests[2].reason?.message||'ошибка запроса'))+'</small></section>';
     resultNode.insertAdjacentHTML('beforeend',renderCompareHistory(histA,exactNameA)+renderCompareHistory(histB,exactNameB)+h2hHtml);
-    status.textContent='Elo рассчитан · история: '+(Number(optionalRequests[0].status==='fulfilled')+Number(optionalRequests[1].status==='fulfilled'))+'/2 · H2H: '+(optionalRequests[2].status==='fulfilled'?'ответ получен; идентичность проверяется в блоке H2H':'недоступен')+'. История 2023–н.в.; H2H 1968–н.в. Дополнительные данные не влияют на расчёт Elo.';
+    status.textContent='Elo рассчитан · история: '+(Number(optionalRequests[0].status==='fulfilled')+Number(optionalRequests[1].status==='fulfilled'))+'/2 · H2H: '+(optionalRequests[2].status==='fulfilled'?'ответ получен; проверка имён показана в блоке H2H':'недоступен')+'. История 2023–н.в.; H2H 1968–н.в. Дополнительные данные не влияют на расчёт Elo.';
   }
   $('#compareRun').onclick=async()=>{
     const requestId=++compareRequestSequence;
