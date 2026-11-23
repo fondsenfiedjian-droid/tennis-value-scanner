@@ -1,47 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="ball" cx="31%" cy="23%" r="76%">
-      <stop offset="0" stop-color="#eaff85"/>
-      <stop offset=".32" stop-color="#c9e84b"/>
-      <stop offset=".7" stop-color="#a6cf25"/>
-      <stop offset="1" stop-color="#668b12"/>
+    <radialGradient id="feltBase" cx="32%" cy="24%" r="78%">
+      <stop offset="0" stop-color="#eaff9a"/>
+      <stop offset=".38" stop-color="#d5ed62"/>
+      <stop offset=".76" stop-color="#c1df42"/>
+      <stop offset="1" stop-color="#8eae24"/>
     </radialGradient>
-    <radialGradient id="shade" cx="28%" cy="20%" r="78%">
-      <stop offset=".42" stop-color="#fff" stop-opacity=".22"/>
-      <stop offset="1" stop-color="#142000" stop-opacity=".34"/>
+    <radialGradient id="light" cx="27%" cy="19%" r="78%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".28"/>
+      <stop offset=".48" stop-color="#fff" stop-opacity=".06"/>
+      <stop offset="1" stop-color="#263900" stop-opacity=".23"/>
     </radialGradient>
-    <filter id="felt" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="3" seed="14" result="noise"/>
-      <feColorMatrix in="noise" type="saturate" values="0" result="mono"/>
-      <feComponentTransfer in="mono" result="grain">
-        <feFuncA type="table" tableValues="0 .22"/>
+    <filter id="feltTexture" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency=".92" numOctaves="3" seed="21" result="grain"/>
+      <feColorMatrix in="grain" type="saturate" values="0" result="mono"/>
+      <feComponentTransfer in="mono" result="fine">
+        <feFuncA type="table" tableValues="0 .18"/>
       </feComponentTransfer>
-      <feBlend in="SourceGraphic" in2="grain" mode="soft-light"/>
+      <feBlend in="SourceGraphic" in2="fine" mode="soft-light"/>
     </filter>
-    <clipPath id="clip">
-      <circle cx="256" cy="256" r="211"/>
-    </clipPath>
-    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="11"/>
-    </filter>
+    <clipPath id="roundBall"><circle cx="256" cy="256" r="250"/></clipPath>
   </defs>
-  <ellipse cx="263" cy="278" rx="205" ry="211" fill="#172000" opacity=".22" filter="url(#softShadow)"/>
-  <g clip-path="url(#clip)">
-    <circle cx="256" cy="256" r="211" fill="url(#ball)" filter="url(#felt)"/>
-    <circle cx="256" cy="256" r="211" fill="url(#shade)"/>
-    <path d="M76 112 C166 145 205 207 213 257 C222 315 189 376 119 420"
-          fill="none" stroke="#6d851e" stroke-width="27" stroke-linecap="round" opacity=".55"/>
-    <path d="M76 112 C166 145 205 207 213 257 C222 315 189 376 119 420"
-          fill="none" stroke="#f7ffd0" stroke-width="19" stroke-linecap="round"/>
-    <path d="M76 112 C166 145 205 207 213 257 C222 315 189 376 119 420"
-          fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".72"/>
-    <path d="M436 112 C346 145 307 207 299 257 C290 315 323 376 393 420"
-          fill="none" stroke="#6d851e" stroke-width="27" stroke-linecap="round" opacity=".55"/>
-    <path d="M436 112 C346 145 307 207 299 257 C290 315 323 376 393 420"
-          fill="none" stroke="#f7ffd0" stroke-width="19" stroke-linecap="round"/>
-    <path d="M436 112 C346 145 307 207 299 257 C290 315 323 376 393 420"
-          fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".72"/>
-    <ellipse cx="179" cy="116" rx="105" ry="58" fill="#fff" opacity=".09" transform="rotate(-28 179 116)"/>
+
+  <!-- A single natural tennis ball; everything outside the circular silhouette is transparent. -->
+  <g clip-path="url(#roundBall)">
+    <circle cx="256" cy="256" r="250" fill="url(#feltBase)" filter="url(#feltTexture)"/>
+    <circle cx="256" cy="256" r="250" fill="url(#light)"/>
+
+    <path d="M -18 93 C 111 119 183 188 191 257 C 199 326 139 393 17 421"
+          fill="none" stroke="#879e31" stroke-width="23" stroke-linecap="round" opacity=".38"/>
+    <path d="M -18 93 C 111 119 183 188 191 257 C 199 326 139 393 17 421"
+          fill="none" stroke="#f8ffd9" stroke-width="16" stroke-linecap="round"/>
+    <path d="M -18 93 C 111 119 183 188 191 257 C 199 326 139 393 17 421"
+          fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".72"/>
+
+    <path d="M 530 93 C 401 119 329 188 321 257 C 313 326 373 393 495 421"
+          fill="none" stroke="#879e31" stroke-width="23" stroke-linecap="round" opacity=".38"/>
+    <path d="M 530 93 C 401 119 329 188 321 257 C 313 326 373 393 495 421"
+          fill="none" stroke="#f8ffd9" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 530 93 C 401 119 329 188 321 257 C 313 326 373 393 495 421"
+          fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".72"/>
   </g>
-  <circle cx="256" cy="256" r="211" fill="none" stroke="#597b12" stroke-width="3" opacity=".7"/>
 </svg>
