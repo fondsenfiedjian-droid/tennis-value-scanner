@@ -195,8 +195,7 @@ export function runTierAwareEloResearch(rows, options = {}) {
       // Same-day matches all use the pre-date state; all updates are applied only after predictions.
       applyDayUpdates(baselineRatings, mainToday, () => mainK);
       for (const k of lowerKs) {
-        applyDayUpdates(tierRatingsByK.get(k), mainToday, () => mainK);
-        applyDayUpdates(tierRatingsByK.get(k), lowerToday, () => k);
+        applyDayUpdates(tierRatingsByK.get(k), day, match => match.sourceType === "main" ? mainK : k);
       }
       for (const match of lowerToday) {
         lowerHistory.set(match.winner, (lowerHistory.get(match.winner) ?? 0) + 1);
