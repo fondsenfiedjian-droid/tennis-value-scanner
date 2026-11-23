@@ -955,7 +955,7 @@ export default {
 
     // Live Tennis PRO bulk history packages: monthly point tapes and yearly archive results.
     // Package files are streamed unchanged; API keys remain server-side.
-    const historyPackageMatch = path.match(/^\\/history\\/packages(?:\\/(\\d{4}(?:-\\d{2})?))?$/);
+    const historyPackageMatch = path.match(/^\/history\/packages(?:\/(\d{4}(?:-\d{2})?))?$/);
     if (historyPackageMatch) {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
@@ -967,14 +967,14 @@ export default {
       const allowedKinds = ["tape", "rankings", "rally", "archive", "elo", "archive_tape"];
       if (!allowedKinds.includes(kind)) return response({ error: "Invalid history package kind", allowed: allowedKinds }, 400);
       if (period && ["rankings", "rally", "archive", "elo", "archive_tape"].includes(kind)) {
-        if (!/^\\d{4}$/.test(period)) return response({ error: "Yearly package period must be YYYY" }, 400);
-      } else if (period && !/^\\d{4}-\\d{2}$/.test(period)) {
+        if (!/^\d{4}$/.test(period)) return response({ error: "Yearly package period must be YYYY" }, 400);
+      } else if (period && !/^\d{4}-\d{2}$/.test(period)) {
         return response({ error: "Monthly tape package period must be YYYY-MM" }, 400);
       }
       params.set("kind", kind);
       const year = url.searchParams.get("year");
       if (year !== null) {
-        if (!/^\\d{4}$/.test(year)) return response({ error: "year must be YYYY" }, 400);
+        if (!/^\d{4}$/.test(year)) return response({ error: "year must be YYYY" }, 400);
         if (period) return response({ error: "year cannot be combined with a package period" }, 400);
         params.set("year", year);
       }
