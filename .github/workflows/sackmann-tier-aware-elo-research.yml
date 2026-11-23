@@ -61,36 +61,41 @@ jobs:
             test -s "research-data/$name"
           ' _
           test "$(find research-data -type f | wc -l)" -eq 262
-      - name: Run chronological tier-aware Elo K-factor sweep
+      - name: Run chronological tier-aware Elo K-factor and timing-lag sweeps
         run: |
           set -euo pipefail
-          node --max-old-space-size=6144 scripts/sackmann-tier-aware-elo-research.mjs \
-            --input-dir research-data \
-            --from 20000101 --to 20260525 \
-            --main-k 32 --lower-k 8,16,24,32 \
-            --out "$RUNNER_TEMP/sackmann-tier-aware-elo-report.json"
+          for lag in 0 7 14; do
+            node --max-old-space-size=6144 scripts/sackmann-tier-aware-elo-research.mjs \
+              --input-dir research-data \
+              --from 20000101 --to 20260525 \
+              --main-k 32 --lower-k 4,8,12,16,20,24,28,32 \
+              --history-lag-days "$lag" \
+              --out "$RUNNER_TEMP/sackmann-tier-aware-elo-lag$lag.json"
+          done
       - name: Publish aggregate comparison
         run: |
           node --input-type=module <<'NODE'
           import { readFile } from "node:fs/promises";
-          const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/sackmann-tier-aware-elo-report.json", "utf8"));
           const rows = [
-            "| Tour | Lower-tier K | Main matches | Baseline Brier | Tier-aware Brier | Δ Brier | Baseline LogLoss | Tier-aware LogLoss | Δ LogLoss |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+            "| Lag days | Tour | Lower-tier K | Main matches | Baseline Brier | Tier-aware Brier | Δ Brier | Baseline LogLoss | Tier-aware LogLoss | Δ LogLoss |",
+            "|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"
           ];
-          for (const tour of ["ATP", "WTA"]) {
-            const data = report.results[tour];
-            for (const [k, value] of Object.entries(data.lowerTierK)) {
-              const b = value.overall.baseline, t = value.overall.tierAware;
-              rows.push("| " + tour + " | " + k + " | " + b.matches + " | " + b.brier + " | " + t.brier + " | " + (t.brier - b.brier).toFixed(6) + " | " + b.logLoss + " | " + t.logLoss + " | " + (t.logLoss - b.logLoss).toFixed(6) + " |");
+          for (const lag of [0, 7, 14]) {
+            const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/sackmann-tier-aware-elo-lag" + lag + ".json", "utf8"));
+            for (const tour of ["ATP", "WTA"]) {
+              const data = report.results[tour];
+              for (const [k, value] of Object.entries(data.lowerTierK)) {
+                const b = value.overall.baseline, t = value.overall.tierAware;
+                rows.push("| " + lag + " | " + tour + " | " + k + " | " + b.matches + " | " + b.brier + " | " + t.brier + " | " + (t.brier - b.brier).toFixed(6) + " | " + b.logLoss + " | " + t.logLoss + " | " + (t.logLoss - b.logLoss).toFixed(6) + " |");
+              }
             }
           }
           await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n"));
           NODE
-      - name: Upload aggregate-only research report
+      - name: Upload aggregate-only research reports
         uses: actions/upload-artifact@v4
         with:
           name: sackmann-tier-aware-elo-research
-          path: ${{ runner.temp }}/sackmann-tier-aware-elo-report.json
+          path: ${{ runner.temp }}/sackmann-tier-aware-elo-lag*.json
           if-no-files-found: error
           retention-days: 30
