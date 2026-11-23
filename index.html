@@ -428,6 +428,18 @@
       56%{filter:brightness(1.17);box-shadow:0 0 14px #00f0adcc,0 0 30px #00c98baa,inset 0 0 13px #c2ffec99}
     }
     @media(prefers-reduced-motion:reduce){body[data-skin="steel"] .tab.active,body[data-skin="steel"] .date-controls .tab.active,body[data-skin="steel"] .plan-refresh{animation:none}}
+
+    /* Empty daily-pick state: animated tennis ball, no copy */
+    .best-bet.empty-daily-pick{min-height:156px;display:grid;place-items:center;position:relative;overflow:hidden;padding:10px;background:radial-gradient(ellipse at 50% 55%,#2a1018 0,#100b0e 48%,#090909 78%);border-color:#79213b;box-shadow:inset 0 0 28px #8d17331c,0 0 18px #8d17331c}
+    .empty-pick-animation{width:100%;height:132px;display:block;overflow:visible}
+    .empty-pick-trail{fill:none;stroke:#b72b50;stroke-width:3;stroke-linecap:round;opacity:.72;filter:drop-shadow(0 0 5px #d12e58);stroke-dasharray:10 13;animation:empty-pick-trail 1.15s linear infinite}
+    .empty-pick-ball{transform-box:fill-box;transform-origin:center;animation:empty-pick-flight 3.2s cubic-bezier(.42,0,.58,1) infinite,empty-pick-spin .72s linear infinite;filter:drop-shadow(0 0 9px #d9d15c88)}
+    .empty-pick-ball-core{fill:#d6d35b;stroke:#f4ef9a;stroke-width:1.5}
+    .empty-pick-ball-seam{fill:none;stroke:#fffbd0;stroke-width:2.2;stroke-linecap:round}
+    @keyframes empty-pick-flight{0%,100%{transform:translate(10px,76px)}25%{transform:translate(34vw,20px)}50%{transform:translate(68vw,75px)}75%{transform:translate(34vw,34px)}}
+    @keyframes empty-pick-spin{to{rotate:360deg}}
+    @keyframes empty-pick-trail{to{stroke-dashoffset:-46}}
+    @media(prefers-reduced-motion:reduce){.empty-pick-ball,.empty-pick-trail{animation:none}.empty-pick-ball{transform:translate(50%,50%)}}
 </style>
 </head>
 <body>
@@ -2258,7 +2270,7 @@
     const pending=Math.max(0,totalCandidates-scanned-failed);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.'+(pending?' В очереди: '+pending+'.':'')+(failed?' Ошибок расчёта: '+failed+'.':'');
     if(!best){
-      box.innerHTML='<div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><div class="best-bet-empty">'+(scanned?'Сегодня нет ставки, прошедшей строгий отбор.':'Ожидаю расчёта вероятностей…')+' '+coverage+(failed?' Не удалось рассчитать: '+failed+'.':'')+'</div>';
+      box.classList.add('empty-daily-pick');box.innerHTML='<svg class="empty-pick-animation" viewBox="0 0 320 132" role="img" aria-label="Анимированный теннисный мяч"><defs><radialGradient id="emptyBallGlow"><stop offset="0" stop-color="#fff9a8" stop-opacity=".9"/><stop offset="1" stop-color="#d6d35b" stop-opacity="0"/></radialGradient></defs><path class="empty-pick-trail" d="M18 88 Q76 8 136 60 T300 48"/><g class="empty-pick-ball"><circle r="22" fill="url(#emptyBallGlow)" opacity=".45"/><circle class="empty-pick-ball-core" r="13"/><path class="empty-pick-ball-seam" d="M-7 -10 C8 -4 8 4 -7 10 M7 -10 C-8 -4 -8 4 7 10"/></g></svg>';
       const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
