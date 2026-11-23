@@ -337,8 +337,8 @@ const tierDuplicateSack=[
     "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32"
   ].join("\n")},
   {filename:"atp_matches_qual_chall_2025.csv",content:[
-    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
-    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902"
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id,score,round",
+    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32"
   ].join("\n")}
 ];
 const tierDuplicateReport=auditValuebetSackmann(tierDuplicateValuebet,tierDuplicateSack);
