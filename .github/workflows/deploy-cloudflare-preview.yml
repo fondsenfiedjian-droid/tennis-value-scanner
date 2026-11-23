@@ -39,6 +39,20 @@ jobs:
           fi
           npx --yes wrangler@4.165.0 deploy --config wrangler.preview.toml
 
+      - name: Rotate ephemeral Preview history download token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare Preview credentials are required to rotate the temporary research token"
+            exit 1
+          fi
+          token=$(node --input-type=module -e 'import { randomBytes } from "node:crypto"; process.stdout.write(randomBytes(32).toString("hex"))')
+          echo "::add-mask::$token"
+          printf '%s' "$token" | npx --yes wrangler@4.165.0 secret put TVS_RESEARCH_ACCESS_TOKEN --config wrangler.preview.toml
+          echo "TVS_RESEARCH_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
+
       - name: Smoke-check isolated Preview Worker and Live Tennis configuration
         env:
           PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
@@ -191,6 +205,28 @@ jobs:
               throw new Error(label + " package manifest has no downloadable files");
             }
           }
+          const archiveCsv = archiveManifest.files.find(file => file.format === "csv");
+          if (!archiveCsv) throw new Error("Latest archive package has no CSV download");
+          const downloadResponse = await fetch(base + "/history/packages/" +
+            encodeURIComponent(latestArchive.period) + "?kind=archive&format=csv", {
+              headers: { "X-Research-Access": process.env.TVS_RESEARCH_ACCESS_TOKEN || "" },
+              signal: AbortSignal.timeout(30000)
+            });
+          if (!downloadResponse.ok) {
+            throw new Error("Protected archive package download returned HTTP " + downloadResponse.status);
+          }
+          const reader = downloadResponse.body.getReader();
+          const firstChunk = await reader.read();
+          await reader.cancel();
+          if (!firstChunk.value || firstChunk.value.length < 2) {
+            throw new Error("Archive package download returned an empty stream");
+          }
+          if (archiveCsv.compression === "gzip" &&
+              !(firstChunk.value[0] === 0x1f && firstChunk.value[1] === 0x8b)) {
+            throw new Error("Archive package compression does not match its manifest");
+          }
+          console.log("Archive file stream OK: " + archiveCsv.filename + "; compressed bytes=" +
+            archiveCsv.bytes + "; first chunk=" + firstChunk.value.length + " bytes.");
           console.log("Live Tennis PRO bulk history verified: monthly tape packages=" + tape.data.length +
             "; newest tape=" + latestTape.period + "; matches=" + (latestTape.match_count ?? "unknown") +
             "; archive years=" + archive.data.length + "; newest archive year=" + latestArchive.period +
