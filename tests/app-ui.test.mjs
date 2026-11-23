@@ -484,12 +484,14 @@ test("strict recommendations return the full reliability-ranked list for manual 
   assert.equal(selected.length,2);
 });
 
-test("strict recommendation carousel is manually navigated and does not auto-rotate",()=>{
+test("daily-pick carousel rotates only qualifying bets and never substitutes ordinary matches",()=>{
   assert.match(html,/id="bestBetPrev"/);
   assert.match(html,/id="bestBetNext"/);
   assert.match(html,/bestBetCarouselKey/);
-  assert.match(html,/renderBestBet\(bets,scanned,totalCandidates,failed,evBets,oddsFallback\)/);
-  assert.doesNotMatch(html,/setInterval\([^)]*bestBet|bestBet[^;]*setInterval/);
+  assert.match(html,/bestBetCarouselTimer=setInterval/);
+  assert.match(html,/},9000\)/);
+  assert.match(html,/Нет ставок, прошедших строгий отбор\. Матчи без рекомендации здесь не показываются/);
+  assert.doesNotMatch(html,/const shownFeatured=startFeaturedMatchCarousel\(\)/);
   assert.match(html,/[Рр]азмер ставки не рассчитан/);
   assert.match(html,/aria-label="Ставка дня"/);
 });
