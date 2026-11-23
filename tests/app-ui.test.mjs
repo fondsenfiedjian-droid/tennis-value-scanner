@@ -778,6 +778,9 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/Стальной синий · холодные акценты/);
   assert.match(html,/Amber Equalizer · чёрный и янтарный неон/);
   assert.match(html,/body\[data-skin="amber-led"\]/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.daily-pick\{[\s\S]*?background:linear-gradient\(125deg,#2b1a0d/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.plan-refresh\{[\s\S]*?background:linear-gradient\(110deg,#4a260f,#8c451c/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.daily-pick-confidence\{color:#d0ae8d\}/);
   assert.match(html,/led-digit/);
   assert.match(html,/clip-path:polygon/);
   assert.match(html,/const isAmber=\(\)=>document\.body\?\.dataset\.skin==="amber-led"/);
