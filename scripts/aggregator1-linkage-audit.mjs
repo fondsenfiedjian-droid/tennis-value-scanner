@@ -183,7 +183,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     }
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
-  const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},byTourYearCategory={},offsets=[],eventMismatchPairs=new Map(),eventMismatchBreakdown=new Map();
+  const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},byTourYearCategory={},byTourCategoryRound={},offsets=[],eventMismatchPairs=new Map(),eventMismatchBreakdown=new Map();
   const ambiguousDiagnostics={rows:0,exactEventDisambiguated:0,noExactEventMatch:0,multipleExactEventMatches:0,candidateRows:0,rowsWithCrossTierDuplicateCandidate:0,rowsWithSameTierDuplicateCandidate:0,rowsWithMultipleDistinctEventDates:0,duplicateCandidateExtraRows:0,distinctCandidateSignatures:0,rowsWithTiedNearestCandidateDate:0,rowsWithUniqueNearestCandidateDate:0,rowsWithExactDateCandidate:0};
   const ambiguousResolutionStrategies={unresolvedRows:0,uniqueNearestDate:0,singleNearestSignature:0,uniquePlayerIdPair:0,completePlayerIds:0,nearestSignatureAndUniqueIds:0,strictCandidate:0,strictCandidateSingleRow:0,strictCandidateDuplicateRows:0,strictCandidateSingleTier:0,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0,strictCandidateAllScoresPresent:0,strictCandidateOneDistinctScore:0,strictCandidateScoreConflict:0,strictCandidateAllRoundsPresent:0,strictCandidateOneDistinctRound:0,strictCandidateRoundConflict:0};
   const ambiguousCandidateBreakdown=new Map();
@@ -236,6 +236,11 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         }
       }
       const tourCategoryKey=(tour||"(empty)")+"::"+category;
+      const roundRaw=String(row.tour??"").trim();
+      const roundKey=/^\\d+$/.test(roundRaw)?String(Number(roundRaw)):(roundRaw||"(empty)");
+      const tourCategoryRoundKey=(tour||"(empty)")+"::"+category+"::"+roundKey;
+      const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0});
+      tcr.rows++;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
       const tourYearCategoryKey=(tour||"(empty)")+"::"+m[1]+"::"+category;
@@ -533,6 +538,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     playerIdComparison,
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
+    byTourCategoryRound,
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
