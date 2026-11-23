@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cloudflare-preview-worker
+  cancel-in-progress: true
+
 jobs:
   deploy-preview:
     if: github.ref == 'refs/heads/ui/tennis-value-scanner-2' || github.ref == 'refs/heads/integration/live-tennis-pro-markets'
@@ -237,10 +241,10 @@ jobs:
           console.log("Archive file stream OK: " + archiveCsv.filename + "; compressed bytes=" +
             archiveCsv.bytes + "; first chunk=" + firstChunk.value.length + " bytes.");
           console.log("History coverage snapshot: as_of=" + (coverage.as_of || "unknown") +
-            "; ATP singles=" + (coverage.buckets.atp_singles?.matches ?? "unknown") +
-            "; WTA singles=" + (coverage.buckets.wta_singles?.matches ?? "unknown") +
-            "; Challenger singles=" + (coverage.buckets.challenger_singles?.matches ?? "unknown") +
-            "; ITF singles=" + (coverage.buckets.itf_singles?.matches ?? "unknown") + ".");
+            "; ATP singles=" + (coverage.buckets.atp_singles?.completed ?? "unknown") +
+            "; WTA singles=" + (coverage.buckets.wta_singles?.completed ?? "unknown") +
+            "; Challenger singles=" + (coverage.buckets.challenger_singles?.completed ?? "unknown") +
+            "; ITF singles=" + (coverage.buckets.itf_singles?.completed ?? "unknown") + ".");
           console.log("Live Tennis PRO bulk history verified: monthly tape packages=" + tape.data.length +
             "; newest tape=" + latestTape.period + "; matches=" + (latestTape.match_count ?? "unknown") +
             "; archive years=" + archive.data.length + "; newest archive year=" + latestArchive.period +
