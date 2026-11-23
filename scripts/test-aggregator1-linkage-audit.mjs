@@ -450,7 +450,7 @@ const roundValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
 const roundReport=auditValuebetSackmann(roundValuebet,[{filename:"atp_matches_futures_2025.csv",content:[
   "tourney_date,tourney_name,surface,winner_name,loser_name",
   "20250512,ITF Example,Hard,Round Player A,Round Player B"
-].join("\\n")}]);
+].join("\n")}]);
 assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].rows,1);
 assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].rows,1);
 assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].rows,1);
