@@ -698,7 +698,7 @@
        !Number.isFinite(maxOdds)||maxOdds<minOdds||maxOdds>100||
        !Number.isFinite(bestBetMinOdds)||bestBetMinOdds<1.5||bestBetMinOdds>15||
        ![0,30,60,180].includes(refreshRate)){
-      alert('Проверь настройки: EV должен быть от 0 до 100%, минимальный коэффициент — от 1.90 до 100, максимальный — не меньше минимального и не больше 100.');
+      alert('Проверь настройки: EV — 0–100%, минимальный коэффициент — от 1.90, максимальный — не меньше минимального, кэф «Ставки дня» — 1.50–15, автообновление — из списка.');
       return;
     }
     const data=readSettings();
@@ -710,9 +710,12 @@
       localStorage.setItem('tvs-settings',JSON.stringify(data));
       localStorage.setItem('tvs-tours',JSON.stringify(data.tours));
       const savedAgain=readSettings();
+      const savedTourValues=Array.isArray(savedAgain.tours)?savedAgain.tours.slice().sort():[];
+      const expectedTourValues=data.tours.slice().sort();
       if(Number(savedAgain.minEv)!==minEv||Number(savedAgain.minOdds)!==minOdds||
          Number(savedAgain.maxOdds)!==maxOdds||Number(savedAgain.bestBetMinOdds)!==bestBetMinOdds||
-         normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin)
+         normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin||
+         JSON.stringify(savedTourValues)!==JSON.stringify(expectedTourValues))
          throw new Error('Настройки не сохранились');
     }catch(error){
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
