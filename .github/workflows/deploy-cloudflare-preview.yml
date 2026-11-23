@@ -102,6 +102,14 @@ jobs:
           }
           const usage = await read("/usage");
           const tier = String(usage.tier || usage.base_tier || "unknown").toLowerCase();
+          const productionUsageResponse = await fetch("https://tennis-value-api.fonds-enfiedjian.workers.dev/usage", {
+            signal: AbortSignal.timeout(15000)
+          });
+          const productionUsage = await productionUsageResponse.json();
+          if (!productionUsageResponse.ok) throw new Error("Production read-only usage diagnostic failed with HTTP " + productionUsageResponse.status);
+          const productionTier = String(productionUsage.tier || productionUsage.base_tier || "unknown").toLowerCase();
+          console.log("Live Tennis key tiers: Preview=" + tier + "; Production=" + productionTier + ".");
+          if (!["pro", "ultra"].includes(tier)) throw new Error("Preview Live Tennis API key is not PRO-entitled; Preview tier=" + tier + "; Production tier=" + productionTier + ". Update the Preview Worker secret if Production is already PRO.");
           if (!["pro", "ultra"].includes(tier)) throw new Error("Preview Live Tennis API key is not PRO-entitled; reported tier=" + tier);
           const marketSchedule = await read("/matches?status=upcoming&limit=200");
           const marketMatch = (Array.isArray(marketSchedule.data) ? marketSchedule.data : [])
@@ -122,12 +130,6 @@ jobs:
               if (![200, 404].includes(pricesResponse.status)) throw new Error("Live Tennis price-history smoke test returned HTTP " + pricesResponse.status);
             }
           }
-          const productionUsageResponse = await fetch("https://tennis-value-api.fonds-enfiedjian.workers.dev/usage", {
-            signal: AbortSignal.timeout(15000)
-          });
-          const productionUsage = await productionUsageResponse.json();
-          if (!productionUsageResponse.ok) throw new Error("Production read-only usage diagnostic failed with HTTP " + productionUsageResponse.status);
-          const productionTier = String(productionUsage.tier || productionUsage.base_tier || "unknown").toLowerCase();
           const [historyAResponse, historyBResponse, h2hResponse] = await Promise.all([
             fetch(base + "/player-history?id=" + encodeURIComponent(playerA.id) + "&limit=20"),
             fetch(base + "/player-history?id=" + encodeURIComponent(playerB.id) + "&limit=20"),
