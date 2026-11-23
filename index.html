@@ -1036,6 +1036,18 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       background:linear-gradient(110deg,#604018 0%,#805322 52%,#65431a 100%) !important
     }
 
+
+  .research-journal{overflow:hidden}
+  .research-table-wrap{overflow-x:auto;margin-top:12px;max-width:100%;-webkit-overflow-scrolling:touch}
+  .research-table{border-collapse:collapse;width:100%;min-width:1120px;font-size:11px;line-height:1.45}
+  .research-table th,.research-table td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .research-table th{position:sticky;top:0;background:#171311;color:var(--amber);font-weight:800;white-space:nowrap}
+  .research-table td{color:var(--text);max-width:250px}
+  .research-table td:first-child{font-weight:800;color:var(--amber);white-space:nowrap}
+  .research-status{display:inline-block;padding:3px 7px;border:1px solid var(--line);border-radius:7px;white-space:nowrap;font-weight:800}
+  .research-status.completed{color:#b6d8c7;border-color:#416653}
+  .research-status.running{color:#f0d58b;border-color:#8a6c32}
+  .research-status.planned{color:var(--muted)}
   </style>
 </head>
 <body>
@@ -1104,6 +1116,14 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <div class="stats-view" id="statsView">
   <h1>Статистика прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
+  <section class="panel research-journal" id="researchTestJournal" style="margin-top:16px">
+    <div class="section-head" style="margin-top:0"><h2>Журнал исследований модели</h2><button type="button" class="linkbtn" id="researchJournalRefresh">Обновить</button></div>
+    <div class="muted" id="researchJournalMeta">Загрузка протоколов тестирования…</div>
+    <div class="research-table-wrap"><table class="research-table"><thead><tr>
+      <th>ID теста</th><th>Статус</th><th>Тур</th><th>Базовая модель → вариант</th><th>K</th><th>Окно обучения</th><th>Период оценки</th><th>Brier до → после</th><th>LogLoss до → после</th><th>Выборка и параметры</th>
+    </tr></thead><tbody id="researchJournalRows"><tr><td colspan="10">Загрузка журнала…</td></tr></tbody></table></div>
+    <div class="archive-meta" id="researchJournalFootnote">Brier и LogLoss: меньше — лучше. ROI не рассчитывается, если в карточке теста он не указан. Исследовательские тесты не меняют рабочую модель автоматически.</div>
+  </section>
   <section class="panel" id="virtualStrategyStats" style="margin-top:16px"><b>Эффективность виртуальной стратегии</b><div class="muted">Отдельно от точности прогнозной модели. Считаются только реальные записи виртуального журнала с подтверждёнными исходами.</div><div class="stats" style="margin-top:12px"><div><div class="muted">ROI</div><div class="stat-num" id="strategyRoi">—</div></div><div><div class="muted">Победы</div><div class="stat-num" id="strategyWinRate">—</div></div><div><div class="muted">Рассчитано ставок</div><div class="stat-num" id="strategySettled">0</div></div><div><div class="muted">Оборот</div><div class="stat-num" id="strategyTurnover">0 €</div></div><div><div class="muted">Максимальная просадка</div><div class="stat-num" id="strategyDrawdown">0 €</div></div><div><div class="muted">Фактор прибыли</div><div class="stat-num" id="strategyProfitFactor">—</div></div></div><div class="archive-list" id="strategySegments"><div class="archive-item">Пока нет рассчитанных виртуальных ставок.</div></div></section>
   <div class="stats" style="margin-top:16px">
     <div class="panel"><div class="muted">Сохранено исходов</div><div class="stat-num" id="archiveCount">0</div></div>
@@ -2609,10 +2629,50 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const d=new Date();d.setDate(d.getDate()+1);$('#dateText').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
     showMatches();$('#topTomorrow').classList.add('active');if(window.cachedMatches)renderMatches(window.cachedMatches);
   }
+  let researchJournalLoaded=false;
+  async function loadResearchTestJournal(force=false){
+    const body=$('#researchJournalRows'),meta=$('#researchJournalMeta');
+    if(!body||!meta||researchJournalLoaded&&!force)return;
+    meta.textContent='Загружаю журнал тестов…';
+    body.replaceChildren();
+    try{
+      const url='https://raw.githubusercontent.com/fondsenfiedjian-droid/tennis-value-scanner/integration/live-tennis-pro-markets/research/test-journal.json';
+      const response=await fetch(url,{cache:force?'no-store':'default'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const journal=await response.json();
+      const rows=Array.isArray(journal.tests)?journal.tests:[];
+      const cell=(tr,value,className='')=>{const td=document.createElement('td');td.textContent=value==null||value===''?'—':String(value);if(className)td.className=className;tr.appendChild(td);};
+      const fmt=(a,b)=>a==null||b==null?'—':Number(a).toFixed(5)+' → '+Number(b).toFixed(5);
+      const statusLabel={completed:'Завершён',running:'Выполняется',planned:'Запланирован',failed:'Ошибка'};
+      for(const test of rows){
+        const tr=document.createElement('tr');
+        cell(tr,test.id);
+        const status=document.createElement('td'),pill=document.createElement('span');
+        pill.className='research-status '+String(test.status||'planned');
+        pill.textContent=statusLabel[test.status]||test.status||'Неизвестно';
+        status.appendChild(pill);tr.appendChild(status);
+        cell(tr,test.tour);cell(tr,(test.baseline||'—')+' → '+(test.candidate||'—'));
+        cell(tr,test.kFactor==null?'—':test.kFactor);
+        cell(tr,test.trainingWindow);
+        cell(tr,test.evaluationPeriod);
+        cell(tr,fmt(test.brierBaseline,test.brierCandidate),'research-metric');
+        cell(tr,fmt(test.logLossBaseline,test.logLossCandidate),'research-metric');
+        cell(tr,'Выборка: '+(test.selection||'—')+'; Источник: '+(test.sourcePeriod||'—')+'; Дата: '+(test.date||'—')+'; '+(test.notes||''));
+        body.appendChild(tr);
+      }
+      meta.textContent='Обновлено: '+(journal.updatedAt||'—')+' · Тестов: '+rows.length+' · Источник: '+(journal.source||'—')+' · Архив: '+(journal.sourceCoverage?.annualPackages||'—')+' годовых пакетов, '+Number(journal.sourceCoverage?.manifestMatchCount||0).toLocaleString('ru-RU')+' записей.';
+      researchJournalLoaded=true;
+    }catch(error){
+      const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=10;td.textContent='Не удалось загрузить журнал: '+String(error.message||error);tr.appendChild(td);body.appendChild(tr);
+      meta.textContent='Журнал временно недоступен. Нажмите «Обновить».';
+    }
+  }
+  $('#researchJournalRefresh')?.addEventListener('click',()=>loadResearchTestJournal(true));
   function showStats(){
     hideAllScreens();$('#statsView').style.display='block';
     setActiveNavigation('navStats');
     archiveStorageReady.then(renderArchive);
+    loadResearchTestJournal();
   }
   const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
   function currentVirtualBankOptions(){
