@@ -576,15 +576,14 @@ test("independent player comparison calls the current Elo API and displays both 
   assert.match(html,/Справедливый кэф/);
   assert.match(html,/Травмы, форма, H2H и статистика подачи пока не входят/);
 });
-test("virtual balance and history are local simulation screens, not real-money tools", () => {
-  assert.match(html, /balance\.id='balanceView'/);
-  assert.match(html, /history\.id='historyView'/);
-  assert.match(html, /tvs-virtual-bank-v1/);
-  assert.match(html, /Стартовый капитал: 1 000 €/);
-  assert.match(html, /Реальные деньги не используются/);
-  assert.doesNotMatch(html, /банкролл|Банкролл/);
-  assert.match(html, /id="navBalance"/);
-  assert.match(html, /id="navHistory"/);
+test("virtual bankroll screens remain disabled until the user configures tracking",()=>{
+  assert.doesNotMatch(html, /<script src="\.\/bankroll\.js"><\/script>/);
+  assert.doesNotMatch(html, /Стартовый капитал: 1 000 €/);
+  assert.doesNotMatch(html, /TVSBankroll\.createInitialState\(1000\)/);
+  assert.doesNotMatch(html, /id="navBalance"/);
+  assert.doesNotMatch(html, /id="navHistory"/);
+  assert.match(html, /Банк не задан/);
+  assert.match(html, /Размер ставки не рассчитан: банк и правило управления суммой не заданы/);
 });
 
 test("virtual bankroll is not loaded or automatically populated in the release UI",()=>{
@@ -605,7 +604,8 @@ test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow"
   assert.match(html,/function showTomorrow\(\)/);
   assert.match(html,/id="liveRefreshPageBtn"/);
   assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
-  assert.match(html,/id="headerBalance"/);
+  assert.match(html,/id="headerSettings"/);
+  assert.match(html,/\$\('#headerSettings'\)\.onclick=open/);
   assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
 });
 
