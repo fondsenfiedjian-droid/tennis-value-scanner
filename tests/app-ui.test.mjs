@@ -695,6 +695,8 @@ test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/Стальной синий · холодные акценты/);
   assert.match(html,/Music Play Bar Control · графит, зелёный, терракота/);
   assert.match(html,/let activeSkin=\['black','steel','neon','terracotta'\]\.includes\(saved\.skin\)\?saved\.skin:'terracotta'/);
+  assert.match(html,/if\(saved\.skin==='black'&&saved\.musicPaletteDefaultApplied!==true\)/);
+  assert.match(html,/data\.musicPaletteDefaultApplied=true/);
   assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
   const start=html.indexOf("$('#skinSelect').addEventListener('change'");
   const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
