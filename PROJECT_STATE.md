@@ -1232,3 +1232,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Updated settings range controls to use slim 8px tracks, subtle scale ticks, compact ruby thumbs, and visible keyboard focus. Existing min/max/step values and settings persistence remain unchanged; native range controls continue snapping to their configured step increments.
 - Added regression coverage for all eight settings sliders and the custom WebKit/Firefox track and thumb styles.
 - Preview branch only; CI/Deploy Preview validation pending. No Production changes.
+
+
+### 2026-11-23 — Close Settings after Save
+- Changed the Settings Save flow so the modal closes immediately after both settings records are written and read-back verification succeeds; subsequent theme application, auto-refresh scheduling and match rendering cannot prevent the modal from closing.
+- Validation errors and storage failures still leave Settings open so the user can correct the values or retry.
+- Bumped the service-worker cache from v135 to v136 and added a regression assertion for close-after-verified-save ordering.
+- Preview branch only; CI and visual browser verification pending. Production untouched.
