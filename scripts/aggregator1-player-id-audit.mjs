@@ -14,11 +14,12 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     const fileName=basename(file.filename).toLowerCase();
     const tour=fileName.startsWith("atp_")?"ATP":fileName.startsWith("wta_")?"WTA":null;
     if(!tour)throw new Error("Unexpected player registry filename: "+basename(file.filename));
-    const rows=parseCsv(file.content),names=new Map();let validRows=0;
+    const rows=parseCsv(file.content),names=new Map(),metadata=new Map();let validRows=0;
     registryColumns[tour]=Object.keys(rows[0]||{});
     for(const row of rows){
       const id=String(row.player_id??row.id??"").trim();
       const first=String(row.name_first??row.first_name??"").trim(),last=String(row.name_last??row.last_name??"").trim();
+      if(id)metadata.set(id,{dob:String(row.dob??"").trim(),ioc:String(row.ioc??"").trim().toUpperCase(),hand:String(row.hand??"").trim().toUpperCase()});
       const variants=[norm([first,last].filter(Boolean).join(" ")),norm([last,first].filter(Boolean).join(" "))].filter(Boolean);
       if(!id||!variants.length)continue;
       validRows++;
@@ -28,7 +29,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
       }
     }
     if(!validRows)throw new Error("No valid "+tour+" player registry rows; columns: "+Object.keys(rows[0]||{}).join(","));
-    registryByTour[tour]={names,rows:rows.length,validRows};
+    registryByTour[tour]={names,metadata,rows:rows.length,validRows};
     registryNameCollisions[tour]=[...names.values()].filter(ids=>ids.size>1).length;
   }
 
@@ -58,7 +59,7 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
   const byTour={};
   for(const tour of ["ATP","WTA"]){
     const source=sourceIds[tour],registry=registryByTour[tour];
-    const counts={distinctSourcePlayerIds:source.size,resolved:0,ambiguous:0,unmapped:0,multipleSourceNameVariants:0,registryNameCollisions:registryNameCollisions[tour],sourceIdsWithAnyRegistryName:0};
+    const counts={distinctSourcePlayerIds:source.size,resolved:0,ambiguous:0,unmapped:0,multipleSourceNameVariants:0,registryNameCollisions:registryNameCollisions[tour],sourceIdsWithAnyRegistryName:0,ambiguousMetadata:{allCandidatesComplete:0,atLeastOneCandidateMissingDob:0,atLeastOneCandidateMissingIoc:0,atLeastOneCandidateMissingHand:0,sameDobIoc:0,differentDobOrIoc:0,sameDobIocDifferentHand:0,identicalDobIocHand:0,distinctDobIocCandidateCounts:{},distinctFullSignatureCandidateCounts:{}}};
     for(const names of source.values()){
       if(names.size>1)counts.multipleSourceNameVariants++;
       const matchedIds=new Set();let anyHit=false;
@@ -68,8 +69,25 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
       }
       if(anyHit)counts.sourceIdsWithAnyRegistryName++;
       if(matchedIds.size===1)counts.resolved++;
-      else if(matchedIds.size>1)counts.ambiguous++;
-      else counts.unmapped++;
+      else if(matchedIds.size>1){
+        counts.ambiguous++;
+        const metas=[...matchedIds].map(id=>registry.metadata.get(id)||{dob:"",ioc:"",hand:""});
+        const missingDob=metas.some(m=>!m.dob),missingIoc=metas.some(m=>!m.ioc),missingHand=metas.some(m=>!m.hand);
+        if(missingDob)counts.ambiguousMetadata.atLeastOneCandidateMissingDob++;
+        if(missingIoc)counts.ambiguousMetadata.atLeastOneCandidateMissingIoc++;
+        if(missingHand)counts.ambiguousMetadata.atLeastOneCandidateMissingHand++;
+        const knownDobIoc=new Set(metas.filter(m=>m.dob&&m.ioc).map(m=>m.dob+"::"+m.ioc));
+        const fullSignatures=new Set(metas.map(m=>(m.dob||"(missing)")+"::"+(m.ioc||"(missing)")+"::"+(m.hand||"(missing)")));
+        const dobIocKey=String(knownDobIoc.size),fullKey=String(fullSignatures.size);
+        counts.ambiguousMetadata.distinctDobIocCandidateCounts[dobIocKey]=(counts.ambiguousMetadata.distinctDobIocCandidateCounts[dobIocKey]||0)+1;
+        counts.ambiguousMetadata.distinctFullSignatureCandidateCounts[fullKey]=(counts.ambiguousMetadata.distinctFullSignatureCandidateCounts[fullKey]||0)+1;
+        if(!missingDob&&!missingIoc&&!missingHand)counts.ambiguousMetadata.allCandidatesComplete++;
+        if(!missingDob&&!missingIoc&&knownDobIoc.size===1){
+          counts.ambiguousMetadata.sameDobIoc++;
+          if(!missingHand&&new Set(metas.map(m=>m.hand)).size>1)counts.ambiguousMetadata.sameDobIocDifferentHand++;
+        }else if(!missingDob&&!missingIoc&&knownDobIoc.size>1)counts.ambiguousMetadata.differentDobOrIoc++;
+        if(!missingDob&&!missingIoc&&!missingHand&&fullSignatures.size===1)counts.ambiguousMetadata.identicalDobIocHand++;
+      }else counts.unmapped++;
     }
     counts.resolutionPct=pct(counts.resolved,counts.distinctSourcePlayerIds);
     counts.anyNameHitPct=pct(counts.sourceIdsWithAnyRegistryName,counts.distinctSourcePlayerIds);
@@ -81,8 +99,8 @@ export function auditPlayerIdCrosswalk(valuebetFiles,playerFiles){
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),valuebetennisColumns:valuebetColumns,sackmannPlayerRegistries:playerFiles.map(x=>basename(x.filename)).sort(),playerRegistryColumns:registryColumns,registryRows:Object.fromEntries(Object.entries(registryByTour).map(([tour,r])=>[tour,{rows:r.rows,validRows:r.validRows,distinctNormalizedNames:r.names.size}]))},
     totals,
     byTour,
-    matching:{method:"exact normalized full name in either first-last or last-first order (Unicode diacritics removed; punctuation and spaces removed); all source-name variants for one Valuebetennis player ID must resolve to exactly one Sackmann player ID",fuzzyMatching:false,initialsMatching:false},
-    warnings:["A resolved name match is a candidate crosswalk, not yet an authoritative identity assertion; review DOB/country/hand where available before use.","Source-native IDs are preserved conceptually and are never overwritten by this audit.","No player names, source player IDs, or row-level mappings are written to the report.","Sackmann data is CC BY-NC-SA 4.0; non-commercial use, attribution and share-alike conditions apply."]
+    matching:{method:"exact normalized full name in either first-last or last-first order (Unicode diacritics removed; punctuation and spaces removed); all source-name variants for one Valuebetennis player ID must resolve to exactly one Sackmann player ID",fuzzyMatching:false,initialsMatching:false,metadataDiagnostic:"For ambiguous name candidates, DOB, IOC and hand completeness/signature diversity are counted in aggregate only. These attributes do not identify which registry candidate corresponds to a source ID; no ambiguous candidate is selected."},
+    warnings:["A resolved name match is a candidate crosswalk, not yet an authoritative identity assertion; review DOB/country/hand where available before use.","Metadata diagnostics describe whether ambiguous registry candidates differ; they do not resolve source identities because Valuebetennis rows do not provide corresponding DOB/IOC/hand evidence.","Source-native IDs are preserved conceptually and are never overwritten by this audit.","No player names, source player IDs, or row-level mappings are written to the report.","Sackmann data is CC BY-NC-SA 4.0; non-commercial use, attribution and share-alike conditions apply."]
   };
 }
 
