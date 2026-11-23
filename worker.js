@@ -1,7 +1,7 @@
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Research-Access",
   "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache"
 };
 
@@ -980,6 +980,9 @@ export default {
       }
       const format = url.searchParams.get("format");
       if (format !== null) {
+        if (!env.TVS_RESEARCH_ACCESS_TOKEN || request.headers.get("X-Research-Access") !== env.TVS_RESEARCH_ACCESS_TOKEN) {
+          return response({ error: "Research package downloads require a valid preview access token" }, 403);
+        }
         if (!period) return response({ error: "format requires a package period" }, 400);
         if (!["jsonl", "csv", "corrections"].includes(format)) {
           return response({ error: "format must be jsonl, csv or corrections" }, 400);
