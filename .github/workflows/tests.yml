@@ -2,9 +2,9 @@ name: Regression tests
 
 on:
   push:
-    branches: [main, ui/tennis-value-scanner-2]
+    branches: [main, ui/tennis-value-scanner-2, integration/live-tennis-pro-markets]
   pull_request:
-    branches: [main]
+    branches: [main, ui/tennis-value-scanner-2]
 
 jobs:
   worker-tests:
@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 22
       - name: Audit Preview Winamax-to-match linkage
-        if: github.ref == 'refs/heads/ui/tennis-value-scanner-2' || github.event_name == 'pull_request'
+        if: github.ref == 'refs/heads/ui/tennis-value-scanner-2' || (github.event_name == 'pull_request' && github.base_ref == 'main')
         env:
           APP_URL: https://deploy-preview-167--fascinating-paprenjak-1aa9b3.netlify.app
           API_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
