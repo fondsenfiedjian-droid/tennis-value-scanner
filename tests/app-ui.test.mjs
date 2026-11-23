@@ -517,15 +517,14 @@ test("mandatory recommendations and additional opportunities are separate plan t
 });
 
 
-test("approved dual navigation keeps five bottom destinations and quick links for lab/archive",()=>{
-  for(const id of ["navHome","navMatches","navCompare","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
-  for(const id of ["quickMatches","quickCompare","quickLab","quickStats","quickArchive"])assert.match(html,new RegExp('id="'+id+'"'));
-  assert.match(html,/id="compareView"/);
-  assert.match(html,/function showCompare\(\)/);
-  assert.match(html,/function setActiveNavigation\(activeId\)/);
-  assert.match(html,/more\.id='moreView'/);
+test("approved bottom navigation contains Balance, History, Statistics and Settings",()=>{
+  for(const id of ["navBalance","navHistory","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
+  for(const id of ["balanceView","historyView","statsView","settingsView"])assert.match(html,new RegExp(id));
+  assert.match(html,/function showBalance\(\)/);
+  assert.match(html,/function showHistory\(\)/);
+  assert.match(html,/function showStats\(\)/);
+  assert.match(html,/function showSettingsScreen\(\)/);
   assert.match(html,/id="moreArchiveMount"/);
-  assert.match(html,/id="headerSettings"/);
   assert.match(html,/id="mandatoryBetsContent"/);
   assert.doesNotMatch(html,/id="navMore"/);
 });
@@ -565,13 +564,15 @@ test("independent player comparison calls the current Elo API and displays both 
   assert.match(html,/Справедливый кэф/);
   assert.match(html,/Травмы, форма, H2H и статистика подачи пока не входят/);
 });
-test("bankroll tab and assets are fully removed from the application shell", () => {
-  for (const obsolete of ["bankrollView", "navBankroll", "bankroll.js", "winamax-import.js", "TVSBankroll", "Банкролл"]) {
-    assert.ok(!html.includes(obsolete), "application must not contain "+obsolete);
-    assert.ok(!serviceWorker.includes(obsolete), "service worker must not cache "+obsolete);
-  }
-  assert.match(html, /id="navHome"/);
-  assert.match(html, /id="navStats"/);
+test("virtual balance and history are local simulation screens, not real-money tools", () => {
+  assert.match(html, /id="balanceView"/);
+  assert.match(html, /id="historyView"/);
+  assert.match(html, /tvs-virtual-bank-v1/);
+  assert.match(html, /Стартовый капитал: 1 000 €/);
+  assert.match(html, /Реальные деньги не используются/);
+  assert.doesNotMatch(html, /банкролл|Банкролл/);
+  assert.match(html, /id="navBalance"/);
+  assert.match(html, /id="navHistory"/);
 });
 
 
@@ -756,24 +757,23 @@ test("Compare loads both histories and H2H independently after Elo, and rejects 
 });
 
 
-test("TVS 2.0 bottom navigation and quick links open the approved destinations",()=>{
+test("TVS 2.0 four-section bottom navigation opens the approved destinations",()=>{
   assert.match(html,/function mountIndependentScreens\(\)/);
   assert.match(html,/matches\.id='matchesView'/);
   assert.match(html,/more\.id='moreView'/);
+  assert.match(html,/balance\.id='balanceView'/);
+  assert.match(html,/history\.id='historyView'/);
+  assert.match(html,/settings\.id='settingsView'/);
   assert.match(html,/function hideAllScreens\(\)/);
-  assert.match(html,/function showMatches\(\)/);
-  assert.match(html,/function showMore\(\)/);
-  assert.match(html,/\$\('#navHome'\)\.onclick=showMain;/);
-  assert.match(html,/\$\('#navMatches'\)\.onclick=showMatches;/);
-  assert.match(html,/\$\('#navCompare'\)\.onclick=showCompare;/);
+  assert.match(html,/\$\('#navBalance'\)\.onclick=showBalance;/);
+  assert.match(html,/\$\('#navHistory'\)\.onclick=showHistory;/);
   assert.match(html,/\$\('#navStats'\)\.onclick=showStats;/);
-  assert.match(html,/\$\('#navSettings'\)\.onclick=/);
+  assert.match(html,/\$\('#navSettings'\)\.onclick=showSettingsScreen;/);
   assert.match(html,/\$\('#quickLab'\)\.onclick=/);
   assert.match(html,/\$\('#quickArchive'\)\.onclick=/);
   assert.match(html,/\$\('#matchesRefreshBtn'\)\.addEventListener\('click',\(\)=>loadMatches\(true\)\)/);
-  assert.match(html,/\$\('#moreScreenSettings'\)\.addEventListener\('click'/);
+  assert.match(html,/\$\('#settingsScreenOpen'\)\.addEventListener\('click'/);
   assert.match(html,/id=\"moreArchiveMount\"/);
-  assert.match(html,/\[\$\('#archiveOddsByBookmaker'\),archiveQuality,\$\('\.stats-actions'\),archiveLastHead,\$\('#archiveList'\)\]\.filter\(Boolean\)\.forEach\(node=>archiveMount\.appendChild\(node\)\)/);
 });
 
 test("mobile player suggestion taps prevent blur from closing the result list before selection",()=>{
