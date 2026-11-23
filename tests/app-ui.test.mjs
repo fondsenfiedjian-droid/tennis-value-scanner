@@ -704,10 +704,16 @@ test("match list keeps all scheduled matches visible and labels fresh quote-pair
   assert.match(html, /Без даты начала:/);
 });
 
-test("optional player statistics are not fetched during automatic prediction scans", () => {
-  assert.equal(html.split("loadPfePlayerStats(").length - 1, 1,
-    "the player-statistics loader must remain defined but must not be called automatically");
-  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"));
+test("optional player statistics are loaded only by the explicit match-card action", () => {
+  assert.equal(html.split("loadPfePlayerStats(").length - 1, 3,
+    "one loader definition and exactly two on-demand player requests are expected");
+  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"),
+    "automatic prediction scans must continue to use the no-request placeholder");
+  assert.ok(html.includes("class=\"compare-load-button\""),
+    "each match card must expose an explicit profile-loading action");
+  assert.match(html, /compareButton\.addEventListener\('click',async\(\)=>/);
+  assert.match(html, /loadPfePlayerStats\(comparePlayerIdA\),loadPfePlayerStats\(comparePlayerIdB\)/,
+    "both player profiles must be requested only after the user clicks");
   assert.ok(html.includes("not_requested:'не запрашивалась автоматически (экономия квоты)'"));
 });
 
