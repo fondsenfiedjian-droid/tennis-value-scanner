@@ -237,7 +237,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       }
       const tourCategoryKey=(tour||"(empty)")+"::"+category;
       const roundRaw=String(row.tour??"").trim();
-      const roundKey=/^\\d+$/.test(roundRaw)?String(Number(roundRaw)):(roundRaw||"(empty)");
+      const roundKey=/^\d+$/.test(roundRaw)?String(Number(roundRaw)):(roundRaw||"(empty)");
       const tourCategoryRoundKey=(tour||"(empty)")+"::"+category+"::"+roundKey;
       const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0});
       tcr.rows++;
