@@ -86,6 +86,8 @@ assert.equal(result.byTourYear["ATP::2025"].dateWindowMiss, 1);
 assert.equal(result.byTourYear["ATP::2025"].invalidPlayerPair, 1);
 assert.equal(result.byTourYear["WTA::2025"].rows, 1);
 assert.equal(result.byTourYear["WTA::2025"].linkedUnique, 1);
+assert.equal(result.coverageInterpretation.partialYear.includes("2026"), true);
+assert.equal(result.coverageInterpretation.completeness.includes("No year is certified complete"), true);
 assert.equal(result.sources.sackmannSourceRowsByYearTier["ATP:2025:main"], 6);
 assert.equal(result.sources.sackmannSourceRowsByYearTier["WTA:2025:main"], 2);
 assert.equal(result.playerIdEvidence.matchRowsWithBothPlayerIdsEvidence, 3);
