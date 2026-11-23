@@ -785,7 +785,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     <button type="button" id="quickMatches"><span>▦</span>Матчи</button>
     <button type="button" id="quickCompare"><span>⚖</span>Сравнение</button>
     <button type="button" id="quickLab"><span>⚗</span>Лаборатория</button>
-    <button type="button" id="quickStats"><span>▥</span>Статистика</button>
     <button type="button" id="quickArchive"><span>▤</span>Архив<br>и система</button>
   </nav>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
@@ -1052,7 +1051,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   if($('#headerBalance'))$('#headerBalance').onclick=()=>showBalance();
   $('#quickMatches').onclick=showMatches;
   $('#quickCompare').onclick=showCompare;
-  $('#quickStats').onclick=showStats;
   $('#quickLab').onclick=showLab;
   $('#quickArchive').onclick=()=>{showMore();$('#moreArchiveMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
   $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
