@@ -31,3 +31,23 @@ test("manual player ID remains available as a fallback", () => {
   assert.match(html, /id="compareIdB" type="number"/);
   assert.match(html, /Выбери обоих игроков из поиска или введи их ID Live Tennis API вручную/);
 });
+
+test("Elo comparison renders independently of supplementary history and H2H requests", () => {
+  assert.match(html, /async function loadCompareSupplementary\(/);
+  assert.match(html, /status\.textContent='Elo рассчитан\. История и личные встречи загружаются отдельно/);
+  assert.match(html, /loadCompareSupplementary\(requestId,idA,idB,exactNameA,exactNameB\)\.catch/);
+  assert.match(html, /button\.disabled=false;button\.textContent='СРАВНИТЬ ИГРОКОВ'/);
+  assert.match(html, /if\(requestId!==compareRequestSequence\)return/);
+});
+
+test("comparison rejects invalid Elo probabilities and ratings before rendering", () => {
+  assert.match(html, /probabilityA<=0\|\|probabilityA>=100/);
+  assert.match(html, /Math\.abs\(probabilityA\+probabilityB-100\)>0\.05/);
+  assert.match(html, /API не вернул два корректных Elo-рейтинга/);
+});
+
+test("comparison displays a safe fair-odds fallback instead of NaN", () => {
+  assert.match(html, /const fairOdds=\(value,probability\)=>/);
+  assert.match(html, /fairOdds\(result\.fairOddsA,probA\)/);
+  assert.match(html, /fairOdds\(result\.fairOddsB,probB\)/);
+});
