@@ -12,10 +12,16 @@
   "theme_color": "#080808",
   "icons": [
     {
-      "src": "./icon.svg?v=3",
+      "src": "./icon.svg?v=5",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg?v=5",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
