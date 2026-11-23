@@ -291,6 +291,129 @@ test("odds endpoint reports malformed JSON and never caches it", async () => {
   assert.equal(cacheWrites, 0);
 });
 
+
+test("player history endpoint validates player ID, limit and tour without upstream calls", async () => {
+  let calls = 0;
+  workerSandbox.fetch = async () => { calls++; throw new Error("unexpected request"); };
+  for (const query of ["id=abc", "id=0", "id=9007199254740992", "id=123&limit=0", "id=123&limit=51", "id=123&tour=unknown"]) {
+    const result = await call("/player-history?" + query);
+    assert.equal(result.status, 400, query);
+  }
+  assert.equal(calls, 0);
+});
+
+test("player history endpoint requests BASIC singles history, caches it and returns source coverage", async () => {
+  let requestedUrl = "";
+  let requestedHeaders = null;
+  let cachedResponse = null;
+  let cachedKey = "";
+  let upstreamCalls = 0;
+  workerSandbox.caches.default.match = async () => cachedResponse ? new Response(await cachedResponse.clone().text(), { status: 200, headers: cachedResponse.headers }) : null;
+  workerSandbox.caches.default.put = async (key, value) => {
+    cachedKey = key.url;
+    cachedResponse = value.clone();
+  };
+  workerSandbox.fetch = async (url, options) => {
+    upstreamCalls++;
+    requestedUrl = url;
+    requestedHeaders = options.headers;
+    return new Response(JSON.stringify({
+      data: [{ id: 9001, winner: 1, surface: "clay" }],
+      meta: { count: 1, limit: 20, has_more: false }
+    }), { status: 200 });
+  };
+  const result = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.playerId, "123");
+  assert.equal(payload.source, "Live Tennis API /history/matches");
+  assert.equal(payload.period, "2023-present");
+  assert.equal(payload.accessStatus, "available");
+  assert.equal(payload.count, 1);
+  assert.equal(payload.meta.count, 1);
+  assert.equal(new URL(requestedUrl).pathname, "/api/public/v1/history/matches");
+  assert.equal(new URL(requestedUrl).searchParams.get("player"), "123");
+  assert.equal(new URL(requestedUrl).searchParams.get("draw"), "singles");
+  assert.equal(new URL(requestedUrl).searchParams.get("limit"), "20");
+  assert.equal(new URL(requestedUrl).searchParams.get("tour"), "atp");
+  assert.equal(requestedHeaders["X-API-Key"], "test-key");
+  assert.ok(cachedKey.includes("/__player-history/v1/123/20/atp"));
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=21600");
+  const cached = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(cached.status, 200);
+  assert.equal(cached.headers.get("X-Data-Cache"), "HIT");
+  assert.equal(upstreamCalls, 1);
+});
+
+test("player history endpoint labels BASIC plan refusal and forwards rate-limit timing", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  const denied = await call("/player-history?id=123");
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).accessStatus, "basic_history_not_entitled");
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "day" }), {
+    status: 429, headers: { "Retry-After": "90" }
+  });
+  const limited = await call("/player-history?id=123");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("Retry-After"), "90");
+  assert.equal((await limited.json()).accessStatus, "rate_limited");
+});
+
+
+test("player H2H endpoint validates exact names and rejects identical players without upstream calls", async () => {
+  let calls = 0;
+  workerSandbox.fetch = async () => { calls++; throw new Error("unexpected request"); };
+  for (const query of ["p1=Al&p2=Sinner", "p1=Alcaraz", "p1=Alcaraz&p2=alcaraz"]) {
+    const result = await call("/player-h2h?" + query);
+    assert.equal(result.status, 400, query);
+  }
+  assert.equal(calls, 0);
+});
+
+test("player H2H endpoint uses BASIC H2H, caches the record and keeps meetings", async () => {
+  let requestedUrl = "";
+  let calls = 0;
+  let cached = null;
+  workerSandbox.caches.default.match = async () => cached ? cached.clone() : null;
+  workerSandbox.caches.default.put = async (key, value) => { cached = value.clone(); };
+  workerSandbox.fetch = async url => {
+    calls++;
+    requestedUrl = url;
+    return new Response(JSON.stringify({
+      players: { p1: { name: "Carlos Alcaraz" }, p2: { name: "Jannik Sinner" } },
+      totals: { p1_wins: 5, p2_wins: 4, meetings: 9, undecided: 0 },
+      by_surface: { hard: { p1: 4, p2: 3 } },
+      meetings: [{ date: "2026-01-01", winner: 1, outcome: "finished" }]
+    }), { status: 200 });
+  };
+  const result = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.period, "1968-present");
+  assert.equal(payload.totals.meetings, 9);
+  assert.equal(payload.meetings.length, 1);
+  assert.equal(new URL(requestedUrl).pathname, "/api/public/v1/h2h");
+  assert.equal(new URL(requestedUrl).searchParams.get("p1"), "Carlos Alcaraz");
+  assert.equal(new URL(requestedUrl).searchParams.get("p2"), "Jannik Sinner");
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=86400");
+  const cachedResult = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(cachedResult.headers.get("X-Data-Cache"), "HIT");
+  assert.equal(calls, 1);
+});
+
+test("player H2H endpoint reports BASIC entitlement and ambiguous-name errors distinctly", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  const denied = await call("/player-h2h?p1=Carlos%20Alcaraz&p2=Jannik%20Sinner");
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).accessStatus, "basic_h2h_not_entitled");
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "ambiguous_name", candidates: ["Jannik Sinner", "Martin Sinner"] }), { status: 400 });
+  const ambiguous = await call("/player-h2h?p1=Sinner&p2=Carlos%20Alcaraz");
+  assert.equal(ambiguous.status, 400);
+  assert.equal((await ambiguous.json()).accessStatus, "ambiguous_or_invalid_player_name");
+});
+
 test("player stats endpoint validates IDs and returns read-only API data with access status", async () => {
   let requestedUrl = "";
   let requestedHeaders = null;
@@ -543,6 +666,33 @@ test("matches fresh=true bypasses Worker cache and refreshes the canonical cache
   workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
 });
 
+test("live matches use Preview quota namespace and a short cache TTL", async () => {
+  const previousNamespace = env.CACHE_NAMESPACE;
+  env.CACHE_NAMESPACE = "tennis-value-api-preview";
+  let guardKey = "";
+  let storedHeaders = null;
+  workerSandbox.caches.default.match = async key => {
+    if (key.url.includes("__live-tennis-quota-guard")) guardKey = key.url;
+    return null;
+  };
+  workerSandbox.caches.default.put = async (key, value) => {
+    if (key.url.includes("/matches?status=live")) storedHeaders = Object.fromEntries(value.headers.entries());
+  };
+  workerSandbox.fetch = async url => {
+    assert.ok(url.includes("/api/public/v1/matches?status=live"));
+    return new Response(JSON.stringify({ data: [], meta: { count: 0 } }), { status: 200 });
+  };
+  const result = await call("/matches?status=live");
+  assert.equal(result.status, 200);
+  assert.equal(guardKey, "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard/v2");
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=20");
+  assert.equal(storedHeaders["cache-control"], "public, max-age=20");
+  env.CACHE_NAMESPACE = previousNamespace;
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
+});
+
 test("matches forwards upstream rate-limit guidance and exposes cache status", async () => {
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "day" }), {
@@ -721,11 +871,11 @@ test("value signal quality blocks stale inputs, invalid ratings and Elo-market c
 
 test("daily best bet has its own persisted odds threshold setting and does not reuse the general odds filter", () => {
   assert.ok(frontendSource.includes('id="bestBetMinOdds"'));
-  assert.ok(frontendSource.includes('min="1.50" max="15" step="1" value="1.50"'));
+  assert.ok(frontendSource.includes('min="1.5" max="15" step="0.5" value="1.5"'));
   assert.ok(frontendSource.includes("bestBetMinOdds<1.5||bestBetMinOdds>15"));
   assert.ok(frontendSource.includes("'minEv','minOdds','maxOdds','bestBetMinOdds'"));
   assert.ok(frontendSource.includes("selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds)"));
-  assert.ok(frontendSource.includes("Не меняет EV, вероятность модели или размер ставки"));
+  assert.ok(frontendSource.includes("Не меняет EV или вероятность модели"));
 });
 
 test("stake sizing maps good, medium and limited freshness correctly", () => {
@@ -1423,6 +1573,10 @@ test("auto-refresh setting is normalized and restored from persisted settings", 
   assert.match(frontendSource, /data\.refreshRate=refreshRate/);
   assert.match(frontendSource, /normalizeRefreshRate\(readSettings\(\)\.refreshRate\)/);
   assert.match(frontendSource, /window\.addEventListener\('pageshow'/);
+  assert.match(frontendSource, /function scheduleAutoRefresh\(preserveDeadline=false\)/);
+  assert.match(frontendSource, /preserveDeadline&&previousDeadline\?previousDeadline/);
+  assert.match(frontendSource, /const due=minutes>0&&nextAutoRefreshAt>0&&Date\.now\(\)>=nextAutoRefreshAt/);
+  assert.match(frontendSource, /if\(due&&!document\.hidden\)[\s\S]*?loadMatches\(true\)/);
 });
 
 test("failed result lookups receive a cooldown timestamp without changing other matches", () => {
@@ -1659,19 +1813,24 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", () => {
-  assert.match(frontendSource, /id="minOdds" type="number" min="1\.90" max="100" step="0\.05" value="1\.90"/);
+  assert.match(frontendSource, /id="minOdds" type="range" min="1\.9" max="15" step="0\.1" value="1\.9"/);
   assert.match(frontendSource, /Math\.max\(1\.9,Number\(\$\('#minOdds'\)\.value\|\|1\.5\)\)/);
   assert.match(frontendSource, /minOdds<1\.9/);
-  assert.match(frontendSource, /maxOdds>100/);
+  assert.match(frontendSource, /maxOdds>15/);
 });
 
 
 test("prediction scanner reuses all fresh cached candidates and caps only uncached API lookups", () => {
   assert.match(frontendSource, /const allCandidates=matches\.map/);
   assert.match(frontendSource, /const cachedCandidates=\[\],uncachedCandidates=\[\]/);
-  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,5\)\]/);
+  assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,newMatchLimit\)\]/);
   assert.match(frontendSource, /forbidden_or_plan_restricted'\?6\*60\*60\*1000/);
   assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
+  assert.match(frontendSource, /Adapt new profile lookups to the configured refresh interval/);
+  assert.match(frontendSource, /const pending=Math\.max\(0,totalCandidates-scanned-failed\)/);
+  assert.match(frontendSource, /const newMatchLimit=maxNewMatchesPerScan\(\)/);
+  assert.match(frontendSource, /uncachedCandidates\.slice\(0,newMatchLimit\)/);
+  assert.match(frontendSource, /В очереди:/);
   assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
 
@@ -1735,7 +1894,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v\d+/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v143/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -1939,6 +2098,35 @@ test("player rating audit distinguishes fresh, recent, stale, unknown and invali
   assert.deepEqual(JSON.parse(JSON.stringify(api.assessRatingFreshness("2026-11-19", now))), { status: "invalid", ageDays: null });
 });
 
+test("official player profile metadata is normalized without inventing missing values", () => {
+  const start = workerSource.indexOf("function extractOfficialPlayerProfile(");
+  const end = workerSource.indexOf("function assessRatingFreshness", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(workerSource.slice(start, end) + String.fromCharCode(10) + "globalThis.extract = extractOfficialPlayerProfile;", sandbox);
+  const extract = sandbox.extract;
+  assert.deepEqual(JSON.parse(JSON.stringify(extract({
+    ranking: 7, tour: "ATP", country: "Italy",
+    data_completeness: { known: 8, of: 10, missing: ["hand", "backhand"] }
+  }))), {
+    ranking: 7, tour: "atp", country: "Italy",
+    completeness: { known: 8, of: 10, percent: 80 }
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(extract({
+    ranking: 0, tour: "challenger", country: "", data_completeness: { known: 0, of: 0 }
+  }))), { ranking: null, tour: null, country: null, completeness: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(extract(null))), {
+    ranking: null, tour: null, country: null, completeness: null
+  });
+});
+
+test("comparison UI displays official ranking and profile completeness separately from Elo", () => {
+  assert.ok(workerSource.includes("officialProfileA: hasIdA ? extractOfficialPlayerProfile(profileA) : null"));
+  assert.ok(workerSource.includes("officialProfileB: hasIdB ? extractOfficialPlayerProfile(profileB) : null"));
+  assert.match(frontendSource, /Официальный рейтинг:/);
+  assert.match(frontendSource, /заполнено /);
+  assert.match(frontendSource, /вероятность победы по Elo/);
+});
 test("prediction UI displays each player's rating freshness separately", () => {
   assert.match(frontendSource, /ratingFreshnessA/);
   assert.match(frontendSource, /ratingFreshnessB/);
@@ -2413,7 +2601,7 @@ test("PFE stats loader keeps PRO form independent of missing ULTRA data and reje
   assert.ok(dateRetry.result.retryAfterSeconds >= 1 && dateRetry.result.retryAfterSeconds <= 60);
 });
 
-test("PFE player stats are connected read-only and score simulation is gated by verified inputs and explicit format", () => {
+test("PFE player stats remain connected read-only without exposing a match simulator", () => {
   const start = frontendSource.indexOf("function explicitMatchBestOf(");
   const end = frontendSource.indexOf("\n  async function loadPredictions", start);
   assert.ok(start >= 0 && end > start);
@@ -2429,15 +2617,12 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /const cachedTtl=cached\?\.value\?\.accessStatus==='available'\?60\*1000/);
   assert.match(frontendSource, /normalizeRecentFormProfile/);
   assert.match(frontendSource, /normalizeServeReturnProfile/);
-  assert.match(frontendSource, /pfeServeInputs\.status==='ready_for_score_simulation'&&matchBestOf/);
-  assert.match(frontendSource, /runMatchMonteCarlo/);
-  assert.match(frontendSource, /confidenceInterval95A/);
   assert.match(frontendSource, /Доступ Live Tennis API:/);
   assert.match(frontendSource, /Форма PRO:/);
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v\d+/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v143/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -3136,20 +3321,22 @@ test("PFE does not understate uncertainty inside correlated dependency groups", 
   assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
 });
 
-test("settings provide a persistent app-wide switch between black, olive and Amber Equalizer skins", () => {
+test("settings provide persistent app-wide selectable skins including amber LED scoreboard", () => {
   assert.ok(frontendSource.includes('id="skinSelect"'));
   assert.ok(frontendSource.includes('value="black"'));
-  assert.ok(frontendSource.includes('value="olive"'));
-  assert.ok(frontendSource.includes("saved.skin==='olive'?'olive':'black'"));
-  assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
-  assert.ok(frontendSource.includes("data.skin=['olive','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';"));
+  assert.ok(frontendSource.includes('value="steel"'));
+  assert.ok(frontendSource.includes('value="terracotta"'));
   assert.ok(frontendSource.includes('value="amber-led"'));
   assert.ok(frontendSource.includes('body[data-skin="amber-led"]'));
-  assert.ok(frontendSource.includes('body[data-skin="olive"]'));
-  assert.ok(frontendSource.includes('#626744'));
+  assert.ok(frontendSource.includes("led-digit"));
+  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'black'"));
+  assert.ok(!frontendSource.includes("saved.amberLedDefaultApplied"));
+  assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
+  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black'"));
+  assert.ok(frontendSource.includes('body[data-skin="steel"]'));
+  assert.ok(frontendSource.includes('body[data-skin="terracotta"]'));
 });
-
-
+ 
 test("PFE fixed-weight sensitivity evaluates five Elo/market ratios on one chronological holdout", () => {
   const source = readFileSync(new URL("../pfe.js", import.meta.url), "utf8");
   const sandbox = {};
@@ -3269,4 +3456,32 @@ test("verified result provenance survives archive export/import normalization an
   assert.equal(imported.rows.length, 2);
   assert.ok(imported.rows.every(row => row.resultSource === "live_tennis_api"));
   assert.ok(imported.rows.every(row => row.resultVersion === 4));
+});
+
+
+test("TVS 2.0 preview deployment is isolated from Production", () => {
+  const previewConfig = readFileSync(new URL("../wrangler.preview.toml", import.meta.url), "utf8");
+  const deployWorkflow = readFileSync(new URL("../.github/workflows/deploy-cloudflare-preview.yml", import.meta.url), "utf8");
+  assert.match(previewConfig, /name\s*=\s*"tennis-value-api-preview"/);
+  assert.match(previewConfig, /CACHE_NAMESPACE\s*=\s*"tennis-value-api-preview"/);
+  assert.match(workerSource, /env\?\.CACHE_NAMESPACE\s*\|\|\s*"tennis-value-api"/);
+  assert.doesNotMatch(workerSource, /https:\/\/tennis-value-api\.fonds-enfiedjian\.workers\.dev\/__\w+/);
+  assert.match(frontendSource, /location\.hostname\.startsWith\('deploy-preview-'\)/);
+  assert.match(frontendSource, /tennis-value-api-preview\.fonds-enfiedjian\.workers\.dev/);
+  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
+  assert.match(deployWorkflow, /wrangler\.preview\.toml/);
+  assert.match(deployWorkflow, /push:\s*branches:\s*-\s*ui\/tennis-value-scanner-2/);
+});
+
+test("scanner batch size adapts to refresh interval within the BASIC daily quota", () => {
+  const start=frontendSource.indexOf("function normalizeRefreshRate(");
+  const end=frontendSource.indexOf("function currentValueFilters()",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={readSettings:()=>({refreshRate:60})};
+  vm.runInNewContext(frontendSource.slice(start,end)+"\nglobalThis.maxBatch=maxNewMatchesPerScan;",sandbox);
+  assert.equal(sandbox.maxBatch(0),20);
+  assert.equal(sandbox.maxBatch(30),7);
+  assert.equal(sandbox.maxBatch(60),14);
+  assert.equal(sandbox.maxBatch(180),42);
+  assert.equal(sandbox.maxBatch("invalid"),14);
 });
