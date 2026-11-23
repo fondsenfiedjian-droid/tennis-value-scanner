@@ -20,7 +20,8 @@ export async function runAcesApiTournamentPreflight({apiKey,outDir,fetchImpl=fet
     if(!Array.isArray(data?.tournaments))throw new Error("AcesAPI "+spec.tour+" response has no tournaments array");
     const tournaments=data.tournaments, surfaces={},majorCounts={major:0,nonMajor:0,unknown:0},statusCounts={};
     let minStart=null,maxEnd=null,completeRows=0;
-    const coreFields=["tournament_id","name","start_date","end_date","surface","city","country"];\n    const missingCoreFields=Object.fromEntries(coreFields.map(k=>[k,0]));
+    const coreFields=["tournament_id","name","start_date","end_date","surface","city","country"];
+    const missingCoreFields=Object.fromEntries(coreFields.map(k=>[k,0]));
     for(const t of tournaments){
       const s=String(t.surface??"(missing)").toLowerCase();surfaces[s]=(surfaces[s]||0)+1;
       const mk=t.major===true?"major":t.major===false?"nonMajor":"unknown";majorCounts[mk]++;
