@@ -54,7 +54,7 @@ function normalizeServeStats(value) {
         doubleFaults: num(player.double_faults)
       };
       if (Object.values(s).some(v => v === null)) return null;
-      s.secondServePoints = s.servePoints - s.firstIn - s.doubleFaults;
+      s.secondServePoints = s.servePoints - s.firstIn;
       if (s.servePoints <= 0 || s.firstIn < 0 || s.firstIn > s.servePoints ||
           s.firstWon < 0 || s.firstWon > s.firstIn || s.doubleFaults < 0 ||
           s.secondServePoints < 0 || s.secondWon < 0 || s.secondWon > s.secondServePoints ||
