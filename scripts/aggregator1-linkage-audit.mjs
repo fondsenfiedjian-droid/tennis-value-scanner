@@ -92,7 +92,34 @@ const tourney=value=>{
     dohaausopenqualies:"dohaausopenqualies",montpellier:"montpellier",sofia:"sofia",
     w25reddingca:"w25reddingca",valencia125:"valencia125",chengdu:"chengdu",santiago:"santiago",
     abudhabi:"abudhabi",bari125:"bari125",w25sumtersc:"w25sumtersc",antwerp:"antwerp",
-    w15ranchosantafeca:"w15ranchosantafeca",colina125:"colina125",lausanne:"lausanne"
+    w15ranchosantafeca:"w15ranchosantafeca",colina125:"colina125",lausanne:"lausanne",
+    // Additional location and sponsor variants confirmed by the archive mismatch profile.
+    morelosch:"cuernavacach",w60berkeley:"w60berkeleyca",m25champaign:"m25champaignil",
+    m15tallahassee:"m15tallahasseefl",w15lakewood:"w15lakewoodca",m25wichita:"m25wichitaks",
+    m25pensacola:"m25pensacolafl",m25tulsa:"m25tulsaok",w25redding:"w25reddingca",
+    w25sumter:"w25sumtersc",m15champaign:"m15champaignil",w15ranchosantafe:"w15ranchosantafeca",
+    m15sunrise:"m15sunrisefl",w80macon:"w80maconga",m15ranchosantafe:"m15ranchosantafeca",
+    w35naples:"w35naplesfl",m25harlingen:"m25harlingentx",cordobaopencordoba:"cordoba",
+    truistatlantaopenatlanta:"atlanta",stockholmopenstockholm:"stockholm",
+    olympicsparis:"parisolympics",w60pelham:"w60pelhamal",efgswissopengstaad:"gstaad",
+    guangzhouopenguangzhou:"guangzhou",w25florence:"w25florencesc",w15huntsville:"w15huntsvilleal",
+    australianopenqualifyingdubai:"dubaiausopenqualies",stbrieucch:"saintbrieucch",
+    stpetersburgladiestrophystpetersburg:"stpetersburg",w15losangeles:"w15losangelesca",
+    sanbenedettoch:"sanbenedettodeltrontoch",w60arcadia:"w60arcadiaca",
+    tropheeclarinsparis:"paris125",venetoopengaiba:"gaiba125",m25edwardsville:"m25edwardsvilleil",
+    m15winstonsalem:"m15winstonsalemnc",mubadalacitidcopenwashington:"washington",
+    cuernavacach:"cuernavacach",w60berkeleyca:"w60berkeleyca",m25champaignil:"m25champaignil",
+    m15tallahasseefl:"m15tallahasseefl",w15lakewoodca:"w15lakewoodca",m25wichitaks:"m25wichitaks",
+    m25pensacolafl:"m25pensacolafl",m25tulsaok:"m25tulsaok",w25reddingca:"w25reddingca",
+    w25sumtersc:"w25sumtersc",w15ranchosantafeca:"w15ranchosantafeca",m15sunrisefl:"m15sunrisefl",
+    w80maconga:"w80maconga",w35naplesfl:"w35naplesfl",m25harlingentx:"m25harlingentx",
+    cordoba:"cordoba",atlanta:"atlanta",stockholm:"stockholm",parisolympics:"parisolympics",
+    w60pelhamal:"w60pelhamal",gstaad:"gstaad",guangzhou:"guangzhou",w25florencesc:"w25florencesc",
+    w15huntsvilleal:"w15huntsvilleal",dubaiausopenqualies:"dubaiausopenqualies",
+    saintbrieucch:"saintbrieucch",stpetersburg:"stpetersburg",w15losangelesca:"w15losangelesca",
+    sanbenedettodeltrontoch:"sanbenedettodeltrontoch",w60arcadiaca:"w60arcadiaca",
+    paris125:"paris125",gaiba125:"gaiba125",m25edwardsvilleil:"m25edwardsvilleil",
+    m15winstonsalemnc:"m15winstonsalemnc",washington:"washington"
   };
   if(aliases[s])return aliases[s];
   if(s.endsWith("challenger"))return s.slice(0,-10)+"ch";
