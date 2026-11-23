@@ -58,12 +58,12 @@ function makeWinamaxQuote(overrides = {}) {
   };
 }
 
-const recommendationStart = html.indexOf("function selectBestBet(");
+const recommendationStart = html.indexOf("function selectBestBets(");
 const recommendationEnd = html.indexOf("function renderBestBet(", recommendationStart);
 const recommendationSource = html.slice(recommendationStart, recommendationEnd);
 function runSelectBestBet(bets, minEv=3, minOdds=1.9) {
   const sandbox = {};
-  vm.runInNewContext(recommendationSource + "\nglobalThis.selectBestBet = selectBestBet;", sandbox);
+  vm.runInNewContext(recommendationSource + "\nglobalThis.selectBestBet = selectBestBet; globalThis.selectBestBets = selectBestBets;", sandbox);
   return sandbox.selectBestBet(bets, minEv, minOdds);
 }
 
@@ -81,6 +81,17 @@ test("result checks retry pending matches every 30 minutes and settled matches d
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
+
+test("daily plan shows no invented bankroll or stake amount", () => {
+  assert.match(html, /class="plan-summary"/);
+  assert.match(html, /id="planMandatoryCount"/);
+  assert.match(html, /id="planStakeTotal">—/);
+  assert.match(html, /банк не задан · сумма не рассчитана/);
+  assert.match(html, /id="planExposure">—/);
+  assert.match(html, /риск не рассчитывается/);
+  assert.match(html, /mandatoryCount\.textContent=String\(bestBets\.length\)/);
+  assert.match(html, /Размер ставки не рассчитан: банк и правило управления суммой не заданы/);
+});
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
   assert.ok(html.includes(`class="match-bottom odds-visible">'+oddsHtml`));
@@ -102,8 +113,10 @@ test("prediction pre-check uses the same versioned surface cache key as predicti
 });
 
 test("app header reports real API state instead of claiming the schedule is always connected", () => {
-  assert.match(html, /id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API/);
-  assert.match(html, /setConnectionStatus\('API: ОНЛАЙН'\)/);
+  assert.match(html, /id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА/);
+  assert.match(html, /setConnectionStatus\(scheduleResult\.hasMore/);
+  assert.match(html, /РАСПИСАНИЕ ЧАСТИЧНО/);
+  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel\+' · '\+matches\.length\+' матчей/);
   assert.match(html, /setConnectionStatus\('API НЕДОСТУПЕН'\)/);
   assert.match(html, /setConnectionStatus\('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ'\)/);
 });
@@ -135,19 +148,35 @@ test("manual and scheduled refresh bypass the recent schedule cache", () => {
   assert.match(html, /async function loadMatches\(force=false\)/);
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\).*isFreshCacheTimestamp\(saved\.savedAt,15\*60\*1000\)/);
   assert.match(html, /\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
-  assert.match(html, /\$\('#navMatches'\)\.onclick=\(\)=>\{showMain\(\);loadMatches\(true\);\}/);
+  assert.match(html, /\$\('#topUpcoming'\)\.onclick=showUpcoming;/);
+  assert.match(html, /\$\('#topTomorrow'\)\.onclick=showTomorrow;/);
 });
 
-test("forced schedule refresh bypasses both browser and Worker caches", () => {
-  assert.match(html, /fetchWithTimeout\(API\+'\/matches\?status=upcoming&draw=singles&limit=200'\+\(force\?'&fresh=true':''\)\)/);
+test("schedule request includes a rolling seven-day date window and bypasses legacy unscoped cache", () => {
+  const start = html.indexOf("function buildScheduleDateParams(");
+  const end = html.indexOf("async function fetchUpcomingSchedule(force=false)", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(html.slice(start, end) + "\nglobalThis.buildScheduleDateParams = buildScheduleDateParams;", sandbox);
+  const now = new Date("2026-11-22T12:34:56.000Z");
+  const params = new URLSearchParams(sandbox.buildScheduleDateParams(now));
+  const expectedFrom = new Date(now); expectedFrom.setHours(0,0,0,0);
+  const expectedTo = new Date(expectedFrom); expectedTo.setDate(expectedTo.getDate()+7); expectedTo.setMilliseconds(-1);
+  assert.equal(params.get("from"), expectedFrom.toISOString());
+  assert.equal(params.get("to"), expectedTo.toISOString());
+  assert.match(html, /new URLSearchParams\('status=upcoming&draw=singles&limit=200&'\+buildScheduleDateParams\(\)\)/);
+  assert.match(html, /params\.set\('offset',String\(offset\)\)/);
+  assert.match(html, /if\(force\)baseParams\.set\('fresh','true'\)/);
+  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
+  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
 });
 
 test("schedule status reports whether Worker served a cache hit or fresh upstream response", () => {
-  assert.match(html, /res\.headers\.get\('X-Data-Cache'\)/);
+  assert.match(html, /response\.headers\.get\('X-Data-Cache'\)/);
+  assert.match(html, /cacheMiss\?'MISS':'HIT'/);
   assert.match(html, /'источник обновлён'/);
   assert.match(html, /'кэш Worker'/);
-  assert.match(html, /'режим кэша неизвестен'/);
-  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel/);
+  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel\+' · '\+matches\.length\+' матчей/);
 });
 
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
@@ -274,6 +303,61 @@ test("odds matching accepts quotes up to six hours old but still rejects older q
   assert.equal(getOddsMatching([freshHome, skewedAway]).oddsForMatch(match).length, 0);
 });
 
+test("end-to-end schedule pipeline keeps official upcoming singles and diagnoses missing start times", () => {
+  const api = runExtractMatches(null);
+  const payload = {
+    data: [
+      {
+        id: 223582,
+        draw: "singles",
+        gender: "women",
+        status: "upcoming",
+        scheduled_time: "2026-11-22T14:00:00Z",
+        created_at: "2026-11-21T16:01:55.828190Z",
+        players: { p1: { id: 1, name: "Player One" }, p2: { id: 2, name: "Player Two" } }
+      },
+      {
+        id: 223583,
+        draw: "singles",
+        gender: "men",
+        status: "upcoming",
+        scheduled_time: null,
+        created_at: "2026-11-21T16:02:00.000Z",
+        players: { p1: { id: 3, name: "Player Three" }, p2: { id: 4, name: "Player Four" } }
+      }
+    ],
+    meta: { count: 2, total: 2 }
+  };
+  const matches = api.extractMatches(payload);
+  assert.equal(matches.length, 2);
+  assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-22T14:00:00.000Z");
+  assert.equal(api.matchDate(matches[1]), null);
+
+  const filterStart = html.indexOf("function normalizeTour(value)");
+  const filterEnd = html.indexOf("let predictionRenderId=0;", filterStart);
+  const sandbox = { matchDate: api.matchDate };
+  vm.runInNewContext(
+    html.slice(filterStart, filterEnd) +
+      "\nglobalThis.schedulePipeline = { matchTour, filterScheduleMatches };",
+    sandbox
+  );
+  const pipeline = sandbox.schedulePipeline;
+  assert.equal(pipeline.matchTour(matches[0]), "wta");
+  assert.equal(pipeline.matchTour(matches[1]), "atp");
+  const today = pipeline.filterScheduleMatches(
+    matches, "today", ["atp", "wta", "challenger", "itf"], new Date("2026-11-22T12:00:00")
+  );
+  assert.equal(today.total, 2);
+  assert.equal(today.afterTour, 2);
+  assert.equal(today.withDate, 1);
+  assert.equal(today.withoutDate, 1);
+  assert.equal(today.matches.length, 1);
+  const all = pipeline.filterScheduleMatches(
+    matches, "all", ["atp", "wta", "challenger", "itf"], new Date("2026-11-22T12:00:00")
+  );
+  assert.equal(all.matches.length, 2);
+});
+
 test("valid empty match schedules are distinct from malformed API payloads", () => {
   assert.deepEqual(Array.from(runExtractMatches([]).extractMatches([])), []);
   assert.deepEqual(Array.from(runExtractMatches({ matches: [] }).extractMatches({ matches: [] })), []);
@@ -287,7 +371,7 @@ test("valid empty match schedules are distinct from malformed API payloads", () 
 test("empty valid schedules are cached and can be reused or shown offline", () => {
   assert.match(html, /if\(!force&&saved&&Array\.isArray\(saved\.matches\)&&isFreshCacheTimestamp/);
   assert.match(html, /if\(saved&&Array\.isArray\(saved\.matches\)\)/);
-  assert.match(html, /if\(matches===null\)throw new Error/);
+  assert.match(html, /if\(pageRows===null\)throw new Error/);
   assert.doesNotMatch(html, /if\(!matches\.length\)throw new Error/);
 });
 
@@ -316,20 +400,33 @@ test("official Live Tennis upcoming-match shape is parsed with UTC scheduled_tim
   assert.equal(api.matchDate(matches[0]).toISOString(), "2026-11-20T10:00:00.000Z");
 });
 
-test("settings preview and immediately persist skin changes", () => {
+test("settings preview changes are committed only by Save and Cancel restores saved values", () => {
   const saveStart = html.indexOf("$('#saveSettings').onclick=");
   const saveEnd = html.indexOf("const API=", saveStart);
   const settingsSource = html.slice(html.indexOf("const modal=$('#settingsModal')"), saveEnd);
-  assert.match(settingsSource, /document\.body\.dataset\.skin=selected/);
-  assert.match(settingsSource, /document\.documentElement\.dataset\.skin=selected/);
-  assert.match(settingsSource, /settings\.skin=selected/);
-  assert.match(settingsSource, /activeSkin=selected/);
-  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+  const skinChangeStart=settingsSource.indexOf("$('#skinSelect').addEventListener('change'");
+  const skinChangeEnd=settingsSource.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",skinChangeStart);
+  const skinChange=settingsSource.slice(skinChangeStart,skinChangeEnd);
+  assert.match(skinChange, /applySkin\(selected\)/);
+  assert.doesNotMatch(skinChange, /localStorage\.setItem|activeSkin=selected/);
+  assert.match(settingsSource, /const cancelSettings=\(\)=>\{populateSettingsForm\(\);applySkin\(activeSkin\)/);
+  assert.match(settingsSource, /data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'black'/);
+  assert.match(settingsSource, /const tours=selectedTours\(\)/);
+  assert.match(settingsSource, /if\(!tours\.length\)/);
+  assert.match(settingsSource, /Выбери хотя бы один турнир/);
+  assert.match(settingsSource, /data\.tours=tours/);
+  assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
+  assert.match(settingsSource, /Tournament filters are previewed while the modal is open and committed only by Save/);
+  assert.match(settingsSource, /tourChecks\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{if\(window\.cachedMatches\)renderMatches\(window\.cachedMatches\);\}\)\)/);
   assert.ok(saveStart >= 0);
+  const persistedAt=settingsSource.indexOf("throw new Error('Настройки не сохранились')");
+  const closeAt=settingsSource.indexOf("close();",persistedAt);
+  const sideEffectsAt=settingsSource.indexOf("applySkin(activeSkin);",persistedAt);
+  assert.ok(persistedAt>=0&&closeAt>persistedAt&&sideEffectsAt>closeAt, 'settings modal closes after verified save and before UI side effects');
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v\d+"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v143"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -337,8 +434,11 @@ test("settings form reloads persisted values whenever opened and verifies every 
   const populateAt=html.indexOf("function populateSettingsForm()");
   const saveAt=html.indexOf("const savedAgain=readSettings();");
   assert.ok(openAt>0&&populateAt>0&&saveAt>0);
-  assert.match(html.slice(populateAt,openAt), /\['minEv','minOdds','maxOdds','bestBetMinOdds'\]/);
+  assert.match(html.slice(populateAt,openAt), /const defaults=\{minEv:3,minOdds:1\.9,maxOdds:5,bestBetMinOdds:1\.5,bankMaxStakePercent:1\.5,bankMaxExposurePercent:5,bankMaxDailyStakePercent:5,bankKellyFraction:25\}/);
+  assert.match(html.slice(populateAt,openAt), /Object\.entries\(defaults\)/);
   assert.match(html.slice(saveAt,saveAt+550), /Number\(savedAgain\.minEv\)!==minEv/);
+  assert.match(html, /JSON\.stringify\(savedTourValues\)!==JSON\.stringify\(expectedTourValues\)/);
+  assert.match(html, /кэф «Ставки дня» — 1\.50–15/);
 });
 
 test("Winamax empty-state diagnostics expose upstream dataset coverage", () => {
@@ -351,10 +451,12 @@ test("Winamax empty-state diagnostics expose upstream dataset coverage", () => {
 
 test("frontend API requests have a bounded timeout and clear their timer", () => {
   assert.match(html, /async function fetchWithTimeout/);
-  assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),timeoutMs\)/);
+  assert.match(html, /timer=setTimeout\(\(\)=>\{/);
+  assert.match(html, /controller\.abort\(\)/);
   assert.match(html, /signal:controller\.signal/);
   assert.match(html, /Превышено время ожидания API/);
-  assert.match(html, /finally\{clearTimeout\(timer\);?\}/);
+  assert.match(html, /Promise\.race\(\[response\.text\(\),timeout\]\)/);
+  assert.match(html, /finally\{\s*clearTimeout\(timer\);?\s*\}/);
   for (const route of ["/odds", "/matches", "/result", "/player-stats", "/predict"]) {
     assert.ok(html.includes("fetchWithTimeout(API+'"+route), "route "+route+" must use the timeout wrapper");
   }
@@ -375,43 +477,150 @@ test("Bet of the Day enforces the full odds range and valid model probability", 
   assert.equal(runSelectBestBet([{ ...valid, probability: Number.NaN }], 3, 1.5), null);
 });
 
-test("best bet of the day prioritizes validated reliability and opens its match from the whole feature card", () => {
-  assert.match(html, /id="bestBet" class="best-bet" role="button" tabindex="0"/);
-  assert.match(html, /СТАВКА ДНЯ/);
-  assert.match(html, /best-bet-odds/);
-  assert.match(html, /best-bet-pair/);
-  assert.match(html, /reliabilityEligible===true/);
-  assert.match(html, /reliabilityScore>=85/);
-  assert.match(html, /calibrationEligible=calibrationSampleSize>=50&&brier<=0\.22/);
-  assert.match(html, /calibrationReady=reliability\.calibrationEligible===true/);
-  assert.match(html, /не менее 50 проверенных матчей калибровки/);
-  assert.match(html, /Brier score выше 0\.22/);
-  assert.match(html, /\.sort\(\(a,b\)=>b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\|\|b\.ev-a\.ev\)/);
-  assert.match(html, /box\.onclick=openDetails/);
-  assert.match(html, /box\.onkeydown=/);
-  assert.match(html, /card\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
-  assert.match(html, /const highest=selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
-  assert.match(html, /x\.reliabilityScore>=65/);
-  assert.match(html, /x\.valueEligible===true/);
-  assert.match(html, /Качество данных:/);
-  assert.match(html, /EV — оценка модели, а не гарантия прибыли/);
-  assert.match(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
-  assert.match(html, /const impliedProbability=100\/highest\.odds/);
-  assert.match(html, /const modelEdge=highest\.probability-impliedProbability/);
-  assert.match(html, /Вероятность по коэффициенту:/);
-  assert.match(html, /преимущество модели:/);
-  assert.match(html, /небольшая ставка ради возможного крупного выигрыша; не рекомендация для крупной суммы/);
-  assert.match(html, /\.sort\(\(a,b\)=>b\.ev-a\.ev\|\|b\.reliabilityScore-a\.reliabilityScore\|\|b\.probability-a\.probability\)/);
-  assert.match(html, /id="highestEv" class="best-bet highest-ev"/);
+test("strict recommendations return the full reliability-ranked list for manual carousel navigation",()=>{
+  const base={ev:6,odds:2.4,probability:71,reliabilityEligible:true,reliabilityScore:91,freshnessLevel:"good",valueEligible:true};
+  const lower={...base,ev:12,probability:66,reliabilityScore:88,player:"Player B"};
+  const higher={...base,ev:4,probability:74,reliabilityScore:95,player:"Player A"};
+  const blocked={...base,reliabilityScore:84,player:"Blocked"};
+  const sandbox={};
+  vm.runInNewContext(recommendationSource+"\nglobalThis.selectBestBets=selectBestBets;",sandbox);
+  const selected=sandbox.selectBestBets([lower,blocked,higher],3,1.9);
+  assert.deepEqual(Array.from(selected).map(x=>x.player),["Player A","Player B"]);
+  assert.equal(selected.length,2);
 });
 
-test("bankroll tab and assets are fully removed from the application shell", () => {
-  for (const obsolete of ["bankrollView", "navBankroll", "bankroll.js", "winamax-import.js", "TVSBankroll", "Банкролл"]) {
-    assert.ok(!html.includes(obsolete), "application must not contain "+obsolete);
-    assert.ok(!serviceWorker.includes(obsolete), "service worker must not cache "+obsolete);
-  }
-  assert.match(html, /id="navHome"/);
-  assert.match(html, /id="navStats"/);
+test("daily-pick carousel rotates only qualifying bets and never substitutes ordinary matches",()=>{
+  assert.match(html,/id="bestBetPrev"/);
+  assert.match(html,/id="bestBetNext"/);
+  assert.match(html,/bestBetCarouselKey/);
+  assert.match(html,/bestBetCarouselTimer=setInterval/);
+  assert.match(html,/},9000\)/);
+  assert.match(html,/Сегодня нет ставок, прошедших строгий отбор\. Матчи без рекомендации здесь не показываются/);
+  assert.doesNotMatch(html,/const shownFeatured=startFeaturedMatchCarousel\(\)/);
+  assert.match(html,/[Рр]азмер ставки не рассчитан/);
+  assert.match(html,/aria-label="Ставка дня"/);
+});
+
+test("mandatory recommendations and additional opportunities are separate plan tiers", () => {
+  assert.match(html, /id="bestBet" class="best-bet daily-pick" role="region" aria-label="Ставка дня"/);
+  assert.match(html, /function selectBestBets\(/);
+  assert.match(html, /reliabilityEligible===true/);
+  assert.match(html, /reliabilityScore>=85/);
+  assert.match(html, /freshnessLevel==='good'/);
+  assert.match(html, /valueEligible===true/);
+  assert.match(html, /id="additionalOpportunities"/);
+  assert.match(html, /Дополнительные возможности/);
+  assert.match(html, /Почему пока не в основном плане/);
+  assert.match(html, /EV ниже установленного порога/);
+  assert.match(html, /котировка недостаточно свежая/);
+  assert.match(html, /не пройдена проверка качества value-сигнала/);
+  assert.match(html, /не завершена строгая калибровка и независимое подтверждение/);
+  assert.match(html, /[Мм]одель ещё не вернула проверенную вероятность/);
+  assert.match(html, /id="additionalCount"/);
+  assert.doesNotMatch(html, /EV ДНЯ · РИСКОВЫЙ ШАНС/);
+  assert.doesNotMatch(html, /id="highestEv"/);
+});
+
+
+test("approved bottom navigation contains Home, Matches, Compare, Statistics and Settings",()=>{
+  for(const id of ["navHome","navMatches","navCompare","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
+  for(const id of ["navBalance","navHistory"])assert.doesNotMatch(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/function showMatches\(\)/);
+  assert.match(html,/function showCompare\(\)/);
+  assert.match(html,/function showStats\(\)/);
+  assert.match(html,/function showSettingsScreen\(\)/);
+  assert.match(html,/id="moreArchiveMount"/);
+  assert.match(html,/id="mandatoryBetsContent"/);
+});
+
+
+test("home screen follows the approved daily-pick reference order",()=>{
+  const home=html.slice(html.indexOf('<div class="app">'),html.indexOf('<div class="compare-view"'));
+  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('class="plan-summary"'));
+  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBets"'));
+  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('id="additionalOpportunities"'));
+  assert.ok(home.indexOf('id="additionalOpportunities"')<home.indexOf('class="quick-links"'));
+  assert.match(home,/data-day="today"/);
+  assert.match(home,/data-day="tomorrow"/);
+  assert.match(home,/data-day="all"/);
+  assert.match(home,/СТАВКА ДНЯ/);
+  assert.match(html,/selected\?\.photo_url\|\|selected\?\.image_url/);
+});
+
+
+test("player comparison does not expose a match simulator",()=>{
+  assert.doesNotMatch(html,/Сценарная симуляция BO|Симуляция не запускалась|simulationLabel|pfeScoreSimulation/);
+});
+
+test("match cards include a collapsible comparison using only verified Elo and quote data",()=>{
+  assert.match(html,/class="compare-dossier-block match-player-comparison"/);
+  assert.match(html,/<summary>Сравнение игроков<\/summary>/);
+  assert.match(html,/Elo покрытия/);
+  assert.match(html,/Справедливый кэф/);
+  assert.match(html,/Текущая форма и личные встречи \(H2H\) не запрашивались/);
+});
+
+test("independent player comparison calls the current Elo API and displays both players",()=>{
+  assert.match(html,/id="compareNameA"/);
+  assert.match(html,/id="compareNameB"/);
+  assert.match(html,/id="compareIdA"/);
+  assert.match(html,/id="compareIdB"/);
+  assert.equal((html.match(/class="compare-manual-id"/g)||[]).length,2);
+  assert.match(html,/Ручной ввод ID \(если поиск не сработал\)/);
+  assert.match(html,/compare-manual-id summary/);
+  assert.match(html,/function findScheduledPlayerId\(name\)/);
+  assert.match(html,/API\+'\/predict'/);
+  assert.match(html,/playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface/);
+  assert.match(html,/function renderCompareResult\(result,nameA,nameB,surface\)/);
+  assert.match(html,/вероятность победы/);
+  assert.match(html,/Справедливый кэф/);
+  assert.match(html,/Травмы, форма, H2H и статистика подачи пока не входят/);
+});
+test("virtual balance and history are local simulation screens, not real-money tools", () => {
+  assert.match(html, /balance\.id='balanceView'/);
+  assert.match(html, /history\.id='historyView'/);
+  assert.match(html, /tvs-virtual-bank-v1/);
+  assert.match(html, /Стартовый капитал: 1 000 €/);
+  assert.match(html, /Реальные деньги не используются/);
+  assert.doesNotMatch(html, /банкролл|Банкролл/);
+  assert.match(html, /id="navBalance"/);
+  assert.match(html, /id="navHistory"/);
+});
+
+test("virtual bankroll is not loaded or automatically populated in the release UI",()=>{
+  assert.doesNotMatch(html, /<script src="\.\/bankroll\.js"><\/script>/);
+  assert.doesNotMatch(html, /recordVirtualPortfolio\(bestBets\)/);
+  assert.doesNotMatch(html, /TVSBankroll\.createInitialState\(1000\)/);
+  assert.doesNotMatch(html, /Стартовый капитал: 1 000 €/);
+  assert.match(html, /if\(!window\.TVSBankroll\)/);
+  assert.match(html, /Размер ставки не рассчитан: банк и правило управления суммой не заданы/);
+});
+
+test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow",()=>{
+  for(const id of ["topLive","topUpcoming","topTomorrow"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/live\.id='liveView'/);
+  assert.match(html,/live\.appendChild\(liveBoard\)/);
+  assert.match(html,/function showLive\(\)/);
+  assert.match(html,/function showUpcoming\(\)/);
+  assert.match(html,/function showTomorrow\(\)/);
+  assert.match(html,/id="liveRefreshPageBtn"/);
+  assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
+  assert.match(html,/id="headerBalance"/);
+  assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
+});
+
+test("virtual bet history provides player, tournament, date and result filters",()=>{
+  for(const id of ["historyPlayerFilter","historyTournamentFilter","historyResultFilter","historyFromDate","historyToDate"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/function renderVirtualBank\(\)/);
+  assert.match(html,/allRows\.filter\(b=>/);
+});
+
+test("bank and history are not exposed as bottom-navigation destinations",()=>{
+  assert.doesNotMatch(html, /id="navBalance"/);
+  assert.doesNotMatch(html, /id="navHistory"/);
+  assert.doesNotMatch(html, /id="headerBalance"/);
+  assert.match(html, /id="navMatches"/);
+  assert.match(html, /id="navCompare"/);
 });
 
 
@@ -476,38 +685,72 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
-  assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
-  assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
-  assert.match(html, /const allMatched=oddsForMatch\(m\)/);
+test("match list keeps all scheduled matches visible and labels fresh quote-pair status", () => {
+  assert.match(html, /function filterScheduleMatches\(all,day='today'/);
+  assert.match(html, /const winnerButton=\$\('\[data-market="winner"\]'\);[\s\S]*const winnerEnabled=!winnerButton\|\|winnerButton\.classList\.contains\('on'\)/);
+  assert.match(html, /const schedule=filterScheduleMatches\(all,selectedDay,selectedTours\(\),new Date\(\)\)/);
+  assert.match(html, /const filtered=schedule\.matches/);
+  assert.match(html, /const completePairCount=filtered\.filter\(m=>winnerEnabled&&oddsForMatch\(m\)\.length>=2\)\.length/);
+  assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
+  assert.match(html, /Полная свежая пара/);
+  assert.match(html, /Неполная пара · найден 1 исход/);
+  assert.match(html, /Нет свежей полной пары/);
+  assert.match(html, /class="match-quote-status /);
+  assert.match(html, /Получено от API:/);
+  assert.match(html, /Без даты начала:/);
 });
 
-test("optional player statistics are not fetched during automatic prediction scans", () => {
-  assert.equal(html.split("loadPfePlayerStats(").length - 1, 1,
-    "the player-statistics loader must remain defined but must not be called automatically");
-  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"));
+test("virtual bet history shows actual outcome post-settlement balance and corrected ledger entries", () => {
+  assert.ok(html.includes('option value="reversed">Исправленный расчёт</option>'));
+  assert.match(html, /tx\.type==='settlement_reversed'/);
+  assert.match(html, /balanceAfterById\.set\(tx\.id,ledgerBalance\)/);
+  assert.match(html, /Исход:.*P\/L/);
+  assert.match(html, /баланс после операции/);
+  assert.match(html, /Предыдущий расчёт отменён/);
+});
+
+test("virtual bankroll backup remains dormant until the user explicitly enables bankroll tracking",()=>{
+  assert.doesNotMatch(html, /<script src="\.\/bankroll\.js"><\/script>/);
+  assert.match(html, /Банк не задан/);
+  assert.match(html, /банк не задан · сумма не рассчитана/);
+});
+
+test("optional player statistics are loaded only by the explicit match-card action", () => {
+  assert.equal(html.split("loadPfePlayerStats(").length - 1, 3,
+    "one loader definition and exactly two on-demand player requests are expected");
+  assert.ok(html.includes("const deferredPlayerStats={accessStatus:'not_requested',recent:null,serve:null}"),
+    "automatic prediction scans must continue to use the no-request placeholder");
+  assert.ok(html.includes("class=\"compare-load-button\""),
+    "each match card must expose an explicit profile-loading action");
+  assert.match(html, /compareButton\.addEventListener\('click',async\(\)=>/);
+  assert.match(html, /loadPfePlayerStats\(comparePlayerIdA\),loadPfePlayerStats\(comparePlayerIdB\)/,
+    "both player profiles must be requested only after the user clicks");
   assert.ok(html.includes("not_requested:'не запрашивалась автоматически (экономия квоты)'"));
 });
 
 
-test("EV panel preserves bookmaker pair and opens match when prediction calculation fails", () => {
+test("additional opportunities preserve bookmaker pair when prediction calculation fails", () => {
   assert.match(html, /const oddsFallback=matches\.map\(\(m,i\)=>/);
   assert.match(html, /Коэффициенты Winamax:/);
-  assert.match(html, /EV не рассчитан:/);
-  assert.match(html, /evButton\.hidden=false;/);
+  assert.match(html, /[Мм]одель ещё не вернула проверенную вероятность/);
+  assert.match(html, /additionalFallbackOpen/);
   assert.match(html, /quote\.matchIndex/);
   assert.match(html, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
 
+test("minimum EV setting gates mandatory recommendations while lower positive EV remains watchlist eligible",()=>{
+  assert.match(html,/Минимальный EV для «Ставки дня»:/);
+  assert.match(html,/selectBestBets\(bets,filters\.minEv,/);
+  assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
+  assert.match(html,/if\(oddsInRange&&bet\.odds>=1\.9&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)dayBets\.push\(bet\)/);
+  assert.match(html,/if\(bet\.ev<filters\.minEv\)reasons\.push\('EV ниже установленного порога/);
+});
 
 
 
 
 test("minimum EV setting is exclusive to Bet of the Day",()=>{
-  assert.match(html,/Минимальный EV для «Ставки дня», %/);
+  assert.match(html,/Минимальный EV для «Ставки дня»:/);
   assert.match(html,/selectBestBet\(bets,filters\.minEv,/);
   assert.match(html,/selectHighestEvBet\(evBets,filters\.minOdds,filters\.maxOdds\)/);
   assert.match(html,/if\(oddsInRange&&Number\.isFinite\(bet\.ev\)&&bet\.ev>0\)evDayBets\.push\(bet\)/);
@@ -516,9 +759,241 @@ test("minimum EV setting is exclusive to Bet of the Day",()=>{
   assert.match(html,/if\(valueGateA\.eligible&&result\.evA!==null&&result\.evA>0\)positive\+\+/);
 });
 
-test("skin selection applies and persists immediately",()=>{
+test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
-  assert.match(html,/settings\.skin=selected/);
-  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+  assert.match(html,/Стальной синий · холодные акценты/);
+  assert.match(html,/Amber Equalizer · чёрный и янтарный неон/);
+  assert.match(html,/body\[data-skin="amber-led"\]/);
+  assert.match(html,/body\[data-skin="amber-led"\] #bestBet\.best-bet/);
+  assert.match(html,/body\[data-skin="amber-led"\] #bestBet \.best-bet-title/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.plan-refresh[\s\S]*?background:linear-gradient\(110deg,#4a260f/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.daily-pick\{[\s\S]*?background:linear-gradient\(125deg,#2b1a0d/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.plan-refresh\{[\s\S]*?background:linear-gradient\(110deg,#4a260f,#8c451c/);
+  assert.match(html,/body\[data-skin="amber-led"\] \.daily-pick-confidence\{color:#d0ae8d\}/);
+  assert.match(html,/led-digit/);
+  assert.match(html,/clip-path:polygon/);
+  assert.match(html,/const isAmber=\(\)=>document\.body\?\.dataset\.skin==="amber-led"/);
+  assert.match(html,/else \[\.\.\.tracked\]\.forEach\(restore\)/);
+  assert.match(html,/let activeSkin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(saved\.skin\)\?saved\.skin:'black'/);
+  assert.doesNotMatch(html,/saved\.skin='amber-led'|amberLedDefaultApplied/);
+  assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
+  const start=html.indexOf("$('#skinSelect').addEventListener('change'");
+  const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
+  const preview=html.slice(start,end);
+  assert.match(preview,/applySkin\(selected\)/);
+  assert.doesNotMatch(preview,/localStorage\.setItem|activeSkin=selected/);
+  assert.match(html,/data\.skin=\['black','steel','neon','terracotta','amber-led'\]\.includes\(\$\('#skinSelect'\)\.value\)\?\$\('#skinSelect'\)\.value:'black'/);
+  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
+});
+
+test("BASIC comparison history derives last-five, recent form and surface splits by participant ID",()=>{
+  const start=html.indexOf("function deriveCompareHistory(");
+  const end=html.indexOf("function renderCompareHistory(",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={};
+  vm.runInNewContext(html.slice(start,end)+"\nglobalThis.derive=deriveCompareHistory;",sandbox);
+  const payload={source:"Live Tennis API /history/matches",period:"2023-present",data:[
+    {id:1,scheduled_time:"2026-05-03T12:00:00Z",players:{p1:{id:10,name:"A"},p2:{id:20,name:"B"}},winner:1,surface:"hard",score:{sets:[2,0],games:[[6,6],[3,4]]}},
+    {id:2,scheduled_time:"2026-05-02T12:00:00Z",players:{p1:{id:20,name:"B"},p2:{id:10,name:"A"}},winner:1,surface:"clay",score:"6-4 6-2"},
+    {id:3,scheduled_time:"2026-05-01T12:00:00Z",players:{p1:{id:10,name:"A"},p2:{id:20,name:"B"}},winner:null,surface:null}
+  ]};
+  const result=sandbox.derive(payload,10);
+  assert.equal(result.sample,3);
+  assert.deepEqual(Array.from(result.last5,x=>x.winner),["?","L","W"]);
+  assert.equal(result.form10.wins,1);
+  assert.equal(result.form10.losses,1);
+  assert.equal(result.undecided,1);
+  assert.equal(result.bySurface.hard.wins,1);
+  assert.equal(result.bySurface.clay.losses,1);
+  assert.equal(result.bySurface.grass.decided,0);
+  assert.equal(result.last5[2].score,"6-3 6-4");
+  const opponentView=sandbox.derive(payload,20);
+  assert.deepEqual(Array.from(opponentView.last5,x=>x.winner),["?","W","L"]);
+  assert.equal(opponentView.last5[2].score,"3-6 4-6");
+  assert.equal(Object.hasOwn(result.bySurface,"carpet"),false);
+  assert.doesNotMatch(html,/\[\x27carpet\x27,\x27Ковёр\x27\]/);
+});
+test("H2H meeting rows display the published final score",()=>{
+  const start=html.indexOf("function renderCompareH2H(");
+  const end=html.indexOf("function renderCompareResult(",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={escapeHtml:value=>String(value)};
+  vm.runInNewContext(html.slice(start,end)+"\nglobalThis.render=renderCompareH2H;",sandbox);
+  const payload={players:{p1:{name:"Novak Djokovic"},p2:{name:"Carlos Alcaraz"}},totals:{p1_wins:2,p2_wins:1,meetings:3},meetings:[{date:"2026-01-01",winner:1,score:"6-4 7-6(3)",outcome:"completed"}]};
+  const rendered=sandbox.render(payload,"Novak Djokovic","Carlos Alcaraz");
+  assert.match(rendered,/6-4 7-6\(3\)/);
+});
+test("Compare loads both histories and H2H independently after Elo, and rejects mismatched H2H identities",()=>{
+  assert.match(html,/Promise\.allSettled\(\[/);
+  assert.match(html,/API\+'\/player-history\?id='/);
+  assert.match(html,/API\+'\/player-h2h\?p1='/);
+  assert.match(html,/norm\(p1\)!==norm\(nameA\)/);
+  assert.match(html,/Идентичность игроков не подтверждена точным совпадением имён/);
+  assert.match(html,/История недоступна\. Основное сравнение Elo сохранено/);
+  assert.match(html,/История 2023–н\.в\.; H2H 1968–н\.в\./);
+  assert.match(html,/проверка имён показана в блоке H2H/);
+});
+
+
+test("TVS 2.0 five-section navigation opens the approved destinations",()=>{
+  assert.match(html,/function mountIndependentScreens\(\)/);
+  assert.match(html,/matches\.id='matchesView'/);
+  assert.match(html,/more\.id='moreView'/);
+  assert.match(html,/settings\.id='settingsView'/);
+  assert.match(html,/function hideAllScreens\(\)/);
+  const earlyNav=html.indexOf("const target=event.target instanceof Element?event.target.closest('#navHome,#navMatches,#navCompare,#navStats,#navSettings'):null;");
+  assert.ok(earlyNav>0&&earlyNav<html.indexOf('function mountIndependentScreens()'),
+    'bottom navigation must be delegated before optional app initialization');
+  assert.match(html,/\$\('#quickMatches'\)\.onclick=showMatches;/);
+  assert.match(html,/\$\('#quickCompare'\)\.onclick=showCompare;/);
+  assert.match(html,/\$\('#quickLab'\)\.onclick=showLab;/);
+  assert.match(html,/\$\('#quickStats'\)\.onclick=showStats;/);
+  assert.match(html,/\$\('#quickArchive'\)\.onclick=/);
+  assert.match(html,/\$\('#matchesRefreshBtn'\)\.onclick=\(\)=>loadMatches\(true\);/);
+  assert.match(html,/id="moreArchiveMount"/);
+});
+
+test("model research test journal is structured and visible in Statistics",()=>{
+  const journal=JSON.parse(readFileSync(new URL("../research/test-journal.json",import.meta.url),"utf8"));
+  assert.equal(journal.schemaVersion,1);
+  assert.ok(journal.tests.length>=6);
+  for(const row of journal.tests){
+    for(const key of ["id","date","status","tour","baseline","candidate","trainingWindow","evaluationPeriod","selection","notes"]){
+      assert.ok(Object.hasOwn(row,key),"journal row "+row.id+" must include "+key);
+    }
+  }
+  assert.match(html,/id="researchTestJournal"/);
+  assert.match(html,/id="researchJournalRows"/);
+  assert.match(html,/async function loadResearchTestJournal\(force=false\)/);
+  assert.match(html,/loadResearchTestJournal\(\);/);
+  assert.match(html,/researchJournalRefresh/);
+  assert.match(html,/Brier до → после/);
+  assert.match(html,/LogLoss до → после/);
+});
+
+test("mobile player suggestion taps prevent blur from closing the result list before selection",()=>{
+  const start=html.indexOf("function bindComparePlayerSearch(side)");
+  const end=html.indexOf("bindComparePlayerSearch('A')",start);
+  const search=html.slice(start,end);
+  assert.match(search,/list\.addEventListener\('pointerdown'/);
+  assert.match(search,/if\(button\)event\.preventDefault\(\)/);
+  assert.match(search,/nameInput\.addEventListener\('blur'/);
+  assert.match(search,/list\.onclick=event=>/);
+});
+
+test("player comparison search maps common Russian player names to canonical Live Tennis API names",()=>{
+  assert.match(html,/'алькарас':'Carlos Alcaraz'/);
+  assert.match(html,/'новак джокович':'Novak Djokovic'/);
+  assert.match(html,/const apiQuery=compareSearchAliases\[query\.toLocaleLowerCase\('ru-RU'\)\]\|\|query/);
+  assert.match(html,/encodeURIComponent\(apiQuery\)/);
+});
+
+test("singles player search excludes doubles teams returned by Live Tennis API",()=>{
+  assert.match(html,/const players=\(Array\.isArray\(payload\.players\)\?payload\.players:\[\]\)\.filter\(player=>player\?\.is_doubles_team!==true\)/);
+  assert.match(html,/Одиночные игроки не найдены/);
+});
+
+test("upcoming schedule follows API pagination and warns when the page cap is reached", () => {
+  assert.match(html, /async function fetchUpcomingSchedule\(force=false\)/);
+  assert.match(html, /for\(let page=0;page<4;page\+\+\)/);
+  assert.match(html, /meta\.has_more===true/);
+  assert.match(html, /offset=currentOffset\+count/);
+  assert.match(html, /const rawId=match\?\.id\?\?match\?\.matchId\?\?match\?\.match_id/);
+  assert.match(html, /window\.scheduleCoverage=\{loaded:matches\.length,total:scheduleResult\.total,pages:scheduleResult\.pagesLoaded,truncated:scheduleResult\.hasMore\}/);
+  assert.match(html, /Расписание загружено не полностью/);
+  assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
+  assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
+});
+
+
+const liveScoreStart = html.indexOf("function liveScoreView(match)");
+const liveScoreEnd = html.indexOf("function liveSurfaceLabel(surface)", liveScoreStart);
+const liveScoreSource = html.slice(liveScoreStart, liveScoreEnd);
+function runLiveScoreView(match) {
+  const sandbox = {};
+  vm.runInNewContext(liveScoreSource + "\nglobalThis.liveScoreView = liveScoreView;", sandbox);
+  return sandbox.liveScoreView(match);
+}
+
+test("home screen places a live scoreboard above the pre-match Bet of the Day", () => {
+  const liveAt = html.indexOf('id="liveBoard"');
+  const betAt = html.indexOf('id="bestBet"');
+  assert.ok(liveAt >= 0 && betAt > liveAt);
+  assert.match(html, /id="liveMatchList"/);
+  assert.match(html, /id="liveRefreshPageBtn"/);
+  assert.match(html, /LIVE · МАТЧИ СЕЙЧАС/);
+});
+
+test("live score adapter reads player-major sets, games, points and server without inventing values", () => {
+  const result = runLiveScoreView({
+    score: {
+      sets: [2, 1],
+      games: [[6, 3, 2], [4, 6, 1]],
+      points: ["30", "15"],
+      server: 2,
+      is_tiebreak: false
+    }
+  });
+  assert.equal(result.hasScore, true);
+  assert.equal(result.sets, "2–1");
+  assert.equal(result.games, "6–4 · 3–6 · 2–1");
+  assert.equal(result.points, "30–15");
+  assert.equal(result.server, 2);
+  assert.equal(result.tiebreak, false);
+  assert.equal(runLiveScoreView({ score: null }).hasScore, false);
+  assert.equal(runLiveScoreView({ score: { sets: null, games: null, points: null, server: null } }).sets, "—");
+});
+
+test("live feed uses one slate request, local cache and quota-conscious configured refresh", () => {
+  assert.match(html, /new URLSearchParams\(\{status:'live',draw:'singles',limit:'200'\}\)/);
+  assert.match(html, /API\+'\/matches\?'\+params\.toString\(\)/);
+  assert.match(html, /tvs-live-cache-v1/);
+  assert.match(html, /isFreshCacheTimestamp\(saved\.savedAt,60\*1000\)/);
+  assert.match(html, /loadLiveMatches\(true\)/);
+  assert.match(html, /loadLiveMatches\(\);/);
+  assert.match(html, /match\.status==='live'/);
+  assert.doesNotMatch(html, /\/matches\/\$\{[^}]+\}\/statistics/);
+});
+
+test("live scoreboard shows data access errors instead of fabricated scores or probabilities", () => {
+  assert.match(html, /Лимит API/);
+  assert.match(html, /Счёт пока не опубликован/);
+  assert.match(html, /Не удалось загрузить Live-матчи/);
+  assert.doesNotMatch(html, /win_probability_p1/);
+});
+
+test("expired live cache remains available as a labelled fallback when the API is unavailable", () => {
+  const assignAt = html.indexOf("liveMatchesCache=saved.matches");
+  const freshnessAt = html.indexOf("if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,60*1000))");
+  const errorFallbackAt = html.indexOf("последние сохранённые данные");
+  assert.ok(assignAt >= 0 && freshnessAt > assignAt);
+  assert.ok(errorFallbackAt > freshnessAt);
+});
+
+test("settings sliders use a fine custom track with visible scale ticks and a compact snap thumb", () => {
+  assert.match(html, /input\[type=range\]\{\-webkit\-appearance:none;appearance:none;width:100%;height:22px/);
+  assert.match(html, /::-webkit-slider-runnable-track\{height:8px/);
+  assert.match(html, /repeating-linear-gradient\(to right,rgba\(220,185,164,\.72\)/);
+  assert.match(html, /::-webkit-slider-thumb\{\-webkit\-appearance:none;appearance:none;width:13px;height:13px/);
+  assert.match(html, /::-moz-range-thumb\{width:10px;height:10px/);
+  for (const id of ["minEv","minOdds","maxOdds","bestBetMinOdds","bankMaxStakePercent","bankMaxExposurePercent","bankMaxDailyStakePercent","bankKellyFraction"]) {
+    assert.match(html, new RegExp('id="' + id + '" type="range"'));
+  }
+});
+
+test("independent API diagnostics and status-tab navigation fallback are present", () => {
+  assert.ok(html.includes("const worker=location.hostname.startsWith('deploy-preview-')"));
+  assert.ok(html.includes("fetch(worker+'/health',{cache:'no-store'})"));
+  assert.ok(html.includes("API: LIVE OK"));
+  assert.ok(html.includes("APIFY_TOKEN. Источник коэффициентов недоступен."));
+  assert.ok(html.includes("event.target.closest('#topLive,#topUpcoming,#topTomorrow')"));
+  assert.ok(html.includes("openStatusScreen('liveView')"));
+  assert.ok(html.includes("openStatusScreen('matchesView')"));
+});
+
+test("screen-open layout hides non-screen app children but permits selected independent screens", () => {
+  assert.ok(html.includes(".app.screen-open>:not(.main-header):not(.top-status-nav):not(.screen-view){display:none!important}"));
+  assert.ok(html.includes(".screen-view{display:none;"));
+  assert.match(html, /hideAllScreens\(\);\$\('#liveView'\)\.style\.display='block'/);
 });
