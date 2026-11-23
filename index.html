@@ -895,6 +895,19 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <script>
   const $ = s => document.querySelector(s);
 
+  // Bind the bottom navigation immediately, before the rest of app startup.
+  // This keeps navigation responsive even if a later optional initializer fails.
+  document.addEventListener('click',event=>{
+    const target=event.target instanceof Element?event.target.closest('#navBalance,#navHistory,#navStats,#navSettings'):null;
+    if(!target)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if(target.id==='navBalance')showBalance();
+    else if(target.id==='navHistory')showHistory();
+    else if(target.id==='navStats')showStats();
+    else if(target.id==='navSettings')showSettingsScreen();
+  },true);
+
   // TVS 2.0: promote the bottom navigation into five real, independent screens.
   function mountIndependentScreens(){
     const app=$('.app');
