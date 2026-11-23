@@ -421,7 +421,7 @@ test("settings form reloads persisted values whenever opened and verifies every 
   const populateAt=html.indexOf("function populateSettingsForm()");
   const saveAt=html.indexOf("const savedAgain=readSettings();");
   assert.ok(openAt>0&&populateAt>0&&saveAt>0);
-  assert.match(html.slice(populateAt,openAt), /\['minEv','minOdds','maxOdds','bestBetMinOdds'\]/);
+  assert.match(html.slice(populateAt,openAt), /const defaults=\{minEv:3,minOdds:1\.9,maxOdds:5,bestBetMinOdds:1\.5\}/);\n  assert.match(html.slice(populateAt,openAt), /Object\.entries\(defaults\)/);
   assert.match(html.slice(saveAt,saveAt+550), /Number\(savedAgain\.minEv\)!==minEv/);
   assert.match(html, /JSON\.stringify\(savedTourValues\)!==JSON\.stringify\(expectedTourValues\)/);
   assert.match(html, /кэф «Ставки дня» — 1\.50–15/);
@@ -678,6 +678,8 @@ test("minimum EV setting is exclusive to Bet of the Day",()=>{
 test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
+  assert.match(html,/Стальной синий · холодные акценты/);
+  assert.doesNotMatch(html,/Steel Emerald|сталь и изумруд/);
   const start=html.indexOf("$('#skinSelect').addEventListener('change'");
   const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
   const preview=html.slice(start,end);
