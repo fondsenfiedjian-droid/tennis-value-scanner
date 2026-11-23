@@ -158,7 +158,41 @@
     body[data-skin="olive"] .actions button:focus,
     body[data-skin="olive"] .chip:focus{outline-color:#f0c75e}
 
-  </style>
+
+    /* Amber Equalizer — dedicated black / warm amber skin */
+    body[data-skin="amber-led"]{--bg:#070707;--panel:#101010;--panel2:#171513;--line:#8a4b28;--muted:#b8a79b;--text:#f6eee7;--amber:#ffb04a;background:radial-gradient(ellipse at 50% -18%,#51240f 0,#1a100b 32%,#080808 72%),#080808;color:var(--text)}
+    body[data-skin="amber-led"] .tabs{background:#090909;border-color:#744323}
+    body[data-skin="amber-led"] .tab{color:#c4a58f}
+    body[data-skin="amber-led"] .tab.active{background:linear-gradient(135deg,#71300f,#bd541d 58%,#54230e);color:#fff4e8;border:1px solid #e77b36;box-shadow:inset 0 1px #ffd2a055,0 0 13px #e66a2838}
+    body[data-skin="amber-led"] .panel,body[data-skin="amber-led"] .match-card,body[data-skin="amber-led"] .archive-item{background:linear-gradient(145deg,#1b1714,#0b0b0b 75%);border-color:#744323;box-shadow:inset 0 1px #ffffff10,0 7px 20px #000b}
+    body[data-skin="amber-led"] .refresh,body[data-skin="amber-led"] .actions .primary{background:linear-gradient(110deg,#7b310f,#d45b1d 55%,#8b3512);border:1px solid #f18a43;color:#fff6ed;box-shadow:0 0 18px #d65b2533,inset 0 1px #ffd1a055}
+    body[data-skin="amber-led"] .linkbtn{color:#ff9a55}
+    body[data-skin="amber-led"] .chip{background:#17110d;border-color:#704323;color:#e8c4a8}
+    body[data-skin="amber-led"] .chip.on{background:#3b1d0d;border-color:#e07832;color:#ffc18a}
+    body[data-skin="amber-led"] .bottom{background:#080808ed;border-top:1px solid #744323}
+    body[data-skin="amber-led"] .nav button.active{color:#ffad55;background:#321909}
+    body[data-skin="amber-led"] .modal{background:linear-gradient(145deg,#1c1713,#0a0a0a);border-color:#8a4b28}
+    body[data-skin="amber-led"] input[type=number],body[data-skin="amber-led"] select,body[data-skin="amber-led"] .check{background:#0d0b09;border-color:#704323;color:#f6eee7}
+    body[data-skin="amber-led"] .actions button,body[data-skin="amber-led"] .stats-actions button{background:#21150e;border-color:#754323;color:#f8eee6}
+    body[data-skin="amber-led"] .status{background:#2a170b;border-color:#b96a2c;color:#ffd18b}
+    body[data-skin="amber-led"] .best-bet{background:linear-gradient(135deg,#291307,#090909 72%)!important;border:1px solid #a96332!important;box-shadow:inset 0 1px #fff3,0 0 18px #e66a2822,0 8px 24px #000b!important}
+    body[data-skin="amber-led"] .best-bet:before{background:linear-gradient(120deg,#f7c08a,#7e421f 16%,#f07832 42%,#54250f 68%,#f2b77d)}
+    body[data-skin="amber-led"] #bestBet .best-bet-title,body[data-skin="amber-led"] .best-bet-title,body[data-skin="amber-led"] .best-bet-value{color:#ffb45f!important}
+    body[data-skin="amber-led"] #bestBet .best-bet-odds,body[data-skin="amber-led"] .stat-num{color:#ffbd68!important;font-family:"Courier New",monospace;font-variant-numeric:tabular-nums;letter-spacing:.055em;text-shadow:0 0 4px #ff9a55bb,0 0 11px #f0783277,0 0 22px #d65b253d}
+    body[data-skin="amber-led"] #bestBet .best-bet-pair,body[data-skin="amber-led"] .best-bet-main{color:#fff0e3}
+    body[data-skin="amber-led"] #bestBet .best-bet-sub,body[data-skin="amber-led"] .best-bet-empty,body[data-skin="amber-led"] .best-bet-meta{color:#d2b9a5}
+    body[data-skin="amber-led"] .best-bet.has-pick{animation:amberBestBetGlow 2.8s ease-in-out infinite}
+    @keyframes amberBestBetGlow{0%,100%{box-shadow:inset 0 1px #fff3,0 0 10px #d9823b25,0 8px 24px #0009}50%{box-shadow:inset 0 1px #fff5,0 0 20px #d9823b6b,0 8px 28px #000b}}
+    body[data-skin="amber-led"] .match-card.expanded{border-color:#d47735;background:linear-gradient(145deg,#28170d,#15100e)}
+    body[data-skin="amber-led"] .model-result{background:#100e0d;border-color:#704b32}
+    body[data-skin="amber-led"] .model-result strong,body[data-skin="amber-led"] .model-positive{color:#ffbd68}
+    body[data-skin="amber-led"] .model-negative{color:#e6a078}
+    body[data-skin="amber-led"] .data-freshness.good{background:#21170d;color:#ffd18b;border:1px solid #a66b32}
+    body[data-skin="amber-led"] .data-freshness.medium{background:#2b1d15;color:#e9bd9d;border-color:#80543d}
+    body[data-skin="amber-led"] .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
+    body[data-skin="amber-led"] .bookmaker-tag{background:#17110d;border-color:#9a6337;color:#ffbd68}
+    body[data-skin="amber-led"] .match-card:focus,body[data-skin="amber-led"] .stats-actions button:focus,body[data-skin="amber-led"] .actions button:focus,body[data-skin="amber-led"] .chip:focus{outline-color:#ffad55}
+\n  </style>
 </head>
 <body>
 <div class="app">
@@ -233,7 +267,7 @@
 <div class="modal-back" id="settingsModal">
   <div class="modal">
     <h2>Настройки сканера</h2>
-    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
+    <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option><option value="amber-led">Amber Equalizer · чёрный и янтарный</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV для «Ставки дня», %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="100" step="0.1" value="5.00"></div>
@@ -307,19 +341,19 @@
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  let activeSkin=saved.skin==='olive'?'olive':'black';
+  let activeSkin=['olive','amber-led'].includes(saved.skin)?saved.skin:'black';
   function applySkin(skin){
-    const selected=skin==='olive'?'olive':'black';
+    const selected=['olive','amber-led'].includes(skin)?skin:'black';
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
-    if(themeColor)themeColor.content=selected==='olive'?'#626744':'#080808';
+    if(themeColor)themeColor.content=selected==='olive'?'#626744':selected==='amber-led'?'#17100b':'#080808';
   }
   applySkin(activeSkin);
   $('#skinSelect').value=activeSkin;
   // Preview theme immediately; Cancel restores the last saved skin.
   $('#skinSelect').addEventListener('change',()=>{
-    const selected=$('#skinSelect').value==='olive'?'olive':'black';
+    const selected=['olive','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     applySkin(selected);
     try{
       const settings=readSettings();
