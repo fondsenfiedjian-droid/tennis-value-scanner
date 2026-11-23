@@ -895,9 +895,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     moveToMatches.filter(Boolean).forEach(node=>matches.appendChild(node));
     app.after(matches);
 
-    const more=document.createElement('main');
-    more.id='moreView';more.className='screen-view';
-    more.innerHTML='<header class="screen-header"><div><div class="brand">ЕЩЁ</div><div class="sub">Лаборатория, архив, система и настройки</div></div></header><section class="more-screen-grid"><article class="more-screen-card"><h2>Лаборатория</h2><p>Экспериментальные проверки архива. Результаты лаборатории не меняют рабочую модель.</p><div id="moreLabMount"></div></article><article class="more-screen-card more-archive-card"><h2>Архив прогнозов</h2><p>Последние сохранённые прогнозы, проверка исходов, экспорт и резервная копия.</p><div id="moreArchiveMount"></div></article><article class="more-screen-card"><h2>Система</h2><p id="moreSystemStatus">Статус API и источников отображается в шапке приложения.</p><p class="muted">Модель Elo K=32 · источник коэффициентов Winamax · автоматические ставки отключены.</p></article><article class="more-screen-card"><h2>Настройки</h2><p>Пороги EV и коэффициентов, турниры, тема и автообновление.</p><button type="button" class="more-screen-action" id="moreScreenSettings">Открыть настройки →</button></article></section>';
     const live=document.createElement('main');
     live.id='liveView';live.className='screen-view';
     live.innerHTML='<header class="screen-header"><div><div class="brand">LIVE</div><div class="sub">Матчи, идущие сейчас</div></div><button type="button" class="refresh screen-refresh" id="liveRefreshPageBtn">↻ ОБНОВИТЬ</button></header>';
@@ -3306,6 +3303,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#topUpcoming').onclick=showUpcoming;
   $('#topTomorrow').onclick=showTomorrow;
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
+  $('.brand-lockup').onclick=showMain;
+  $('.brand-lockup').style.cursor='pointer';
   $('#navBalance').onclick=showBalance;
   $('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
