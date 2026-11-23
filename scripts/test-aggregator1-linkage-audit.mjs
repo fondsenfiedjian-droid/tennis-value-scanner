@@ -375,7 +375,7 @@ const scoreConflictSack=[{filename:"atp_matches_futures_2025.csv",content:[
   "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id,score,round",
   "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32",
   "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,4-6 6-4 6-3,R32"
-].join("\\n")}];
+].join("\n")}];
 const scoreConflictReport=auditValuebetSackmann(tierDuplicateValuebet,scoreConflictSack);
 const scoreConflictDiagnostics=scoreConflictReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies;
 assert.equal(scoreConflictDiagnostics.strictCandidate,1);
