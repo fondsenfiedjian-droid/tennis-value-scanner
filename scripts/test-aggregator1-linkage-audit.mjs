@@ -255,3 +255,24 @@ assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.r
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.noExactEventMatch,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
+ 
+// Regression: identical event/date/player candidates repeated across source tiers are diagnosed as cross-tier duplicates.
+const tierDuplicateValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "td1;2025-05-12;M15 Example;atp;dur;Tier Player A;Tier Player B;ITF"
+].join("\n")}];
+const tierDuplicateSack=[
+  {filename:"atp_matches_futures_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902"
+  ].join("\n")},
+  {filename:"atp_matches_qual_chall_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902"
+  ].join("\n")}
+];
+const tierDuplicateReport=auditValuebetSackmann(tierDuplicateValuebet,tierDuplicateSack);
+assert.equal(tierDuplicateReport.totals.ambiguous,1);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithCrossTierDuplicateCandidate,1);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.duplicateCandidateExtraRows,1);
+assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.topReasonBreakdown[0].crossTierDuplicate,"cross-tier-duplicate");
