@@ -198,4 +198,25 @@ assert.equal(aliasReport.totals.linkedUnique,2);
 assert.equal(aliasReport.totals.eventNameExactMatch,2);
 assert.equal(aliasReport.totals.eventNameMismatch,0);
 
+// Regression: location suffix and official event-name variants.
+const locationAliasValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "l1;2025-04-07;Morelos CH;atp;dur;Location Player A;Location Player B;Challenger",
+  "l2;2025-07-14;W60 Berkeley;wta;dur;Location Player C;Location Player D;ITF"
+].join("\n")}];
+const locationAliasSack=[
+  {filename:"atp_matches_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250407,Cuernavaca CH,Hard,Location Player A,Location Player B,701,702"
+  ].join("\n")},
+  {filename:"wta_matches_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250714,W60 Berkeley CA,Hard,Location Player C,Location Player D,703,704"
+  ].join("\n")}
+];
+const locationAliasReport=auditValuebetSackmann(locationAliasValuebet,locationAliasSack);
+assert.equal(locationAliasReport.totals.linkedUnique,2);
+assert.equal(locationAliasReport.totals.eventNameExactMatch,2);
+assert.equal(locationAliasReport.totals.eventNameMismatch,0);
+
 console.log("Aggregator 1 linkage audit fixtures: PASS");
