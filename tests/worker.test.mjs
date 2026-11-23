@@ -666,6 +666,33 @@ test("matches fresh=true bypasses Worker cache and refreshes the canonical cache
   workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
 });
 
+test("live matches use Preview quota namespace and a short cache TTL", async () => {
+  const previousNamespace = env.CACHE_NAMESPACE;
+  env.CACHE_NAMESPACE = "tennis-value-api-preview";
+  let guardKey = "";
+  let storedHeaders = null;
+  workerSandbox.caches.default.match = async key => {
+    if (key.url.includes("__live-tennis-quota-guard")) guardKey = key.url;
+    return null;
+  };
+  workerSandbox.caches.default.put = async (key, value) => {
+    if (key.url.includes("/matches?status=live")) storedHeaders = Object.fromEntries(value.headers.entries());
+  };
+  workerSandbox.fetch = async url => {
+    assert.ok(url.includes("/api/public/v1/matches?status=live"));
+    return new Response(JSON.stringify({ data: [], meta: { count: 0 } }), { status: 200 });
+  };
+  const result = await call("/matches?status=live");
+  assert.equal(result.status, 200);
+  assert.equal(guardKey, "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard");
+  assert.equal(result.headers.get("Cache-Control"), "public, max-age=20");
+  assert.equal(storedHeaders["cache-control"], "public, max-age=20");
+  env.CACHE_NAMESPACE = previousNamespace;
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
+});
+
 test("matches forwards upstream rate-limit guidance and exposes cache status", async () => {
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "day" }), {
