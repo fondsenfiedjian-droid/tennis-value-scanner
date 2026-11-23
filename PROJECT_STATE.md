@@ -1226,3 +1226,9 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - The Deploy Preview frontend routes to the isolated Preview Worker; production frontend continues to use `tennis-value-api`.
 - Preview deployment run `45028873975` completed successfully for branch head `67cf259e1bf15cd1549b1db89e9440ea006ab11e`.
 - Production Worker and production Netlify site have not been changed by this preview work.
+
+
+### 2026-11-23 — Settings slider visual refinement
+- Updated settings range controls to use slim 8px tracks, subtle scale ticks, compact ruby thumbs, and visible keyboard focus. Existing min/max/step values and settings persistence remain unchanged; native range controls continue snapping to their configured step increments.
+- Added regression coverage for all eight settings sliders and the custom WebKit/Firefox track and thumb styles.
+- Preview branch only; CI/Deploy Preview validation pending. No Production changes.
