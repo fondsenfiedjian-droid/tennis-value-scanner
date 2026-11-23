@@ -957,10 +957,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
     const settings=document.createElement('main');
     settings.id='settingsView';settings.className='screen-view';
-    settings.innerHTML='<header class="screen-header"><div><div class="brand">НАСТРОЙКИ</div><div class="sub">Параметры модели и виртуальной стратегии</div></div></header><section class="more-screen-card"><h2>Параметры системы</h2><p>Пороги EV, коэффициентов, надёжности, автообновление, фильтр ITF и оформление.</p><button type="button" class="more-screen-action" id="settingsScreenOpen">Открыть настройки →</button></section>';
+    settings.innerHTML='<header class="screen-header"><div><div class="brand">НАСТРОЙКИ</div><div class="sub">Параметры модели и виртуальной стратегии</div></div></header><section class="more-screen-card"><h2>Параметры системы</h2><p>Пороги EV, коэффициентов, надёжности, автообновление, фильтр ITF и оформление.</p></section>';
     history.after(settings);
-    const openSettings=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
-    $('#settingsScreenOpen').addEventListener('click',openSettings);
     ['historyPlayerFilter','historyTournamentFilter','historyResultFilter','historyFromDate','historyToDate'].forEach(id=>$('#'+id).addEventListener('input',renderVirtualBank));
     $('#balancePeriod').addEventListener('change',renderVirtualBank);
     $('#virtualBankExport').addEventListener('click',()=>{
@@ -3578,7 +3576,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#navBalance').onclick=showBalance;
   $('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
-  $('#navSettings').onclick=showSettingsScreen;
+  $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
   scheduleAutoRefresh();
