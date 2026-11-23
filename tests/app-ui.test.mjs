@@ -410,6 +410,10 @@ test("settings preview changes are committed only by Save and Cancel restores sa
   assert.doesNotMatch(skinChange, /localStorage\.setItem|activeSkin=selected/);
   assert.match(settingsSource, /const cancelSettings=\(\)=>\{populateSettingsForm\(\);applySkin\(activeSkin\)/);
   assert.match(settingsSource, /data\.skin=\$\('#skinSelect'\)\.value==='steel'\?'steel':'black'/);
+  assert.match(settingsSource, /const tours=selectedTours\(\)/);
+  assert.match(settingsSource, /if\(!tours\.length\)/);
+  assert.match(settingsSource, /Выбери хотя бы один турнир/);
+  assert.match(settingsSource, /data\.tours=tours/);
   assert.match(settingsSource, /localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
   assert.match(settingsSource, /Tournament filters are previewed while the modal is open and committed only by Save/);
   assert.match(settingsSource, /tourChecks\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{if\(window\.cachedMatches\)renderMatches\(window\.cachedMatches\);\}\)\)/);
