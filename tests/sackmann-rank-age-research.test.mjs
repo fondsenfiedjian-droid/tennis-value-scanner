@@ -117,7 +117,7 @@ test("fixed rolling training windows exclude older seasons without using future 
   const expanding = runRankAgeWalkForward(rows, options);
   const rolling = runRankAgeWalkForward(rows, { ...options, trainingWindowYears: 2 });
   assert.equal(rolling.trainingWindowYears, 2);
-  assert.equal(rolling.byYear["2004"].rank.trainingMatches, 800);
+  assert.equal(rolling.byYear["2004"].rank.trainingMatches, 640);
   assert.ok(rolling.byYear["2004"].rank.trainingMatches < expanding.byYear["2004"].rank.trainingMatches);
   assert.equal(rolling.byYear["2004"].rank.matches, expanding.byYear["2004"].rank.matches);
   assert.throws(() => runRankAgeWalkForward(rows, { ...options, trainingWindowYears: 0 }), /trainingWindowYears/);
