@@ -952,3 +952,14 @@ test("expired live cache remains available as a labelled fallback when the API i
   assert.ok(assignAt >= 0 && freshnessAt > assignAt);
   assert.ok(errorFallbackAt > freshnessAt);
 });
+
+test("settings sliders use a fine custom track with visible scale ticks and a compact snap thumb", () => {
+  assert.match(html, /input\[type=range\]\{\-webkit\-appearance:none;appearance:none;width:100%;height:22px/);
+  assert.match(html, /::-webkit-slider-runnable-track\{height:8px/);
+  assert.match(html, /repeating-linear-gradient\(to right,rgba\(220,185,164,\.72\)/);
+  assert.match(html, /::-webkit-slider-thumb\{\-webkit\-appearance:none;appearance:none;width:13px;height:13px/);
+  assert.match(html, /::-moz-range-thumb\{width:10px;height:10px/);
+  for (const id of ["minEv","minOdds","maxOdds","bestBetMinOdds","bankMaxStakePercent","bankMaxExposurePercent","bankMaxDailyStakePercent","bankKellyFraction"]) {
+    assert.match(html, new RegExp('id="' + id + '" type="range"'));
+  }
+});
