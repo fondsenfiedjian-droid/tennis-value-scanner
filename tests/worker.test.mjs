@@ -3325,11 +3325,11 @@ test("settings provide persistent app-wide selectable skins including Music Play
   assert.ok(frontendSource.includes('id="skinSelect"'));
   assert.ok(frontendSource.includes('value="black"'));
   assert.ok(frontendSource.includes('value="steel"'));
-  assert.ok(frontendSource.includes('value="terracotta"'));
-  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta'].includes(saved.skin)?saved.skin:'terracotta'"));
-  assert.ok(frontendSource.includes("saved.skin==='black'&&saved.musicPaletteDefaultApplied!==true"));
+  assert.ok(frontendSource.includes('value="terracotta"'));\n  assert.ok(frontendSource.includes('value="amber-led"'));\n  assert.ok(frontendSource.includes('body[data-skin="amber-led"]'));\n  assert.ok(frontendSource.includes("led-digit"));
+  assert.ok(frontendSource.includes("let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'amber-led'"));
+  assert.ok(frontendSource.includes("saved.amberLedDefaultApplied!==true"));
   assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
-  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta'"));
+  assert.ok(frontendSource.includes("data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'amber-led'"));
   assert.ok(frontendSource.includes('body[data-skin="steel"]'));
   assert.ok(frontendSource.includes('body[data-skin="terracotta"]'));
   assert.ok(frontendSource.includes('--amber:#65b7ff'));
