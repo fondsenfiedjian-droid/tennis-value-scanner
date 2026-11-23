@@ -428,7 +428,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           matchRowsWithBothPlayerIdsEvidence++;
         }
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;tycg.ambiguous++;tcr.ambiguous++;}
-      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;}
+      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tcr.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
