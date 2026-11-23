@@ -140,7 +140,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
       for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
     }
-    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
     for(const row of rows){
       yearBucket.rows++;
       totals.valuebetRows++;
@@ -178,9 +178,9 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const samePair=sackPairIndex.get(pairKey)||[];
       const samePairSurface=samePair.filter(x=>x.surface===sf);
       const candidates=samePairSurface.filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;}
-      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;}
-      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;}
+      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;yearBucket.pairAbsent++;}
+      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;yearBucket.surfaceAbsent++;}
+      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;yearBucket.dateWindowMiss++;}
       if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;}
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
