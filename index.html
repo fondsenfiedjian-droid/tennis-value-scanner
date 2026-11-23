@@ -783,7 +783,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
   <nav class="quick-links" aria-label="Быстрые разделы">
     <button type="button" id="quickMatches"><span>▦</span>Матчи</button>
-    <button type="button" id="quickCompare"><span>⚖</span>Сравнение</button>
     <button type="button" id="quickLab"><span>⚗</span>Лаборатория</button>
     <button type="button" id="quickArchive"><span>▤</span>Архив<br>и система</button>
   </nav>
@@ -1050,7 +1049,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   if($('#headerBalance'))$('#headerBalance').onclick=()=>showBalance();
   $('#quickMatches').onclick=showMatches;
-  $('#quickCompare').onclick=showCompare;
   $('#quickLab').onclick=showLab;
   $('#quickArchive').onclick=()=>{showMore();$('#moreArchiveMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
   $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
