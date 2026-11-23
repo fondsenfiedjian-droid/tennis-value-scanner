@@ -290,8 +290,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         else nearestDateDiagnostics.rowsWithMultipleSignatures++;
         nearestDateDiagnostics.duplicateExtraRows+=nearestDateCandidates.length-nearestSignatures;
         const nearestGroups=[...nearestDateGroups.values()];
-        if(nearestGroups.some(group=>new Set(group.map(x=>[x.winnerId||"(missing)",x.loserId||"(missing)"].join("::"))).size>1))nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs++;
-        if(nearestGroups.some(group=>group.some(x=>!x.winnerId||!x.loserId)))nearestDateDiagnostics.rowsWithMissingPlayerIds++;
+        if(new Set(nearestDateCandidates.map(x=>[x.winnerId||"(missing)",x.loserId||"(missing)"].join("::"))).size>1)nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs++;
+        if(nearestDateCandidates.some(x=>!x.winnerId||!x.loserId))nearestDateDiagnostics.rowsWithMissingPlayerIds++;
         if([...nearestDateGroups.values()].some(group=>new Set(group.map(x=>x.tier)).size>1))nearestDateDiagnostics.rowsWithCrossTierDuplicate++;
         if([...nearestDateGroups.values()].some(group=>new Set(group.map(x=>x.tier)).size===1&&group.length>1))nearestDateDiagnostics.rowsWithSameTierDuplicate++;
         ambiguousNearestOffsetCounts.set(nearestOffset,(ambiguousNearestOffsetCounts.get(nearestOffset)||0)+1);
