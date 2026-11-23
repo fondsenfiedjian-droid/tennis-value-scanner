@@ -566,8 +566,8 @@ test("independent player comparison calls the current Elo API and displays both 
   assert.match(html,/Травмы, форма, H2H и статистика подачи пока не входят/);
 });
 test("virtual balance and history are local simulation screens, not real-money tools", () => {
-  assert.match(html, /id="balanceView"/);
-  assert.match(html, /id="historyView"/);
+  assert.match(html, /balance\.id='balanceView'/);
+  assert.match(html, /history\.id='historyView'/);
   assert.match(html, /tvs-virtual-bank-v1/);
   assert.match(html, /Стартовый капитал: 1 000 €/);
   assert.match(html, /Реальные деньги не используются/);
