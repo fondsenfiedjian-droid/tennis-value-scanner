@@ -913,7 +913,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(!app||$('#matchesView'))return;
     const matches=document.createElement('main');
     matches.id='matchesView';matches.className='screen-view';
-    matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div></header>';
+    matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div><button type="button" class="refresh screen-refresh" id="matchesRefreshBtn">↻ ОБНОВИТЬ</button></header>';
     const datebar=app.querySelector('.datebar');
     if(datebar)matches.appendChild(datebar);
     const direct=[...app.children];
@@ -3567,6 +3567,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }
   }
   $('#refreshBtn').onclick=()=>loadMatches(true);
+  $('#matchesRefreshBtn').onclick=()=>loadMatches(true);
   $('#topLive').onclick=showLive;
   $('#topUpcoming').onclick=showUpcoming;
   $('#topTomorrow').onclick=showTomorrow;
