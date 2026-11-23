@@ -3581,6 +3581,61 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   loadLiveMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
+<script>
+(function(){
+  const worker=location.hostname.startsWith('deploy-preview-')
+    ?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev'
+    :'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const status=document.getElementById('connectionStatus');
+  const odds=document.getElementById('oddsStatus');
+  async function checkApi(){
+    if(status)status.textContent='API: ПРОВЕРКА…';
+    try{
+      const response=await fetch(worker+'/health',{cache:'no-store'});
+      const health=await response.json();
+      if(!response.ok||health.status!=='ok')throw new Error(health.error||'HTTP '+response.status);
+      const live=health.liveTennisApiConfigured===true;
+      const apify=health.apifyTokenConfigured===true;
+      if(status){
+        status.textContent=live?'API: LIVE OK'+(apify?' · WINAMAX OK':' · WINAMAX НЕТ КЛЮЧА'):'API: LIVE KEY НЕТ';
+        status.title='Live Tennis API: '+(live?'ключ настроен':'ключ отсутствует')+'; Apify: '+(apify?'ключ настроен':'ключ отсутствует');
+      }
+      if(!apify&&odds)odds.textContent='Winamax: в Preview Worker не настроен APIFY_TOKEN. Источник коэффициентов недоступен.';
+    }catch(error){
+      if(status){status.textContent='API: НЕТ СВЯЗИ';status.title=String(error&&error.message||error);}
+    }
+  }
+  const screenIds=['matchesView','liveView','compareView','statsView','moreView','balanceView','historyView','settingsView'];
+  function openStatusScreen(target){
+    const app=document.querySelector('.app');
+    if(app)app.classList.add('screen-open');
+    screenIds.forEach(id=>{const node=document.getElementById(id);if(node)node.style.display=id===target?'block':'none';});
+    document.querySelectorAll('.top-status-nav button').forEach(button=>{
+      button.classList.toggle('active',
+        button.id==='topLive'&&target==='liveView' ||
+        button.id==='topUpcoming'&&target==='matchesView'&&document.querySelector('.tab[data-day="today"]')?.classList.contains('active') ||
+        button.id==='topTomorrow'&&target==='matchesView'&&document.querySelector('.tab[data-day="tomorrow"]')?.classList.contains('active'));
+    });
+  }
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('#topLive,#topUpcoming,#topTomorrow');
+    if(!button)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    if(button.id==='topLive'){
+      openStatusScreen('liveView');
+      document.getElementById('liveRefreshPageBtn')?.click();
+    }else{
+      const day=button.id==='topTomorrow'?'tomorrow':'today';
+      openStatusScreen('matchesView');
+      document.querySelector('.tab[data-day="'+day+'"]')?.click();
+      const list=document.getElementById('matchList');
+      if(!list||!list.children.length||list.textContent.includes('Нажми'))document.getElementById('matchesRefreshBtn')?.click();
+    }
+  },true);
+  checkApi();
+  window.addEventListener('online',checkApi);
+})();
+</script>
 <script type="module">
   import { analyzeArchiveWorkloadCoverage } from './human-factor.js';
   const button=document.querySelector('#humanFactorAudit');
