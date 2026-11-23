@@ -1092,15 +1092,19 @@
     // Keep every scheduled match visible; quote availability is a status, not a list filter.
     const completePairCount=filtered.filter(m=>winnerEnabled&&oddsForMatch(m).length>=2).length;
     const noPairCount=filtered.length-completePairCount;
+    const coverage=window.scheduleCoverage;
+    const coverageBanner=coverage?.truncated
+      ?'<div class="panel empty"><strong>Расписание загружено не полностью</strong><div class="muted">Получено '+escapeHtml(String(coverage.loaded))+' из '+escapeHtml(String(coverage.total??'неизвестного числа'))+' матчей. API сообщает о продолжении; за один цикл загружаются максимум 4 страницы.</div></div>'
+      :'';
     if($('#matchCount'))$('#matchCount').textContent=filtered.length;
     if($('#valueCount'))$('#valueCount').textContent='—';
     if(!filtered.length){
       const message='Матчей на выбранную дату не найдено.';
       const diagnostic='Получено от API: '+schedule.total+'. После фильтра турниров: '+schedule.afterTour+'. С датой начала: '+schedule.withDate+'. Без даты начала: '+schedule.withoutDate+'.';
       const hint=selectedDay==='all'?'В режиме «Все» должны отображаться и матчи без опубликованного времени.':'Попробуй режим «Все»: API может вернуть матчи, для которых время начала ещё не опубликовано.';
-      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">'+escapeHtml(diagnostic)+' '+escapeHtml(hint)+' Коэффициенты не являются фильтром списка.</div></div>';return;
+      list.innerHTML=coverageBanner+'<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">'+escapeHtml(diagnostic)+' '+escapeHtml(hint)+' Коэффициенты не являются фильтром списка.</div></div>';return;
     }
-    list.innerHTML=filtered.map((m,i)=>{
+    list.innerHTML=coverageBanner+filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
       const a=playerName(p1);const b=playerName(p2);
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
@@ -2382,7 +2386,7 @@
       const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=valueFilters.minOdds&&v<=valueFilters.maxOdds&&v<=15);
       return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
-    // Reuse every valid local prediction; cap new profile lookups at eight per scan within the BASIC daily quota.
+    // Reuse every valid local prediction; cap new profile lookups at seven per scan to reserve quota for schedule pagination.
     const cachedCandidates=[],uncachedCandidates=[];
     for(const candidate of allCandidates){
       const el=document.getElementById('model-'+candidate.i);
@@ -2394,7 +2398,7 @@
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
-    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,8)];
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,7)];
     const totalCandidates=allCandidates.length;
     // Preserve the verified bookmaker pair if model calculation is unavailable.
     const oddsFallback=matches.map((m,i)=>{
@@ -2624,6 +2628,39 @@
     const to=new Date(from);to.setDate(to.getDate()+7);to.setMilliseconds(-1);
     return 'from='+encodeURIComponent(from.toISOString())+'&to='+encodeURIComponent(to.toISOString());
   }
+  async function fetchUpcomingSchedule(force=false){
+    const baseParams=new URLSearchParams('status=upcoming&draw=singles&limit=200&'+buildScheduleDateParams());
+    if(force)baseParams.set('fresh','true');
+    const rows=[];let offset=0,pagesLoaded=0,total=null,hasMore=false,cacheMiss=false;
+    for(let page=0;page<4;page++){
+      const params=new URLSearchParams(baseParams);
+      params.set('offset',String(offset));
+      const response=await fetchWithTimeout(API+'/matches?'+params.toString());
+      const payload=await response.json();
+      if(!response.ok)throw new Error(payload.error||('Ошибка API: '+response.status));
+      const pageRows=extractMatches(payload);
+      if(pageRows===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
+      rows.push(...pageRows);pagesLoaded++;
+      cacheMiss=cacheMiss||String(response.headers.get('X-Data-Cache')||'').toUpperCase()==='MISS';
+      const meta=payload.meta&&typeof payload.meta==='object'?payload.meta:{};
+      if(meta.total!==null&&meta.total!==undefined&&Number.isFinite(Number(meta.total)))total=Number(meta.total);
+      hasMore=meta.has_more===true;
+      if(!hasMore)break;
+      const count=Number(meta.count);
+      if(!Number.isInteger(count)||count<=0||pageRows.length===0){hasMore=false;break;}
+      const currentOffset=Number.isInteger(Number(meta.offset))?Number(meta.offset):offset;
+      offset=currentOffset+count;
+    }
+    const seen=new Set(),matches=[];
+    for(const match of rows){
+      const rawId=match?.id??match?.matchId??match?.match_id;
+      if(rawId===null||rawId===undefined){matches.push(match);continue;}
+      const key=String(rawId);
+      if(seen.has(key))continue;
+      seen.add(key);matches.push(match);
+    }
+    return {matches,pagesLoaded,total,hasMore,cacheStatus:cacheMiss?'MISS':'HIT'};
+  }
   let matchesLoading=false;
   async function loadMatches(force=false){
     if(matchesLoading)return;
@@ -2645,6 +2682,7 @@
           cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;
         }
         window.cachedMatches=saved.matches;
+        window.scheduleCoverage=saved.scheduleCoverage||null;
         renderMatches(saved.matches);
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
         oddsPromise.then(()=>{
@@ -2652,22 +2690,21 @@
         }).catch(()=>{});
         return;
       }
-      const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200&'+buildScheduleDateParams()+(force?'&fresh=true':''));
-      const payload=await res.json();
-      if(!res.ok)throw new Error(payload.error||('Ошибка API: '+res.status));
-      const cacheHeader=String(res.headers.get('X-Data-Cache')||'').toUpperCase();
-      const scheduleCacheLabel=cacheHeader==='MISS'?'источник обновлён':cacheHeader==='HIT'?'кэш Worker':'режим кэша неизвестен';
-      const matches=extractMatches(payload);
-      if(matches===null)throw new Error('API ответил, но формат списка матчей пока не распознан.');
+      const scheduleResult=await fetchUpcomingSchedule(force);
+      const matches=scheduleResult.matches;
+      window.scheduleCoverage={loaded:matches.length,total:scheduleResult.total,pages:scheduleResult.pagesLoaded,truncated:scheduleResult.hasMore};
+      const scheduleCacheLabel=scheduleResult.cacheStatus==='MISS'?'источник обновлён':'кэш Worker';
       window.cachedMatches=matches;
-      setConnectionStatus('Live Tennis API · '+scheduleCacheLabel);
-      localStorage.setItem('tvs-match-cache-v2',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
+      setConnectionStatus(scheduleResult.hasMore
+        ?'РАСПИСАНИЕ ЧАСТИЧНО · '+matches.length+'/'+(scheduleResult.total??'?')
+        :'Live Tennis API · '+scheduleCacheLabel+' · '+matches.length+' матчей');
+      localStorage.setItem('tvs-match-cache-v2',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds,scheduleCoverage:window.scheduleCoverage}));
       renderMatches(matches);
       oddsPromise.then(()=>{if(window.cachedMatches===matches)renderMatches(matches);}).catch(()=>{});
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
-        window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        window.cachedMatches=saved.matches;window.scheduleCoverage=saved.scheduleCoverage||null;renderMatches(saved.matches);
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
