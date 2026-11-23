@@ -118,24 +118,51 @@ jobs:
             if (!response.ok) throw new Error("Scanner source failed with HTTP " + response.status);
             return response.json();
           }
-          const [schedule, odds] = await Promise.all([
-            read("/matches?status=upcoming&draw=singles&limit=200"),
-            read("/odds")
-          ]);
-          const scheduleRows = Array.isArray(schedule.data) ? schedule.data :
-            Array.isArray(schedule.matches) ? schedule.matches : null;
-          if (!scheduleRows) throw new Error("Schedule response has no recognized match array");
+          const from = new Date();
+          from.setHours(0, 0, 0, 0);
+          const to = new Date(from);
+          to.setDate(to.getDate() + 7);
+          to.setMilliseconds(-1);
+          const params = new URLSearchParams({
+            status: "upcoming", draw: "singles", limit: "200",
+            from: from.toISOString(), to: to.toISOString()
+          });
+          const scheduleRows = [];
+          let offset = 0, pages = 0, total = null, hasMore = false;
+          let odds;
+          while (pages < 4) {
+            params.set("offset", String(offset));
+            const schedule = await read("/matches?" + params.toString());
+            const pageRows = Array.isArray(schedule.data) ? schedule.data :
+              Array.isArray(schedule.matches) ? schedule.matches : null;
+            if (!pageRows) throw new Error("Schedule response has no recognized match array");
+            scheduleRows.push(...pageRows);
+            const meta = schedule.meta || {};
+            if (meta.total !== null && meta.total !== undefined && Number.isFinite(Number(meta.total))) total = Number(meta.total);
+            hasMore = meta.has_more === true;
+            pages++;
+            if (!hasMore) break;
+            const count = Number(meta.count);
+            if (!Number.isInteger(count) || count <= 0 || pageRows.length === 0) {
+              throw new Error("Schedule pagination metadata is invalid");
+            }
+            offset = (Number.isInteger(Number(meta.offset)) ? Number(meta.offset) : offset) + count;
+          }
+          if (hasMore || (total !== null && scheduleRows.length < total)) {
+            throw new Error("Schedule pagination did not retrieve the complete seven-day singles window");
+          }
+          odds = await read("/odds");
           if (!Array.isArray(odds.items)) throw new Error("Winamax odds response has no items array");
           if (!odds.diagnostics || !Number.isFinite(Number(odds.diagnostics.validDecimalOdds))) {
             throw new Error("Winamax odds diagnostics are missing or malformed");
           }
-          const meta = schedule.meta || {};
-          const hasMore = meta.has_more === true;
-          const total = Number.isFinite(Number(meta.total)) ? Number(meta.total) : "unknown";
-          const freshQuotes = Number.isFinite(Number(odds.diagnostics.freshScrapedAt))
+          const freshQuotes = odds.diagnostics.freshScrapedAt !== null &&
+            odds.diagnostics.freshScrapedAt !== undefined &&
+            Number.isFinite(Number(odds.diagnostics.freshScrapedAt))
             ? Number(odds.diagnostics.freshScrapedAt) : "unknown";
-          console.log("Scanner sources OK: schedule rows=" + scheduleRows.length +
-            "; schedule total=" + total + "; schedule has_more=" + hasMore +
+          const totalLabel = total === null ? "unknown" : total;
+          console.log("Scanner sources OK: schedule pages=" + pages +
+            "; schedule rows=" + scheduleRows.length + "; schedule total=" + totalLabel +
             "; Winamax rows=" + odds.items.length +
             "; valid decimal quotes=" + Number(odds.diagnostics.validDecimalOdds) +
             "; fresh quotes=" + freshQuotes +
