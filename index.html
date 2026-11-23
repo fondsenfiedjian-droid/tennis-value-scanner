@@ -2382,7 +2382,7 @@
       const eligibleOdds=[Number(el?.dataset.oddsA),Number(el?.dataset.oddsB)].some(v=>Number.isFinite(v)&&v>=valueFilters.minOdds&&v<=valueFilters.maxOdds&&v<=15);
       return a&&b&&getPlayerId(a)&&getPlayerId(b)&&eligibleOdds&&el?.hasAttribute('data-player-a');
     });
-    // Reuse every valid local prediction; cap new profile lookups at five per scan to protect the daily API quota.
+    // Reuse every valid local prediction; cap new profile lookups at eight per scan within the BASIC daily quota.
     const cachedCandidates=[],uncachedCandidates=[];
     for(const candidate of allCandidates){
       const el=document.getElementById('model-'+candidate.i);
@@ -2394,7 +2394,7 @@
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
-    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,5)];
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,8)];
     const totalCandidates=allCandidates.length;
     // Preserve the verified bookmaker pair if model calculation is unavailable.
     const oddsFallback=matches.map((m,i)=>{
