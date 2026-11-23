@@ -1176,7 +1176,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
     ['minEv','minOdds','maxOdds','bestBetMinOdds','bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{const output=$('#'+id+'Value');if(output)output.textContent=formatSettingValue(id);});
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
-    $('#skinSelect').value=['black','steel','neon','terracotta','amber-led'].includes(current.skin)?current.skin:'amber-led';
+    $('#skinSelect').value=['black','steel','neon','terracotta','amber-led'].includes(current.skin)?current.skin:'black';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
     tourChecks.forEach(input=>input.checked=tours.includes(input.dataset.tour));
   }
@@ -1218,13 +1218,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  if(saved.amberLedDefaultApplied!==true){
-    saved.skin='amber-led';saved.amberLedDefaultApplied=true;
-    try{localStorage.setItem('tvs-settings',JSON.stringify(saved));}catch(e){}
-  }
-  let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'amber-led';
+  let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'black';
   function applySkin(skin){
-    const selected=['black','steel','neon','terracotta','amber-led'].includes(skin)?skin:'amber-led';
+    const selected=['black','steel','neon','terracotta','amber-led'].includes(skin)?skin:'black';
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
@@ -1234,7 +1230,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#skinSelect').value=activeSkin;
   // Preview theme immediately; Cancel restores the last saved skin.
   $('#skinSelect').addEventListener('change',()=>{
-    const selected=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'amber-led';
+    const selected=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     applySkin(selected);
   });
   ['minEv','minOdds','maxOdds','bestBetMinOdds','bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
@@ -1277,8 +1273,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     data.bankMaxStakePercent=bankMaxStakePercent;data.bankMaxExposurePercent=bankMaxExposurePercent;
     data.bankMaxDailyStakePercent=bankMaxDailyStakePercent;data.bankKellyFraction=bankKellyFraction;
     data.refreshRate=refreshRate;
-    data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'amber-led';
-    data.musicPaletteDefaultApplied=true;data.amberLedDefaultApplied=true;
+    data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     data.tours=tours;
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
