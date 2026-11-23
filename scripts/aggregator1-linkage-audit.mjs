@@ -345,13 +345,27 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   const sorted=offsets.slice().sort((a,b)=>a-b);
   totals.linkagePct=pct(totals.linkedUnique,totals.validValuebetRows);
   const playerIdEvidence={};
+  const conflictCrosswalkDiagnostics={};
   for(const tour of ["ATP","WTA"]){
     let resolvedToSingleSackmannId=0,conflictingSackmannIds=0;
     const conflictProfile={sameBirthDateAndCountry:0,differentBirthDateOrCountry:0,differentHandOnly:0,sameDobIocDifferentHand:0,identicalAvailableSignature:0,missingRegistryMetadata:0,missingDob:0,missingIoc:0,missingHand:0};
-    for(const ids of sourceIdEvidence[tour].values()){
+    const crosswalk={conflictingSourceIds:0,directNameNoMatch:0,directNameUnique:0,directNameAmbiguous:0,matchIdsAllInDirectCandidates:0,matchIdsPartiallyOverlapDirectCandidates:0,matchIdsDoNotOverlapDirectCandidates:0,matchCandidateIdCounts:{},directCandidateIdCounts:{},registrySignatureCounts:{}};
+    for(const [sourceId,ids] of sourceIdEvidence[tour]){
       if(ids.size===1)resolvedToSingleSackmannId++;
       else if(ids.size>1){
         conflictingSackmannIds++;
+        crosswalk.conflictingSourceIds++;
+        const direct=directNameEvidence[tour].get(sourceId)||new Set();
+        const matchIds=[...ids],overlap=matchIds.filter(id=>direct.has(id)).length;
+        const directCount=String(direct.size),matchCount=String(ids.size);
+        crosswalk.directCandidateIdCounts[directCount]=(crosswalk.directCandidateIdCounts[directCount]||0)+1;
+        crosswalk.matchCandidateIdCounts[matchCount]=(crosswalk.matchCandidateIdCounts[matchCount]||0)+1;
+        if(direct.size===0)crosswalk.directNameNoMatch++;
+        else if(direct.size===1)crosswalk.directNameUnique++;
+        else crosswalk.directNameAmbiguous++;
+        if(overlap===matchIds.length&&direct.size>=matchIds.length)crosswalk.matchIdsAllInDirectCandidates++;
+        else if(overlap>0)crosswalk.matchIdsPartiallyOverlapDirectCandidates++;
+        else crosswalk.matchIdsDoNotOverlapDirectCandidates++;
         const metas=[...ids].map(id=>registryMeta[tour].get(id));
         const missingDob=metas.some(m=>!m||!m.dob),missingIoc=metas.some(m=>!m||!m.ioc),missingHand=metas.some(m=>!m||!m.hand);
         if(missingDob)conflictProfile.missingDob++;
@@ -361,6 +375,9 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         const dobIoc=new Set(metas.map(m=>(m?.dob||"")+"::"+(m?.ioc||"")));
         const full=new Set(metas.map(m=>(m?.dob||"")+"::"+(m?.ioc||"")+"::"+(m?.hand||"")));
         const dobIocHandKnown=metas.every(m=>m?.dob&&m?.ioc&&m?.hand);
+        const signatures=new Set(metas.map(m=>(m?.dob||"(missing)")+"::"+(m?.ioc||"(missing)")+"::"+(m?.hand||"(missing)")));
+        const signatureCount=String(signatures.size);
+        crosswalk.registrySignatureCounts[signatureCount]=(crosswalk.registrySignatureCounts[signatureCount]||0)+1;
         if(!missingDob&&!missingIoc&&dobIoc.size===1)conflictProfile.sameBirthDateAndCountry++;
         else if(!missingDob&&!missingIoc)conflictProfile.differentBirthDateOrCountry++;
         if(!missingDob&&!missingIoc&&dobIoc.size===1&&!missingHand&&full.size>1)conflictProfile.sameDobIocDifferentHand++;
@@ -368,6 +385,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         if(!missingDob&&!missingIoc&&dobIoc.size===1&&missingHand===false&&full.size>1)conflictProfile.differentHandOnly++;
       }
     }
+    conflictCrosswalkDiagnostics[tour]=crosswalk;
     playerIdEvidence[tour]={
       distinctValuebetPlayerIds:sourcePlayerIds[tour].size,
       withAcceptedMatchEvidence:sourceIdEvidence[tour].size,
@@ -412,7 +430,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
     },
     byTour,
-    playerIdEvidence:{method:"accepted unique match links only; Valuebetennis player IDs are associated with Sackmann winner/loser IDs by exact normalized name orientation; conflicting IDs are profiled by available DOB/IOC/hand signatures but never auto-resolved",matchRowsWithBothPlayerIdsEvidence,byTour:playerIdEvidence},
+    playerIdEvidence:{method:"accepted unique match links only; Valuebetennis player IDs are associated with Sackmann winner/loser IDs by exact normalized name orientation; conflicting IDs are profiled by available DOB/IOC/hand signatures but never auto-resolved",matchRowsWithBothPlayerIdsEvidence,byTour:playerIdEvidence,conflictCrosswalkDiagnostics},
     playerIdComparison,
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
