@@ -23,6 +23,28 @@
   },
   "tests": [
     {
+      "id": "PRO-ARCHIVE-INVENTORY",
+      "date": "2026-11-23",
+      "status": "completed",
+      "tour": "ATP + WTA + other archive categories",
+      "category": "Data quality audit",
+      "hypothesis": "Подтвердить фактический объём годовых архивных пакетов и наличие статистики подачи/приёма в архиве.",
+      "baseline": "Inventory not yet measured",
+      "candidate": "Live Tennis API PRO archive inventory",
+      "kFactor": null,
+      "trainingWindow": "Не применяется — аудит покрытия",
+      "evaluationPeriod": "Архив 1968–2022",
+      "sourcePeriod": "1968–2022",
+      "selection": "55 yearly archive CSV packages; all source rows; field presence counted in completed main-tour rows",
+      "sampleMatches": 1485717,
+      "brierBaseline": null,
+      "brierCandidate": null,
+      "logLossBaseline": null,
+      "logLossCandidate": null,
+      "roi": null,
+      "notes": "1,485,717 исходных строк; 393,258 completed rows в отобранных ATP/WTA main-tour уровнях; 157,384 строк с распознаваемым JSON stats. Это счётчик наличия, а не оценка полноты или пригодности для pre-match модели."
+    },
+    {
       "id": "PRO-K80-ATP-3-SEASONS",
       "date": "2026-11-23",
       "status": "completed",
