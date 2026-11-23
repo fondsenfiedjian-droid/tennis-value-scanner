@@ -2673,7 +2673,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   function readVirtualBankState(){
     const raw=localStorage.getItem(VIRTUAL_BANK_KEY);
-    if(raw===null){const initial=TVSBankroll.createInitialState(1000);localStorage.setItem(VIRTUAL_BANK_KEY,JSON.stringify(initial));return initial;}
+    if(raw===null)throw new Error('Банк не задан. Виртуальный банк не создаётся автоматически.');
     const state=JSON.parse(raw);
     return TVSBankroll.validateState(state);
   }
