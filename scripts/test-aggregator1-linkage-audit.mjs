@@ -265,6 +265,21 @@ assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.n
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithSingleSignature,0);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMissingPlayerIds,0);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsWithinSignature,0);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly,1);
+
+const sameSignatureIdConflictSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
+  "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,811,812"
+].join("\\n")}];
+const sameSignatureIdConflictReport=auditValuebetSackmann(ambiguousValuebet,sameSignatureIdConflictSackmann);
+const sameSignatureIdDiagnostics=sameSignatureIdConflictReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics;
+assert.equal(sameSignatureIdDiagnostics.rowsWithSingleSignature,1);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairs,1);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsWithinSignature,1);
+assert.equal(sameSignatureIdDiagnostics.rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly,0);
+
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
  
