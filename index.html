@@ -857,32 +857,45 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="amber-led"] .actions button:focus,
     body[data-skin="amber-led"] .chip:focus{outline:2px solid #ff9a55;outline-offset:2px}
 
-  
+    /* True seven-segment digits: fixed geometry, independent of surrounding font metrics. */
     body[data-skin="amber-led"] .led-digit{
-      display:inline-flex;position:relative;vertical-align:-.08em;width:.64em;height:1em;
-      margin:0 .045em;flex:0 0 .64em
+      display:inline-block;position:relative;vertical-align:-.13em;
+      width:.68em;height:1em;margin:0 .055em;flex:0 0 .68em;
+      font-size:1em;line-height:1;overflow:visible;
     }
     body[data-skin="amber-led"] .led-digit i{
-      position:absolute;display:block;background:#ffad55;border-radius:99px;
-      box-shadow:0 0 3px #ffad55,0 0 8px #f07832aa,0 0 15px #d65b2555;
-      opacity:.08
+      position:absolute;display:block;background:#ffb34f;opacity:.10;
+      box-shadow:0 0 2px #ffb34f,0 0 5px #f18a32;
+      border-radius:2px;pointer-events:none;
     }
-    body[data-skin="amber-led"] .led-digit i.on{opacity:1}
+    body[data-skin="amber-led"] .led-digit i.on{
+      opacity:1;box-shadow:0 0 3px #ffd080,0 0 7px #ff9d36,0 0 13px #df6b1e88;
+    }
     body[data-skin="amber-led"] .led-digit .a,
     body[data-skin="amber-led"] .led-digit .g,
-    body[data-skin="amber-led"] .led-digit .d{height:.085em;width:.42em;left:.11em}
-    body[data-skin="amber-led"] .led-digit .a{top:.015em}
-    body[data-skin="amber-led"] .led-digit .g{top:.457em}
-    body[data-skin="amber-led"] .led-digit .d{bottom:.015em}
+    body[data-skin="amber-led"] .led-digit .d{
+      left:.14em;width:.40em;height:.075em;
+      clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%);
+    }
+    body[data-skin="amber-led"] .led-digit .a{top:.025em}
+    body[data-skin="amber-led"] .led-digit .g{top:.462em}
+    body[data-skin="amber-led"] .led-digit .d{bottom:.025em}
     body[data-skin="amber-led"] .led-digit .b,
     body[data-skin="amber-led"] .led-digit .c,
     body[data-skin="amber-led"] .led-digit .e,
-    body[data-skin="amber-led"] .led-digit .f{width:.085em;height:.39em}
-    body[data-skin="amber-led"] .led-digit .b{right:.025em;top:.055em}
-    body[data-skin="amber-led"] .led-digit .c{right:.025em;bottom:.055em}
-    body[data-skin="amber-led"] .led-digit .e{left:.025em;bottom:.055em}
-    body[data-skin="amber-led"] .led-digit .f{left:.025em;top:.055em}
-    body[data-skin="amber-led"] .led-dot{display:inline-block;width:.12em;height:.12em;margin:0 .1em .04em .05em;border-radius:50%;background:#ffad55;box-shadow:0 0 5px #ffad55,0 0 12px #f07832}
+    body[data-skin="amber-led"] .led-digit .f{
+      width:.075em;height:.385em;
+      clip-path:polygon(50% 0,100% 10%,100% 90%,50% 100%,0 90%,0 10%);
+    }
+    body[data-skin="amber-led"] .led-digit .b{right:.035em;top:.065em}
+    body[data-skin="amber-led"] .led-digit .c{right:.035em;bottom:.065em}
+    body[data-skin="amber-led"] .led-digit .e{left:.035em;bottom:.065em}
+    body[data-skin="amber-led"] .led-digit .f{left:.035em;top:.065em}
+    body[data-skin="amber-led"] .led-dot{
+      display:inline-block;width:.115em;height:.115em;margin:0 .12em .035em .06em;
+      border-radius:50%;background:#ffb34f;
+      box-shadow:0 0 4px #ffd080,0 0 9px #f18a32;
+    }
 
   </style>
 </head>
@@ -3872,16 +3885,42 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 </script>
 
 <script>
-(()=> {
+(()=>{
   const digits={
     "0":"abcdef","1":"bc","2":"abged","3":"abgcd","4":"fgbc",
     "5":"afgcd","6":"afgecd","7":"abc","8":"abcdefg","9":"abfgcd"
   };
   const targets=".stat-num,.plan-summary-item b,.best-bet-odds,.mandatory-bet-row b,.best-bet-metrics b,.odds-visible b";
+  const originals=new WeakMap();
+  const tracked=new Set();
+  const ownMutations=new WeakSet();
+  const isAmber=()=>document.body?.dataset.skin==="amber-led";
+
+  function restore(node){
+    if(!node||!tracked.has(node))return;
+    const raw=originals.get(node);
+    ownMutations.add(node);
+    node.textContent=raw??"";
+    node.removeAttribute("aria-label");
+    tracked.delete(node);
+    originals.delete(node);
+  }
   function paint(node){
-    if(!node||node.dataset.ledPainted==="1")return;
+    if(!node)return;
+    if(!isAmber()){restore(node);return;}
     const raw=node.textContent||"";
-    if(!/[0-9]/.test(raw))return;
+    if(!/[0-9]/.test(raw)){
+      if(tracked.has(node)){
+        ownMutations.add(node);
+        node.textContent=raw;
+        node.removeAttribute("aria-label");
+        tracked.delete(node);
+        originals.delete(node);
+      }
+      return;
+    }
+    originals.set(node,raw);
+    tracked.add(node);
     const frag=document.createDocumentFragment();
     for(const char of raw){
       if(/[0-9]/.test(char)){
@@ -3895,30 +3934,43 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
         }
         frag.appendChild(digit);
       }else if(char==="."){
-        const dot=document.createElement("span");dot.className="led-dot";dot.setAttribute("aria-hidden","true");frag.appendChild(dot);
+        const dot=document.createElement("span");
+        dot.className="led-dot";dot.setAttribute("aria-hidden","true");
+        frag.appendChild(dot);
       }else{
         frag.appendChild(document.createTextNode(char));
       }
     }
+    ownMutations.add(node);
     node.replaceChildren(frag);
-    node.dataset.ledPainted="1";
     node.setAttribute("aria-label",raw);
   }
-  function scan(root=document){root.querySelectorAll?.(targets).forEach(paint);}
+  function scan(root=document){
+    if(root.matches?.(targets))paint(root);
+    root.querySelectorAll?.(targets).forEach(paint);
+  }
+  function syncSkin(){
+    if(isAmber())scan();
+    else [...tracked].forEach(restore);
+  }
   scan();
   const observer=new MutationObserver(records=>{
+    let skinChanged=false;
     for(const record of records){
-      const target=record.target.nodeType===1?record.target:record.target.parentElement;
-      if(target?.matches?.(targets)){
-        if(target.dataset.ledPainted==="1")target.dataset.ledPainted="";
-        else paint(target);
+      if(record.type==="attributes"&&record.target===document.body&&record.attributeName==="data-skin"){
+        skinChanged=true;continue;
       }
-      target?.querySelectorAll?.(targets).forEach(node=>{
-        if(node.dataset.ledPainted!=="1")paint(node);
-      });
+      if(record.type==="childList"&&ownMutations.has(record.target)){
+        ownMutations.delete(record.target);continue;
+      }
+      const target=record.target.nodeType===1?record.target:record.target.parentElement;
+      if(target?.matches?.(targets))paint(target);
+      target?.querySelectorAll?.(targets).forEach(node=>paint(node));
     }
+    if(skinChanged)syncSkin();
   });
-  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["data-skin"]});
+  document.getElementById("skinSelect")?.addEventListener("change",()=>queueMicrotask(syncSkin));
 })();
 </script>
 
