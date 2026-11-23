@@ -274,7 +274,7 @@ assert.equal(ambiguousReport.totals.ambiguous,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rows,1);
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
   unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:0,uniquePlayerIdPair:0,
-  completePlayerIds:1,nearestSignatureAndUniqueIds:0,strictCandidate:0
+  completePlayerIds:1,nearestSignatureAndUniqueIds:0,strictCandidate:0,strictCandidateSingleRow:0,strictCandidateDuplicateRows:0,strictCandidateSingleTier:0,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0
 });
 
 const strictAmbiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
@@ -286,7 +286,7 @@ const strictAmbiguousReport=auditValuebetSackmann(ambiguousValuebet,strictAmbigu
 assert.equal(strictAmbiguousReport.totals.ambiguous,1);
 assert.deepEqual(strictAmbiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
   unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:1,uniquePlayerIdPair:1,
-  completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1
+  completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1,strictCandidateSingleRow:1,strictCandidateDuplicateRows:0,strictCandidateSingleTier:1,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0
 });
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.noExactEventMatch,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithExactDateCandidate,1);
@@ -353,3 +353,13 @@ assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResoluti
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs,0);
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.nearestDateDiagnostics.rowsWithMissingPlayerIds,0);
 assert.equal(tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.topReasonBreakdown[0].crossTierDuplicate,"cross-tier-duplicate");
+
+// Strict candidates are still not automatically accepted: classify duplicate rows by source tier.
+const strictTierDiagnostics=tierDuplicateReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies;
+assert.equal(strictTierDiagnostics.strictCandidate,1);
+assert.equal(strictTierDiagnostics.strictCandidateSingleRow,0);
+assert.equal(strictTierDiagnostics.strictCandidateDuplicateRows,1);
+assert.equal(strictTierDiagnostics.strictCandidateSingleTier,0);
+assert.equal(strictTierDiagnostics.strictCandidateMultipleTiers,1);
+assert.equal(strictTierDiagnostics.strictCandidateCrossTierDuplicate,1);
+assert.equal(strictTierDiagnostics.strictCandidateSameTierDuplicate,0);
