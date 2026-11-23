@@ -245,11 +245,19 @@ jobs:
           const fieldCoverage = field => archiveRows.filter(row =>
             row[field] !== undefined && row[field] !== null && row[field] !== "").length;
           const completedRows = archiveRows.filter(row => row.outcome === "completed");
+          const statsRows = archiveRows.filter(row => {
+            if (!row.stats) return false;
+            try { const stats = JSON.parse(row.stats); return Boolean(stats.winner && stats.loser); }
+            catch { return false; }
+          });
           console.log("Archive CSV parsed: " + archiveCsv.filename + "; rows=" + archiveRows.length +
             "; completed=" + completedRows.length +
-            "; columns=" + Object.keys(archiveRows[0] || {}).join(",") +
-            "; firstRow=" + JSON.stringify(archiveRows[0] || {}) +
-            "; surface known=" + fieldCoverage("surface") + ".");
+            "; player IDs=" + archiveRows.filter(row => row.winner_player_id && row.loser_player_id).length +
+            "; both ranks=" + archiveRows.filter(row => row.winner_rank && row.loser_rank).length +
+            "; both ages=" + archiveRows.filter(row => row.winner_age && row.loser_age).length +
+            "; surface known=" + fieldCoverage("surface") +
+            "; per-match serve stats for both players=" + statsRows.length +
+            "; columns=" + Object.keys(archiveRows[0] || {}).join(",") + ".");
           console.log("History coverage snapshot: as_of=" + (coverage.as_of || "unknown") +
             "; ATP singles=" + (coverage.buckets.atp_singles?.completed ?? "unknown") +
             "; WTA singles=" + (coverage.buckets.wta_singles?.completed ?? "unknown") +
