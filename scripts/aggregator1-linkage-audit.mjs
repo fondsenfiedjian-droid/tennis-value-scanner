@@ -126,7 +126,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     }
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
-  const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},offsets=[],eventMismatchPairs=new Map();
+  const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},byTourYearCategory={},offsets=[],eventMismatchPairs=new Map();
   const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()},directNameEvidence={ATP:new Map(),WTA:new Map()};
   let matchRowsWithBothPlayerIdsEvidence=0;
   const valuebetSchema={columns:[],categorical:{}};
@@ -163,17 +163,20 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const tourCategoryKey=(tour||"(empty)")+"::"+category;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
+      const tourYearCategoryKey=(tour||"(empty)")+"::"+m[1]+"::"+category;
+      const tycg=byTourYearCategory[tourYearCategoryKey]||(byTourYearCategory[tourYearCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+      tycg.rows++;
       const date=parseVbtDate(row.date),a=normalize(row.joueur1),b=normalize(row.joueur2);
       if(!byTour[tour])byTour[tour]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
       const g=byTour[tour];g.rows++;
-      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;continue;}
-      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
+      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;tycg.unknownTour++;continue;}
+      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;tycg.invalidDate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tycg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
-      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;
+      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;tycg.validRows++;
       if(!sf){
-        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;
-        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;
+        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;tycg.unknownSurface++;
+        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
@@ -181,14 +184,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const samePair=sackPairIndex.get(pairKey)||[];
       const samePairSurface=samePair.filter(x=>x.surface===sf);
       const candidates=samePairSurface.filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;yearBucket.pairAbsent++;tourYearBucket.pairAbsent++;}
-      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;yearBucket.surfaceAbsent++;tourYearBucket.surfaceAbsent++;}
-      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;yearBucket.dateWindowMiss++;tourYearBucket.dateWindowMiss++;}
-      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;tourYearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;}
+      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;tycg.pairAbsent++;yearBucket.pairAbsent++;tourYearBucket.pairAbsent++;}
+      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;tycg.surfaceAbsent++;yearBucket.surfaceAbsent++;tourYearBucket.surfaceAbsent++;}
+      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;tycg.dateWindowMiss++;yearBucket.dateWindowMiss++;tourYearBucket.dateWindowMiss++;}
+      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;tourYearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;tycg.candidateRows++;}
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
       if(selected){
-        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;tourYearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;
+        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;tourYearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;tycg.linkedUnique++;
         if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         if(!ev){totals.sourceEventMissing++;g.sourceEventMissing++;}
@@ -206,7 +209,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           sourceIdEvidence[tour].get(source2).add(sack2);
           matchRowsWithBothPlayerIdsEvidence++;
         }
-      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;}
+      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;tycg.ambiguous++;}
       else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
     }
   }
@@ -276,6 +279,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
+    byTourYearCategory:Object.fromEntries(Object.entries(byTourYearCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     warnings:[
       "This is a conservative linkage audit. A single candidate is linked by exact normalized player pair, surface and date window; tournament names are used only to resolve multiple candidates.",
       "Sackmann tourney_date is generally the event-week date, not the exact match date; the date window is a candidate filter, not a claim about match start time.",
