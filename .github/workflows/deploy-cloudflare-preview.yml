@@ -103,7 +103,7 @@ jobs:
           const usage = await read("/usage");
           const tier = String(usage.tier || usage.base_tier || "unknown").toLowerCase();
           if (!["pro", "ultra"].includes(tier)) throw new Error("Preview Live Tennis API key is not PRO-entitled; reported tier=" + tier);
-          const marketSchedule = await read("/matches?status=upcoming&limit=200&has_market=true");
+          const marketSchedule = await read("/matches?status=upcoming&limit=200");
           const marketMatch = (Array.isArray(marketSchedule.data) ? marketSchedule.data : [])
             .find(match => match?.has_market === true && Number.isSafeInteger(Number(match.id)) && Number(match.id) > 0);
           if (marketMatch) {
