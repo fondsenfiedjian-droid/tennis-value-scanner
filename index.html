@@ -895,6 +895,59 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       background:linear-gradient(110deg,#63300f,#a65320 52%,#713812)
     }
 
+    /* Amber Equalizer: target the real #bestBet card and its rendered states */
+    body[data-skin="amber-led"] #bestBet.best-bet,
+    body[data-skin="amber-led"] #bestBet.best-bet.empty-daily-pick{
+      background:linear-gradient(125deg,#2b1a0d 0%,#1d120b 52%,#0d0b09 100%) !important;
+      border:1px solid #a96332 !important;
+      box-shadow:0 0 14px #d9783026,inset 0 1px #ffd49a18,0 8px 24px #000b !important;
+      color:#f4e7d7
+    }
+    body[data-skin="amber-led"] #bestBet.best-bet:before{
+      background:linear-gradient(120deg,#ffd18a,#a65b2b 22%,#e18a3d 52%,#6b351b 78%,#f2bd78) !important
+    }
+    body[data-skin="amber-led"] #bestBet .best-bet-title,
+    body[data-skin="amber-led"] #bestBet .best-bet-value,
+    body[data-skin="amber-led"] #bestBet .daily-pick-metrics .daily-odds{
+      color:#ffc071 !important
+    }
+    body[data-skin="amber-led"] #bestBet .best-bet-value-pill{
+      background:#2b190d !important;border-color:#a96332 !important;color:#ffd08a !important
+    }
+    body[data-skin="amber-led"] #bestBet .daily-pick-photo{
+      background:radial-gradient(ellipse at 50% 30%,#75401e,#2a180d 68%,#0b0908) !important;
+      color:#fff0dc
+    }
+    body[data-skin="amber-led"] #bestBet .daily-pick-initials{
+      color:#ffe0b5 !important;text-shadow:0 0 16px #e18a3d88
+    }
+    body[data-skin="amber-led"] #bestBet .best-bet-confidence,
+    body[data-skin="amber-led"] #bestBet .daily-pick-confidence{
+      color:#d9a66e !important
+    }
+    body[data-skin="amber-led"] #bestBet .daily-pick-event,
+    body[data-skin="amber-led"] #bestBet .daily-pick-metrics span,
+    body[data-skin="amber-led"] #bestBet .best-bet-meta,
+    body[data-skin="amber-led"] #bestBet .best-bet-empty{
+      color:#d0ae8d !important
+    }
+    body[data-skin="amber-led"] #bestBet .daily-pick-metrics span{border-color:#684126 !important}
+    body[data-skin="amber-led"] #bestBet .daily-pick-metrics .daily-ev,
+    body[data-skin="amber-led"] #bestBet .daily-ev{color:#ffd078 !important}
+    body[data-skin="amber-led"] #bestBet .best-bet-footnote{color:#b99a7e !important}
+    body[data-skin="amber-led"] .plan-refresh{
+      border:1px solid #b86b32 !important;
+      background:linear-gradient(110deg,#4a260f,#8c451c 52%,#5b2d12) !important;
+      color:#fff0d9 !important;
+      box-shadow:0 0 14px #d9783028,inset 0 1px #ffd49a30 !important;
+      animation:none !important
+    }
+    body[data-skin="amber-led"] .plan-refresh:active{
+      background:linear-gradient(110deg,#63300f,#a65320 52%,#713812) !important
+    }
+    body[data-skin="amber-led"] .plan-summary-item:nth-child(3) b{color:#ffc071 !important}
+    body[data-skin="amber-led"] .plan-summary-item{border-color:#684126 !important}
+
     /* True seven-segment digits: fixed geometry, independent of surrounding font metrics. */
     body[data-skin="amber-led"] .led-digit{
       display:inline-block;position:relative;vertical-align:-.13em;
