@@ -81,17 +81,20 @@ test("result checks retry pending matches every 30 minutes and settled matches d
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
-test("match cards expose current bookmaker odds without opening the details", () => {
-  assert.match(html, /const oddsHtml=allMatched\.length\?/);
+test("match cards expose selected bookmaker EV quotes and comparison alternatives", () => {
+  assert.match(html, /const oddsHtml=displayQuoteA&&displayQuoteB\?/);
   assert.ok(html.includes(`class="match-bottom odds-visible">'+oddsHtml`));
-  assert.match(html, /displayQuoteA\?'<b>1<\/b>/);
-  assert.match(html, /displayQuoteB\?'<b>2<\/b>/);
+  assert.match(html, /comparisonQuoteA\?'<b>1<\/b>/);
+  assert.match(html, /comparisonQuoteB\?'<b>2<\/b>/);
+  assert.match(html, /альтернативы:/);
+  assert.match(html, /нет полной свежей пары/);
 });
 
-test("EV calculation keeps the configured odds range separate from visible quotes", () => {
-  assert.match(html, /const matched=allMatched\.filter\(o=>/);
+test("EV calculation uses the selected bookmaker pair and keeps the odds range as a separate candidate filter", () => {
+  assert.match(html, /const matched=selectedBookQuotes\.filter\(o=>/);
   assert.match(html, /value>=minOdds&&value<=maxOdds/);
-  assert.match(html, /const displayQuoteA=bestQuoteForSide\(allMatched,'1'\),displayQuoteB=bestQuoteForSide\(allMatched,'2'\)/);
+  assert.match(html, /const selectedPair=selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey\)/);
+  assert.match(html, /const displayQuoteA=selectedPair\.quoteA,displayQuoteB=selectedPair\.quoteB/);
   assert.match(html, /const oddsA=displayQuoteA\?Number\(displayQuoteA\.oddsDecimal\):null,oddsB=displayQuoteB\?Number\(displayQuoteB\.oddsDecimal\):null/);
   assert.match(html, /const selectedQuotes=\[displayQuoteA,displayQuoteB\]\.filter\(Boolean\)/);
 });
@@ -329,7 +332,7 @@ test("settings preview and immediately persist skin changes", () => {
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v133"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v134"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {

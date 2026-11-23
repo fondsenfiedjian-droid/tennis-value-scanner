@@ -235,6 +235,7 @@
     <h2>Настройки сканера</h2>
     <div class="field"><label for="skinSelect">Оформление приложения</label><select id="skinSelect"><option value="black">Чёрный · терракотовые акценты</option><option value="olive">Оливковый корт · осенняя палитра</option></select><small class="muted">Тема применяется ко всем разделам. Выбор сохраняется на этом устройстве.</small></div>
     <div class="field"><label for="minEv">Минимальный EV для «Ставки дня», %</label><input id="minEv" type="number" min="0" max="100" step="0.5" value="3"></div>
+    <div class="field"><label for="preferredBookmaker">Букмекер для расчёта EV</label><select id="preferredBookmaker"><option value="winamax">Winamax (по умолчанию)</option><option value="betclic">Betclic · ограниченное покрытие</option><option value="netbet">NetBet · ограниченное покрытие</option><option value="best">Лучший доступный коэффициент</option></select><small class="muted">В выбранном режиме EV рассчитывается только по котировкам этого букмекера. Другие цены показываются отдельно и не подменяют выбранный источник. По текущей конфигурации API покрытие Betclic/NetBet ограничено турниром ATP Finals.</small></div>
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="100" step="0.1" value="5.00"></div>
     <div class="field"><label for="bestBetMinOdds">Минимальный коэффициент для «Ставки дня»</label><input id="bestBetMinOdds" type="number" min="1.50" max="15" step="1" value="1.50"><small class="muted">Отдельный порог отбора. Не меняет EV, вероятность модели или размер ставки.</small></div>
@@ -281,6 +282,7 @@
     const current=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(current[id]!==undefined)$('#'+id).value=current[id];});
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
+    $('#preferredBookmaker').value=normalizePreferredBookmaker(current.preferredBookmaker);
     $('#skinSelect').value=current.skin==='olive'?'olive':'black';
     if(Array.isArray(current.tours))tourChecks.forEach(input=>input.checked=current.tours.includes(input.dataset.tour));
   }
@@ -293,6 +295,39 @@
       const value=JSON.parse(localStorage.getItem('tvs-settings')||'{}');
       return value&&typeof value==='object'&&!Array.isArray(value)?value:{};
     }catch(e){return {};}
+  }
+  function normalizePreferredBookmaker(value){
+    return ['winamax','betclic','netbet','best'].includes(String(value))?String(value):'winamax';
+  }
+  function selectPreferredBookmakerPair(quotes,preference,sideForPlayer,playerName,eventGroupKey){
+    const mode=normalizePreferredBookmaker(preference);
+    const all=Array.isArray(quotes)?quotes:[];
+    if(mode==='best'){
+      const best=(side)=>all.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
+      const quoteA=best('1'),quoteB=best('2');
+      return {mode,quotes:all,quoteA,quoteB,completePair:!!(quoteA&&quoteB)};
+    }
+    const providerQuotes=all.filter(quote=>String(quote?.bookmaker||'').trim().toLowerCase()===mode);
+    const groups=new Map();
+    for(const quote of providerQuotes){
+      const key=typeof eventGroupKey==='function'?eventGroupKey(quote):'';
+      if(!key)continue;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(quote);
+    }
+    const pairs=[];
+    for(const groupQuotes of groups.values()){
+      const best=(side)=>groupQuotes.filter(quote=>sideForPlayer(quote,playerName)===side).sort((a,b)=>Number(b.oddsDecimal)-Number(a.oddsDecimal))[0]||null;
+      const quoteA=best('1'),quoteB=best('2');
+      if(!quoteA||!quoteB)continue;
+      const oldestPairTime=Math.min(Date.parse(quoteA.scrapedAt)||0,Date.parse(quoteB.scrapedAt)||0);
+      pairs.push({quotes:groupQuotes,quoteA,quoteB,oldestPairTime,combinedOdds:Number(quoteA.oddsDecimal)+Number(quoteB.oddsDecimal)});
+    }
+    pairs.sort((a,b)=>b.oldestPairTime-a.oldestPairTime||b.combinedOdds-a.combinedOdds);
+    const selected=pairs[0];
+    return selected
+      ?{mode,quotes:selected.quotes,quoteA:selected.quoteA,quoteB:selected.quoteB,completePair:true}
+      :{mode,quotes:[],quoteA:null,quoteB:null,completePair:false};
   }
   function normalizeRefreshRate(value){
     const minutes=Number(value);
@@ -334,6 +369,7 @@
   });
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
+  $('#preferredBookmaker').value=normalizePreferredBookmaker(saved.preferredBookmaker);
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
   let savedTours=Array.isArray(saved.tours)?saved.tours:null;
   if(!savedTours){try{savedTours=JSON.parse(localStorage.getItem('tvs-tours')||'null');}catch(e){}}
@@ -365,6 +401,7 @@
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
+    data.preferredBookmaker=normalizePreferredBookmaker($('#preferredBookmaker').value);
     data.skin=$('#skinSelect').value==='olive'?'olive':'black';
     data.tours=selectedTours();
     try{
@@ -373,7 +410,7 @@
       const savedAgain=readSettings();
       if(Number(savedAgain.minEv)!==minEv||Number(savedAgain.minOdds)!==minOdds||
          Number(savedAgain.maxOdds)!==maxOdds||Number(savedAgain.bestBetMinOdds)!==bestBetMinOdds||
-         normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin)
+         normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||normalizePreferredBookmaker(savedAgain.preferredBookmaker)!==data.preferredBookmaker||savedAgain.skin!==data.skin)
          throw new Error('Настройки не сохранились');
     }catch(error){
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
@@ -703,23 +740,36 @@
       const minOdds=Math.max(1.9,Number($('#minOdds').value||1.5));
       const maxOdds=Number($('#maxOdds').value||5);
       const allMatched=oddsForMatch(m);
-      const matched=allMatched.filter(o=>{
+      const preferredBookmaker=normalizePreferredBookmaker(readSettings().preferredBookmaker);
+      const comparisonPair=selectPreferredBookmakerPair(allMatched,'best',oddsSideForPlayer,a,oddsEventGroupKey);
+      const selectedPair=selectPreferredBookmakerPair(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey);
+      const comparisonQuoteA=comparisonPair.quoteA,comparisonQuoteB=comparisonPair.quoteB;
+      const completePreferredPair=preferredBookmaker==='best'||selectedPair.completePair;
+      // A single-book mode requires a complete, fresh two-sided pair from that same bookmaker.
+      const displayQuoteA=selectedPair.quoteA,displayQuoteB=selectedPair.quoteB;
+      const selectedBookQuotes=selectedPair.quotes;
+      const matched=selectedBookQuotes.filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
       });
-      const bestQuoteForSide=(quotes,side)=>quotes.filter(o=>oddsSideForPlayer(o,a)===side).sort((x,y)=>Number(y.oddsDecimal)-Number(x.oddsDecimal))[0]||null;
-      // Prediction and EV use the actual best live quotes; the configured odds range only filters value candidates.
-      const displayQuoteA=bestQuoteForSide(allMatched,'1'),displayQuoteB=bestQuoteForSide(allMatched,'2');
       const oddsA=displayQuoteA?Number(displayQuoteA.oddsDecimal):null,oddsB=displayQuoteB?Number(displayQuoteB.oddsDecimal):null;
       const bookmakerA=displayQuoteA?String(displayQuoteA.bookmaker||'').trim():'';
       const bookmakerB=displayQuoteB?String(displayQuoteB.bookmaker||'').trim():'';
       const providers=[...new Set([bookmakerA,bookmakerB].filter(Boolean))];
       const bookmakerName=providers.join(' / ');
       const bookmakerTag=providers.length?'<span class="bookmaker-tag" title="'+escapeHtml(bookmakerName)+'">'+escapeHtml(bookmakerName.toUpperCase())+'</span>':'';
-      const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
-        displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
-        displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты букмекеров не найдены';
+      const comparisonHtml=allMatched.length?[
+        comparisonQuoteA?'<b>1</b> '+escapeHtml(comparisonQuoteA.bookmaker||'')+' <b>'+Number(comparisonQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
+        comparisonQuoteB?'<b>2</b> '+escapeHtml(comparisonQuoteB.bookmaker||'')+' <b>'+Number(comparisonQuoteB.oddsDecimal).toFixed(2)+'</b>':''
+      ].filter(Boolean).join(' · '):'';
+      const preferredLabel={winamax:'Winamax',betclic:'Betclic',netbet:'NetBet',best:'все букмекеры'}[preferredBookmaker];
+      const noPairNotice=preferredBookmaker!=='best'&&!completePreferredPair?' · нет полной свежей пары '+preferredLabel+' — EV не рассчитывается':'';
+      const comparisonNotice=preferredBookmaker!=='best'&&comparisonHtml?' · альтернативы: '+comparisonHtml:'';
+      const oddsHtml=displayQuoteA&&displayQuoteB?'<b>EV ('+escapeHtml(preferredLabel)+'):</b> '+[
+        '<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>',
+        '<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>'
+      ].join(' · ')+(matched.length?'':' · вне заданного диапазона EV')+comparisonNotice:
+        (noPairNotice||'Коэффициенты выбранного источника не найдены')+comparisonNotice;
       const oddsObservedAt=Date.now();
       const selectedQuotes=[displayQuoteA,displayQuoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;

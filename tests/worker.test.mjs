@@ -1723,8 +1723,11 @@ test("live value quotes are rejected after scheduled start and for non-upcoming 
 test("odds matching supports provider-specific event IDs and keeps the best price per player side", () => {
   assert.match(frontendSource, /const ODDS_PROVIDER_REGISTRY=Object\.freeze/);
   assert.match(frontendSource, /Event IDs are bookmaker-specific: never require two providers to share one/);
-  assert.match(frontendSource, /const bestQuoteForSide=\(quotes,side\)=>quotes\.filter/);
-  assert.match(frontendSource, /const displayQuoteA=bestQuoteForSide\(allMatched,'1'\),displayQuoteB=bestQuoteForSide\(allMatched,'2'\)/);
+  assert.match(frontendSource, /function selectPreferredBookmakerPair\(quotes,preference,sideForPlayer,playerName,eventGroupKey\)/);
+  assert.match(frontendSource, /selectPreferredBookmakerPair\(allMatched,preferredBookmaker,oddsSideForPlayer,a,oddsEventGroupKey\)/);
+  assert.match(frontendSource, /const matched=selectedBookQuotes\.filter/);
+  assert.match(frontendSource, /completePreferredPair=preferredBookmaker==='best'\|\|selectedPair\.completePair/);
+  assert.match(frontendSource, /нет полной свежей пары/);
   assert.match(frontendSource, /const oddsA=displayQuoteA\?Number\(displayQuoteA\.oddsDecimal\):null,oddsB=displayQuoteB\?Number\(displayQuoteB\.oddsDecimal\):null/);
   assert.match(frontendSource, /if\(!isPreMatchMatch\(m,matchStart,now\)\)return \[\]/);
   assert.match(frontendSource, /data-event-id-a=/);
@@ -1735,7 +1738,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v133/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v134/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2437,7 +2440,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v133/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v134/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -3267,4 +3270,56 @@ test("verified result provenance survives archive export/import normalization an
   assert.equal(imported.rows.length, 2);
   assert.ok(imported.rows.every(row => row.resultSource === "live_tennis_api"));
   assert.ok(imported.rows.every(row => row.resultVersion === 4));
+});
+
+test("preferred bookmaker mode defaults safely and never silently mixes books", () => {
+  const start=frontendSource.indexOf("function normalizePreferredBookmaker(");
+  const end=frontendSource.indexOf("\n  function normalizeRefreshRate(",start);
+  assert.ok(start>=0&&end>start);
+  const sandbox={String,Number,Array,Date};
+  vm.runInNewContext(frontendSource.slice(start,end)+"\nglobalThis.api={normalizePreferredBookmaker,selectPreferredBookmakerPair};",sandbox);
+  const {normalizePreferredBookmaker,selectPreferredBookmakerPair}=sandbox.api;
+  assert.equal(normalizePreferredBookmaker(undefined),"winamax");
+  assert.equal(normalizePreferredBookmaker("invalid"),"winamax");
+  assert.equal(normalizePreferredBookmaker("Betclic"),"winamax");
+  assert.equal(normalizePreferredBookmaker("betclic"),"betclic");
+  const quotes=[
+    {bookmaker:"winamax",side:"1",oddsDecimal:2.1,event:"event-1",scrapedAt:"2026-11-21T10:00:00Z"},
+    {bookmaker:"winamax",side:"2",oddsDecimal:1.8,event:"event-1",scrapedAt:"2026-11-21T10:01:00Z"},
+    {bookmaker:"winamax",side:"1",oddsDecimal:2.8,event:"event-2",scrapedAt:"2026-11-21T10:10:00Z"},
+    {bookmaker:"winamax",side:"2",oddsDecimal:1.9,event:"event-2",scrapedAt:"2026-11-21T10:11:00Z"},
+    {bookmaker:"betclic",side:"1",oddsDecimal:2.3,event:"event-3",scrapedAt:"2026-11-21T10:00:00Z"},
+    {bookmaker:"betclic",side:"2",oddsDecimal:1.7,event:"event-3",scrapedAt:"2026-11-21T10:01:00Z"},
+    {bookmaker:"netbet",side:"1",oddsDecimal:2.5,event:"event-4",scrapedAt:"2026-11-21T10:00:00Z"}
+  ];
+  const side=quote=>quote.side;
+  const event=quote=>quote.event;
+  const winamax=selectPreferredBookmakerPair(quotes,"winamax",side,"Player A",event);
+  assert.equal(winamax.completePair,true);
+  assert.equal(winamax.quoteA.bookmaker,"winamax");
+  assert.equal(winamax.quoteB.bookmaker,"winamax");
+  assert.equal(winamax.quoteA.event,"event-2");
+  assert.equal(winamax.quoteB.event,"event-2");
+  assert.equal(winamax.quotes.length,2);
+  const betclic=selectPreferredBookmakerPair(quotes,"betclic",side,"Player A",event);
+  assert.equal(betclic.quoteA.bookmaker,"betclic");
+  assert.equal(betclic.quoteB.bookmaker,"betclic");
+  const netbet=selectPreferredBookmakerPair(quotes,"netbet",side,"Player A",event);
+  assert.equal(netbet.completePair,false);
+  assert.equal(netbet.quoteA,null);
+  assert.equal(netbet.quoteB,null);
+  assert.equal(netbet.quotes.length,0);
+  const best=selectPreferredBookmakerPair(quotes,"best",side,"Player A",event);
+  assert.equal(best.quoteA.bookmaker,"winamax");
+  assert.equal(best.quoteB.bookmaker,"winamax");
+});
+test("preferred bookmaker setting is persisted and restored in the settings form", () => {
+  assert.match(frontendSource, /id="preferredBookmaker"/);
+  assert.match(frontendSource, /Betclic · ограниченное покрытие/);
+  assert.match(frontendSource, /NetBet · ограниченное покрытие/);
+  assert.match(frontendSource, /покрытие Betclic\/NetBet ограничено турниром ATP Finals/);
+  assert.match(frontendSource, /data\.preferredBookmaker=normalizePreferredBookmaker/);
+  assert.match(frontendSource, /normalizePreferredBookmaker\(current\.preferredBookmaker\)/);
+  assert.match(frontendSource, /normalizePreferredBookmaker\(saved\.preferredBookmaker\)/);
+  assert.match(frontendSource, /normalizePreferredBookmaker\(savedAgain\.preferredBookmaker\)!==data\.preferredBookmaker/);
 });
