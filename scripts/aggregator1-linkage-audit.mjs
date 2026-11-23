@@ -175,7 +175,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       if(!a||!b||a===b||date===null||!sf)continue;
       const pairKey=[tour,[a,b].sort().join("|")].join("::");
       const key=pairKey+"::"+sf;
-      const record={date,tier,year,surface:sf,event:tourney(row.tourney_name),winnerId:String(row.winner_id??"").trim(),loserId:String(row.loser_id??"").trim(),winnerName:a,loserName:b,score:String(row.score??"").trim().replace(/\\s+/g," ").toLowerCase(),round:String(row.round??"").trim().toLowerCase()};
+      const record={date,tier,year,surface:sf,event:tourney(row.tourney_name),winnerId:String(row.winner_id??"").trim(),loserId:String(row.loser_id??"").trim(),winnerName:a,loserName:b,score:String(row.score??"").trim().replace(/\s+/g," ").toLowerCase(),round:String(row.round??"").trim().toLowerCase()};
       if(!sackIndex.has(key))sackIndex.set(key,[]);
       sackIndex.get(key).push(record);
       if(!sackPairIndex.has(pairKey))sackPairIndex.set(pairKey,[]);
