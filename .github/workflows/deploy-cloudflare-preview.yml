@@ -52,7 +52,7 @@ jobs:
             echo "::error::Cloudflare Preview credentials are required to rotate the temporary research token"
             exit 1
           fi
-          token=$(node --input-type=module -e 'import { randomBytes } from "node:crypto"; process.stdout.write(randomBytes(32).toString("hex"))')
+          token=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$token"
           printf '%s' "$token" | npx --yes wrangler@4.165.0 secret put TVS_RESEARCH_ACCESS_TOKEN --config wrangler.preview.toml
           echo "TVS_RESEARCH_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
