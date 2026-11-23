@@ -840,6 +840,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     <div class="field"><label for="minOdds">Минимальный коэффициент</label><input id="minOdds" type="number" min="1.90" max="100" step="0.05" value="1.90"></div>
     <div class="field"><label for="maxOdds">Максимальный коэффициент</label><input id="maxOdds" type="number" min="1" max="100" step="0.1" value="5.00"></div>
     <div class="field"><label for="bestBetMinOdds">Минимальный коэффициент для «Ставки дня»</label><input id="bestBetMinOdds" type="number" min="1.50" max="15" step="1" value="1.50"><small class="muted">Отдельный порог отбора. Не меняет EV, вероятность модели или размер ставки.</small></div>
+    <div class="field"><label for="bankMaxStakePercent">Максимальная ставка от банка: <output id="bankMaxStakePercentValue">1,5%</output></label><input id="bankMaxStakePercent" type="range" min="0.5" max="2" step="0.25" value="1.5"><small class="muted">Шкала 0,5–2% · ограничение одной ставки.</small></div>
+    <div class="field"><label for="bankMaxExposurePercent">Общий открытый риск: <output id="bankMaxExposurePercentValue">5%</output></label><input id="bankMaxExposurePercent" type="range" min="1" max="8" step="0.5" value="5"><small class="muted">Шкала 1–8% · сумма всех одновременно открытых ставок.</small></div>
+    <div class="field"><label for="bankMaxDailyStakePercent">Дневной лимит ставок: <output id="bankMaxDailyStakePercentValue">5%</output></label><input id="bankMaxDailyStakePercent" type="range" min="1" max="10" step="0.5" value="5"><small class="muted">Шкала 1–10% · ограничивает оборот ставок за день.</small></div>
+    <div class="field"><label for="bankKellyFraction">Доля критерия Келли: <output id="bankKellyFractionValue">25%</output></label><input id="bankKellyFraction" type="range" min="10" max="50" step="5" value="25"><small class="muted">Шкала 10–50% · уменьшает расчётную ставку для снижения волатильности.</small></div>
     <div class="field"><label>Турниры</label><div class="checkgrid">
       <label class="check"><input type="checkbox" data-tour="atp" checked> ATP</label><label class="check"><input type="checkbox" data-tour="wta" checked> WTA</label>
       <label class="check"><input type="checkbox" data-tour="challenger" checked> Challenger</label><label class="check"><input type="checkbox" data-tour="itf" checked> ITF</label>
@@ -968,8 +972,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   const close=()=>modal.classList.remove('show');
   function populateSettingsForm(){
     const current=readSettings();
-    const defaults={minEv:3,minOdds:1.9,maxOdds:5,bestBetMinOdds:1.5};
+    const defaults={minEv:3,minOdds:1.9,maxOdds:5,bestBetMinOdds:1.5,bankMaxStakePercent:1.5,bankMaxExposurePercent:5,bankMaxDailyStakePercent:5,bankKellyFraction:25};
     Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
+    ['bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{const output=$('#'+id+'Value');if(output)output.textContent=Number($('#'+id).value).toLocaleString('ru-RU')+'%';});
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
     $('#skinSelect').value=['black','steel','neon','terracotta'].includes(current.skin)?current.skin:'terracotta';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
@@ -1035,7 +1040,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const selected=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
     applySkin(selected);
   });
-  ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  ['minEv','minOdds','maxOdds','bestBetMinOdds','bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
+  ['bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>{const output=$('#'+id+'Value');if(output)output.textContent=Number($('#'+id).value).toLocaleString('ru-RU')+'%';});
+  ['bankMaxStakePercent','bankMaxExposurePercent','bankMaxDailyStakePercent','bankKellyFraction'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#'+id+'Value').textContent=Number($('#'+id).value).toLocaleString('ru-RU')+'%';}));
   $('#refreshRate').value=String(normalizeRefreshRate(saved.refreshRate));
   const tourChecks=[...document.querySelectorAll('[data-tour]')];
   let savedTours=Array.isArray(saved.tours)?saved.tours:null;
@@ -1047,6 +1054,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#saveSettings').onclick=()=>{
     const minEv=Number($('#minEv').value),minOdds=Number($('#minOdds').value),maxOdds=Number($('#maxOdds').value);
     const bestBetMinOdds=Number($('#bestBetMinOdds').value);
+    const bankMaxStakePercent=Number($('#bankMaxStakePercent').value),bankMaxExposurePercent=Number($('#bankMaxExposurePercent').value);
+    const bankMaxDailyStakePercent=Number($('#bankMaxDailyStakePercent').value),bankKellyFraction=Number($('#bankKellyFraction').value);
     const refreshRate=Number($('#refreshRate').value);
     const tours=selectedTours();
     if(!tours.length){
@@ -1057,12 +1066,18 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
        !Number.isFinite(minOdds)||minOdds<1.9||minOdds>100||
        !Number.isFinite(maxOdds)||maxOdds<minOdds||maxOdds>100||
        !Number.isFinite(bestBetMinOdds)||bestBetMinOdds<1.5||bestBetMinOdds>15||
+       !Number.isFinite(bankMaxStakePercent)||bankMaxStakePercent<0.5||bankMaxStakePercent>2||
+       !Number.isFinite(bankMaxExposurePercent)||bankMaxExposurePercent<1||bankMaxExposurePercent>8||
+       !Number.isFinite(bankMaxDailyStakePercent)||bankMaxDailyStakePercent<1||bankMaxDailyStakePercent>10||
+       !Number.isFinite(bankKellyFraction)||bankKellyFraction<10||bankKellyFraction>50||
        ![0,30,60,180].includes(refreshRate)){
       alert('Проверь настройки: EV — 0–100%, минимальный коэффициент — от 1.90, максимальный — не меньше минимального, кэф «Ставки дня» — 1.50–15, автообновление — из списка.');
       return;
     }
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
+    data.bankMaxStakePercent=bankMaxStakePercent;data.bankMaxExposurePercent=bankMaxExposurePercent;
+    data.bankMaxDailyStakePercent=bankMaxDailyStakePercent;data.bankKellyFraction=bankKellyFraction;
     data.refreshRate=refreshRate;
     data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
     data.musicPaletteDefaultApplied=true;
@@ -1075,6 +1090,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const expectedTourValues=data.tours.slice().sort();
       if(Number(savedAgain.minEv)!==minEv||Number(savedAgain.minOdds)!==minOdds||
          Number(savedAgain.maxOdds)!==maxOdds||Number(savedAgain.bestBetMinOdds)!==bestBetMinOdds||
+         Number(savedAgain.bankMaxStakePercent)!==bankMaxStakePercent||Number(savedAgain.bankMaxExposurePercent)!==bankMaxExposurePercent||
+         Number(savedAgain.bankMaxDailyStakePercent)!==bankMaxDailyStakePercent||Number(savedAgain.bankKellyFraction)!==bankKellyFraction||
          normalizeRefreshRate(savedAgain.refreshRate)!==refreshRate||savedAgain.skin!==data.skin||
          JSON.stringify(savedTourValues)!==JSON.stringify(expectedTourValues))
          throw new Error('Настройки не сохранились');
@@ -2204,7 +2221,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     archiveStorageReady.then(renderArchive);
   }
   const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
-  const VIRTUAL_BANK_OPTIONS={maxStakePercent:1.5,maxExposurePercent:5,maxDailyStakePercent:5,kellyFraction:0.25,minEv:3,minOdds:1.9};
+  function currentVirtualBankOptions(){
+    const settings=readSettings(),clamp=(value,min,max,fallback)=>Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
+    return {maxStakePercent:clamp(settings.bankMaxStakePercent,0.5,2,1.5),maxExposurePercent:clamp(settings.bankMaxExposurePercent,1,8,5),maxDailyStakePercent:clamp(settings.bankMaxDailyStakePercent,1,10,5),kellyFraction:clamp(settings.bankKellyFraction,10,50,25)/100,minEv:3,minOdds:1.9};
+  }
   function readVirtualBankState(){
     const raw=localStorage.getItem(VIRTUAL_BANK_KEY);
     if(raw===null){const initial=TVSBankroll.createInitialState(1000);localStorage.setItem(VIRTUAL_BANK_KEY,JSON.stringify(initial));return initial;}
@@ -2220,7 +2240,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(!window.TVSBankroll||!Array.isArray(bets)||!bets.length)return {placed:0,skipped:0};
     let state;
     try{state=readVirtualBankState();}catch(error){console.error('Виртуальный банк не изменён: ошибка чтения журнала.',error);return {placed:0,skipped:bets.length,error};}
-    const now=Date.now();
+    const now=Date.now(),riskOptions=currentVirtualBankOptions();
     const candidates=bets.map(bet=>{
       const match=bet.match||{},id=Number(match.id??match.event_id??match.match_id);
       const start=matchDate(match);
@@ -2237,12 +2257,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
         bookmaker:bet.bookmaker||'Winamax',matchDate:start.toISOString(),
         surface:match.surface||'',tour:String(match.tour||match.category||'').toLowerCase(),
         tournament:match.tournament?.name||match.tournament_name||match.tournament||'',
-        freshnessLevel:'good',options:{...VIRTUAL_BANK_OPTIONS,minEv:Math.max(VIRTUAL_BANK_OPTIONS.minEv,Number(currentValueFilters().minEv)||0),minOdds:Math.max(VIRTUAL_BANK_OPTIONS.minOdds,Number(currentValueFilters().minOdds)||0)}
+        freshnessLevel:'good',options:{...riskOptions,minEv:Math.max(riskOptions.minEv,Number(currentValueFilters().minEv)||0),minOdds:Math.max(riskOptions.minOdds,Number(currentValueFilters().minOdds)||0)}
       };
     }).filter(Boolean);
     if(!candidates.length)return {placed:0,skipped:bets.length};
     try{
-      const plan=TVSBankroll.recommendPortfolio(state,candidates,VIRTUAL_BANK_OPTIONS);
+      const plan=TVSBankroll.recommendPortfolio(state,candidates,riskOptions);
       if(!plan.suggestions.length)return {placed:0,skipped:bets.length};
       const pending=TVSBankroll.savePortfolioPlan(state,plan.suggestions);
       const confirmed=TVSBankroll.confirmPortfolioPlan(pending,pending.pendingPlan.id);
