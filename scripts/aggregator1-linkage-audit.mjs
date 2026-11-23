@@ -140,7 +140,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const counts=valuebetSchema.categorical[key]||(valuebetSchema.categorical[key]={});
       for(const row of rows){const value=String(row[key]??"").trim()||"(empty)";counts[value]=(counts[value]||0)+1;}
     }
-    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+    const yearBucket=byYear[m[1]]||(byYear[m[1]]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
     for(const row of rows){
       yearBucket.rows++;
       totals.valuebetRows++;
@@ -168,7 +168,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;
       if(!sf){
