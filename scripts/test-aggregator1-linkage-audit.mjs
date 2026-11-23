@@ -142,6 +142,11 @@ assert.equal(conflictCrosswalk.matchIdsDoNotOverlapDirectCandidates,0);
 assert.deepEqual(conflictCrosswalk.matchCandidateIdCounts,{"2":1});
 assert.deepEqual(conflictCrosswalk.directCandidateIdCounts,{"2":1});
 assert.deepEqual(conflictCrosswalk.registrySignatureCounts,{"2":1});
+assert.deepEqual(conflictCrosswalk.candidateMetadataCompleteness,{"2":1});
+assert.deepEqual(conflictCrosswalk.distinctDobCounts,{"2":1});
+assert.deepEqual(conflictCrosswalk.distinctIocCounts,{"2":1});
+assert.deepEqual(conflictCrosswalk.distinctHandCounts,{"1":1});
+assert.deepEqual(conflictCrosswalk.metadataRelationshipProfiles,{"different_dob_and_ioc":1});
 
 
 
@@ -184,6 +189,12 @@ assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannI
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.sameDobIocDifferentHand,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentHandOnly,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.identicalAvailableSignature,0);
+const handCrosswalk=handConflictReport.playerIdEvidence.conflictCrosswalkDiagnostics.ATP;
+assert.deepEqual(handCrosswalk.candidateMetadataCompleteness,{"2":1});
+assert.deepEqual(handCrosswalk.distinctDobCounts,{"1":1});
+assert.deepEqual(handCrosswalk.distinctIocCounts,{"1":1});
+assert.deepEqual(handCrosswalk.distinctHandCounts,{"2":1});
+assert.deepEqual(handCrosswalk.metadataRelationshipProfiles,{"same_dob_ioc_different_hand":1});
 
 // Regression: tournament sponsor/location suffix variants map to the same canonical event.
 const aliasValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
