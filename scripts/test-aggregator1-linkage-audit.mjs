@@ -274,7 +274,7 @@ assert.equal(ambiguousReport.totals.ambiguous,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rows,1);
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
   unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:0,uniquePlayerIdPair:0,
-  completePlayerIds:1,nearestSignatureAndUniqueIds:0,strictCandidate:0,strictCandidateSingleRow:0,strictCandidateDuplicateRows:0,strictCandidateSingleTier:0,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0
+  completePlayerIds:1,nearestSignatureAndUniqueIds:0,strictCandidate:0,strictCandidateSingleRow:0,strictCandidateDuplicateRows:0,strictCandidateSingleTier:0,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0,strictCandidateAllScoresPresent:0,strictCandidateOneDistinctScore:0,strictCandidateScoreConflict:0,strictCandidateAllRoundsPresent:0,strictCandidateOneDistinctRound:0,strictCandidateRoundConflict:0
 });
 
 const strictAmbiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
@@ -286,7 +286,7 @@ const strictAmbiguousReport=auditValuebetSackmann(ambiguousValuebet,strictAmbigu
 assert.equal(strictAmbiguousReport.totals.ambiguous,1);
 assert.deepEqual(strictAmbiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
   unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:1,uniquePlayerIdPair:1,
-  completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1,strictCandidateSingleRow:1,strictCandidateDuplicateRows:0,strictCandidateSingleTier:1,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0
+  completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1,strictCandidateSingleRow:1,strictCandidateDuplicateRows:0,strictCandidateSingleTier:1,strictCandidateMultipleTiers:0,strictCandidateCrossTierDuplicate:0,strictCandidateSameTierDuplicate:0,strictCandidateAllScoresPresent:0,strictCandidateOneDistinctScore:0,strictCandidateScoreConflict:0,strictCandidateAllRoundsPresent:0,strictCandidateOneDistinctRound:0,strictCandidateRoundConflict:0
 });
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.noExactEventMatch,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithExactDateCandidate,1);
@@ -333,8 +333,8 @@ const tierDuplicateValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
 ].join("\n")}];
 const tierDuplicateSack=[
   {filename:"atp_matches_futures_2025.csv",content:[
-    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
-    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902"
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id,score,round",
+    "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32"
   ].join("\n")},
   {filename:"atp_matches_qual_chall_2025.csv",content:[
     "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
@@ -363,3 +363,23 @@ assert.equal(strictTierDiagnostics.strictCandidateSingleTier,0);
 assert.equal(strictTierDiagnostics.strictCandidateMultipleTiers,1);
 assert.equal(strictTierDiagnostics.strictCandidateCrossTierDuplicate,1);
 assert.equal(strictTierDiagnostics.strictCandidateSameTierDuplicate,0);
+assert.equal(strictTierDiagnostics.strictCandidateAllScoresPresent,1);
+assert.equal(strictTierDiagnostics.strictCandidateOneDistinctScore,1);
+assert.equal(strictTierDiagnostics.strictCandidateScoreConflict,0);
+assert.equal(strictTierDiagnostics.strictCandidateAllRoundsPresent,1);
+assert.equal(strictTierDiagnostics.strictCandidateOneDistinctRound,1);
+assert.equal(strictTierDiagnostics.strictCandidateRoundConflict,0);
+
+// Same-date duplicate rows with inconsistent score must remain flagged, not auto-resolved.
+const scoreConflictSack=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id,score,round",
+  "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,6-4 6-4,R32",
+  "20250512,M15 Example,Hard,Tier Player A,Tier Player B,901,902,4-6 6-4 6-3,R32"
+].join("\\n")}];
+const scoreConflictReport=auditValuebetSackmann(tierDuplicateValuebet,scoreConflictSack);
+const scoreConflictDiagnostics=scoreConflictReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies;
+assert.equal(scoreConflictDiagnostics.strictCandidate,1);
+assert.equal(scoreConflictDiagnostics.strictCandidateAllScoresPresent,1);
+assert.equal(scoreConflictDiagnostics.strictCandidateOneDistinctScore,0);
+assert.equal(scoreConflictDiagnostics.strictCandidateScoreConflict,1);
+assert.equal(scoreConflictDiagnostics.strictCandidateOneDistinctRound,1);
