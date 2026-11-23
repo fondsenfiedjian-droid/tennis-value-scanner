@@ -119,3 +119,74 @@ test("history parser accepts the documented Live Tennis HistoryMatch shape", () 
   assert.deepEqual(JSON.parse(JSON.stringify(historyB.last5.map(row => row.winner))), ["W", "L"]);
   assert.equal(historyB.last5[0].score, "6-3 6-4");
 });
+
+
+test("H2H renderer accepts the documented Live Tennis HeadToHead shape and verifies player identity", () => {
+  const start = html.indexOf("function renderCompareH2H(");
+  const end = html.indexOf("function renderCompareResult(", start);
+  assert.ok(start >= 0 && end > start, "H2H renderer source must be present");
+  const rendererSource = html.slice(start, end);
+  const sandbox = {
+    Array, Number, String, Object,
+    escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+  };
+  vm.runInNewContext(rendererSource + "\nglobalThis.renderCompareH2H = renderCompareH2H;", sandbox);
+
+  const payload = {
+    players: { p1: { name: "Carlos Alcaraz" }, p2: { name: "Jannik Sinner" } },
+    totals: { p1_wins: 7, p2_wins: 5, meetings: 13, undecided: 1 },
+    by_surface: {
+      hard: { p1: 4, p2: 3 },
+      clay: { p1: 3, p2: 1 },
+      grass: { p1: 0, p2: 1 }
+    },
+    period: "1968-present",
+    meetings: [
+      { date: "2026-11-20", winner: 1, score: "6-4 6-3", outcome: "completed" },
+      { date: "2026-10-12", winner: 2, score: "4-6 6-7", outcome: "completed" },
+      { date: "2026-09-01", winner: null, score: null, outcome: "unresolved" }
+    ]
+  };
+
+  const rendered = sandbox.renderCompareH2H(payload, "Carlos Alcaraz", "Jannik Sinner");
+  assert.match(rendered, /Carlos Alcaraz 7 : 5 Jannik Sinner/);
+  assert.match(rendered, /Встреч: 13 · неопределённых: 1/);
+  assert.match(rendered, /hard: 4–3/);
+  assert.match(rendered, /clay: 3–1/);
+  assert.match(rendered, /2026-11-20 · Carlos Alcaraz/);
+  assert.match(rendered, /6-4 6-3/);
+  assert.match(rendered, /победитель не определён/);
+
+  const mismatch = sandbox.renderCompareH2H(payload, "Carlos Alcaraz", "Sinner");
+  assert.match(mismatch, /Идентичность игроков не подтверждена/);
+  assert.doesNotMatch(mismatch, /7 : 5/);
+});
+
+test("H2H renderer escapes API-supplied player names and meeting text", () => {
+  const start = html.indexOf("function renderCompareH2H(");
+  const end = html.indexOf("function renderCompareResult(", start);
+  const rendererSource = html.slice(start, end);
+  const sandbox = {
+    Array, Number, String, Object,
+    escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+  };
+  vm.runInNewContext(rendererSource + "\nglobalThis.renderCompareH2H = renderCompareH2H;", sandbox);
+  const payload = {
+    players: { p1: { name: "<img src=x>" }, p2: { name: "Player B" } },
+    totals: { p1_wins: 1, p2_wins: 0, meetings: 1, undecided: 0 },
+    meetings: [{ date: "<script>", winner: 1, score: "<b>6-0</b>" }]
+  };
+  const rendered = sandbox.renderCompareH2H(payload, "<img src=x>", "Player B");
+  assert.match(rendered, /&lt;img src=x&gt;/);
+  assert.match(rendered, /&lt;script&gt;/);
+  assert.match(rendered, /&lt;b&gt;6-0&lt;\/b&gt;/);
+  assert.doesNotMatch(rendered, /<img src=x>|<script>|<b>6-0<\/b>/);
+});
