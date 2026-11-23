@@ -810,7 +810,7 @@ const liveScoreEnd = html.indexOf("function liveSurfaceLabel(surface)", liveScor
 const liveScoreSource = html.slice(liveScoreStart, liveScoreEnd);
 function runLiveScoreView(match) {
   const sandbox = {};
-  vm.runInNewContext(liveScoreSource + "\\nglobalThis.liveScoreView = liveScoreView;", sandbox);
+  vm.runInNewContext(liveScoreSource + "\nglobalThis.liveScoreView = liveScoreView;", sandbox);
   return sandbox.liveScoreView(match);
 }
 
