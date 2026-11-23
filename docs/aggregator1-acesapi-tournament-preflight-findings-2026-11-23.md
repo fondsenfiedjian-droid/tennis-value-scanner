@@ -47,8 +47,8 @@ Both tours include four records flagged as majors. The endpoint's `major` flag i
 
 ## Next offline work
 
-- Extend the aggregate parser/tests to report per-field missingness independently (tournament_id, name, start_date, end_date, surface, city, country, indoor, major, status, main_draw_matches).
-- Add a consistency warning when `next_offset` is non-null or returnedRows equals requestedLimit.
+- The offline parser and synthetic fixture now report independent missing counts for all core fields plus `indoor`, `major`, `status`, and `main_draw_matches`. These expanded counts were not present in the already-uploaded preflight artifacts; because raw responses were intentionally not retained, historical values cannot be reconstructed without another authorized fetch.
+- The parser now flags likely pagination incompleteness when `next_offset` is non-null or returnedRows reaches the requested limit. The synthetic fixture verifies both a complete first page and a paginated response.
 - Keep ATP and WTA coverage claims explicitly separate.
 - Compare tournament catalogue counts against independently available historical event inventories, with exact/ambiguous/unmatched classifications.
 - Do not fetch WTA page 2 or any tournament detail until separately authorized.
