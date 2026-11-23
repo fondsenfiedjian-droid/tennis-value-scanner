@@ -188,7 +188,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   const ambiguousCandidateBreakdown=new Map();
   const ambiguousNearestOffsetCounts=new Map(),ambiguousNearestGapCounts=new Map(),ambiguousDistinctDateCounts=new Map();
   const nearestDateCandidateRowsCounts=new Map(),nearestDateDistinctSignaturesCounts=new Map();
-  const nearestDateDiagnostics={rowsWithSingleSignature:0,rowsWithMultipleSignatures:0,duplicateExtraRows:0,rowsWithCrossTierDuplicate:0,rowsWithSameTierDuplicate:0,rowsWithMultiplePlayerIdPairs:0,rowsWithMissingPlayerIds:0};
+  const nearestDateDiagnostics={rowsWithSingleSignature:0,rowsWithMultipleSignatures:0,duplicateExtraRows:0,rowsWithCrossTierDuplicate:0,rowsWithSameTierDuplicate:0,rowsWithMultiplePlayerIdPairs:0,rowsWithMultiplePlayerIdPairsWithinSignature:0,rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly:0,rowsWithMissingPlayerIds:0};
   const ambiguousReasonBreakdown=new Map();
   const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()},directNameEvidence={ATP:new Map(),WTA:new Map()};
   let matchRowsWithBothPlayerIdsEvidence=0;
@@ -290,7 +290,11 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         else nearestDateDiagnostics.rowsWithMultipleSignatures++;
         nearestDateDiagnostics.duplicateExtraRows+=nearestDateCandidates.length-nearestSignatures;
         const nearestGroups=[...nearestDateGroups.values()];
-        if(new Set(nearestDateCandidates.map(x=>[x.winnerId||"(missing)",x.loserId||"(missing)"].join("::"))).size>1)nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs++;
+        const multipleIdPairs=new Set(nearestDateCandidates.map(x=>[x.winnerId||"(missing)",x.loserId||"(missing)"].join("::"))).size>1;
+        const multipleIdPairsWithinSignature=nearestGroups.some(group=>new Set(group.map(x=>[x.winnerId||"(missing)",x.loserId||"(missing)"].join("::"))).size>1);
+        if(multipleIdPairs)nearestDateDiagnostics.rowsWithMultiplePlayerIdPairs++;
+        if(multipleIdPairsWithinSignature)nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsWithinSignature++;
+        else if(multipleIdPairs)nearestDateDiagnostics.rowsWithMultiplePlayerIdPairsAcrossSignaturesOnly++;
         if(nearestDateCandidates.some(x=>!x.winnerId||!x.loserId))nearestDateDiagnostics.rowsWithMissingPlayerIds++;
         if([...nearestDateGroups.values()].some(group=>new Set(group.map(x=>x.tier)).size>1))nearestDateDiagnostics.rowsWithCrossTierDuplicate++;
         if([...nearestDateGroups.values()].some(group=>new Set(group.map(x=>x.tier)).size===1&&group.length>1))nearestDateDiagnostics.rowsWithSameTierDuplicate++;
