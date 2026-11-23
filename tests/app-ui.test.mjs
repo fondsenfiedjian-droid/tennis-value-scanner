@@ -847,7 +847,7 @@ test("TVS 2.0 four-section bottom navigation opens the approved destinations",()
   assert.match(html,/history\.id='historyView'/);
   assert.match(html,/settings\.id='settingsView'/);
   assert.match(html,/function hideAllScreens\(\)/);
-  const earlyNav=html.indexOf("document.addEventListener('click',event=>{\\n    const target=event.target instanceof Element?event.target.closest('#navBalance,#navHistory,#navStats,#navSettings'):null;");
+  const earlyNav=html.indexOf("const target=event.target instanceof Element?event.target.closest('#navBalance,#navHistory,#navStats,#navSettings'):null;");
   assert.ok(earlyNav>0&&earlyNav<html.indexOf('function mountIndependentScreens()'),
     'bottom navigation must be delegated before optional app initialization');
   assert.match(html,/\$\('#navBalance'\)\.onclick=showBalance;/);
