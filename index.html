@@ -438,6 +438,30 @@
     .empty-pick-ball-seam{fill:none;stroke:#fffbd0;stroke-width:2.2;stroke-linecap:round}
     @keyframes empty-pick-trail{to{stroke-dashoffset:-46}}
     @media(prefers-reduced-motion:reduce){.empty-pick-trail{animation:none}}
+
+    /* TVS 2.0 live scoreboard — first decision surface on the home screen */
+    .live-board{margin:0 0 15px;padding:13px;border:1px solid #3b3d49;border-radius:15px;background:linear-gradient(145deg,#151923,#0b0d12 78%);box-shadow:0 8px 24px #0005}
+    .live-board-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .live-board-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:900;letter-spacing:.08em;color:var(--text)}
+    .live-board-dot{width:8px;height:8px;border-radius:50%;background:#d64b58;box-shadow:0 0 10px #d64b58}
+    .live-board-meta{font-size:10px;color:var(--muted);margin-top:3px}
+    .live-refresh{border:1px solid #3c7280;border-radius:9px;background:#111b22;color:#72d6e8;padding:8px 11px;font-weight:800}
+    .live-refresh:disabled{opacity:.55}
+    .live-match-list{display:grid;gap:9px}
+    .live-match-card{padding:12px;border:1px solid #303541;border-radius:12px;background:#10131a}
+    .live-match-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}
+    .live-match-event{min-width:0;color:#aeb8c8;font-size:10px;line-height:1.35}
+    .live-match-state{flex:none;padding:4px 7px;border-radius:6px;border:1px solid #78313c;background:#28151a;color:#ff9ca8;font-size:9px;font-weight:900;letter-spacing:.06em}
+    .live-match-players{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center}
+    .live-match-player{font-size:13px;font-weight:800;color:var(--text);min-width:0;overflow-wrap:anywhere}
+    .live-match-player.serving:before{content:'●';color:#e3b455;font-size:9px;margin-right:6px}
+    .live-match-score{font-size:12px;font-weight:850;color:#e7edf8;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .live-match-score strong{color:#72d6e8}
+    .live-match-foot{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:9px;padding-top:8px;border-top:1px solid #292d37;color:#929cab;font-size:10px}
+    .live-empty,.live-error{padding:13px;border:1px dashed #3a414e;border-radius:11px;color:#aab3c0;font-size:12px;line-height:1.5}
+    .live-error{border-color:#75404b;color:#efb7bd;background:#211519}
+    @media(prefers-reduced-motion:reduce){.live-board-dot{box-shadow:none}}
+
 </style>
 </head>
 <body>
@@ -453,6 +477,15 @@
       <button class="tab active" data-day="today">Сегодня</button><button class="tab" data-day="tomorrow">Завтра</button><button class="tab" data-day="all">Все</button>
     </div>
   </div>
+
+
+  <section id="liveBoard" class="live-board" aria-label="Матчи в прямом эфире" aria-live="polite">
+    <div class="live-board-head">
+      <div><div class="live-board-title"><span class="live-board-dot"></span> LIVE · МАТЧИ СЕЙЧАС</div><div class="live-board-meta" id="liveBoardMeta">Ожидаю данные Live Tennis API</div></div>
+      <button type="button" class="live-refresh" id="liveRefreshBtn" aria-label="Обновить Live-матчи">↻ Обновить</button>
+    </div>
+    <div id="liveMatchList" class="live-match-list"><div class="live-empty">Загружаю текущие матчи…</div></div>
+  </section>
 
   <section id="bestBet" class="best-bet daily-pick" role="region" aria-label="Ставка дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></section>
 
@@ -2708,6 +2741,7 @@
         if(nextAutoRefreshAt&&Date.now()>=nextAutoRefreshAt&&!document.hidden){
           nextAutoRefreshAt=Date.now()+minutes*60*1000;
           loadMatches(true);
+          loadLiveMatches(true);
         }
       },15000);
     }
@@ -2720,6 +2754,7 @@
       if(Date.now()>=nextAutoRefreshAt){
         nextAutoRefreshAt=Date.now()+minutes*60*1000;
         loadMatches(true);
+        loadLiveMatches(true);
       }
     }
   });
@@ -2729,6 +2764,7 @@
     if(due&&!document.hidden){
       nextAutoRefreshAt=Date.now()+minutes*60*1000;
       loadMatches(true);
+      loadLiveMatches(true);
     }
     scheduleAutoRefresh(true);
   });
@@ -2770,6 +2806,91 @@
     }
     return {matches,pagesLoaded,total,hasMore,cacheStatus:cacheMiss?'MISS':'HIT'};
   }
+
+  function liveScoreView(match){
+    const score=match&&match.score&&typeof match.score==='object'?match.score:null;
+    if(!score)return {hasScore:false,sets:'—',games:'—',points:'',server:null,tiebreak:false};
+    const validPair=value=>Array.isArray(value)&&value.length>=2&&value.slice(0,2).every(x=>x!==null&&x!==undefined&&Number.isFinite(Number(x)));
+    const sets=validPair(score.sets)?Number(score.sets[0])+'–'+Number(score.sets[1]):'—';
+    const gameRows=Array.isArray(score.games)&&score.games.length>=2&&Array.isArray(score.games[0])&&Array.isArray(score.games[1])
+      ?Array.from({length:Math.max(score.games[0].length,score.games[1].length)},(_,i)=>{
+        const a=score.games[0][i],b=score.games[1][i];
+        return a!==null&&a!==undefined&&b!==null&&b!==undefined&&Number.isFinite(Number(a))&&Number.isFinite(Number(b))?Number(a)+'–'+Number(b):null;
+      }).filter(Boolean):[];
+    const points=validPair(score.points)?String(score.points[0])+'–'+String(score.points[1]):'';
+    return {hasScore:true,sets,games:gameRows.length?gameRows.join(' · '):'—',points,server:score.server===1||score.server===2?score.server:null,tiebreak:score.is_tiebreak===true};
+  }
+  function liveSurfaceLabel(surface){
+    return ({hard:'Хард',clay:'Грунт',grass:'Трава'})[String(surface||'').toLowerCase()]||'Покрытие не указано';
+  }
+  function renderLiveMatches(matches,updatedAt=Date.now(),sourceLabel='обновлено'){
+    const list=$('#liveMatchList'),meta=$('#liveBoardMeta');
+    if(!list||!meta)return;
+    const rows=Array.isArray(matches)?matches:[];
+    meta.textContent=rows.length+' матчей · '+sourceLabel+' '+new Date(updatedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    if(!rows.length){
+      list.innerHTML='<div class="live-empty">Сейчас нет матчей в игре. LIVE-табло появится здесь, когда начнутся встречи.</div>';
+      return;
+    }
+    list.innerHTML=rows.map(match=>{
+      const players=match?.players||{},p1=players.p1||match?.player1||{},p2=players.p2||match?.player2||{};
+      const name1=playerName(p1),name2=playerName(p2),score=liveScoreView(match);
+      const server1=score.server===1,server2=score.server===2;
+      const tournament=match?.tournament||match?.tournament_name||'Турнир не указан';
+      const round=match?.round_code||match?.round||'';
+      const eventStatus=String(match?.event_status||'').trim();
+      const stateLabel=eventStatus&&eventStatus.toLowerCase()!=='live'?eventStatus.toUpperCase():'В ИГРЕ';
+      const scoreHtml=score.hasScore
+        ?'<span>Сеты <strong>'+escapeHtml(score.sets)+'</strong></span><span>Геймы '+escapeHtml(score.games)+'</span>'+(score.points?'<span>Очки <strong>'+escapeHtml(score.points)+'</strong></span>':'')+(score.tiebreak?'<span>Тай-брейк</span>':'')
+        :'<span>Счёт пока не опубликован</span>';
+      const serving=score.server===null?'':'<span>Подаёт: '+escapeHtml(score.server===1?name1:name2)+'</span>';
+      return '<article class="live-match-card"><div class="live-match-top"><div class="live-match-event">'+escapeHtml(tournament)+(round?' · '+escapeHtml(round):'')+'</div><span class="live-match-state">'+escapeHtml(stateLabel)+'</span></div><div class="live-match-players"><div class="live-match-player'+(server1?' serving':'')+'">'+escapeHtml(name1)+'</div><div class="live-match-score">'+(score.hasScore?escapeHtml(score.sets):'—')+'</div><div class="live-match-player'+(server2?' serving':'')+'">'+escapeHtml(name2)+'</div><div class="live-match-score">'+(score.hasScore?escapeHtml(score.points||score.games):'—')+'</div></div><div class="live-match-foot"><span>'+escapeHtml(liveSurfaceLabel(match?.surface))+'</span>'+scoreHtml+serving+'</div></article>';
+    }).join('');
+  }
+  let liveMatchesLoading=false;
+  let liveMatchesCache=[];
+  let liveMatchesUpdatedAt=0;
+  async function loadLiveMatches(force=false){
+    if(liveMatchesLoading)return;
+    const button=$('#liveRefreshBtn');
+    try{
+      let saved=null;
+      try{const raw=localStorage.getItem('tvs-live-cache-v1');if(raw)saved=JSON.parse(raw);}catch(e){}
+      if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,60*1000)){
+        liveMatchesCache=saved.matches;liveMatchesUpdatedAt=saved.savedAt;
+        renderLiveMatches(liveMatchesCache,liveMatchesUpdatedAt,'локальный кэш');
+        return;
+      }
+      liveMatchesLoading=true;
+      if(button){button.disabled=true;button.textContent='…';}
+      const params=new URLSearchParams({status:'live',draw:'singles',limit:'200'});
+      if(force)params.set('fresh','true');
+      const response=await fetchWithTimeout(API+'/matches?'+params.toString(),{},15000);
+      const payload=await response.json();
+      if(!response.ok){
+        const retry=response.headers.get('Retry-After');
+        const message=response.status===429?'Лимит API. Повторить можно '+(retry?('через '+retry+' сек.'):'после сброса квоты')+'.':(payload.error||'HTTP '+response.status);
+        if(liveMatchesCache.length)renderLiveMatches(liveMatchesCache,liveMatchesUpdatedAt,'последние сохранённые данные');
+        else $('#liveMatchList').innerHTML='<div class="live-error">'+escapeHtml(message)+'</div>';
+        $('#liveBoardMeta').textContent='Live API: '+(response.status===429?'ограничение квоты':'ошибка '+response.status);
+        return;
+      }
+      if(!payload||!Array.isArray(payload.data))throw new Error('Формат Live-ответа не распознан: ожидался массив data.');
+      const rows=payload.data.filter(match=>match&&typeof match==='object'&&match.status==='live');
+      liveMatchesCache=rows;liveMatchesUpdatedAt=Date.now();
+      try{localStorage.setItem('tvs-live-cache-v1',JSON.stringify({savedAt:liveMatchesUpdatedAt,matches:rows}));}catch(e){}
+      renderLiveMatches(rows,liveMatchesUpdatedAt,String(response.headers.get('X-Data-Cache')||'').toUpperCase()==='HIT'?'кэш Worker':'источник API');
+    }catch(error){
+      if(liveMatchesCache.length)renderLiveMatches(liveMatchesCache,liveMatchesUpdatedAt,'последние сохранённые данные');
+      else $('#liveMatchList').innerHTML='<div class="live-error">Не удалось загрузить Live-матчи: '+escapeHtml(error.message)+'</div>';
+      $('#liveBoardMeta').textContent='Live API недоступен';
+    }finally{
+      liveMatchesLoading=false;
+      if(button){button.disabled=false;button.textContent='↻ Обновить';}
+    }
+  }
+  $('#liveRefreshBtn').onclick=()=>loadLiveMatches(true);
+
   let matchesLoading=false;
   async function loadMatches(force=false){
     if(matchesLoading)return;
@@ -2825,7 +2946,7 @@
       btn.disabled=false;btn.textContent='↻';btn.setAttribute('aria-label','Обновить данные');
     }
   }
-  $('#refreshBtn').onclick=()=>loadMatches(true);
+  $('#refreshBtn').onclick=()=>{loadMatches(true);loadLiveMatches(true);};
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navHome').onclick=showMain;
   $('#navMatches').onclick=showMatches;
@@ -2842,6 +2963,7 @@
   });
   setInterval(runAutomaticArchiveResultCheck,15*60*1000);
   loadMatches();
+  loadLiveMatches();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
 <script type="module">
