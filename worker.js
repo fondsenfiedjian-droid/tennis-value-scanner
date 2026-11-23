@@ -735,8 +735,7 @@ export default {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.ODDS_API_KEY) return response({ error: "ODDS_API_KEY secret is not configured" }, 500);
 
-      // Deliberately limited smoke test: only Betclic + NetBet, match-winner market.
-      // The caller supplies one currently active tennis sport key from /odds-api/sports.
+      // Diagnostic only: compare the three French bookmakers on the same tennis event feed.
       const sportKey = (url.searchParams.get("sport") || "tennis_atp_finals").trim();
       if (!/^tennis_[a-z0-9_]{2,80}$/.test(sportKey)) {
         return response({ error: "sport must be a valid tennis sport key from /odds-api/sports" }, 400);
@@ -744,25 +743,27 @@ export default {
 
       try {
         const cache = caches.default;
+        const forceRefresh = url.searchParams.get("fresh") === "true";
         const cacheKey = new Request(
-          cacheKeyUrl(env, "/__odds-api-test/v1/" + encodeURIComponent(sportKey)),
+          cacheKeyUrl(env, "/__odds-api-test/v2-fr-bookmakers/" + encodeURIComponent(sportKey)),
           { method: "GET" }
         );
-        const cached = await cache.match(cacheKey);
+        const cached = forceRefresh ? null : await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        const params = new URLSearchParams({
-          bookmakers: "betclic_fr,netbet_fr",
-          markets: "h2h",
-          oddsFormat: "decimal",
-          dateFormat: "iso"
-        });
+        const requestedBookmakers = ["betclic_fr", "netbet_fr", "winamax_fr"];
         const upstream = await fetch(
-          "https://api.the-odds-api.com/v4/sports/" + encodeURIComponent(sportKey) + "/odds/?" + params.toString(),
+          "https://api.the-odds-api.com/v4/sports/" + encodeURIComponent(sportKey) +
+          "/odds/?" + new URLSearchParams({
+            bookmakers: requestedBookmakers.join(","),
+            markets: "h2h",
+            oddsFormat: "decimal",
+            dateFormat: "iso"
+          }).toString(),
           { headers: { "x-api-key": env.ODDS_API_KEY, "Accept": "application/json" } }
         );
         let events;
@@ -781,18 +782,16 @@ export default {
           return response({ error: "The Odds API returned an unexpected odds payload", sportKey }, 502);
         }
 
-        const bookmakerStats = {
-          betclic: { key: "betclic_fr", events: 0, completeH2hMarkets: 0, outcomeQuotes: 0 },
-          netbet: { key: "netbet_fr", events: 0, completeH2hMarkets: 0, outcomeQuotes: 0 }
-        };
+        const bookmakerStats = Object.fromEntries(requestedBookmakers.map(key => [
+          key,
+          { key, events: 0, completeH2hMarkets: 0, outcomeQuotes: 0 }
+        ]));
         const eventSummaries = events.map(event => {
-          const bookmakers = Array.isArray(event?.bookmakers) ? event.bookmakers : [];
           const present = [];
-          for (const bookmaker of bookmakers) {
-            const target = bookmakerStats[bookmaker?.key === "betclic_fr" ? "betclic" :
-              bookmaker?.key === "netbet_fr" ? "netbet" : ""];
+          for (const bookmaker of Array.isArray(event?.bookmakers) ? event.bookmakers : []) {
+            const target = bookmakerStats[bookmaker?.key];
             if (!target) continue;
-            present.push(target.key);
+            present.push(bookmaker.key);
             target.events++;
             for (const market of Array.isArray(bookmaker.markets) ? bookmaker.markets : []) {
               if (market?.key !== "h2h") continue;
@@ -816,7 +815,7 @@ export default {
         const payload = {
           source: "The Odds API",
           sportKey,
-          requestedBookmakers: ["betclic_fr", "netbet_fr"],
+          requestedBookmakers,
           market: "h2h",
           oddsFormat: "decimal",
           retrievedAt: new Date().toISOString(),
