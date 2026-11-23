@@ -586,6 +586,8 @@
     const matches=document.createElement('main');
     matches.id='matchesView';matches.className='screen-view';
     matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div><button type="button" class="refresh screen-refresh" id="matchesRefreshBtn">↻ ОБНОВИТЬ</button></header>';
+    const datebar=app.querySelector('.datebar');
+    if(datebar)matches.appendChild(datebar);
     const direct=[...app.children];
     const marketHead=direct.find(el=>el.classList?.contains('section-head')&&el.textContent.includes('Рынки'));
     const foundHead=direct.find(el=>el.classList?.contains('section-head')&&el.textContent.includes('Найденные ставки'));
