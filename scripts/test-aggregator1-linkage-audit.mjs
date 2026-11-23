@@ -272,6 +272,10 @@ const ambiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
 const ambiguousReport=auditValuebetSackmann(ambiguousValuebet,ambiguousSackmann);
 assert.equal(ambiguousReport.totals.ambiguous,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rows,1);
+assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
+  unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:1,uniquePlayerIdPair:1,
+  completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1
+});
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.noExactEventMatch,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithExactDateCandidate,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rowsWithUniqueNearestCandidateDate,1);
