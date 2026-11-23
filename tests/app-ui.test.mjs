@@ -551,6 +551,14 @@ test("player comparison does not expose a match simulator",()=>{
   assert.doesNotMatch(html,/Сценарная симуляция BO|Симуляция не запускалась|simulationLabel|pfeScoreSimulation/);
 });
 
+test("match cards include a collapsible comparison using only verified Elo and quote data",()=>{
+  assert.match(html,/class="compare-dossier-block match-player-comparison"/);
+  assert.match(html,/<summary>Сравнение игроков<\/summary>/);
+  assert.match(html,/Elo покрытия/);
+  assert.match(html,/Справедливый кэф/);
+  assert.match(html,/Текущая форма и личные встречи \(H2H\) не запрашивались/);
+});
+
 test("independent player comparison calls the current Elo API and displays both players",()=>{
   assert.match(html,/id="compareNameA"/);
   assert.match(html,/id="compareNameB"/);
