@@ -1546,6 +1546,10 @@ test("auto-refresh setting is normalized and restored from persisted settings", 
   assert.match(frontendSource, /data\.refreshRate=refreshRate/);
   assert.match(frontendSource, /normalizeRefreshRate\(readSettings\(\)\.refreshRate\)/);
   assert.match(frontendSource, /window\.addEventListener\('pageshow'/);
+  assert.match(frontendSource, /function scheduleAutoRefresh\(preserveDeadline=false\)/);
+  assert.match(frontendSource, /preserveDeadline&&previousDeadline\?previousDeadline/);
+  assert.match(frontendSource, /const due=minutes>0&&nextAutoRefreshAt>0&&Date\.now\(\)>=nextAutoRefreshAt/);
+  assert.match(frontendSource, /if\(due&&!document\.hidden\)[\s\S]*?loadMatches\(true\)/);
 });
 
 test("failed result lookups receive a cooldown timestamp without changing other matches", () => {
