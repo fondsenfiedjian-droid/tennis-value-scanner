@@ -149,7 +149,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       cg.rows++;
       const tour=String(row.genre??"").trim().toUpperCase();
       const tourYearKey=(tour||"(empty)")+"::"+m[1];
-      const tourYearBucket=byTourYear[tourYearKey]||(byTourYear[tourYearKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+      const tourYearBucket=byTourYear[tourYearKey]||(byTourYear[tourYearKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tourYearBucket.rows++;
       if(["ATP","WTA"].includes(tour))for(const side of ["joueur1","joueur2"]){
         const id=String(row[side+"_id"]??"").trim(),name=normalize(row[side]);
@@ -166,14 +166,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const date=parseVbtDate(row.date),a=normalize(row.joueur1),b=normalize(row.joueur2);
       if(!byTour[tour])byTour[tour]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,invalidDate:0,unknownSurface:0};
       const g=byTour[tour];g.rows++;
-      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;continue;}
-      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
+      if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;continue;}
+      if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
-      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;cg.validRows++;tcg.validRows++;
+      totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;
       if(!sf){
-        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;
-        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;
+        totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;
+        totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;
         continue;
       }
       const key=[tour,[a,b].sort().join("|"),sf].join("::");
@@ -181,14 +181,14 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const samePair=sackPairIndex.get(pairKey)||[];
       const samePairSurface=samePair.filter(x=>x.surface===sf);
       const candidates=samePairSurface.filter(x=>Math.abs(date-x.date)<=maxDateOffsetDays);
-      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;yearBucket.pairAbsent++;}
-      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;yearBucket.surfaceAbsent++;}
-      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;yearBucket.dateWindowMiss++;}
-      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;}
+      if(!samePair.length){totals.pairAbsent++;cg.pairAbsent++;tcg.pairAbsent++;yearBucket.pairAbsent++;tourYearBucket.pairAbsent++;}
+      else if(!samePairSurface.length){totals.surfaceAbsent++;cg.surfaceAbsent++;tcg.surfaceAbsent++;yearBucket.surfaceAbsent++;tourYearBucket.surfaceAbsent++;}
+      else if(!candidates.length){totals.dateWindowMiss++;cg.dateWindowMiss++;tcg.dateWindowMiss++;yearBucket.dateWindowMiss++;tourYearBucket.dateWindowMiss++;}
+      if(candidates.length){totals.candidateRows++;g.candidateRows++;yearBucket.candidateRows++;tourYearBucket.candidateRows++;cg.candidateRows++;tcg.candidateRows++;}
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
       const selected=candidates.length===1?candidates[0]:(eventCandidates.length===1?eventCandidates[0]:null);
       if(selected){
-        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;
+        totals.linkedUnique++;g.linkedUnique++;yearBucket.linkedUnique++;tourYearBucket.linkedUnique++;cg.linkedUnique++;tcg.linkedUnique++;
         if(candidates.length===1){totals.linkedWithoutTournament++;g.linkedWithoutTournament++;}
         else{totals.linkedByTournament++;g.linkedByTournament++;}
         if(!ev){totals.sourceEventMissing++;g.sourceEventMissing++;}
@@ -206,8 +206,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           sourceIdEvidence[tour].get(source2).add(sack2);
           matchRowsWithBothPlayerIdsEvidence++;
         }
-      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;}
-      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
+      }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;}
+      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
