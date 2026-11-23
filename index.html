@@ -191,6 +191,18 @@
     #bestBet .best-bet-footnote{margin-top:10px;color:var(--muted);font-size:10px;line-height:1.45}
     #bestBet .best-bet-empty{padding:8px 0;color:#c9bdb6}
     @media(prefers-reduced-motion:reduce){#bestBet *{animation:none!important;transition:none!important}}
+    .team-tennis-panel{margin:0 0 14px;padding:13px;border:1px solid #66504a;border-radius:15px;background:linear-gradient(145deg,#211612,#100d0c)}
+    .team-tennis-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px;font-size:11px;letter-spacing:.06em;color:#e6bd58}
+    .team-tennis-head span{color:#c9b8ba;font-size:10px;letter-spacing:0}
+    .team-tennis-list{display:grid;gap:8px}
+    .team-tennis-card{padding:10px;border:1px solid #55443e;border-radius:11px;background:#100d0c}
+    .team-tennis-meta,.team-tennis-note{font-size:10px;color:#b9aaa3;line-height:1.45}
+    .team-tennis-teams{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0;font-size:13px;font-weight:800}
+    .team-tennis-teams b{color:#d58a8e}
+    .team-tennis-odds{display:flex;gap:16px;align-items:center;color:#c9b8ba;font-size:11px}
+    .team-tennis-odds b{color:#e6bd58;font-size:15px}
+    .team-tennis-odds small{margin-left:auto;color:#d58a8e;font-size:9px;font-weight:800}
+    .team-tennis-note{margin-top:7px}
     .match-quote-status{display:inline-flex;margin-top:7px;padding:4px 7px;border-radius:6px;font-size:10px;font-weight:750;letter-spacing:.02em;border:1px solid #625954;color:var(--muted);background:#141110}
     .match-quote-status.complete{border-color:#8a6c32;color:#e6bd58;background:#211a0d}
     .match-quote-status.partial{border-color:#80543d;color:#e9bd9d;background:#2b1d15}
@@ -1514,6 +1526,35 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     });
     return {matches,total:source.length,afterTour:byTour.length,withDate:withDate.length,withoutDate:byTour.length-withDate.length};
   }
+  function renderTeamTennisOdds(){
+    const now=Date.now(),groups=new Map();
+    const isTeamCup=value=>/davis cup|billie jean king cup|fed cup|united cup/i.test(String(value||''));
+    for(const quote of cachedOdds){
+      if(String(quote?.bookmaker||'').toLowerCase()!=='winamax')continue;
+      if(String(quote?.sport||'').toLowerCase()!=='tennis'||String(quote?.marketType||'').toLowerCase()!=='match_winner')continue;
+      const competition=String(quote.competition||quote.eventName||'');
+      if(!isTeamCup(competition))continue;
+      const stamp=Date.parse(quote.scrapedAt||''),start=Date.parse(quote.startTime||'');
+      if(!Number.isFinite(stamp)||now-stamp>ODDS_FRESHNESS_MAX_AGE_MS||stamp>now+5*60*1000)continue;
+      if(!Number.isFinite(start)||start<=now)continue;
+      const {home,away}=oddsEventParticipants(quote);
+      if(!home||!away)continue;
+      const key=oddsEventGroupKey(quote)||[start,home,away,competition].join('|');
+      if(!groups.has(key))groups.set(key,{home:quote.homeTeam||home,away:quote.awayTeam||away,competition,start,quotes:{}});
+      const group=groups.get(key),side=String(quote.outcome||'').toLowerCase();
+      if(!['home','away'].includes(side))continue;
+      const old=group.quotes[side];
+      if(!old||(Date.parse(quote.scrapedAt)||0)>(Date.parse(old.scrapedAt)||0))group.quotes[side]=quote;
+    }
+    const events=[...groups.values()].sort((a,b)=>a.start-b.start);
+    if(!events.length)return '<section class="team-tennis-panel"><div class="team-tennis-head"><b>КОМАНДНЫЙ ТЕННИС</b><span>DAVIS CUP · BJK CUP</span></div><div class="muted">Свежих будущих командных котировок Winamax сейчас нет. Раздел обновится вместе с общей выгрузкой коэффициентов.</div></section>';
+    return '<section class="team-tennis-panel"><div class="team-tennis-head"><b>КОМАНДНЫЙ ТЕННИС</b><span>'+events.length+' встреч</span></div><div class="team-tennis-list">'+events.map(event=>{
+      const date=new Date(event.start).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const home=event.quotes.home,away=event.quotes.away;
+      const odds=q=>q&&Number.isFinite(Number(q.oddsDecimal))?Number(q.oddsDecimal).toFixed(2):'—';
+      return '<article class="team-tennis-card"><div class="team-tennis-meta">'+escapeHtml(event.competition)+' · '+escapeHtml(date)+'</div><div class="team-tennis-teams"><span>'+escapeHtml(event.home)+'</span><b>—</b><span>'+escapeHtml(event.away)+'</span></div><div class="team-tennis-odds"><span>1 <b>'+odds(home)+'</b></span><span>2 <b>'+odds(away)+'</b></span><small>Winamax</small></div><div class="team-tennis-note">'+(home&&away?'Оба исхода получены':'Найден только один исход')+' · вне индивидуального Elo и отбора ставок</div></article>';
+    }).join('')+'</div></section>';
+  }
   let predictionRenderId=0;
   function renderMatches(all){
     predictionRenderId++;
@@ -1536,9 +1577,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const message='Матчей на выбранную дату не найдено.';
       const diagnostic='Получено от API: '+schedule.total+'. После фильтра турниров: '+schedule.afterTour+'. С датой начала: '+schedule.withDate+'. Без даты начала: '+schedule.withoutDate+'.';
       const hint=selectedDay==='all'?'В режиме «Все» должны отображаться и матчи без опубликованного времени.':'Попробуй режим «Все»: API может вернуть матчи, для которых время начала ещё не опубликовано.';
-      list.innerHTML=coverageBanner+'<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">'+escapeHtml(diagnostic)+' '+escapeHtml(hint)+' Коэффициенты не являются фильтром списка.</div></div>';return;
+      list.innerHTML=renderTeamTennisOdds()+coverageBanner+'<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">'+escapeHtml(diagnostic)+' '+escapeHtml(hint)+' Коэффициенты не являются фильтром списка.</div></div>';return;
     }
-    list.innerHTML=coverageBanner+filtered.map((m,i)=>{
+    list.innerHTML=renderTeamTennisOdds()+coverageBanner+filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
       const a=playerName(p1);const b=playerName(p2);
       const d=matchDate(m);const time=d?d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
