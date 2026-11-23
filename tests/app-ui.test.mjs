@@ -421,7 +421,7 @@ test("settings preview changes are committed only by Save and Cancel restores sa
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v134"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v135"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -802,4 +802,61 @@ test("upcoming schedule follows API pagination and warns when the page cap is re
   assert.match(html, /Расписание загружено не полностью/);
   assert.match(html, /localStorage\.getItem\('tvs-match-cache-v3'\)/);
   assert.match(html, /localStorage\.setItem\('tvs-match-cache-v3'/);
+});
+
+
+const liveScoreStart = html.indexOf("function liveScoreView(match)");
+const liveScoreEnd = html.indexOf("function liveSurfaceLabel(surface)", liveScoreStart);
+const liveScoreSource = html.slice(liveScoreStart, liveScoreEnd);
+function runLiveScoreView(match) {
+  const sandbox = {};
+  vm.runInNewContext(liveScoreSource + "\\nglobalThis.liveScoreView = liveScoreView;", sandbox);
+  return sandbox.liveScoreView(match);
+}
+
+test("home screen places a live scoreboard above the pre-match Bet of the Day", () => {
+  const liveAt = html.indexOf('id="liveBoard"');
+  const betAt = html.indexOf('id="bestBet"');
+  assert.ok(liveAt >= 0 && betAt > liveAt);
+  assert.match(html, /id="liveMatchList"/);
+  assert.match(html, /id="liveRefreshBtn"/);
+  assert.match(html, /LIVE · МАТЧИ СЕЙЧАС/);
+});
+
+test("live score adapter reads player-major sets, games, points and server without inventing values", () => {
+  const result = runLiveScoreView({
+    score: {
+      sets: [2, 1],
+      games: [[6, 3, 2], [4, 6, 1]],
+      points: ["30", "15"],
+      server: 2,
+      is_tiebreak: false
+    }
+  });
+  assert.equal(result.hasScore, true);
+  assert.equal(result.sets, "2–1");
+  assert.equal(result.games, "6–4 · 3–6 · 2–1");
+  assert.equal(result.points, "30–15");
+  assert.equal(result.server, 2);
+  assert.equal(result.tiebreak, false);
+  assert.equal(runLiveScoreView({ score: null }).hasScore, false);
+  assert.equal(runLiveScoreView({ score: { sets: null, games: null, points: null, server: null } }).sets, "—");
+});
+
+test("live feed uses one slate request, local cache and quota-conscious configured refresh", () => {
+  assert.match(html, /new URLSearchParams\(\{status:'live',draw:'singles',limit:'200'\}\)/);
+  assert.match(html, /API\+'\/matches\?'\+params\.toString\(\)/);
+  assert.match(html, /tvs-live-cache-v1/);
+  assert.match(html, /isFreshCacheTimestamp\(saved\.savedAt,60\*1000\)/);
+  assert.match(html, /loadLiveMatches\(true\)/);
+  assert.match(html, /loadLiveMatches\(\);/);
+  assert.match(html, /match\.status==='live'/);
+  assert.doesNotMatch(html, /\/matches\/\$\{[^}]+\}\/statistics/);
+});
+
+test("live scoreboard shows data access errors instead of fabricated scores or probabilities", () => {
+  assert.match(html, /Лимит API/);
+  assert.match(html, /Счёт пока не опубликован/);
+  assert.match(html, /Не удалось загрузить Live-матчи/);
+  assert.doesNotMatch(html, /win_probability_p1/);
 });
