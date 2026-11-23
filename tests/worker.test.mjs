@@ -1795,6 +1795,9 @@ test("prediction scanner reuses all fresh cached candidates and caps only uncach
   assert.match(frontendSource, /const candidates=\[\.\.\.cachedCandidates,\.\.\.uncachedCandidates\.slice\(0,5\)\]/);
   assert.match(frontendSource, /forbidden_or_plan_restricted'\?6\*60\*60\*1000/);
   assert.match(frontendSource, /const totalCandidates=allCandidates\.length/);
+  assert.match(frontendSource, /cap new profile lookups at five per scan/);
+  assert.match(frontendSource, /const pending=Math\.max\(0,totalCandidates-scanned-failed\)/);
+  assert.match(frontendSource, /В очереди:/);
   assert.match(frontendSource, /renderBestBet\(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback\)/);
 });
 
