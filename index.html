@@ -657,6 +657,12 @@
     const minutes=Number(value);
     return [0,30,60,180].includes(minutes)?minutes:60;
   }
+  function maxNewMatchesPerScan(refreshRate=readSettings().refreshRate){
+    const minutes=normalizeRefreshRate(refreshRate);
+    // Reserve up to 672 of BASIC's 1,000 daily calls for two profile reads per newly evaluated match.
+    if(minutes===0)return 20;
+    return Math.max(1,Math.floor(336/(1440/minutes)));
+  }
   function currentValueFilters(){
     const settings=readSettings();
     const finite=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
@@ -2398,7 +2404,8 @@
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
-    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,7)];
+    const newMatchLimit=maxNewMatchesPerScan();
+    const candidates=[...cachedCandidates,...uncachedCandidates.slice(0,newMatchLimit)];
     const totalCandidates=allCandidates.length;
     // Preserve the verified bookmaker pair if model calculation is unavailable.
     const oddsFallback=matches.map((m,i)=>{
