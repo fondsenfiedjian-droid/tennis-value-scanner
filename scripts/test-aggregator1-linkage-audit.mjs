@@ -226,11 +226,11 @@ console.log("Aggregator 1 linkage audit fixtures: PASS");
 const mismatchBreakdownValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
   "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
   "mb1;2025-08-11;Source Event Alpha;atp;dur;Breakdown Player A;Breakdown Player B;Challenger"
-].join("\\n")}];
+].join("\n")}];
 const mismatchBreakdownSack=[{filename:"atp_matches_qual_chall_2025.csv",content:[
   "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
   "20250811,Archive Event Beta,Hard,Breakdown Player A,Breakdown Player B,801,802"
-].join("\\n")}];
+].join("\n")}];
 const mismatchBreakdownReport=auditValuebetSackmann(mismatchBreakdownValuebet,mismatchBreakdownSack);
 assert.equal(mismatchBreakdownReport.totals.linkedUnique,1);
 assert.equal(mismatchBreakdownReport.totals.eventNameMismatch,1);
