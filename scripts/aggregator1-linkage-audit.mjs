@@ -184,8 +184,9 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
   }
   const totals={valuebetRows:0,validValuebetRows:0,candidateRows:0,linkedUnique:0,linkedWithoutTournament:0,linkedByTournament:0,eventNameExactMatch:0,eventNameMismatch:0,eventNameUnavailableInSackmann:0,sourceEventMissing:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0};
   const byTour={},byYear={},byTourYear={},byCategory={},byTourCategory={},byTourYearCategory={},offsets=[],eventMismatchPairs=new Map(),eventMismatchBreakdown=new Map();
-  const ambiguousDiagnostics={rows:0,exactEventDisambiguated:0,noExactEventMatch:0,multipleExactEventMatches:0,candidateRows:0};
+  const ambiguousDiagnostics={rows:0,exactEventDisambiguated:0,noExactEventMatch:0,multipleExactEventMatches:0,candidateRows:0,rowsWithCrossTierDuplicateCandidate:0,rowsWithSameTierDuplicateCandidate:0,rowsWithMultipleDistinctEventDates:0,duplicateCandidateExtraRows:0,distinctCandidateSignatures:0};
   const ambiguousCandidateBreakdown=new Map();
+  const ambiguousReasonBreakdown=new Map();
   const sourcePlayerIds={ATP:new Set(),WTA:new Set()},sourceIdEvidence={ATP:new Map(),WTA:new Map()},directNameEvidence={ATP:new Map(),WTA:new Map()};
   let matchRowsWithBothPlayerIdsEvidence=0;
   const valuebetSchema={columns:[],categorical:{}};
@@ -254,6 +255,24 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         if(eventCandidates.length===1)ambiguousDiagnostics.exactEventDisambiguated++;
         else if(eventCandidates.length===0)ambiguousDiagnostics.noExactEventMatch++;
         else ambiguousDiagnostics.multipleExactEventMatches++;
+        const candidateGroups=new Map();
+        for(const candidate of candidates){
+          const signature=[candidate.date,candidate.event||"(missing)",candidate.winnerName,candidate.loserName].join("::");
+          if(!candidateGroups.has(signature))candidateGroups.set(signature,[]);
+          candidateGroups.get(signature).push(candidate);
+        }
+        const groups=[...candidateGroups.values()];
+        ambiguousDiagnostics.distinctCandidateSignatures+=groups.length;
+        ambiguousDiagnostics.duplicateCandidateExtraRows+=candidates.length-groups.length;
+        const crossTierDuplicate=groups.some(group=>new Set(group.map(x=>x.tier)).size>1);
+        const sameTierDuplicate=groups.some(group=>new Set(group.map(x=>x.tier)).size===1&&group.length>1);
+        const eventDates=new Set(eventCandidates.map(x=>x.date));
+        const multipleEventDates=eventDates.size>1;
+        if(crossTierDuplicate)ambiguousDiagnostics.rowsWithCrossTierDuplicateCandidate++;
+        if(sameTierDuplicate)ambiguousDiagnostics.rowsWithSameTierDuplicateCandidate++;
+        if(multipleEventDates)ambiguousDiagnostics.rowsWithMultipleDistinctEventDates++;
+        const reasonKey=[tour,m[1],category,crossTierDuplicate?"cross-tier-duplicate":"no-cross-tier-duplicate",sameTierDuplicate?"same-tier-duplicate":"no-same-tier-duplicate",multipleEventDates?"same-event-multiple-dates":"single-event-date-or-no-exact-event"].join("::");
+        ambiguousReasonBreakdown.set(reasonKey,(ambiguousReasonBreakdown.get(reasonKey)||0)+1);
         for(const candidate of candidates){
           const detailKey=[tour,m[1],category,candidate.tier,ev||"(missing)",candidate.event||"(missing)"].join("::");
           ambiguousCandidateBreakdown.set(detailKey,(ambiguousCandidateBreakdown.get(detailKey)||0)+1);
@@ -347,7 +366,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     coverageInterpretation:{denominator:"Observed Valuebetennis archive rows with valid tour, date and player pair; this is not an official tournament-schedule denominator.",sourceTierCounts:"Sackmann source row counts are reported by tour/year/file tier and are not interchangeable with Valuebetennis competition labels.",partialYear:"2026 is a current/partial archive snapshot and must not be compared with completed historical years as if it were complete.",completeness:"No year is certified complete by this linkage audit; source row counts describe only the files downloaded for this run."},
     sources:{valuebetennisFiles:valuebetFiles.map(x=>basename(x.filename)).sort(),sackmannFiles:sackmannFiles.map(x=>basename(x.filename)).sort(),sackmannSourceRows:sourceRows,sackmannSourceRowsByYear:sourceRowsByYear,sackmannSourceRowsByYearTier:sourceRowsByYearTier},
     matching:{playerNames:"exact normalized full-name pair, order-independent",tournament:"not required for a single player-pair/surface/date candidate; exact normalized name or explicit alias is used only to resolve multiple candidates",surface:"normalized exact surface, including French Valuebetennis labels",date:"absolute difference from Sackmann tourney_date <= "+maxDateOffsetDays+" days",acceptance:"one candidate is accepted; multiple candidates require exactly one tournament-name match, otherwise remain ambiguous"},
-    eventNameDiagnostics:{method:"For accepted links, compare normalized source tournament name with Sackmann tournament name; a mismatch is diagnostic only and does not automatically reject a unique pair/surface/date candidate.",topMismatchPairs:[...eventMismatchPairs].sort((a,b)=>b[1]-a[1]).slice(0,50).map(([pair,count])=>({pair,count})),topMismatchBreakdown:[...eventMismatchBreakdown].sort((a,b)=>b[1]-a[1]).slice(0,250).map(([key,count])=>{const [tour,year,category,sackmannTier,pair]=key.split("::");return{tour,year,category,sackmannTier,pair,count};}),ambiguousCandidateResolution:{...ambiguousDiagnostics,topBreakdown:[...ambiguousCandidateBreakdown].sort((a,b)=>b[1]-a[1]).slice(0,250).map(([key,count])=>{const [tour,year,category,sackmannTier,sourceEvent,candidateEvent]=key.split("::");return{tour,year,category,sackmannTier,sourceEvent,candidateEvent,count};})}},
+    eventNameDiagnostics:{method:"For accepted links, compare normalized source tournament name with Sackmann tournament name; a mismatch is diagnostic only and does not automatically reject a unique pair/surface/date candidate.",topMismatchPairs:[...eventMismatchPairs].sort((a,b)=>b[1]-a[1]).slice(0,50).map(([pair,count])=>({pair,count})),topMismatchBreakdown:[...eventMismatchBreakdown].sort((a,b)=>b[1]-a[1]).slice(0,250).map(([key,count])=>{const [tour,year,category,sackmannTier,pair]=key.split("::");return{tour,year,category,sackmannTier,pair,count};}),ambiguousCandidateResolution:{...ambiguousDiagnostics,topReasonBreakdown:[...ambiguousReasonBreakdown].sort((a,b)=>b[1]-a[1]).slice(0,100).map(([key,count])=>{const [tour,year,category,crossTierDuplicate,sameTierDuplicate,eventDatePattern]=key.split("::");return{tour,year,category,crossTierDuplicate,sameTierDuplicate,eventDatePattern,count};}),topBreakdown:[...ambiguousCandidateBreakdown].sort((a,b)=>b[1]-a[1]).slice(0,250).map(([key,count])=>{const [tour,year,category,sackmannTier,sourceEvent,candidateEvent]=key.split("::");return{tour,year,category,sackmannTier,sourceEvent,candidateEvent,count};})}},
     totals:{
       ...totals,
       dateOffsetDays:sorted.length?{count:sorted.length,min:sorted[0],median:sorted[Math.floor((sorted.length-1)/2)],p90:sorted[Math.floor((sorted.length-1)*.9)],max:sorted.at(-1)}:null
