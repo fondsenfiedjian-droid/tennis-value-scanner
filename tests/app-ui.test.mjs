@@ -860,3 +860,11 @@ test("live scoreboard shows data access errors instead of fabricated scores or p
   assert.match(html, /Не удалось загрузить Live-матчи/);
   assert.doesNotMatch(html, /win_probability_p1/);
 });
+
+test("expired live cache remains available as a labelled fallback when the API is unavailable", () => {
+  const assignAt = html.indexOf("liveMatchesCache=saved.matches");
+  const freshnessAt = html.indexOf("if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,60*1000))");
+  const errorFallbackAt = html.indexOf("последние сохранённые данные");
+  assert.ok(assignAt >= 0 && freshnessAt > assignAt);
+  assert.ok(errorFallbackAt > freshnessAt);
+});
