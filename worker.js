@@ -664,7 +664,7 @@ export default {
         // The Odds API documents /v4/sports as quota-exempt. Use the key header
         // so the credential never appears in a URL, logs, or returned payload.
         const cache = caches.default;
-        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-sports/v1"), { method: "GET" });
+        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-sports/v2-all"), { method: "GET" });
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -672,7 +672,7 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        const upstream = await fetch("https://api.the-odds-api.com/v4/sports", {
+        const upstream = await fetch("https://api.the-odds-api.com/v4/sports?all=true", {
           headers: { "x-api-key": env.ODDS_API_KEY, "Accept": "application/json" }
         });
         let body;
