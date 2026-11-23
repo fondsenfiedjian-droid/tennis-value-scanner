@@ -857,6 +857,33 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="amber-led"] .actions button:focus,
     body[data-skin="amber-led"] .chip:focus{outline:2px solid #ff9a55;outline-offset:2px}
 
+  
+    body[data-skin="amber-led"] .led-digit{
+      display:inline-flex;position:relative;vertical-align:-.08em;width:.64em;height:1em;
+      margin:0 .045em;flex:0 0 .64em
+    }
+    body[data-skin="amber-led"] .led-digit i{
+      position:absolute;display:block;background:#ffad55;border-radius:99px;
+      box-shadow:0 0 3px #ffad55,0 0 8px #f07832aa,0 0 15px #d65b2555;
+      opacity:.08
+    }
+    body[data-skin="amber-led"] .led-digit i.on{opacity:1}
+    body[data-skin="amber-led"] .led-digit .a,
+    body[data-skin="amber-led"] .led-digit .g,
+    body[data-skin="amber-led"] .led-digit .d{height:.085em;width:.42em;left:.11em}
+    body[data-skin="amber-led"] .led-digit .a{top:.015em}
+    body[data-skin="amber-led"] .led-digit .g{top:.457em}
+    body[data-skin="amber-led"] .led-digit .d{bottom:.015em}
+    body[data-skin="amber-led"] .led-digit .b,
+    body[data-skin="amber-led"] .led-digit .c,
+    body[data-skin="amber-led"] .led-digit .e,
+    body[data-skin="amber-led"] .led-digit .f{width:.085em;height:.39em}
+    body[data-skin="amber-led"] .led-digit .b{right:.025em;top:.055em}
+    body[data-skin="amber-led"] .led-digit .c{right:.025em;bottom:.055em}
+    body[data-skin="amber-led"] .led-digit .e{left:.025em;bottom:.055em}
+    body[data-skin="amber-led"] .led-digit .f{left:.025em;top:.055em}
+    body[data-skin="amber-led"] .led-dot{display:inline-block;width:.12em;height:.12em;margin:0 .1em .04em .05em;border-radius:50%;background:#ffad55;box-shadow:0 0 5px #ffad55,0 0 12px #f07832}
+
   </style>
 </head>
 <body>
@@ -1191,8 +1218,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  if(saved.skin==='black'&&saved.musicPaletteDefaultApplied!==true){
-    saved.skin='terracotta';saved.musicPaletteDefaultApplied=true;
+  if(saved.amberLedDefaultApplied!==true){
+    saved.skin='amber-led';saved.amberLedDefaultApplied=true;
     try{localStorage.setItem('tvs-settings',JSON.stringify(saved));}catch(e){}
   }
   let activeSkin=['black','steel','neon','terracotta','amber-led'].includes(saved.skin)?saved.skin:'amber-led';
@@ -1251,7 +1278,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     data.bankMaxDailyStakePercent=bankMaxDailyStakePercent;data.bankKellyFraction=bankKellyFraction;
     data.refreshRate=refreshRate;
     data.skin=['black','steel','neon','terracotta','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
-    data.musicPaletteDefaultApplied=true;
+    data.musicPaletteDefaultApplied=true;data.amberLedDefaultApplied=true;
     data.tours=tours;
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
@@ -3848,5 +3875,52 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }finally{button.disabled=false;button.textContent='Аудит нагрузки игроков';}
   });
 </script>
+
+<script>
+(()=> {
+  const digits={
+    "0":"abcdef","1":"bc","2":"abged","3":"abgcd","4":"fgbc",
+    "5":"afgcd","6":"afgecd","7":"abc","8":"abcdefg","9":"abfgcd"
+  };
+  const targets=".stat-num,.plan-summary-item b,.best-bet-odds,.mandatory-bet-row b,.best-bet-metrics b,.odds-visible b";
+  function paint(node){
+    if(!node||node.dataset.ledPainted==="1")return;
+    const raw=node.textContent||"";
+    if(!/[0-9]/.test(raw))return;
+    const frag=document.createDocumentFragment();
+    for(const char of raw){
+      if(/[0-9]/.test(char)){
+        const digit=document.createElement("span");
+        digit.className="led-digit";
+        digit.setAttribute("aria-hidden","true");
+        for(const seg of "abcdefg"){
+          const part=document.createElement("i");
+          part.className=seg+(digits[char].includes(seg)?" on":"");
+          digit.appendChild(part);
+        }
+        frag.appendChild(digit);
+      }else if(char==="."){
+        const dot=document.createElement("span");dot.className="led-dot";dot.setAttribute("aria-hidden","true");frag.appendChild(dot);
+      }else{
+        frag.appendChild(document.createTextNode(char));
+      }
+    }
+    node.replaceChildren(frag);
+    node.dataset.ledPainted="1";
+    node.setAttribute("aria-label",raw);
+  }
+  function scan(root=document){root.querySelectorAll?.(targets).forEach(paint);}
+  scan();
+  const observer=new MutationObserver(records=>{
+    for(const record of records){
+      const target=record.target.nodeType===1?record.target:record.target.parentElement;
+      if(target?.matches?.(targets)){target.dataset.ledPainted="";paint(target);}
+      target?.querySelectorAll?.(targets).forEach(node=>{node.dataset.ledPainted="";paint(node);});
+    }
+  });
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+})();
+</script>
+
 </body>
                                                                                                                                 </html>
