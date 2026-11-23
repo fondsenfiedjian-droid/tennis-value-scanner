@@ -914,7 +914,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(!app||$('#matchesView'))return;
     const matches=document.createElement('main');
     matches.id='matchesView';matches.className='screen-view';
-    matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div><button type="button" class="refresh screen-refresh" id="matchesRefreshBtn">↻ ОБНОВИТЬ</button></header>';
+    matches.innerHTML='<header class="screen-header"><div><div class="brand">МАТЧИ</div><div class="sub">Полное расписание и состояние котировок</div></div></header>';
     const datebar=app.querySelector('.datebar');
     if(datebar)matches.appendChild(datebar);
     const direct=[...app.children];
@@ -998,7 +998,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const archiveQuality=$('#archiveOddsQuality')?.parentElement;
     const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
     [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
-    $('#matchesRefreshBtn').addEventListener('click',()=>loadMatches(true));
     $('#liveRefreshPageBtn').addEventListener('click',()=>loadLiveMatches(true));
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
   }
@@ -3645,8 +3644,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const day=button.id==='topTomorrow'?'tomorrow':'today';
       openStatusScreen('matchesView');
       document.querySelector('.tab[data-day="'+day+'"]')?.click();
-      const list=document.getElementById('matchList');
-      if(!list||!list.children.length||list.textContent.includes('Нажми'))document.getElementById('matchesRefreshBtn')?.click();
     }
   },true);
   checkApi();
