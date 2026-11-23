@@ -704,6 +704,15 @@ test("match list keeps all scheduled matches visible and labels fresh quote-pair
   assert.match(html, /Без даты начала:/);
 });
 
+test("virtual bet history shows actual outcome post-settlement balance and corrected ledger entries", () => {
+  assert.ok(html.includes('option value="reversed">Исправленный расчёт</option>'));
+  assert.match(html, /tx\.type==='settlement_reversed'/);
+  assert.match(html, /balanceAfterById\.set\(tx\.id,ledgerBalance\)/);
+  assert.match(html, /Исход:.*P\/L/);
+  assert.match(html, /баланс после операции/);
+  assert.match(html, /Предыдущий расчёт отменён/);
+});
+
 test("virtual bankroll exposes validated JSON backup and guarded restore controls", () => {
   assert.ok(html.includes('id="virtualBankExport"'));
   assert.ok(html.includes('id="virtualBankImportFile"'));
