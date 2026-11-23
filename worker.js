@@ -1373,7 +1373,8 @@ export default {
               "X-API-Key": env.LIVE_TENNIS_API_KEY,
               "Accept": "application/json"
             }
-          }
+          },
+          env
         );
 
         const body = await upstream.json();
@@ -1381,14 +1382,15 @@ export default {
         const retryAfter = upstream.headers.get("Retry-After");
         if (retryAfter) responseHeaders["Retry-After"] = retryAfter;
         if (upstream.ok) {
-          responseHeaders["Cache-Control"] = "public, max-age=900";
+          const cacheTtl = status === "live" ? 20 : 900;
+          responseHeaders["Cache-Control"] = `public, max-age=${cacheTtl}`;
           responseHeaders["X-Data-Cache"] = "MISS";
           const cacheResponse = new Response(JSON.stringify(body), {
             status: 200,
             headers: {
               ...cors,
               "Content-Type": "application/json; charset=utf-8",
-              "Cache-Control": "public, max-age=900",
+              "Cache-Control": `public, max-age=${cacheTtl}`,
               "X-Data-Cache": "MISS"
             }
           });
