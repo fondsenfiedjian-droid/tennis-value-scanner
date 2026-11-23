@@ -664,8 +664,9 @@ export default {
         // The Odds API documents /v4/sports as quota-exempt. Use the key header
         // so the credential never appears in a URL, logs, or returned payload.
         const cache = caches.default;
-        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-sports/v2-all"), { method: "GET" });
-        const cached = await cache.match(cacheKey);
+        const forceRefresh = url.searchParams.get("fresh") === "true";
+        const cacheKey = new Request(cacheKeyUrl(env, "/__odds-api-sports/v3-diagnostics"), { method: "GET" });
+        const cached = forceRefresh ? null : await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
           headers.set("X-Data-Cache", "HIT");
@@ -693,13 +694,23 @@ export default {
         const tennisSports = body.filter(sport =>
           String(sport?.key || "").startsWith("tennis_")
         );
+        const tennisRelatedSports = body.filter(sport =>
+          /tennis|atp|wta/i.test(String(sport?.key || "") + " " + String(sport?.title || ""))
+        );
         const payload = {
           source: "The Odds API",
           retrievedAt: new Date().toISOString(),
           quotaCost: 0,
           totalSports: body.length,
           tennisSportsCount: tennisSports.length,
-          tennisSports
+          tennisSports,
+          tennisRelatedSports,
+          sportsSample: body.slice(0, 20).map(sport => ({
+            key: sport?.key ?? null,
+            title: sport?.title ?? null,
+            active: sport?.active ?? null,
+            hasOutrights: sport?.has_outrights ?? null
+          }))
         };
         const headers = {
           "Cache-Control": "public, max-age=900",
