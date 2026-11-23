@@ -1246,3 +1246,10 @@ Initial audit confirmed current `renderMatches()` hides matches without a comple
 - Added capture-phase navigation fallback for LIVE / СКОРО / ЗАВТРА. It directly activates the corresponding screen and triggers its refresh control even if primary navigation setup fails.
 - Missing Preview Apify configuration is shown explicitly in the odds status instead of leaving an unexplained empty feed.
 - Bumped the service-worker cache to v137 and added regression assertions. Preview branch only; CI and real-device verification pending. Production untouched.
+
+ 
+### 2026-11-23 — Critical independent-screen visibility fix
+- Root cause confirmed in CSS: `.app.screen-open > :not(.main-header):not(.top-status-nav)` hid every independent screen with `display:none!important`, overriding the screens' inline `display:block`.
+- Exempted `.screen-view` from the hide rule so only non-screen app children remain hidden while the selected screen can render.
+- Added regression coverage and bumped the static service-worker cache to v138.
+- Winamax feed remains a separate unresolved check: direct Preview Worker health/odds endpoint access was unavailable from this environment, so Preview `APIFY_TOKEN` status is not confirmed. No scraper or Production changes.
