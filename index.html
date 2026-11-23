@@ -922,6 +922,11 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     balance.innerHTML='<header class="screen-header"><div><div class="brand">БАЛАНС</div><div class="sub">Виртуальный банк · стартовый капитал 1 000 €</div></div></header><div class="field"><label for="balancePeriod">Период финансовой статистики</label><select id="balancePeriod"><option value="day">Сегодня</option><option value="week">Эта неделя</option><option value="month">Этот месяц</option><option value="all" selected>Весь период</option></select></div><section class="stats" style="margin-top:8px"><div class="panel"><div class="muted">Текущий баланс</div><div class="stat-num" id="virtualBalance">1 000,00 €</div></div><div class="panel"><div class="muted">Прибыль / убыток</div><div class="stat-num" id="virtualProfit">0,00 €</div></div><div class="panel"><div class="muted">Открытые ставки</div><div class="stat-num" id="virtualOpen">0</div></div><div class="panel"><div class="muted">Расчётные ставки</div><div class="stat-num" id="virtualSettled">0</div></div><div class="panel"><div class="muted">ROI стратегии</div><div class="stat-num" id="virtualRoi">—</div></div><div class="panel"><div class="muted">Максимальная просадка</div><div class="stat-num" id="virtualDrawdown">0,00 €</div></div><div class="panel"><div class="muted">Оборот ставок</div><div class="stat-num" id="virtualTurnover">0,00 €</div></div></section><section class="more-screen-card"><h2>Виртуальная стратегия</h2><p id="virtualBankStatus">Симулятор готовит подключение к строгому отбору рекомендаций. Реальные деньги не используются.</p><div class="archive-meta">Стартовый капитал: 1 000 € · ставки фиксируются по коэффициенту и времени снимка · результаты не переписываются задним числом.</div></section>';
     more.after(balance);
 
+    const backup=document.createElement('section');
+    backup.className='more-screen-card';
+    backup.innerHTML='<h2>Резервная копия виртуального банка</h2><p>Экспортируйте журнал ставок и операций в JSON. При восстановлении текущий банк будет заменён данными выбранной копии только после проверки контрольной суммы и вашего подтверждения.</p><div class="field"><button type="button" class="more-screen-action" id="virtualBankExport">Скачать резервную копию</button></div><div class="field"><label for="virtualBankImportFile">Восстановить из JSON-файла</label><input type="file" id="virtualBankImportFile" accept="application/json,.json"></div><p class="archive-meta" id="virtualBankBackupStatus" aria-live="polite">Резервная копия хранится у вас; автоматической облачной синхронизации нет.</p>';
+    balance.appendChild(backup);
+
     const history=document.createElement('main');
     history.id='historyView';history.className='screen-view';
     history.innerHTML='<header class="screen-header"><div><div class="brand">ИСТОРИЯ СТАВОК</div><div class="sub">Полный журнал виртуальных ставок</div></div></header><section class="more-screen-card"><div class="field"><label for="historyPlayerFilter">Игрок</label><input id="historyPlayerFilter" type="search" placeholder="Имя игрока"></div><div class="field"><label for="historyTournamentFilter">Турнир</label><input id="historyTournamentFilter" type="search" placeholder="Название турнира"></div><div class="field"><label for="historyResultFilter">Результат</label><select id="historyResultFilter"><option value="all">Все ставки</option><option value="open">Открытые</option><option value="won">Выигрыш</option><option value="lost">Проигрыш</option><option value="void">Возврат</option></select></div><div class="field"><label for="historyFromDate">Дата с</label><input id="historyFromDate" type="date"></div><div class="field"><label for="historyToDate">Дата по</label><input id="historyToDate" type="date"></div></section><div class="archive-list" id="virtualBetHistory"><div class="panel empty">Виртуальных ставок пока нет.</div></div>';
@@ -935,6 +940,31 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     $('#settingsScreenOpen').addEventListener('click',openSettings);
     ['historyPlayerFilter','historyTournamentFilter','historyResultFilter','historyFromDate','historyToDate'].forEach(id=>$('#'+id).addEventListener('input',renderVirtualBank));
     $('#balancePeriod').addEventListener('change',renderVirtualBank);
+    $('#virtualBankExport').addEventListener('click',()=>{
+      const status=$('#virtualBankBackupStatus');
+      try{
+        const state=readVirtualBankState(),backup=TVSBankroll.serializeBackup(state);
+        const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=url;link.download='tennis-value-scanner-bankroll-'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+        if(status)status.textContent='Резервная копия создана. Сохраните файл отдельно от телефона.';
+      }catch(error){if(status)status.textContent='Экспорт не выполнен: '+String(error.message||error);}
+    });
+    $('#virtualBankImportFile').addEventListener('change',async event=>{
+      const file=event.target.files?.[0],status=$('#virtualBankBackupStatus');
+      if(!file)return;
+      try{
+        if(file.size>10*1024*1024)throw new Error('Файл больше допустимых 10 МБ.');
+        const payload=JSON.parse(await file.text()),restored=TVSBankroll.parseBackup(payload);
+        const current=readVirtualBankState();
+        const details='Восстановить копию от '+new Date(payload.exportedAt||'').toLocaleString('ru-RU')+'? Баланс в копии: '+restored.balance.toFixed(2)+' €. Текущий банк и его история будут заменены.';
+        if(!window.confirm(details)){if(status)status.textContent='Восстановление отменено. Текущий банк не изменён.';return;}
+        saveVirtualBankState(restored);renderVirtualBank();
+        if(status)status.textContent='Резервная копия восстановлена. Операций в журнале: '+restored.transactions.length+'.';
+      }catch(error){if(status)status.textContent='Восстановление отклонено: '+String(error.message||error)+'. Текущий банк не изменён.';}
+      finally{event.target.value='';}
+    });
 
     const labButton=$('#humanFactorAudit'),labPanel=$('#humanFactorAuditPanel');
     const labMount=$('#moreLabMount');
