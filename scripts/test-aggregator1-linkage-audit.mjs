@@ -454,3 +454,12 @@ const roundReport=auditValuebetSackmann(roundValuebet,[{filename:"atp_matches_fu
 assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].rows,1);
 assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].rows,1);
 assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].rows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].validRows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].linkedUnique,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].linkagePct,100);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].validRows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].noCandidate,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].linkagePct,0);
+assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].validRows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].candidateRows,0);
+assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].linkagePct,0);
