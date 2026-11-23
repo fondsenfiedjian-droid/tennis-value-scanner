@@ -624,7 +624,8 @@
   const close=()=>modal.classList.remove('show');
   function populateSettingsForm(){
     const current=readSettings();
-    ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(current[id]!==undefined)$('#'+id).value=current[id];});
+    const defaults={minEv:3,minOdds:1.9,maxOdds:5,bestBetMinOdds:1.5};
+    Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
     $('#skinSelect').value=(current.skin==='steel'||current.skin==='olive')?'steel':'black';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
