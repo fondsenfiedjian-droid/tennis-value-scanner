@@ -704,6 +704,17 @@ test("match list keeps all scheduled matches visible and labels fresh quote-pair
   assert.match(html, /Без даты начала:/);
 });
 
+test("virtual bankroll exposes validated JSON backup and guarded restore controls", () => {
+  assert.ok(html.includes('id="virtualBankExport"'));
+  assert.ok(html.includes('id="virtualBankImportFile"'));
+  assert.ok(html.includes('TVSBankroll.serializeBackup(state)'));
+  assert.ok(html.includes('TVSBankroll.parseBackup(payload)'));
+  assert.match(html, /if\(!window\.confirm\(details\)\)/);
+  assert.match(html, /saveVirtualBankState\(restored\);renderVirtualBank\(\)/);
+  assert.match(html, /Восстановление отклонено:.*Текущий банк не изменён/);
+  assert.ok(html.includes('автоматической облачной синхронизации нет'));
+});
+
 test("optional player statistics are loaded only by the explicit match-card action", () => {
   assert.equal(html.split("loadPfePlayerStats(").length - 1, 3,
     "one loader definition and exactly two on-demand player requests are expected");
