@@ -273,6 +273,18 @@ const ambiguousReport=auditValuebetSackmann(ambiguousValuebet,ambiguousSackmann)
 assert.equal(ambiguousReport.totals.ambiguous,1);
 assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rows,1);
 assert.deepEqual(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
+  unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:0,uniquePlayerIdPair:0,
+  completePlayerIds:1,nearestSignatureAndUniqueIds:0,strictCandidate:0
+});
+
+const strictAmbiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
+  "20250313,M15 Tampa FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802"
+].join("\n")}];
+const strictAmbiguousReport=auditValuebetSackmann(ambiguousValuebet,strictAmbiguousSackmann);
+assert.equal(strictAmbiguousReport.totals.ambiguous,1);
+assert.deepEqual(strictAmbiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.resolutionStrategies,{
   unresolvedRows:1,uniqueNearestDate:1,singleNearestSignature:1,uniquePlayerIdPair:1,
   completePlayerIds:1,nearestSignatureAndUniqueIds:1,strictCandidate:1
 });
