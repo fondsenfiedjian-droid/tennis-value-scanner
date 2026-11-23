@@ -341,7 +341,8 @@
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  let activeSkin=['olive','amber-led'].includes(saved.skin)?saved.skin:'black';
+  const legacySkin=saved.skin==='olive'?'olive':'black';
+  let activeSkin=saved.skin==='amber-led'?'amber-led':legacySkin;
   function applySkin(skin){
     const selected=['olive','amber-led'].includes(skin)?skin:'black';
     document.body.dataset.skin=selected;
