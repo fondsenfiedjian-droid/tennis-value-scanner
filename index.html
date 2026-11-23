@@ -399,7 +399,7 @@
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
-    data.skin=$('#skinSelect').value==='olive'?'olive':'black';
+    data.skin=['olive','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
     data.tours=selectedTours();
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
