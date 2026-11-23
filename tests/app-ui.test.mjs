@@ -548,6 +548,9 @@ test("independent player comparison calls the current Elo API and displays both 
   assert.match(html,/id="compareNameB"/);
   assert.match(html,/id="compareIdA"/);
   assert.match(html,/id="compareIdB"/);
+  assert.equal((html.match(/class="compare-manual-id"/g)||[]).length,2);
+  assert.match(html,/Ручной ввод ID \(если поиск не сработал\)/);
+  assert.match(html,/compare-manual-id summary/);
   assert.match(html,/function findScheduledPlayerId\(name\)/);
   assert.match(html,/API\+'\/predict'/);
   assert.match(html,/playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface/);
