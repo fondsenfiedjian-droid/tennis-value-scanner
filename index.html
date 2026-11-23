@@ -2359,6 +2359,7 @@
     return true;
   }
   let bestBetCarouselKey=null;
+  let bestBetCarouselTimer=null;
   function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets,oddsFallback=[]){
     const box=$('#bestBet'),additionalBox=$('#additionalOpportunities');
     if(!box||!additionalBox)return;
@@ -2379,13 +2380,17 @@
     const pending=Math.max(0,totalCandidates-scanned-failed);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.'+(pending?' В очереди: '+pending+'.':'')+(failed?' Ошибок расчёта: '+failed+'.':'');
     if(!best){
-      box.classList.remove('has-pick','empty-daily-pick');
-      const shownFeatured=startFeaturedMatchCarousel();
-      if(!shownFeatured){box.style.display='none';box.innerHTML='';}
+      if(bestBetCarouselTimer){clearInterval(bestBetCarouselTimer);bestBetCarouselTimer=null;}
+      if(featuredMatchTimer){clearInterval(featuredMatchTimer);featuredMatchTimer=null;}
+      box.classList.remove('has-pick');
+      box.classList.add('empty-daily-pick');
+      box.style.display='';
+      box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div></div><div class="best-bet-empty">Сегодня нет ставок, прошедших строгий отбор. Матчи без рекомендации здесь не показываются.</div>';
       const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
       if(featuredMatchTimer){clearInterval(featuredMatchTimer);featuredMatchTimer=null;}
+      if(bestBetCarouselTimer){clearInterval(bestBetCarouselTimer);bestBetCarouselTimer=null;}
       box.style.display='';
       box.classList.remove('empty-daily-pick');
       const selectedPhoto=(function(){const players=best.match?.players||{};const all=[players.p1||best.match?.player1,players.p2||best.match?.player2].filter(Boolean);const selected=all.find(p=>playerNamesMatch(playerName(p),best.player));const raw=selected?.photo_url||selected?.image_url||selected?.photo||selected?.image||selected?.avatar||selected?.picture||'';return typeof raw==='string'&&/^https?:\/\//i.test(raw)?raw:'';})();
@@ -2403,6 +2408,11 @@
       if(bestBets.length>1){
         $('#bestBetPrev').onclick=()=>{bestBetCarouselKey=betKey(bestBets[(bestBetCarouselIndex-1+bestBets.length)%bestBets.length]);renderBestBet(bets,scanned,totalCandidates,failed,evBets,oddsFallback);};
         $('#bestBetNext').onclick=()=>{bestBetCarouselKey=betKey(bestBets[(bestBetCarouselIndex+1)%bestBets.length]);renderBestBet(bets,scanned,totalCandidates,failed,evBets,oddsFallback);};
+        bestBetCarouselTimer=setInterval(()=>{
+          if(document.hidden||$('#bestBet')?.style.display==='none')return;
+          bestBetCarouselKey=betKey(bestBets[(bestBetCarouselIndex+1)%bestBets.length]);
+          renderBestBet(bets,scanned,totalCandidates,failed,evBets,oddsFallback);
+        },9000);
       }
     }
     const additionalContent=$('#additionalOpportunitiesContent');
