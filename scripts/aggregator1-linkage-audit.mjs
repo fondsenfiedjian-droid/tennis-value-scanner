@@ -196,7 +196,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       surfaceAbsent:{rows:0,bothNamesInRegistry:0,oneNameInRegistry:0,neitherNameInRegistry:0,bothSourceIdsInRegistry:0,oneSourceIdInRegistry:0,neitherSourceIdInRegistry:0},
       dateWindowMiss:{rows:0,bothNamesInRegistry:0,oneNameInRegistry:0,neitherNameInRegistry:0,bothSourceIdsInRegistry:0,oneSourceIdInRegistry:0,neitherSourceIdInRegistry:0}
     },
-    dateWindowMissNearestOffsetBuckets:{"15-30":0,"31-60":0,"61-180":0,">180":0}
+    dateWindowMissNearestOffsetDays:{}
   };
   const ambiguousNearestOffsetCounts=new Map(),ambiguousNearestGapCounts=new Map(),ambiguousDistinctDateCounts=new Map();
   const nearestDateCandidateRowsCounts=new Map(),nearestDateDistinctSignaturesCounts=new Map();
@@ -279,8 +279,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
         else stats.neitherSourceIdInRegistry++;
         if(reason==="dateWindowMiss"){
           const nearest=Math.min(...samePairSurface.map(x=>Math.abs(date-x.date)));
-          const bucket=nearest<=30?"15-30":nearest<=60?"31-60":nearest<=180?"61-180":">180";
-          noCandidateDiagnostics.dateWindowMissNearestOffsetBuckets[bucket]++;
+          const key=String(nearest);
+          noCandidateDiagnostics.dateWindowMissNearestOffsetDays[key]=(noCandidateDiagnostics.dateWindowMissNearestOffsetDays[key]||0)+1;
         }
       }
       const eventCandidates=ev?candidates.filter(x=>x.event===ev):[];
