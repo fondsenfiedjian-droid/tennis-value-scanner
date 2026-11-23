@@ -439,3 +439,18 @@ assert.equal(dateMissDiagnostics.rows,1);
 assert.equal(dateMissDiagnostics.bothNamesInRegistry,1);
 assert.equal(dateMissDiagnostics.bothSourceIdsInRegistry,1);
 assert.deepEqual(dateMissReport.noCandidateDiagnostics.dateWindowMissNearestOffsetDays,{"72":1});
+
+// Draw-round distribution is retained as aggregate counts by tour and competition category.
+const roundValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie;tour",
+  "r1;2025-05-12;ITF Example;atp;dur;Round Player A;Round Player B;ITF;0",
+  "r2;2025-05-13;ITF Example;atp;dur;Round Player C;Round Player D;ITF;12",
+  "r3;2025-05-14;Challenger Example;atp;dur;Round Player E;Round Player F;Challenger;2"
+].join("\\n")}];
+const roundReport=auditValuebetSackmann(roundValuebet,[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name",
+  "20250512,ITF Example,Hard,Round Player A,Round Player B"
+].join("\\n")}]);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::0"].rows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::ITF::12"].rows,1);
+assert.equal(roundReport.byTourCategoryRound["ATP::Challenger::2"].rows,1);
