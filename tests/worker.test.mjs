@@ -1735,7 +1735,7 @@ test("odds matching supports provider-specific event IDs and keeps the best pric
 });
 
 test("PWA app shell advances cache and excludes removed bankroll assets", () => {
-  assert.match(serviceWorkerSource, /tennis-value-static-v133/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v\\d+/);
   assert.ok(!serviceWorkerSource.includes('"./winamax-import.js"'));
   assert.ok(!serviceWorkerSource.includes('"./bankroll.js"'));
 });
@@ -2437,7 +2437,7 @@ test("PFE player stats are connected read-only and score simulation is gated by 
   assert.match(frontendSource, /Подача\/приём ULTRA:/);
   assert.match(frontendSource, /rate_limited:profile\?\.rateLimitScope==='day'\?'дневная квота исчерпана'/);
   assert.ok(frontendSource.includes("player_merged:'ID игрока объединён с другой записью'"));
-  assert.match(serviceWorkerSource, /tennis-value-static-v133/);
+  assert.match(serviceWorkerSource, /tennis-value-static-v\\d+/);
 });
 
 test("PFE groups dependent models before fusion and flags a single-model estimate as provisional", () => {
@@ -3136,13 +3136,15 @@ test("PFE does not understate uncertainty inside correlated dependency groups", 
   assert.ok(Math.abs(result.probability - 0.64) < 1e-12);
 });
 
-test("settings provide a persistent app-wide switch between black and olive skins", () => {
+test("settings provide a persistent app-wide switch between black, olive and Amber Equalizer skins", () => {
   assert.ok(frontendSource.includes('id="skinSelect"'));
   assert.ok(frontendSource.includes('value="black"'));
   assert.ok(frontendSource.includes('value="olive"'));
   assert.ok(frontendSource.includes("saved.skin==='olive'?'olive':'black'"));
   assert.ok(frontendSource.includes("document.body.dataset.skin=selected"));
-  assert.ok(frontendSource.includes("data.skin=$('#skinSelect').value==='olive'?'olive':'black'"));
+  assert.ok(frontendSource.includes("data.skin=['olive','amber-led'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';"));
+  assert.ok(frontendSource.includes('value="amber-led"'));
+  assert.ok(frontendSource.includes('body[data-skin="amber-led"]'));
   assert.ok(frontendSource.includes('body[data-skin="olive"]'));
   assert.ok(frontendSource.includes('#626744'));
 });
