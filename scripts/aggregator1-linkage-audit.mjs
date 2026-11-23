@@ -63,7 +63,21 @@ const tourney=value=>{
     toraypanpacificopentokyo:"tokyo",dallasopendallas:"dallas",
     open35desaintmalosaintmalo:"saintmalo125",
     livesportpragueopenprague:"prague",rioopenriodejaneiro:"riodejaneiro",
-    nationalbankopenmontreal:"canadamasters"
+    nationalbankopenmontreal:"canadamasters",
+    // Explicit source-name variants observed in the full archive audit.
+    m15naples:"m15naplesfl",m15naplesfl:"m15naplesfl",
+    sainttropezch:"sainttropezch",francavillaalmarech:"francavillaalmarech",genoach:"genoach",
+    bratislavach:"bratislavach",nottingham:"nottingham",estoril:"estoril",sandiego:"sandiego",
+    rouen:"rouen",cuernavacach:"cuernavacach",w60berkeleyca:"w60berkeleyca",
+    seoul:"seoul",wuhan:"wuhan",halle:"halle",monastir:"monastir",m25champaignil:"m25champaignil",
+    hamburg:"hamburg",austin:"austin",rotterdam:"rotterdam",basel:"basel",
+    w25austintx:"w25austintx",m15tallahasseefl:"m15tallahasseefl",w15lakewoodca:"w15lakewoodca",
+    m25wichitaks:"m25wichitaks",m25pensacolafl:"m25pensacolafl",tokyoolympics:"tokyoolympics",
+    m25tulsaok:"m25tulsaok",midland125:"midland125",limoges125:"limoges125",stuttgart:"stuttgart",
+    dohaausopenqualies:"dohaausopenqualies",montpellier:"montpellier",sofia:"sofia",
+    w25reddingca:"w25reddingca",valencia125:"valencia125",chengdu:"chengdu",santiago:"santiago",
+    abudhabi:"abudhabi",bari125:"bari125",w25sumtersc:"w25sumtersc",antwerp:"antwerp",
+    w15ranchosantafeca:"w15ranchosantafeca",colina125:"colina125",lausanne:"lausanne"
   };
   if(aliases[s])return aliases[s];
   if(s.endsWith("challenger"))return s.slice(0,-10)+"ch";
