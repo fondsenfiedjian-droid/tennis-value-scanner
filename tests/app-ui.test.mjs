@@ -589,6 +589,25 @@ test("virtual strategy uses the audited bankroll module with automatic strict-pi
   assert.match(html, /function renderVirtualStrategyStats\(/);
 });
 
+test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow",()=>{
+  for(const id of ["topLive","topUpcoming","topTomorrow"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/live\.id='liveView'/);
+  assert.match(html,/live\.appendChild\(liveBoard\)/);
+  assert.match(html,/function showLive\(\)/);
+  assert.match(html,/function showUpcoming\(\)/);
+  assert.match(html,/function showTomorrow\(\)/);
+  assert.match(html,/id="liveRefreshPageBtn"/);
+  assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
+  assert.match(html,/id="headerBalance"/);
+  assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
+});
+
+test("virtual bet history provides player, tournament, date and result filters",()=>{
+  for(const id of ["historyPlayerFilter","historyTournamentFilter","historyResultFilter","historyFromDate","historyToDate"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html,/function renderVirtualBank\(\)/);
+  assert.match(html,/allRows\.filter\(b=>/);
+});
+
 
 test("archive result checker reports status counts without removed bankroll references", () => {
   const start = html.indexOf("$('#archiveCheckResults').onclick=async()=>{");
