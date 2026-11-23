@@ -2,11 +2,11 @@
 
 ## Scope
 
-Compared full aggregate audit run #74 (commit `34a367889ba41477860429638cad8543127536f6`) with run #78 (commit `216e0f13e5abae53f3c85e369d52377be568df1e`). The second run includes the additional tournament alias batch and its regression fixtures.
+Compared full aggregate audit run #74 (commit `34a367889ba41477860429638cad8543127536f6`) with run #78 (commit `216e0f13e5abae53f3c85e369d52377be568df1e`). Run #79 (commit `1c5ec37f91c1f38f4955e887ce67a97652026fde`) then verified that the full-audit workflow checks out the exact triggering commit and records both checkout and event SHAs in its manifest.
 
 - [Run #74](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45092350384)
 - [Run #78](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45092559565)
-- [Research checks #115](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45092559558)
+- [Research checks #115](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45092559558)\n- [Run #79 — pinned checkout and manifest verification](https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45094575441)
 
 The audit remains aggregate-only. No raw source datasets, match-level mappings, player names, or source IDs are included here.
 
@@ -23,7 +23,7 @@ The audit remains aggregate-only. No raw source datasets, match-level mappings, 
 | Event-name mismatches among accepted links | 26,041 | 22,624 | -3,417 |
 | Linkage rate | 59.12% | 59.13% | +0.01 pp |
 
-The alias work resolved 86 previously ambiguous match rows. It did not change the number of rows with no candidate. The larger reduction in event-name mismatches reflects normalization of event-name variants on accepted links; it is a diagnostic improvement, not 3,503 additional match links.
+The alias work resolved 86 previously ambiguous match rows. It did not change the number of rows with no candidate. The exact-name/mismatch diagnostic counts compare normalized source event names; they are not counts of newly linked matches.
 
 ## Tour-level change
 
@@ -32,7 +32,7 @@ The alias work resolved 86 previously ambiguous match rows. It did not change th
 | ATP | 141,458 → 141,502 | 2,314 → 2,270 | 50.49% |
 | WTA | 141,476 → 141,518 | 3,791 → 3,749 | 71.35% |
 
-Both tours gained 44 unique links. The higher WTA linkage rate remains largely a property of source coverage and competition mix, not evidence that WTA identities are inherently easier to resolve.
+ATP gained 44 unique links and WTA gained 42. The higher WTA linkage rate remains largely a property of source coverage and competition mix, not evidence that WTA identities are inherently easier to resolve.
 
 ## Category coverage after run #78
 
@@ -64,7 +64,7 @@ The largest remaining normalized-name pairs in run #78 include:
 
 These pairs are diagnostics only. Some may represent harmless naming variants; others may encode different editions, tournament tiers, or event identities. They must not be indiscriminately merged. In particular, numbered editions and category suffixes (for example, Prague 1/2/3 or Bastad vs Bastad 125) need date, tier, and tournament identity checks before alias admission.
 
-**Open verification item:** the aggregate report still lists some pairs that appear to have alias candidates in the current normalizer (notably Morelos/Cuernavaca and St Brieuc/Saint-Brieuc). The exact reason should be traced against the normalization path and run commit before further alias additions. Do not assume the presence of an alias-table entry proves the full audit applied it to every row.
+**Resolved interpretation:** the apparent inconsistency for Morelos/Cuernavaca and St Brieuc/Saint-Brieuc is explained by two separate paths in the code. `tourney()` canonicalizes event names for candidate disambiguation, while `eventNameDiagnostics` intentionally compares the source-side normalized event name with the already-normalized Sackmann event name and records the raw-name mismatch. The alias is therefore not expected to erase those diagnostic pairs. Run #79's manifest confirms both `Checked out commit` and `Workflow event commit` equal `1c5ec37f91c1f38f4955e887ce67a97652026fde`; the workflow checkout ambiguity is resolved. No further aliases are needed to address this diagnostic-only behavior.
 
 ## Player identity and duplicate integrity
 
@@ -80,7 +80,7 @@ Player crosswalk aggregate figures did not change between runs:
 ## Method and limitations
 
 - Match linkage uses exact normalized full-name pairs, exact normalized surface, and a ±14-day window around the Sackmann event-week date.
-- Tournament names are used to disambiguate multiple candidates; a single player-pair/surface/date candidate can still be accepted without event-name agreement. Event mismatch counts therefore do not mean those links are necessarily wrong.
+- Tournament aliases are used to disambiguate multiple candidates; a single player-pair/surface/date candidate can still be accepted without event-name agreement. The event-name diagnostic separately compares normalized source names and does not apply the alias map. Event mismatch counts therefore do not mean those links are necessarily wrong.
 - No fuzzy player-name matching or automatic player-ID merging is used.
 - 2026 is a partial snapshot. No year is certified complete by this audit.
 - Denominators are observed Valuebetennis archive rows, not official tournament schedules.
@@ -88,4 +88,4 @@ Player crosswalk aggregate figures did not change between runs:
 
 ## Decision
 
-Run #78 passes the research checks and full aggregate audit. Keep the current conservative matching rules. Next work should investigate why selected alias entries remain visible in the mismatch diagnostics, then audit the highest-volume unresolved tournament-name pairs with year/tier/date evidence. Do not loosen player matching or certify the archive complete yet.
+Runs #78 and #79 pass the research checks/full audit, and run #79 verifies pinned source checkout. Keep the current conservative matching rules. Next work should audit the highest-volume event-name mismatches with year/tier/date evidence and prioritize source coverage gaps, especially ATP ITF. Do not loosen player matching or certify the archive complete yet.
