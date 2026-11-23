@@ -2249,6 +2249,82 @@
       ['good','medium'].includes(x.freshnessLevel)&&x.valueEligible===true)
       .sort((a,b)=>b.ev-a.ev||b.reliabilityScore-a.reliabilityScore||b.probability-a.probability)[0]||null;
   }
+  let featuredMatchItems=[];
+  let featuredMatchIndex=0;
+  let featuredMatchTimer=null;
+  function featuredPlayerRank(player){
+    if(!player||typeof player!=='object')return null;
+    for(const value of [player.ranking,player.rank,player.current_ranking,player.singles_ranking,player.atp_ranking,player.wta_ranking]){
+      const n=Number(value);if(Number.isInteger(n)&&n>0&&n<5000)return n;
+    }
+    return null;
+  }
+  function featuredMatchScore(match){
+    const tournament=String(match?.tournament_name||match?.tournament?.name||match?.tournament||match?.event_name||match?.competition||'').toLowerCase();
+    const round=String(match?.round_name||match?.round||match?.stage||'').toLowerCase();
+    let score=0;
+    if(/grand slam|wimbledon|roland garros|us open|australian open/.test(tournament))score+=100;
+    else if(/masters|1000|wta 1000|atp finals|wta finals/.test(tournament))score+=75;
+    else if(/500|championship/.test(tournament))score+=48;
+    else if(/250/.test(tournament))score+=30;
+    else if(/challenger/.test(tournament))score+=12;
+    if(/final/.test(round))score+=45;
+    else if(/semi/.test(round))score+=32;
+    else if(/quarter/.test(round))score+=20;
+    else if(/round of 16|\b1\/8\b/.test(round))score+=10;
+    const players=match?.players||{};
+    const a=players.p1||match?.player1,b=players.p2||match?.player2;
+    const ra=featuredPlayerRank(a),rb=featuredPlayerRank(b);
+    if(ra&&rb){
+      score+=Math.max(0,45-Math.min(45,Math.floor((ra+rb)/20)));
+      if(Math.abs(ra-rb)<=10)score+=12;
+    }else if(ra||rb)score+=8;
+    return score;
+  }
+  function featuredMatchesForToday(){
+    const source=Array.isArray(window.cachedMatches)?window.cachedMatches:[];
+    const rows=filterScheduleMatches(source,'today',selectedTours(),new Date()).matches
+      .filter(match=>matchDate(match)&&matchDate(match).getTime()>Date.now()&&!/cancel|postpon|walkover|finished|completed/i.test(String(match.status||match.event_status||'')))
+      .map(match=>({match,score:featuredMatchScore(match)}))
+      .sort((a,b)=>b.score-a.score||matchDate(a.match)-matchDate(b.match));
+    const seen=new Set();
+    return rows.filter(({match})=>{
+      const p=match.players||{},a=playerName(p.p1||match.player1),b=playerName(p.p2||match.player2);
+      const key=[a,b,matchDate(match)?.toISOString()].join('|');
+      if(!a||!b||seen.has(key))return false;seen.add(key);return true;
+    }).slice(0,5).map(x=>x.match);
+  }
+  function renderFeaturedMatch(){
+    const box=$('#bestBet');
+    if(!box||!featuredMatchItems.length)return;
+    const match=featuredMatchItems[featuredMatchIndex%featuredMatchItems.length];
+    const players=match.players||{},a=playerName(players.p1||match.player1),b=playerName(players.p2||match.player2);
+    const date=matchDate(match),tournament=match.tournament_name||match.tournament?.name||match.tournament||match.event_name||match.competition||'Турнир не указан';
+    const round=match.round_name||match.round||match.stage||'';
+    const score=featuredMatchScore(match);
+    const reason=round?'Стадия турнира: '+round+'.':score>=75?'Матч крупного турнира.':score>=30?'Матч турнира основного тура.':'Матч из сегодняшнего расписания.';
+    box.classList.remove('has-pick','empty-daily-pick');
+    box.style.display='';
+    box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🎾 &nbsp; МАТЧИ ДНЯ</div><div class="best-bet-navigation"><span class="best-bet-counter">'+(featuredMatchIndex+1)+' / '+featuredMatchItems.length+'</span>'+(featuredMatchItems.length>1?'<button type="button" id="featuredPrev" aria-label="Предыдущий матч">‹</button><button type="button" id="featuredNext" aria-label="Следующий матч">›</button>':'')+'</div></div><button type="button" class="best-bet-open featured-match-open" id="featuredMatchOpen"><span class="best-bet-confidence">АНОНС · САМЫЙ ИНТЕРЕСНЫЙ МАТЧ В ПОДБОРКЕ</span><span class="best-bet-pair">'+escapeHtml(a)+' — '+escapeHtml(b)+'</span><span class="daily-pick-event">'+escapeHtml(tournament)+' · '+(date?date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время не указано')+'</span><span class="best-bet-selection">'+escapeHtml(reason)+'</span></button><div class="best-bet-footnote">Подборка по уровню турнира, стадии и доступным рейтингам игроков. Это редакционный анонс, не прогноз и не рекомендация для ставки.</div>';
+    const open=()=>{const cards=[...document.querySelectorAll('.match-card')];const card=cards.find(node=>{const i=Number(node.dataset.matchIndex);const item=window.cachedMatches?.[i];return item&&matchDate(item)?.getTime()===date?.getTime()&&playerNamesMatch(playerName((item.players||{}).p1||item.player1),a)&&playerNamesMatch(playerName((item.players||{}).p2||item.player2),b);});if(card){card.classList.add('expanded');card.setAttribute('aria-expanded','true');const hint=card.querySelector('.card-hint');if(hint)hint.textContent='Нажми, чтобы свернуть';card.scrollIntoView({behavior:'smooth',block:'center'});}};
+    $('#featuredMatchOpen').onclick=open;
+    if(featuredMatchItems.length>1){
+      $('#featuredPrev').onclick=()=>{featuredMatchIndex=(featuredMatchIndex-1+featuredMatchItems.length)%featuredMatchItems.length;renderFeaturedMatch();};
+      $('#featuredNext').onclick=()=>{featuredMatchIndex=(featuredMatchIndex+1)%featuredMatchItems.length;renderFeaturedMatch();};
+    }
+  }
+  function startFeaturedMatchCarousel(){
+    featuredMatchItems=featuredMatchesForToday();featuredMatchIndex=0;
+    if(featuredMatchTimer)clearInterval(featuredMatchTimer);
+    featuredMatchTimer=null;
+    if(!featuredMatchItems.length)return false;
+    renderFeaturedMatch();
+    if(featuredMatchItems.length>1)featuredMatchTimer=setInterval(()=>{
+      if(document.hidden||$('#bestBet')?.style.display==='none')return;
+      featuredMatchIndex=(featuredMatchIndex+1)%featuredMatchItems.length;renderFeaturedMatch();
+    },9000);
+    return true;
+  }
   let bestBetCarouselKey=null;
   function renderBestBet(bets,scanned,totalCandidates,failed=0,evBets=bets,oddsFallback=[]){
     const box=$('#bestBet'),additionalBox=$('#additionalOpportunities');
@@ -2267,15 +2343,17 @@
     const mandatoryCount=$('#planMandatoryCount');
     if(mandatoryCount)mandatoryCount.textContent=String(bestBets.length);
     box.classList.toggle('has-pick',!!best);
-    box.style.display=best?'':'none';
     const pending=Math.max(0,totalCandidates-scanned-failed);
     const coverage='Проверено матчей: '+scanned+' из '+totalCandidates+'.'+(pending?' В очереди: '+pending+'.':'')+(failed?' Ошибок расчёта: '+failed+'.':'');
     if(!best){
-      box.classList.remove('empty-daily-pick');
-      box.innerHTML='';
+      box.classList.remove('has-pick','empty-daily-pick');
+      const shownFeatured=startFeaturedMatchCarousel();
+      if(!shownFeatured){box.style.display='none';box.innerHTML='';}
       const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
+      if(featuredMatchTimer){clearInterval(featuredMatchTimer);featuredMatchTimer=null;}
+      box.style.display='';
       box.classList.remove('empty-daily-pick');
       const selectedPhoto=(function(){const players=best.match?.players||{};const all=[players.p1||best.match?.player1,players.p2||best.match?.player2].filter(Boolean);const selected=all.find(p=>playerNamesMatch(playerName(p),best.player));const raw=selected?.photo_url||selected?.image_url||selected?.photo||selected?.image||selected?.avatar||selected?.picture||'';return typeof raw==='string'&&/^https?:\/\//i.test(raw)?raw:'';})();
       const initials=String(best.player||'').split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase();
