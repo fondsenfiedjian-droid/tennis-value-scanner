@@ -871,7 +871,7 @@ test("value signal quality blocks stale inputs, invalid ratings and Elo-market c
 
 test("daily best bet has its own persisted odds threshold setting and does not reuse the general odds filter", () => {
   assert.ok(frontendSource.includes('id="bestBetMinOdds"'));
-  assert.ok(frontendSource.includes('min="1.50" max="15" step="1" value="1.50"'));
+  assert.ok(frontendSource.includes('min="1.5" max="15" step="0.5" value="1.5"'));
   assert.ok(frontendSource.includes("bestBetMinOdds<1.5||bestBetMinOdds>15"));
   assert.ok(frontendSource.includes("'minEv','minOdds','maxOdds','bestBetMinOdds'"));
   assert.ok(frontendSource.includes("selectBestBet(bets,filters.minEv,Math.max(filters.minOdds,bestBetMinOdds),filters.maxOdds)"));
@@ -1813,10 +1813,10 @@ test("bankroll drawdown tracks betting losses and ignores external deposits", ()
   assert.equal(summary.maxDrawdown, 2);
 });
 test("minimum odds setting reflects the scanner's hard 1.90 eligibility floor", () => {
-  assert.match(frontendSource, /id="minOdds" type="number" min="1\.90" max="100" step="0\.05" value="1\.90"/);
+  assert.match(frontendSource, /id="minOdds" type="range" min="1\.9" max="15" step="0\.1" value="1\.9"/);
   assert.match(frontendSource, /Math\.max\(1\.9,Number\(\$\('#minOdds'\)\.value\|\|1\.5\)\)/);
   assert.match(frontendSource, /minOdds<1\.9/);
-  assert.match(frontendSource, /maxOdds>100/);
+  assert.match(frontendSource, /maxOdds>15/);
 });
 
 
