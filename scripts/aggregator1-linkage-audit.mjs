@@ -239,7 +239,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const roundRaw=String(row.tour??"").trim();
       const roundKey=/^\d+$/.test(roundRaw)?String(Number(roundRaw)):(roundRaw||"(empty)");
       const tourCategoryRoundKey=(tour||"(empty)")+"::"+category+"::"+roundKey;
-      const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+      const tcr=byTourCategoryRound[tourCategoryRoundKey]||(byTourCategoryRound[tourCategoryRoundKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0,eventRows:new Map()});
       tcr.rows++;
       const tcg=byTourCategory[tourCategoryKey]||(byTourCategory[tourCategoryKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidPlayerPair:0,invalidDate:0,unknownSurface:0,unknownTour:0});
       tcg.rows++;
@@ -251,8 +251,9 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;tycg.unknownTour++;tcr.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;tycg.invalidDate++;tcr.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tcr.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;tcr.invalidPlayerPair++;tcr.noCandidate++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;tcr.invalidPlayerPair++;tcr.noCandidate++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
+      if(ev)tcr.eventRows.set(ev,(tcr.eventRows.get(ev)||0)+1);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;tycg.validRows++;tcr.validRows++;
       if(!sf){
         totals.unknownSurface++;g.unknownSurface++;yearBucket.unknownSurface++;tourYearBucket.unknownSurface++;cg.unknownSurface++;tcg.unknownSurface++;tycg.unknownSurface++;tcr.unknownSurface++;
@@ -538,7 +539,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
     playerIdComparison,
     byCategory:Object.fromEntries(Object.entries(byCategory).map(([category,g])=>[category,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourCategory:Object.fromEntries(Object.entries(byTourCategory).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
-    byTourCategoryRound:Object.fromEntries(Object.entries(byTourCategoryRound).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
+    byTourCategoryRound:Object.fromEntries(Object.entries(byTourCategoryRound).map(([key,g])=>{const eventSizes=[...g.eventRows.values()];const eventRowDistribution={one:0,twoToFive:0,sixToTwenty:0,twentyOneToFifty:0,overFifty:0};for(const n of eventSizes){if(n===1)eventRowDistribution.one++;else if(n<=5)eventRowDistribution.twoToFive++;else if(n<=20)eventRowDistribution.sixToTwenty++;else if(n<=50)eventRowDistribution.twentyOneToFifty++;else eventRowDistribution.overFifty++;}const{eventRows,...counts}=g;return[key,{...counts,distinctEvents:eventSizes.length,eventRowDistribution,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}]})),
     valuebetSchema:{columns:valuebetSchema.columns,categorical:Object.fromEntries(Object.entries(valuebetSchema.categorical).map(([key,counts])=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);return [key,{distinctValues:entries.length,topValues:entries.slice(0,30).map(([value,count])=>({value,count})),otherRows:entries.slice(30).reduce((n,x)=>n+x[1],0)}]}))},
     byYear:Object.fromEntries(Object.entries(byYear).map(([year,g])=>[year,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
     byTourYear:Object.fromEntries(Object.entries(byTourYear).map(([key,g])=>[key,{...g,linkagePct:pct(g.linkedUnique,g.validRows),candidatePct:pct(g.candidateRows,g.validRows)}])),
