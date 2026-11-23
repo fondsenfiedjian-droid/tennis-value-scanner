@@ -939,7 +939,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const defaults={minEv:3,minOdds:1.9,maxOdds:5,bestBetMinOdds:1.5};
     Object.entries(defaults).forEach(([id,fallback])=>$('#'+id).value=current[id]!==undefined?current[id]:fallback);
     $('#refreshRate').value=String(normalizeRefreshRate(current.refreshRate));
-    $('#skinSelect').value=['steel','neon','terracotta'].includes(current.skin)?current.skin:'black';
+    $('#skinSelect').value=['black','steel','neon','terracotta'].includes(current.skin)?current.skin:'terracotta';
     const tours=Array.isArray(current.tours)?current.tours:(Array.isArray(savedTours)?savedTours:['atp','wta','challenger','itf']);
     tourChecks.forEach(input=>input.checked=tours.includes(input.dataset.tour));
   }
@@ -984,9 +984,9 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
-  let activeSkin=['steel','neon','terracotta'].includes(saved.skin)?saved.skin:'black';
+  let activeSkin=['black','steel','neon','terracotta'].includes(saved.skin)?saved.skin:'terracotta';
   function applySkin(skin){
-    const selected=['steel','neon','terracotta'].includes(skin)?skin:'black';
+    const selected=['black','steel','neon','terracotta'].includes(skin)?skin:'terracotta';
     document.body.dataset.skin=selected;
     document.documentElement.dataset.skin=selected;
     const themeColor=document.querySelector('meta[name=\"theme-color\"]');
@@ -996,7 +996,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#skinSelect').value=activeSkin;
   // Preview theme immediately; Cancel restores the last saved skin.
   $('#skinSelect').addEventListener('change',()=>{
-    const selected=['steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
+    const selected=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
     applySkin(selected);
   });
   ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>{if(saved[id]!==undefined)$('#'+id).value=saved[id]});
@@ -1028,7 +1028,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const data=readSettings();
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
-    data.skin=['steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'black';
+    data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
     data.tours=tours;
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
