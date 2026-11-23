@@ -149,7 +149,8 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       cg.rows++;
       const tour=String(row.genre??"").trim().toUpperCase();
       const tourYearKey=(tour||"(empty)")+"::"+m[1];
-      const tourYearBucket=byTourYear[tourYearKey]||(byTourYear[tourYearKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});\n      tourYearBucket.rows++;
+      const tourYearBucket=byTourYear[tourYearKey]||(byTourYear[tourYearKey]={rows:0,validRows:0,candidateRows:0,linkedUnique:0,ambiguous:0,noCandidate:0,pairAbsent:0,surfaceAbsent:0,dateWindowMiss:0,invalidDate:0,unknownSurface:0,unknownTour:0});
+      tourYearBucket.rows++;
       if(["ATP","WTA"].includes(tour))for(const side of ["joueur1","joueur2"]){
         const id=String(row[side+"_id"]??"").trim(),name=normalize(row[side]);
         if(id)sourcePlayerIds[tour].add(id);
