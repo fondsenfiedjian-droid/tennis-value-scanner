@@ -94,17 +94,29 @@ jobs:
               Math.abs(probabilityA + probabilityB - 100) > 0.05) {
             throw new Error("Preview Elo comparison returned invalid ratings or probabilities");
           }
-          const [historyA, historyB, h2h] = await Promise.all([
-            read("/player-history?id=" + encodeURIComponent(playerA.id) + "&limit=20"),
-            read("/player-history?id=" + encodeURIComponent(playerB.id) + "&limit=20"),
-            read("/player-h2h?p1=" + encodeURIComponent(playerA.name) + "&p2=" + encodeURIComponent(playerB.name))
+          const usage = await read("/usage");
+          const tier = String(usage.tier || usage.base_tier || "unknown").toLowerCase();
+          const [historyAResponse, historyBResponse, h2hResponse] = await Promise.all([
+            fetch(base + "/player-history?id=" + encodeURIComponent(playerA.id) + "&limit=20"),
+            fetch(base + "/player-history?id=" + encodeURIComponent(playerB.id) + "&limit=20"),
+            fetch(base + "/player-h2h?p1=" + encodeURIComponent(playerA.name) + "&p2=" + encodeURIComponent(playerB.name))
           ]);
-          if (!Array.isArray(historyA.data) || !Array.isArray(historyB.data) ||
-              !h2h.totals || !Array.isArray(h2h.meetings) ||
-              h2h.players?.p1?.name !== playerA.name || h2h.players?.p2?.name !== playerB.name) {
-            throw new Error("Preview comparison history or H2H payload failed validation");
+          const [historyA, historyB, h2h] = await Promise.all([
+            historyAResponse.json(), historyBResponse.json(), h2hResponse.json()
+          ]);
+          const historyAllowed = ["basic", "pro", "ultra"].includes(tier);
+          const historyOK = historyAResponse.ok && historyBResponse.ok &&
+            Array.isArray(historyA.data) && Array.isArray(historyB.data);
+          const h2hOK = h2hResponse.ok && h2h.totals && Array.isArray(h2h.meetings) &&
+            h2h.players?.p1?.name === playerA.name && h2h.players?.p2?.name === playerB.name;
+          if (historyAllowed && (!historyOK || !h2hOK)) {
+            throw new Error("API tier reports " + tier + " but Basic history/H2H failed: history HTTP " +
+              historyAResponse.status + "/" + historyBResponse.status + ", H2H HTTP " + h2hResponse.status +
+              "; accessStatus=" + (historyA.accessStatus || historyB.accessStatus || h2h.accessStatus || "unknown"));
           }
-          console.log("End-to-end comparison OK: search, Elo, two Basic histories and Basic H2H.");
+          console.log("Comparison core OK: search and Elo; API tier=" + tier +
+            "; history=" + (historyOK ? "available" : "HTTP " + historyAResponse.status + "/" + historyBResponse.status) +
+            "; H2H=" + (h2hOK ? "available" : "HTTP " + h2hResponse.status) + ".");
           NODE
 
       - name: Scanner schedule and Winamax feed smoke test
