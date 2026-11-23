@@ -176,7 +176,8 @@ assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannI
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.sameDobIocDifferentHand,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentHandOnly,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.identicalAvailableSignature,0);
-\n// Regression: tournament sponsor/location suffix variants map to the same canonical event.
+
+// Regression: tournament sponsor/location suffix variants map to the same canonical event.
 const aliasValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
   "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
   "a1;2025-03-10;M15 Naples;atp;dur;Alias Player A;Alias Player B;ITF",
