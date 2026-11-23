@@ -977,3 +977,9 @@ test("independent API diagnostics and status-tab navigation fallback are present
   assert.ok(html.includes("openStatusScreen('liveView')"));
   assert.ok(html.includes("openStatusScreen('matchesView')"));
 });
+
+test("screen-open layout hides non-screen app children but permits selected independent screens", () => {
+  assert.ok(html.includes(".app.screen-open>:not(.main-header):not(.top-status-nav):not(.screen-view){display:none!important}"));
+  assert.ok(html.includes(".screen-view{display:none;"));
+  assert.match(html, /hideAllScreens\(\);\$\('#liveView'\)\.style\.display='block'/);
+});
