@@ -238,3 +238,20 @@ assert.deepEqual(mismatchBreakdownReport.eventNameDiagnostics.topMismatchBreakdo
   tour:"ATP",year:"2025",category:"Challenger",sackmannTier:"qual_chall",
   pair:"sourceeventalpha -> archiveeventbeta",count:1
 });
+ 
+// Regression: aggregate diagnostics explain why multiple date/surface candidates remain ambiguous.
+const ambiguousValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "amb1;2025-03-10;M15 Orlando;atp;dur;Ambiguous Player A;Ambiguous Player B;ITF"
+].join("\n")}];
+const ambiguousSackmann=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250310,M15 Orlando FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802",
+  "20250310,M15 Tampa FL,Hard,Ambiguous Player A,Ambiguous Player B,801,802"
+].join("\n")}];
+const ambiguousReport=auditValuebetSackmann(ambiguousValuebet,ambiguousSackmann);
+assert.equal(ambiguousReport.totals.ambiguous,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.rows,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.noExactEventMatch,1);
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].sourceEvent,"m15orlando");
+assert.equal(ambiguousReport.eventNameDiagnostics.ambiguousCandidateResolution.topBreakdown[0].candidateEvent,"m15orlandofl");
