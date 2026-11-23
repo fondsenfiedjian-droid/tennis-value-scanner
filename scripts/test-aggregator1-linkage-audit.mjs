@@ -134,6 +134,14 @@ const conflictPlayers=[{filename:"atp_players.csv",content:[
 const conflictReport=auditValuebetSackmann(conflictValuebet,conflictSackmann,{playerFiles:conflictPlayers});
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannIds,1);
 assert.equal(conflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentBirthDateOrCountry,1);
+const conflictCrosswalk=conflictReport.playerIdEvidence.conflictCrosswalkDiagnostics.ATP;
+assert.equal(conflictCrosswalk.conflictingSourceIds,1);
+assert.equal(conflictCrosswalk.directNameAmbiguous,1);
+assert.equal(conflictCrosswalk.matchIdsAllInDirectCandidates,1);
+assert.equal(conflictCrosswalk.matchIdsDoNotOverlapDirectCandidates,0);
+assert.deepEqual(conflictCrosswalk.matchCandidateIdCounts,{"2":1});
+assert.deepEqual(conflictCrosswalk.directCandidateIdCounts,{"2":1});
+assert.deepEqual(conflictCrosswalk.registrySignatureCounts,{"2":1});
 
 
 
