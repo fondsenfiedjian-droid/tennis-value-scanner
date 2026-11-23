@@ -171,7 +171,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
       const g=byTour[tour];g.rows++;
       if(!["ATP","WTA"].includes(tour)){totals.unknownTour++;yearBucket.unknownTour++;tourYearBucket.unknownTour++;cg.unknownTour++;tcg.unknownTour++;tycg.unknownTour++;continue;}
       if(date===null){totals.invalidDate++;g.invalidDate++;yearBucket.invalidDate++;tourYearBucket.invalidDate++;cg.invalidDate++;tcg.invalidDate++;tycg.invalidDate++;continue;}
-      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;tycg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;continue;}
+      if(!a||!b||a===b){totals.noCandidate++;totals.invalidPlayerPair++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;yearBucket.invalidPlayerPair++;tourYearBucket.invalidPlayerPair++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;cg.invalidPlayerPair++;tcg.invalidPlayerPair++;tycg.invalidPlayerPair++;continue;}
       const sf=surface(row.surface),ev=tourney(row.tournoi);
       totals.validValuebetRows++;g.validRows++;yearBucket.validRows++;tourYearBucket.validRows++;cg.validRows++;tcg.validRows++;tycg.validRows++;
       if(!sf){
@@ -210,7 +210,7 @@ export function auditValuebetSackmann(valuebetFiles,sackmannFiles,{maxDateOffset
           matchRowsWithBothPlayerIdsEvidence++;
         }
       }else if(candidates.length>1){totals.ambiguous++;g.ambiguous++;yearBucket.ambiguous++;tourYearBucket.ambiguous++;cg.ambiguous++;tcg.ambiguous++;tycg.ambiguous++;}
-      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;}
+      else{totals.noCandidate++;g.noCandidate++;yearBucket.noCandidate++;tourYearBucket.noCandidate++;cg.noCandidate++;tcg.noCandidate++;tycg.noCandidate++;}
     }
   }
   const sorted=offsets.slice().sort((a,b)=>a-b);
