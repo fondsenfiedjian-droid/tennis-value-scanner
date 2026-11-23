@@ -1,0 +1,52 @@
+name: Aggregator 1 AcesAPI tournament catalogue preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aggregator1-acesapi-tournament-preflight
+  cancel-in-progress: false
+
+jobs:
+  bounded-catalogue-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/aggregator1-linkage-audit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify API secret is configured
+        env:
+          ACESAPI_API_KEY: ${{ secrets.ACESAPI_API_KEY }}
+        run: |
+          if [[ -z "$ACESAPI_API_KEY" ]]; then
+            echo "Missing repository Actions secret ACESAPI_API_KEY."
+            exit 1
+          fi
+
+      - name: Run exactly two tournament catalogue requests
+        env:
+          ACESAPI_API_KEY: ${{ secrets.ACESAPI_API_KEY }}
+          ACESAPI_OUT_DIR: ${{ runner.temp }}/acesapi-tournaments
+        run: |
+          set -euo pipefail
+          node scripts/aggregator1-acesapi-tournament-preflight.mjs --confirm-live-calls
+          mkdir -p audit-output
+          cp "$ACESAPI_OUT_DIR/acesapi-tournament-preflight-report.json" audit-output/
+          rm -rf "$ACESAPI_OUT_DIR"
+
+      - name: Upload aggregate catalogue report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregator1-acesapi-tournament-preflight-report
+          path: audit-output/acesapi-tournament-preflight-report.json
+          if-no-files-found: error
+          retention-days: 14
