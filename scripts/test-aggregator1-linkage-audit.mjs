@@ -405,3 +405,37 @@ assert.equal(conflictBreakdown.sameTierDuplicate.candidates,1);
 assert.equal(conflictBreakdown.sameTierDuplicate.scoreConflict,1);
 assert.equal(conflictBreakdown.sameTierDuplicate.roundConflict,0);
 assert.equal(conflictBreakdown.crossTierDuplicate.candidates,0);
+
+ 
+// Aggregate-only diagnostics distinguish absent player pairs from date-window misses.
+const unmatchedValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;joueur1_id;joueur2_id;categorie",
+  "un1;2025-05-12;Unknown Event;atp;dur;Registry Player A;Registry Player B;901;902;ITF"
+].join("\n")}];
+const unrelatedSack=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250512,Other Event,Hard,Other Player A,Other Player B,801,802"
+].join("\n")}];
+const playerRegistry=[{filename:"atp_players.csv",content:[
+  "player_id,name_first,name_last,dob,ioc,hand",
+  "901,Registry,Player A,19900101,USA,R",
+  "902,Registry,Player B,19910101,FRA,L"
+].join("\n")}];
+const unmatchedReport=auditValuebetSackmann(unmatchedValuebet,unrelatedSack,{playerFiles:playerRegistry});
+const pairAbsentDiagnostics=unmatchedReport.noCandidateDiagnostics.byReason.pairAbsent;
+assert.equal(unmatchedReport.noCandidateDiagnostics.rows,1);
+assert.equal(pairAbsentDiagnostics.rows,1);
+assert.equal(pairAbsentDiagnostics.bothNamesInRegistry,1);
+assert.equal(pairAbsentDiagnostics.bothSourceIdsInRegistry,1);
+assert.equal(JSON.stringify(unmatchedReport.noCandidateDiagnostics).includes("Registry Player"),false);
+
+const dateMissSack=[{filename:"atp_matches_futures_2025.csv",content:[
+  "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+  "20250301,Old Event,Hard,Registry Player A,Registry Player B,901,902"
+].join("\n")}];
+const dateMissReport=auditValuebetSackmann(unmatchedValuebet,dateMissSack,{playerFiles:playerRegistry});
+const dateMissDiagnostics=dateMissReport.noCandidateDiagnostics.byReason.dateWindowMiss;
+assert.equal(dateMissDiagnostics.rows,1);
+assert.equal(dateMissDiagnostics.bothNamesInRegistry,1);
+assert.equal(dateMissDiagnostics.bothSourceIdsInRegistry,1);
+assert.deepEqual(dateMissReport.noCandidateDiagnostics.dateWindowMissNearestOffsetBuckets,{"15-30":0,"31-60":0,"61-180":1,">180":0});
