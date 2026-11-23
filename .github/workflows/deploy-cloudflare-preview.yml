@@ -60,7 +60,7 @@ jobs:
           if (!endpoints.includes("/markets?match_id=123") ||
               !endpoints.includes("/markets/123/prices") ||
               !endpoints.includes("/matches/123/prices")) {
-            throw new Error("Preview Worker does not advertise Live Tennis PRO market routes");
+            throw new Error("Preview Worker does not advertise Live Tennis PRO market routes; buildId=" + health.buildId + "; endpoints=" + JSON.stringify(endpoints));
           }
           console.log("Preview Worker health OK; Live Tennis API configured; player search, Elo and PRO market routes advertised.");
           NODE
