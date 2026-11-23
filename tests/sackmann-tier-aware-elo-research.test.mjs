@@ -69,3 +69,19 @@ test("ATP and WTA player ID namespaces remain separate", () => {
   assert.equal(metric.baseline.brier, 0.25);
   assert.equal(metric.tierAware.brier, 0.25);
 });
+
+
+test("seven-day history lag withholds lower-tier results on the effective date", () => {
+  const lower = { date: "20250101", tour: "ATP", sourceType: "futures", winner: "100", loser: "200", player1: "100", player2: "200", surface: "Hard", tourneyId: "F1", matchNum: "1", round: "F" };
+  const sameEffectiveDay = { date: "20250108", tour: "ATP", sourceType: "main", winner: "100", loser: "300", player1: "100", player2: "300", surface: "Hard", tourneyId: "M1", matchNum: "1", round: "R32" };
+  const held = runTierAwareEloResearch([lower, sameEffectiveDay], {
+    from: "20250108", to: "20250108", lowerKs: [16], historyLagDays: 7
+  });
+  assert.equal(held.results.ATP.lowerTierK["16"].overall.tierAware.brier, 0.25);
+
+  const nextDay = { ...sameEffectiveDay, date: "20250109", tourney_id: "M2" };
+  const available = runTierAwareEloResearch([lower, nextDay], {
+    from: "20250109", to: "20250109", lowerKs: [16], historyLagDays: 7
+  });
+  assert.ok(available.results.ATP.lowerTierK["16"].overall.tierAware.brier < 0.25);
+});
