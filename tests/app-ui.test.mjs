@@ -421,10 +421,14 @@ test("settings preview changes are committed only by Save and Cancel restores sa
   assert.match(settingsSource, /Tournament filters are previewed while the modal is open and committed only by Save/);
   assert.match(settingsSource, /tourChecks\.forEach\(input=>input\.addEventListener\('change',\(\)=>\{if\(window\.cachedMatches\)renderMatches\(window\.cachedMatches\);\}\)\)/);
   assert.ok(saveStart >= 0);
+  const persistedAt=settingsSource.indexOf("throw new Error('Настройки не сохранились')");
+  const closeAt=settingsSource.indexOf("close();",persistedAt);
+  const sideEffectsAt=settingsSource.indexOf("applySkin(activeSkin);",persistedAt);
+  assert.ok(persistedAt>=0&&closeAt>persistedAt&&sideEffectsAt>closeAt, 'settings modal closes after verified save and before UI side effects');
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v135"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v136"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
