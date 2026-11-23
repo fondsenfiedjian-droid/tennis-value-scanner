@@ -576,6 +576,19 @@ test("virtual balance and history are local simulation screens, not real-money t
   assert.match(html, /id="navHistory"/);
 });
 
+test("virtual strategy uses the audited bankroll module with automatic strict-pick execution and verified settlement",()=>{
+  assert.match(html, /<script src="\.\/bankroll\.js"><\/script>/);
+  assert.match(html, /TVSBankroll\.createInitialState\(1000\)/);
+  assert.match(html, /function recordVirtualPortfolio\(bets\)/);
+  assert.match(html, /recordVirtualPortfolio\(bestBets\)/);
+  assert.match(html, /TVSBankroll\.recommendPortfolio\(state,candidates,riskOptions\)/);
+  assert.match(html, /TVSBankroll\.confirmPortfolioPlan\(pending,pending\.pendingPlan\.id\)/);
+  assert.match(html, /TVSBankroll\.settleVerifiedResults\(state,readPredictionArchive\(\)\)/);
+  for(const id of ["bankMaxStakePercent","bankMaxExposurePercent","bankMaxDailyStakePercent","bankKellyFraction"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(html, /id="virtualStrategyStats"/);
+  assert.match(html, /function renderVirtualStrategyStats\(/);
+});
+
 
 test("archive result checker reports status counts without removed bankroll references", () => {
   const start = html.indexOf("$('#archiveCheckResults').onclick=async()=>{");
