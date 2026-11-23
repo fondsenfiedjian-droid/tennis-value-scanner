@@ -3470,7 +3470,9 @@ test("TVS 2.0 preview deployment is isolated from Production", () => {
   assert.match(frontendSource, /tennis-value-api-preview\.fonds-enfiedjian\.workers\.dev/);
   assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
   assert.match(deployWorkflow, /wrangler\.preview\.toml/);
-  assert.match(deployWorkflow, /push:\s*branches:\s*-\s*ui\/tennis-value-scanner-2/);
+  assert.match(deployWorkflow, /on:\s*workflow_dispatch:/);
+  assert.doesNotMatch(deployWorkflow, /(^|\n)\s*push:/);
+  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
 });
 
 test("scanner batch size adapts to refresh interval within the BASIC daily quota", () => {
