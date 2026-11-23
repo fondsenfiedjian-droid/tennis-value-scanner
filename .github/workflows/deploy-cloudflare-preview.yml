@@ -106,3 +106,30 @@ jobs:
           }
           console.log("End-to-end comparison OK: search, Elo, two Basic histories and Basic H2H.");
           NODE
+
+      - name: Scanner schedule and Winamax feed smoke test
+        env:
+          PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.PREVIEW_WORKER_URL;
+          async function read(path) {
+            const response = await fetch(base + path, { signal: AbortSignal.timeout(15000) });
+            if (!response.ok) throw new Error("Scanner source failed with HTTP " + response.status);
+            return response.json();
+          }
+          const [schedule, odds] = await Promise.all([
+            read("/matches?status=upcoming&draw=singles&limit=200"),
+            read("/odds")
+          ]);
+          const scheduleRows = Array.isArray(schedule.data) ? schedule.data :
+            Array.isArray(schedule.matches) ? schedule.matches : null;
+          if (!scheduleRows) throw new Error("Schedule response has no recognized match array");
+          if (!Array.isArray(odds.items)) throw new Error("Winamax odds response has no items array");
+          if (!odds.diagnostics || !Number.isFinite(Number(odds.diagnostics.validDecimalOdds))) {
+            throw new Error("Winamax odds diagnostics are missing or malformed");
+          }
+          console.log("Scanner sources OK: schedule rows=" + scheduleRows.length +
+            "; Winamax rows=" + odds.items.length +
+            "; valid decimal quotes=" + Number(odds.diagnostics.validDecimalOdds) + ".");
+          NODE
