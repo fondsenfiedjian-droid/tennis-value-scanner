@@ -439,9 +439,31 @@ test("player stats endpoint validates IDs and returns read-only API data with ac
   assert.equal(requestedHeaders["X-API-Key"], "test-key");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(cachedStatsResponse.headers.get("Cache-Control"), "public, max-age=60");
-  assert.equal(cachedStatsKey, "https://worker.test/__player-stats/123");
+  assert.equal(cachedStatsKey, "https://worker.test/__player-stats/v2/123/");
   assert.equal(result.headers.get("Cache-Control"), "public, max-age=60");
   assert.equal(result.headers.get("X-Data-Cache"), "MISS");
+});
+
+test("player stats endpoint validates and forwards historical filters", async () => {
+  let requestedUrl = "";
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = url;
+    assert.equal(options.headers["X-API-Key"], "test-key");
+    return new Response(JSON.stringify({ player: { id: 123 }, records: { recent: [] } }), { status: 200 });
+  };
+  for (const invalidQuery of [
+    "?surface=carpet",
+    "?level=unknown",
+    "?last=51",
+    "?from=2026-03-01&to=2026-02-01"
+  ]) {
+    const invalid = await call("/player-stats?id=123" + invalidQuery);
+    assert.equal(invalid.status, 400, "reject invalid stats filter " + invalidQuery);
+  }
+  const result = await call("/player-stats?id=123&from=2026-01-01&to=2026-02-01&surface=hard&level=atp&last=10");
+  assert.equal(result.status, 200);
+  assert.equal(requestedUrl,
+    "https://api.livetennisapi.com/api/public/v1/players/123/stats?from=2026-01-01&to=2026-02-01&surface=hard&level=atp&last=10");
 });
 
 test("player stats endpoint reports forbidden access without inventing ULTRA entitlement", async () => {
