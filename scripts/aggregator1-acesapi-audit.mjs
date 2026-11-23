@@ -3,11 +3,11 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { parseCsv } from "./backtest.mjs";
 
-const VBT=/^valuebetennis-matchs-(\\d{4})\\.csv$/i;
-const ACES=/^acesapi-(atp|wta)-(\\d{4})(?:-.*)?\\.json$/i;
-const norm=v=>String(v??"").normalize("NFKD").replace(/\\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
+const VBT=/^valuebetennis-matchs-(\d{4})\.csv$/i;
+const ACES=/^acesapi-(atp|wta)-(\d{4})(?:-.*)?\.json$/i;
+const norm=v=>String(v??"").normalize("NFKD").replace(/\p{Diacritic}/gu,"").toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
 const surf=v=>{const s=norm(v);if(["hard","dur","indoorhard","outdoorhard"].includes(s))return "hard";if(["clay","terrebattue","terre"].includes(s))return "clay";if(["grass","gazon"].includes(s))return "grass";if(["carpet","moquette"].includes(s))return "carpet";return null;};
-const day=v=>{const s=String(v??"").trim();const m=s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);if(!m)return null;const t=Date.UTC(+m[1],+m[2]-1,+m[3]);const d=new Date(t);return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]?t/86400000:null;};
+const day=v=>{const s=String(v??"").trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return null;const t=Date.UTC(+m[1],+m[2]-1,+m[3]);const d=new Date(t);return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]?t/86400000:null;};
 const pct=(a,b)=>b?Number((100*a/b).toFixed(2)):null;
 function extractMatches(obj){
   const root=obj?.data??obj;
@@ -19,7 +19,7 @@ function extractMatches(obj){
 export function auditAcesApi(valuebetFiles,acesFiles,{dateWindowDays=1}={}){
   if(!valuebetFiles.length||!acesFiles.length)throw new Error("Valuebetennis CSVs and AcesAPI JSON files are required");
   if(!Number.isInteger(dateWindowDays)||dateWindowDays<0||dateWindowDays>3)throw new Error("dateWindowDays must be 0..3");
-  const index=new Map(),sourceByTourYear={},sourceByTourYearDraw={},sourceDuplicates={};
+  const index=new Map(),pairIndex=new Map(),sourceByTourYear={},sourceByTourYearDraw={},sourceDuplicates={};
   for(const file of acesFiles){
     const fm=basename(file.filename).match(ACES);
     if(!fm)throw new Error("Unexpected AcesAPI filename: "+basename(file.filename));
@@ -35,6 +35,8 @@ export function auditAcesApi(valuebetFiles,acesFiles,{dateWindowDays=1}={}){
       const record={tour,year,date,surface,draw,playerA:a,playerB:b};
       index.set(fingerprint,record);
       const pair=[tour,[a,b].sort().join("|")].join("::");
+      if(!pairIndex.has(pair))pairIndex.set(pair,[]);
+      pairIndex.get(pair).push(record);
       if(!sourceByTourYear[tour+"::"+year])sourceByTourYear[tour+"::"+year]=0;
       sourceByTourYear[tour+"::"+year]++;
       const dk=tour+"::"+year+"::"+draw;
@@ -61,7 +63,7 @@ export function auditAcesApi(valuebetFiles,acesFiles,{dateWindowDays=1}={}){
       for(const x of [g,c])x.validRows++;
       if(!sf){for(const x of [g,c]){x.unknownSurface++;x.noCandidate++;}continue;}
       const pair=[tour,[a,b].sort().join("|")].join("::");
-      const candidates=[...index.values()].filter(x=>x.tour===tour&&[x.playerA,x.playerB].sort().join("|")===[a,b].sort().join("|"));
+      const candidates=pairIndex.get(pair)||[];
       const sameSurface=candidates.filter(x=>x.surface===sf);
       const inWindow=sameSurface.filter(x=>Math.abs(x.date-d)<=dateWindowDays);
       if(inWindow.length)for(const x of [g,c])x.candidateRows++;
@@ -84,7 +86,7 @@ async function main(){
   const vf=[];for(const n of vn)vf.push({filename:n,content:await readFile(join(vdir,n),"utf8")});
   const af=[];for(const n of an)af.push({filename:n,content:await readFile(join(adir,n),"utf8")});
   const report=auditAcesApi(vf,af,{dateWindowDays:window});
-  await writeFile(out,JSON.stringify(report,null,2)+"\\n");
+  await writeFile(out,JSON.stringify(report,null,2)+"\n");
   console.log("Valuebetennis rows: "+report.valuebetRows);
   console.log("AcesAPI unique valid rows: "+report.acesApiUniqueRows);
   console.log("Aggregate report written to "+out);
