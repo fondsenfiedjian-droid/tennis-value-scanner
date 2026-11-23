@@ -176,4 +176,25 @@ assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictingSackmannI
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.sameDobIocDifferentHand,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.differentHandOnly,1);
 assert.equal(handConflictReport.playerIdEvidence.byTour.ATP.conflictProfile.identicalAvailableSignature,0);
-\nconsole.log("Aggregator 1 linkage audit fixtures: PASS");
+\n// Regression: tournament sponsor/location suffix variants map to the same canonical event.
+const aliasValuebet=[{filename:"valuebetennis-matchs-2025.csv",content:[
+  "match_id;date;tournoi;genre;surface;joueur1;joueur2;categorie",
+  "a1;2025-03-10;M15 Naples;atp;dur;Alias Player A;Alias Player B;ITF",
+  "a2;2025-06-16;Rothesay Open Nottingham;wta;gazon;Alias Player C;Alias Player D;ITF"
+].join("\n")}];
+const aliasSackmann=[
+  {filename:"atp_matches_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250310,M15 Naples FL,Hard,Alias Player A,Alias Player B,601,602"
+  ].join("\n")},
+  {filename:"wta_matches_2025.csv",content:[
+    "tourney_date,tourney_name,surface,winner_name,loser_name,winner_id,loser_id",
+    "20250616,Nottingham,Grass,Alias Player C,Alias Player D,603,604"
+  ].join("\n")}
+];
+const aliasReport=auditValuebetSackmann(aliasValuebet,aliasSackmann);
+assert.equal(aliasReport.totals.linkedUnique,2);
+assert.equal(aliasReport.totals.eventNameExactMatch,2);
+assert.equal(aliasReport.totals.eventNameMismatch,0);
+
+console.log("Aggregator 1 linkage audit fixtures: PASS");
