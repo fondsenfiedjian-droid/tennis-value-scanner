@@ -445,7 +445,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/matches?status=completed", "/history/packages?kind=tape", "/history/packages?kind=archive", "/history/packages/2026-11", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/matches?status=completed", "/history/coverage", "/history/packages?kind=tape", "/history/packages?kind=archive", "/history/packages/2026-11", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
       });
     }
 
@@ -1030,6 +1030,41 @@ export default {
       }
     }
 
+    if (path === "/history/coverage") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__history-coverage/v1");
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/history/coverage", {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis history coverage returned invalid JSON" }, 502);
+        }
+        if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(body, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        await cache.put(cacheKey, new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" }
+        }));
+        return response(body, 200, { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" });
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis history coverage", accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/usage") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
@@ -1367,17 +1402,49 @@ export default {
         return response({ error: "id must be a positive integer player identifier" }, 400);
       }
       const playerId = String(Number(rawPlayerId));
+      const params = new URLSearchParams();
+      for (const key of ["from", "to"]) {
+        const value = url.searchParams.get(key);
+        if (value === null) continue;
+        if (!value.trim() || Number.isNaN(Date.parse(value))) return response({ error: key + " must be a valid ISO date or UTC instant" }, 400);
+        params.set(key, value.trim());
+      }
+      if (params.has("from") && params.has("to") && Date.parse(params.get("from")) > Date.parse(params.get("to"))) {
+        return response({ error: "from must not be later than to" }, 400);
+      }
+      const surface = url.searchParams.get("surface");
+      if (surface !== null) {
+        if (!["hard", "clay", "grass", "indoor"].includes(surface.trim().toLowerCase())) {
+          return response({ error: "surface must be hard, clay, grass or indoor" }, 400);
+        }
+        params.set("surface", surface.trim().toLowerCase());
+      }
+      const level = url.searchParams.get("level");
+      if (level !== null) {
+        if (!["atp", "wta", "challenger", "itf", "juniors"].includes(level.trim().toLowerCase())) {
+          return response({ error: "level must be atp, wta, challenger, itf or juniors" }, 400);
+        }
+        params.set("level", level.trim().toLowerCase());
+      }
+      const last = url.searchParams.get("last");
+      if (last !== null) {
+        if (!/^\d{1,2}$/.test(last) || Number(last) < 1 || Number(last) > 50) {
+          return response({ error: "last must be an integer from 1 to 50" }, 400);
+        }
+        params.set("last", String(Number(last)));
+      }
       try {
         // Player statistics change more often than profile ratings; cache successful responses for one minute, matching the provider's cache window.
         const cache = caches.default;
-        const cacheKey = internalCacheRequest(request, "/__player-stats/" + encodeURIComponent(playerId));
+        const cacheKey = internalCacheRequest(request, "/__player-stats/v2/" + encodeURIComponent(playerId) + "/" + params.toString());
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
+        const query = params.toString();
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats" + (query ? "?" + query : ""), {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         }, env);
         let stats;
