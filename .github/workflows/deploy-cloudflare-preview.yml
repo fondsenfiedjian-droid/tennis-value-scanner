@@ -152,6 +152,52 @@ jobs:
             "; H2H=" + (h2hOK ? "available" : "HTTP " + h2hResponse.status) + ".");
           NODE
 
+      - name: Verify Live Tennis PRO historical bulk packages
+        env:
+          PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.PREVIEW_WORKER_URL;
+          async function read(path) {
+            const response = await fetch(base + path, { signal: AbortSignal.timeout(20000) });
+            let payload = {};
+            try { payload = await response.json(); } catch {}
+            if (!response.ok) {
+              throw new Error("History package request " + path + " returned HTTP " + response.status +
+                "; accessStatus=" + (payload.accessStatus || payload.error || "unknown"));
+            }
+            return payload;
+          }
+          const [tape, archive] = await Promise.all([
+            read("/history/packages?kind=tape"),
+            read("/history/packages?kind=archive")
+          ]);
+          if (!Array.isArray(tape.data) || !Array.isArray(archive.data) ||
+              tape.data.length === 0 || archive.data.length === 0) {
+            throw new Error("PRO package inventory is empty or malformed: tape=" +
+              (tape.data?.length ?? "missing") + "; archive=" + (archive.data?.length ?? "missing"));
+          }
+          const latestTape = tape.data[0];
+          const latestArchive = archive.data[0];
+          if (!latestTape.period || !latestArchive.period) {
+            throw new Error("History package inventory has no period identifiers");
+          }
+          const [tapeManifest, archiveManifest] = await Promise.all([
+            read("/history/packages/" + encodeURIComponent(latestTape.period) + "?kind=tape"),
+            read("/history/packages/" + encodeURIComponent(latestArchive.period) + "?kind=archive")
+          ]);
+          for (const [label, manifest] of [["tape", tapeManifest], ["archive", archiveManifest]]) {
+            if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+              throw new Error(label + " package manifest has no downloadable files");
+            }
+          }
+          console.log("Live Tennis PRO bulk history verified: monthly tape packages=" + tape.data.length +
+            "; newest tape=" + latestTape.period + "; matches=" + (latestTape.match_count ?? "unknown") +
+            "; archive years=" + archive.data.length + "; newest archive year=" + latestArchive.period +
+            "; archive results=" + (latestArchive.match_count ?? "unknown") +
+            "; tape schema=" + (tapeManifest.schema_version ?? "unversioned") + ".");
+          NODE
+
       - name: Scanner schedule and Winamax feed smoke test
         env:
           PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
