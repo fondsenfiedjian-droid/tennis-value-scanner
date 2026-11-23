@@ -1142,10 +1142,11 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       alert('Не удалось сохранить настройки на устройстве. Проверь доступное место в хранилище браузера.');
       return;
     }
+    // Close immediately after verified persistence; UI refresh work must not keep the modal open.
+    close();
     activeSkin=data.skin;
     applySkin(activeSkin);
     scheduleAutoRefresh();
-    close();
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
