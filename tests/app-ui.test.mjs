@@ -675,11 +675,16 @@ test("minimum EV setting is exclusive to Bet of the Day",()=>{
   assert.match(html,/if\(valueGateA\.eligible&&result\.evA!==null&&result\.evA>0\)positive\+\+/);
 });
 
-test("skin selection applies and persists immediately",()=>{
+test("skin selection previews immediately but persists only after Save",()=>{
   assert.match(html,/document\.body\.dataset\.skin=selected/);
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
-  assert.match(html,/settings\.skin=selected/);
-  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+  const start=html.indexOf("$('#skinSelect').addEventListener('change'");
+  const end=html.indexOf("['minEv','minOdds','maxOdds','bestBetMinOdds']",start);
+  const preview=html.slice(start,end);
+  assert.match(preview,/applySkin\(selected\)/);
+  assert.doesNotMatch(preview,/localStorage\.setItem|activeSkin=selected/);
+  assert.match(html,/data\.skin=\$\('#skinSelect'\)\.value==='steel'\?'steel':'black'/);
+  assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(data\)\)/);
 });
 
 test("BASIC comparison history derives last-five, recent form and surface splits by participant ID",()=>{
