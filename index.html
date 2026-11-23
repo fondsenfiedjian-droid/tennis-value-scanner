@@ -984,6 +984,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     return {minEv,minOdds,maxOdds};
   }
   const saved=readSettings();
+  if(saved.skin==='black'&&saved.musicPaletteDefaultApplied!==true){
+    saved.skin='terracotta';saved.musicPaletteDefaultApplied=true;
+    try{localStorage.setItem('tvs-settings',JSON.stringify(saved));}catch(e){}
+  }
   let activeSkin=['black','steel','neon','terracotta'].includes(saved.skin)?saved.skin:'terracotta';
   function applySkin(skin){
     const selected=['black','steel','neon','terracotta'].includes(skin)?skin:'terracotta';
@@ -1029,6 +1033,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     ['minEv','minOdds','maxOdds','bestBetMinOdds'].forEach(id=>data[id]=$('#'+id).value);
     data.refreshRate=refreshRate;
     data.skin=['black','steel','neon','terracotta'].includes($('#skinSelect').value)?$('#skinSelect').value:'terracotta';
+    data.musicPaletteDefaultApplied=true;
     data.tours=tours;
     try{
       localStorage.setItem('tvs-settings',JSON.stringify(data));
