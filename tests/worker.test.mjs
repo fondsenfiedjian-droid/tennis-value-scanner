@@ -343,6 +343,8 @@ test("odds endpoint imports fresh French Winamax tennis singles from Flashscore 
   assert.equal(payload.sourceCounts.vavilov, 0);
   assert.equal(payload.sourceCounts.flashscore, 2);
   assert.equal(payload.flashscore.diagnostic, "ok");
+  assert.equal(payload.flashscore.diagnostics.acceptedRows, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.bookmaker, 1);
   assert.equal(payload.count, 2);
   assert.deepEqual(payload.items.map(item => [item.outcome, item.oddsDecimal]), [
     ["home", 1.6], ["away", 2.1]
