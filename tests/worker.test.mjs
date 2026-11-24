@@ -164,10 +164,28 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
     requestedHeaders = options.headers;
     if (url.includes("/runs/last?status=SUCCEEDED")) {
       return new Response(JSON.stringify({ data: {
+        id: "run-123",
+        actId: "actor-123",
+        defaultDatasetId: "dataset-123",
         status: "SUCCEEDED",
         startedAt: "2026-11-20T10:00:00.000Z",
         finishedAt: "2026-11-20T10:00:12.000Z",
+        exitCode: 0,
+        statusMessage: "Actor finished",
+        usageTotalUsd: 0.004,
+        stats: { durationMillis: 12000, requestsFinished: 8, requestsFailed: 1, requestsRetried: 2, computeUnits: 0.003 },
         meta: { origin: "SCHEDULER", scheduleId: "schedule-123" }
+      } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/schedules/schedule-123")) {
+      return new Response(JSON.stringify({ data: {
+        name: "Winamax Tennis France",
+        cronExpression: "0 */2 * * *",
+        timezone: "Europe/Paris",
+        isEnabled: true,
+        lastRunAt: "2026-11-20T10:00:00.000Z",
+        nextRunAt: "2026-11-20T12:00:00.000Z",
+        actions: [{ type: "RUN_ACTOR_TASK", actorTaskId: "s9Des4R3jhMfA8e3s" }]
       } }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return new Response(JSON.stringify(dataset), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -181,15 +199,33 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
   assert.ok(Number.isFinite(Date.parse(payload.retrievedAt)));
   assert.deepEqual(JSON.parse(JSON.stringify(payload.taskRun)), {
+    runId: "run-123",
+    actorId: "actor-123",
+    defaultDatasetId: "dataset-123",
     status: "SUCCEEDED",
     startedAt: "2026-11-20T10:00:00.000Z",
     finishedAt: "2026-11-20T10:00:12.000Z",
+    exitCode: 0,
+    statusMessage: "Actor finished",
+    usageTotalUsd: 0.004,
+    stats: { durationMillis: 12000, requestsFinished: 8, requestsFailed: 1, requestsRetried: 2, computeUnits: 0.003 },
     origin: "SCHEDULER",
-    scheduled: true
+    scheduled: true,
+    schedule: {
+      name: "Winamax Tennis France",
+      cronExpression: "0 */2 * * *",
+      timezone: "Europe/Paris",
+      isEnabled: true,
+      lastRunAt: "2026-11-20T10:00:00.000Z",
+      nextRunAt: "2026-11-20T12:00:00.000Z",
+      taskBound: true
+    },
+    scheduleDiagnostic: "ok"
   });
   assert.equal(payload.taskRunDiagnostic, "ok");
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000"));
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last?status=SUCCEEDED"));
+  assert.ok(requestedUrls.includes("https://api.apify.com/v2/schedules/schedule-123"));
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(storedKey, "https://worker.test/odds");
@@ -220,6 +256,28 @@ test("odds feed remains available and reports metadata HTTP failures", async () 
   assert.equal(payload.count, 1);
   assert.equal(payload.taskRun, null);
   assert.equal(payload.taskRunDiagnostic, "http_403");
+});
+
+test("odds feed remains available when optional Apify schedule metadata fails", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async url => {
+    if (url.includes("/runs/last?status=SUCCEEDED")) {
+      return new Response(JSON.stringify({ data: {
+        status: "SUCCEEDED",
+        meta: { origin: "SCHEDULER", scheduleId: "schedule-403" }
+      } }), { status: 200 });
+    }
+    if (url.includes("/schedules/schedule-403")) return new Response("forbidden", { status: 403 });
+    return new Response(JSON.stringify([{ bookmaker: "Winamax", oddsDecimal: 1.91 }]), { status: 200 });
+  };
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.count, 1);
+  assert.equal(payload.taskRunDiagnostic, "ok");
+  assert.equal(payload.taskRun.schedule, null);
+  assert.equal(payload.taskRun.scheduleDiagnostic, "http_403");
 });
 
 test("odds diagnostics report schema coverage, bookmaker names, outcomes and quote freshness", async () => {
