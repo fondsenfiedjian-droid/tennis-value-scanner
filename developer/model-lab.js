@@ -5,14 +5,21 @@ export function mountModelLab(root,readModels){
  if(!file||!run)return;
  let dataset=null;
  file.addEventListener("change",async()=>{
-  const selected=file.files&&file.files[0];if(!selected)return;
+  const selected=Array.from(file.files||[]);if(!selected.length)return;
   meta.textContent="Читаю CSV-файл…";results.textContent="";run.disabled=true;
-  try{dataset=parseMatchCsv(await selected.text());meta.textContent=selected.name+" · строк: "+dataset.totalRows+" · матчей: "+dataset.matches.length+" · исключено: "+dataset.rejected+" · "+dataset.firstDate+" — "+dataset.lastDate;run.disabled=false;}
+  try{
+   const parsed=await Promise.all(selected.map(async item=>parseMatchCsv(await item.text())));
+   const unique=new Map();let totalRows=0,rejected=0;
+   parsed.forEach(part=>{totalRows+=part.totalRows;rejected+=part.rejected;part.matches.forEach(match=>{if(unique.has(match.id))rejected++;else unique.set(match.id,match);});});
+   const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+   dataset={matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date};
+   meta.textContent=selected.map(item=>item.name).join(" + ")+" · строк: "+totalRows+" · матчей: "+matches.length+" · исключено: "+rejected+" · "+dataset.firstDate+" — "+dataset.lastDate;run.disabled=false;
+  }
   catch(error){dataset=null;meta.textContent="Ошибка файла: "+String(error.message||error);run.disabled=true;}
  });
  run.addEventListener("click",async()=>{
   if(!dataset)return;
-  const models=readModels();if(!models.some(model=>model.id==="general-elo-v2"))models.unshift({id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:.3,formWeight:80,h2hWeight:60});
+  const models=readModels().slice(0,6);if(!models.some(model=>model.id==="general-elo-v2"))models.unshift({id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:.3,formWeight:80,h2hWeight:60});
   run.disabled=true;progress.textContent="Подготовка walk-forward расчёта…";results.replaceChildren();
   try{
    const output=await runWalkForward(dataset.matches,models,{onProgress:p=>{progress.textContent="Обработано "+p.processed.toLocaleString("ru-RU")+" / "+p.total.toLocaleString("ru-RU")+" матчей · "+p.percent+"% · дата "+p.date;}});
