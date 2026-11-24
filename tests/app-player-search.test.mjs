@@ -44,7 +44,7 @@ test("Elo comparison renders independently of supplementary history and H2H requ
 test("comparison remains useful when API supplies Elo rank but no numeric Elo rating", () => {
   assert.match(html, /function renderCompareUnavailableElo\(/);
   assert.match(html, /response\.status===422/);
-  assert.match(html, /payload\.error==='Elo rating is unavailable for one or both players'/);
+  assert.match(html, /payload\?\.error==='Elo rating is unavailable for one or both players'/);
   assert.match(html, /Место в Elo-рейтинге:/);
   assert.match(html, /Место в Elo-рейтинге не является рейтингом Elo/);
   assert.match(html, /вероятности победы и справедливые коэффициенты не рассчитывались/);
