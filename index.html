@@ -1280,13 +1280,29 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="amber-led"] #mandatoryBets .ev-empty-state b{color:#f4dfbd!important}
     body[data-skin="amber-led"] #mandatoryBets .ev-empty-state small{color:#a99578!important}
 
+
+    /* Compact header: settings remain in the bottom navigation */
+    .main-header{padding:10px 2px 8px!important;gap:8px!important;margin-bottom:4px!important}
+    .brand-lockup{gap:8px!important;min-width:0}
+    .brand-ball{width:34px!important;height:34px!important;min-width:34px;display:grid;place-items:center;border-radius:11px!important;font-size:19px!important}
+    .brand-lockup .brand{font-size:16px!important;line-height:1!important;letter-spacing:.04em!important}
+    .header-actions{display:grid!important;justify-items:end;align-content:center;gap:3px!important;min-width:0}
+    .header-actions .status{padding:3px 6px!important;font-size:8px!important;line-height:1.1;letter-spacing:.04em}
+    .header-actions .edition-version{padding:2px 5px!important;font-size:8px!important;line-height:1.1;letter-spacing:.025em}
+    @media(max-width:380px){
+      .main-header{gap:5px!important}
+      .brand-lockup{gap:6px!important}
+      .brand-lockup .brand{font-size:14px!important;letter-spacing:.02em!important}
+      .brand-ball{width:31px!important;height:31px!important;min-width:31px;font-size:17px!important}
+      .header-actions .edition-version{font-size:7px!important}
+    }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="main-header">
     <div class="brand-lockup"><div class="brand-ball">🎾</div><div><div class="brand">TENNIS<br>VALUE <em>SCANNER</em></div></div></div>
-    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><span class="edition-version" id="editionVersion">PRODUCTION · v2.0.0</span><button type="button" id="headerSettings" aria-label="Открыть настройки">⚙</button></div>
+    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><span class="edition-version" id="editionVersion">PRODUCTION · v2.0.0</span></div>
   </header>
   <nav class="top-status-nav" aria-label="Матчи по статусу"><button type="button" id="topLive">● LIVE</button><button type="button" id="topUpcoming">СКОРО</button><button type="button" id="topTomorrow">ЗАВТРА</button></nav>
 
