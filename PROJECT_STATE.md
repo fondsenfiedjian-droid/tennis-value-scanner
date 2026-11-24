@@ -1145,3 +1145,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The last successful Apify task run in the preview feed finished at 18:13 UTC and was scheduler-originated. No new run was visible by 19:13 UTC.
 - The read-only audit did not alter the task, Worker secrets or Production. Next check after a newer scheduled task run; do not change the scraper without approval.
 - Current TVS 2.0 regression suite: 565 passed, 0 failed.
+
+
+## 2026-11-24 — Player comparison runtime failure isolated and fallback added
+- Added live Preview runtime checks for the player-comparison chain: player search, profile lookup through /predict, numeric Elo validation, player histories and H2H.
+- The live search resolves Carlos Alcaraz and Jannik Sinner correctly. Their Live Tennis profiles identify archive IDs 207989 and 206173 and expose official ranking/points.
+- The provider exposes `stats.ratings.elo.elo_rank` (2 and 1 in this sample), which is a position in the Elo ranking, not a numeric Elo rating. The /predict endpoint correctly returns HTTP 422 rather than treating ordinal ranks as Elo points or generating unsupported win probabilities.
+- The two /player-history requests and /player-h2h request succeeded in the Preview smoke: 5 history rows for each player and 18 H2H meetings. This confirms the comparison's supplementary data path is available.
+- Updated the comparison UI to remain useful when numeric Elo is absent: show official ranking/points and the separate Elo leaderboard position, explicitly suppress win probabilities/fair odds, and still load recent history and H2H. No fabricated numeric Elo or probability is introduced.
+- Extended Preview smoke to verify the live comparison path and report whether it is in numeric-Elo or profile-fallback mode. Runtime smoke passed in profile-fallback mode; regression suite passed after the fallback assertion was corrected.
+- This is Preview-only. A proper numeric Elo comparison still requires a valid numeric rating source, such as a separately validated chronological rating calculation. The Elo rank field must never be used as a substitute. No Production deploy, merge, or Apify task change.
