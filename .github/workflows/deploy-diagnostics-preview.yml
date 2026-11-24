@@ -57,7 +57,8 @@ jobs:
 
       - name: Verify diagnostics Worker and Live Tennis API authentication
         run: |
-          base="https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev"
+          export DIAGNOSTICS_BASE="https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev"
+          base="$DIAGNOSTICS_BASE"
           curl --fail --silent --show-error "$base/health" -o /tmp/diagnostics-health.json
           node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
           curl --fail --silent --show-error "$base/usage" -o /dev/null
@@ -70,10 +71,10 @@ jobs:
           node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); if(!Array.isArray(d.players)||!d.players.length||!d.players[0].id) throw new Error("Player search returned no usable player ID"); require("fs").writeFileSync("/tmp/player-id",String(d.players[0].id)); console.log("Player search: ",d.count,"players; first result has a valid ID");'
 
           player_id="$(cat /tmp/player-id)"
+          export PLAYER_ID="$player_id"
           curl --fail --silent --show-error "$base/player-history?id=$player_id&limit=50&tour=atp" -o /tmp/player-history.json
           node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-history.json","utf8")); if(!Array.isArray(d.data)) throw new Error("Player history data is not an array"); console.log("Player history access:",d.accessStatus,"; page count:",d.count,"; pagination:",JSON.stringify(d.meta||{})); const dates=d.data.map(x=>x.scheduled_time||x.created_at).filter(Boolean).sort(); if(dates.length) console.log("Returned match date range:",dates[0],"to",dates[dates.length-1]); const surfaces={}; for(const m of d.data) surfaces[m.surface||"unknown"]=(surfaces[m.surface||"unknown"]||0)+1; console.log("Surface distribution:",JSON.stringify(surfaces)); if(d.data.length){console.log("History record fields:",Object.keys(d.data[0]).join(", "));}'
 
-          curl --fail --silent --show-error "$base/player-history?id=$player_id&limit=50&offset=50&tour=atp" -o /tmp/player-history-page2.json
-          node -e 'const a=JSON.parse(require("fs").readFileSync("/tmp/player-history.json","utf8")); const b=JSON.parse(require("fs").readFileSync("/tmp/player-history-page2.json","utf8")); if(!Array.isArray(b.data)) throw new Error("Second history page is not an array"); const ids=new Set(a.data.map(x=>String(x.id))); const overlap=b.data.filter(x=>ids.has(String(x.id))).length; if(b.data.length && overlap===b.data.length) throw new Error("Pagination returned duplicate first-page records"); console.log("History pagination: second page returned",b.count,"matches; duplicate IDs:",overlap,"; has_more:",b.meta?.has_more);'
+          node -e ' (async()=>{ const base=process.env.DIAGNOSTICS_BASE; const id=process.env.PLAYER_ID; const seen=new Map(); let offset=0,hasMore=true,pages=0; const surfaces={}; const dates=[]; while(hasMore && pages<100){ const r=await fetch(base+"/player-history?id="+id+"&limit=50&offset="+offset+"&tour=atp"); if(!r.ok) throw new Error("History page "+offset+" HTTP "+r.status); const d=await r.json(); if(!Array.isArray(d.data)) throw new Error("Invalid history page at offset "+offset); pages++; for(const m of d.data){ if(m.id!=null) seen.set(String(m.id),m); const surface=m.surface||"unknown"; surfaces[surface]=(surfaces[surface]||0)+1; const date=m.scheduled_time||m.created_at; if(date) dates.push(date); } hasMore=Boolean(d.meta?.has_more); if(!d.data.length && hasMore) throw new Error("Empty page while has_more=true"); offset+=50; } dates.sort(); console.log("Full player history pagination: pages",pages,"; unique matches",seen.size,"; stopped at offset",offset,"; has_more after cap:",hasMore); if(dates.length) console.log("Full history date range:",dates[0],"to",dates[dates.length-1]); console.log("Full history surfaces:",JSON.stringify(surfaces)); })().catch(e=>{console.error(e);process.exit(1)})'
           
 # Keep the isolated diagnostics deployment and secret setup in sync.
