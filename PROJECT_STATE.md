@@ -1075,3 +1075,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Historical backtest runner is connected in Developer Edition. It compares all saved profiles on the same sample using Brier, LogLoss, accuracy and ECE; it excludes same-day result leakage and does not calculate ROI without a documented odds/staking pipeline.
 - Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
 - Added a branch-scoped regression workflow (Node.js 22, node --test tests/*.test.mjs) so this stacked feature branch validates without changing or deploying Production. Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
+
+
+## 2026-11-24 — TVS 2.0 daily plan summary and UI regression alignment
+- Restored the approved four-part daily-plan summary inside the mandatory-bets section: mandatory recommendation count, deployed capital, configured virtual bank, and overall risk.
+- Unconfigured money fields display an em dash; the interface explicitly says the bank is not set, stake amount is not calculated, and risk is not calculated. No default bankroll or stake is created.
+- Updated UI regression expectations to reflect the approved hierarchy (daily pick, mandatory-bets section with its nested summary, then additional opportunities) and the five-item bottom navigation where Settings lives in the bottom bar rather than a header shortcut.
+- Preview-only change on the TVS 2.0 integration branch. No Production deploy or merge.
