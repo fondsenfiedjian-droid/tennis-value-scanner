@@ -186,3 +186,32 @@ The inspected 14-match sample (prior successful collection) had:
 The completeness flag differs between raw and clean representations and is not an independent quality guarantee. The full sample is not uniformly complete. Keep per-match flags and field-level missingness; do not pool unadjusted serve/outcome counts into player rates.
 
 The 14-match sample is still a small, deliberately selected convenience sample: four ATP matches involving Carlos Alcaraz, four WTA, four Challenger and two ITF. It is not representative of tours, players, surfaces or match conditions, and cannot support model claims. It establishes that the PRO feed can provide useful observed point histories across four queried tour categories.
+
+
+### Metadata-aware paired artifact verified (2026-11-24)
+
+The second diverse run, https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45464851599, completed successfully after passing the discovery JSON as a metadata sidecar to the paired tape collector. Inspection of private artifact 14953407887 confirms that **all 14 records retain both participant names, scheduled date/time, surface and tournament**.
+
+| Match ID | Tour | Match | Date | Surface | RAW/CLEAN rows |
+|---|---|---|---|---|---:|
+| 223144 | ATP | Ben Shelton – Carlos Alcaraz | 2026-11-21 | Hard | 168 / 167 |
+| 219743 | ATP | Carlos Alcaraz – Flavio Cobolli | 2026-11-20 | Hard | 105 / 98 |
+| 219742 | ATP | Carlos Alcaraz – Daniil Medvedev | 2026-11-18 | Hard | 97 / 96 |
+| 219744 | ATP | Frances Tiafoe – Carlos Alcaraz | 2026-11-16 | Hard | 95 / 89 |
+| 204961 | WTA | Iga Swiatek – Maja Chwalinska | 2026-10-17 | Hard | 136 / 123 |
+| 223385 | WTA | Coco Gauff – Dalma Galfi | 2026-11-21 | Hard | 97 / 87 |
+| 215422 | WTA | Elina Svitolina – Aryna Sabalenka | 2026-11-13 | Hard | 161 / 151 |
+| 204687 | WTA | Ann Li – Iga Swiatek | 2026-10-16 | Hard | 115 / 107 |
+| 223044 | Challenger | Sascha Gueymard Wayenburg – Luca Nardi | 2026-11-20 | Hard | 98 / 97 |
+| 223381 | Challenger | Nishesh Basavareddy – Otto Virtanen | 2026-11-21 | Hard | 116 / 105 |
+| 222420 | Challenger | Luca Nardi – Kyrian Jacquet | 2026-11-19 | Hard | 110 / 99 |
+| 223077 | Challenger | Edas Butvilas – Nishesh Basavareddy | 2026-11-20 | Hard | 101 / 99 |
+| 201310 | ITF | Katerina Zajickova – Brenda Fruhvirtova | 2026-10-08 | Clay | 123 / 113 |
+| 200344 | ITF | Karolina Mrazikova – Brenda Fruhvirtova | 2026-10-06 | Clay | 188 / 176 |
+
+Verified field coverage:
+- RAW timestamps: 1,710/1,710 (100%); server: 1,697/1,710; serve: 1,044/1,710 (61.1%); score-derived winner: 1,675/1,710 (98.0%).
+- CLEAN timestamps and server: 1,607/1,607 (100%); serve: 1,002/1,607 (62.4%); point_winner: 1,571/1,607 (97.8%).
+- Provider `points.complete=true`: RAW 9/14; CLEAN 3/14. Completeness is a provider flag, not an independent guarantee; the raw and clean flags differ.
+
+The paired artifact now contains identity metadata and can be joined to score/tape features without another history lookup. The sample remains selected and small; it is suitable for parser and feature-contract research, not model training claims or tour-wide performance estimates.
