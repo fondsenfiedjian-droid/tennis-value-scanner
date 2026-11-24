@@ -1074,4 +1074,4 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The model laboratory is hidden in Production and available only in Developer Edition. Initial milestone stores isolated experimental parameter profiles (K-factor, surface, form and H2H weights) without affecting active predictions.
 - Historical backtest execution is not yet connected; the lab explicitly avoids displaying fabricated metrics. Next work: connect a reproducible chronological runner and compare all candidates on identical samples.
 - Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
-- Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
+- Added a branch-scoped regression workflow (Node.js 22, node --test tests/*.test.mjs) so this stacked feature branch validates without changing or deploying Production. Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
