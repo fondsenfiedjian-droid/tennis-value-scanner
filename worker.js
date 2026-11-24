@@ -71,10 +71,10 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
     // Flashscore explicitly joins tennis doubles participants with "/".
     if (homeTeam.includes("/") || awayTeam.includes("/")) { reject("doubles"); continue; }
     const competition = String(row.tournament || "").trim();
-    const teamTieCompetitions = /^(?:Davis Cup|Billie Jean King Cup|United Cup|Laver Cup)$/i;
+    const teamTieCompetitions = /^(?:Davis Cup|Coupe Davis|Billie Jean King Cup|Coupe Billie Jean King|United Cup|Laver Cup)\b/i;
     const countryTeamNames = new Set([
       "argentina", "australia", "austria", "belgium", "brazil", "bulgaria", "canada",
-      "chile", "china", "chinese taipei", "colombia", "croatia", "czech republic",
+      "chile", "china", "chinese taipei", "colombia", "croatia", "czech republic", "czechia",
       "denmark", "ecuador", "egypt", "estonia", "finland", "france", "georgia",
       "germany", "great britain", "greece", "hungary", "india", "indonesia", "ireland",
       "israel", "italy", "japan", "kazakhstan", "latvia", "lithuania", "luxembourg",
