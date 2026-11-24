@@ -7,7 +7,7 @@ document.body.dataset.edition=edition.channel;
 const badge=document.getElementById("editionVersion");
 if(badge)badge.textContent=(isDeveloper?"DEVELOPER":"PRODUCTION")+" · v"+edition.version;
 const labButton=document.getElementById("quickLab");
-if(!isDeveloper){if(labButton){labButton.hidden=true;labButton.setAttribute("aria-hidden","true");}return;}
+if(!isDeveloper){if(labButton){labButton.hidden=true;labButton.setAttribute("aria-hidden","true");labButton.onclick=null;}document.getElementById("labView")?.remove();window.showLab=()=>{};return;}
 if(!labButton)return;
 const KEY="tvs-lab-models-v1";
 const baseline={id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:0.3,formWeight:80,h2hWeight:60,kind:"baseline",createdAt:"built-in"};
