@@ -11,7 +11,7 @@ const SEEDS = {
   atp: ["Novak Djokovic", "Carlos Alcaraz", "Jannik Sinner"],
   wta: ["Iga Swiatek", "Coco Gauff", "Aryna Sabalenka"],
   challenger: ["Luca Nardi", "Arthur Cazaux", "Zizou Bergs", "Nishesh Basavareddy", "Federico Cina"],
-  itf: ["Rei Sakamoto", "Federico Cina", "Yibing Wu", "Sara Saito", "Alina Korneeva", "Brenda Fruhvirtova", "Tyra Caterina Grant"],
+  itf: ["Rei Sakamoto", "Federico Cina", "Yibing Wu", "Sara Saito", "Alina Korneeva", "Brenda Fruhvirtova", "Tyra Caterina Grant", "Yaroslav Demin", "Laura Samson", "Hannah Klugman", "Joao Fonseca", "Mirra Andreeva"],
   juniors: ["Yaroslav Demin", "Laura Samson", "Hannah Klugman", "Tyra Caterina Grant", "Joao Fonseca", "Mirra Andreeva"]
 };
 const PER_TOUR_TARGET = Number(process.env.PER_TOUR_TARGET || 4);
