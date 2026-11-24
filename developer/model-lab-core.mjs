@@ -49,7 +49,7 @@ export function mergeMatchDatasets(parts){
  }
  const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  if(!matches.length)throw new Error("После объединения CSV не осталось однозначных матчей: проверьте совпадающие ID и содержимое файлов.");
- return {matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflictCount+conflicts.size};
+ return {matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size};
 }
 export function parseMatchCsv(source){
  const rows=parseRows(String(source||"").replace(/^\uFEFF/,""));
