@@ -19,11 +19,12 @@ test("Production and Developer have distinct install identities and scopes",()=>
   assert.equal(devManifest.scope,"/developer/");
   assert.match(devManifest.name,/Developer/);
 });
+const iconPurposes=icon=>String(icon.purpose||"any").split(/\s+/);
 test("both edition manifests declare scalable SVG icons without unsafe maskable reuse",()=>{
   for(const manifest of [rootManifest,devManifest]){
-    assert.ok(manifest.icons.some(icon=>icon.type==="image/svg+xml"&&icon.sizes==="any"&&String(icon.purpose||"any").split(/\\s+/).includes("any")));
+    assert.ok(manifest.icons.some(icon=>icon.type==="image/svg+xml"&&icon.sizes==="any"&&iconPurposes(icon).includes("any")));
+    assert.ok(manifest.icons.every(icon=>!iconPurposes(icon).includes("maskable")));
   }
-  assert.ok(rootManifest.icons.every(icon=>!String(icon.purpose||"any").split(/\\s+/).includes("maskable")));
 });
 test("both editions expose an in-app version and Developer has a separate label",()=>{
   assert.match(rootHtml,/id="editionVersion"/);
