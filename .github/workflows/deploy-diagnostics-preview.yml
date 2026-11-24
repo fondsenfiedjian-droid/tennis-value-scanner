@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   deploy-diagnostics-preview:
-    if: github.ref == 'refs/heads/feature/production-data-diagnostics'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feature/production-data-diagnostics'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
