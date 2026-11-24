@@ -35,6 +35,7 @@ function parseDate(value){
 }
 export function mergeMatchDatasets(parts){
  const unique=new Map(),conflicts=new Set();let totalRows=0,rejected=0,conflictCount=0;
+ for(const part of parts){for(const id of part.conflictIds||[])conflicts.add(id);}
  for(const part of parts){
   totalRows+=part.totalRows;rejected+=part.rejected;conflictCount+=part.conflicts||0;
   for(const match of part.matches){
@@ -74,7 +75,7 @@ export function parseMatchCsv(source){
  }
  const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  if(!matches.length)throw new Error("Не найдено однозначных завершённых матчей с корректными датами, ID игроков и победителем.");
- return {matches,rejected,totalRows:rows.length-1,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size};
+ return {matches,rejected,totalRows:rows.length-1,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size,conflictIds:[...conflicts]};
 }
 const pairKey=(a,b)=>a<b?a+"|"+b:b+"|"+a;
 function createState(){return {ratings:new Map(),surfaceRatings:new Map(),form:new Map(),h2h:new Map()};}
