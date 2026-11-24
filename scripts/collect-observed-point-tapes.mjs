@@ -98,7 +98,8 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--ids") args.ids = argv[++i];
-    else if (argv[i] === "--out") args.out = argv[++i];\n    else if (argv[i] === "--metadata") args.metadata = argv[++i];
+    else if (argv[i] === "--out") args.out = argv[++i];
+    else if (argv[i] === "--metadata") args.metadata = argv[++i];
     else if (argv[i] === "--base") args.base = argv[++i];
     else if (argv[i] === "--help") args.help = true;
     else throw new Error("Unknown argument: " + argv[i]);
@@ -117,7 +118,8 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   const target = resolve(output);
   let existing = [];
   try {
-    existing = (await readFile(target, "utf8")).split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+    existing = (await readFile(target, "utf8")).split(/\r?
+/).filter(Boolean).map(line => JSON.parse(line));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -148,7 +150,9 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   }
   await mkdir(dirname(target), { recursive: true });
   const content = [...records.values()].sort((a, b) => Number(a.match_id) - Number(b.match_id))
-    .map(record => JSON.stringify(record)).join("\n") + "\n";
+    .map(record => JSON.stringify(record)).join("
+") + "
+";
   await writeFile(target, content, "utf8");
   return { output: target, records: results, totalStored: records.size };
 }
