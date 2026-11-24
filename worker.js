@@ -25,18 +25,46 @@ async function apifyJson(url, token) {
 }
 
 function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
-  if (!Array.isArray(rows)) return [];
   const output = [];
+  const diagnostics = {
+    totalRows: Array.isArray(rows) ? rows.length : 0,
+    acceptedRows: 0,
+    rejectedByReason: {},
+    sample: []
+  };
+  const reject = reason => {
+    diagnostics.rejectedByReason[reason] = (diagnostics.rejectedByReason[reason] || 0) + 1;
+  };
+  if (!Array.isArray(rows)) {
+    reject("dataset_not_array");
+    return { items: output, diagnostics };
+  }
+  diagnostics.sample = rows.slice(0, 5).filter(row => row && typeof row === "object").map(row => ({
+    recordType: row.recordType ?? null,
+    sport: row.sport ?? null,
+    bookmakerName: row.bookmakerName ?? null,
+    bookmakerCountry: row.bookmakerCountry ?? null,
+    market: row.market ?? null,
+    period: row.period ?? null,
+    status: row.status ?? null,
+    active: row.active ?? null,
+    homeName: row.homeName ?? null,
+    awayName: row.awayName ?? null,
+    startTime: row.startTime ?? null,
+    scrapedAt: row.scrapedAt ?? null,
+    homeOdds: row.homeOdds ?? null,
+    awayOdds: row.awayOdds ?? null
+  }));
   for (const row of rows) {
-    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
-    if (row.recordType && row.recordType !== "odds") continue;
-    if (String(row.sport || "").toLowerCase() !== "tennis") continue;
-    if (String(row.bookmakerName || "").trim().toLowerCase() !== "winamax") continue;
-    if (String(row.bookmakerCountry || "").trim().toUpperCase() !== "FR") continue;
-    if (String(row.market || "").toUpperCase() !== "HOME_AWAY") continue;
-    if (String(row.period || "").toUpperCase() !== "FULL_TIME") continue;
-    if (row.status && String(row.status).toLowerCase() !== "scheduled") continue;
-    if (row.active === false) continue;
+    if (!row || typeof row !== "object" || Array.isArray(row)) { reject("invalid_row"); continue; }
+    if (row.recordType && row.recordType !== "odds") { reject("record_type"); continue; }
+    if (String(row.sport || "").toLowerCase() !== "tennis") { reject("sport"); continue; }
+    if (String(row.bookmakerName || "").trim().toLowerCase() !== "winamax") { reject("bookmaker"); continue; }
+    if (String(row.bookmakerCountry || "").trim().toUpperCase() !== "FR") { reject("bookmaker_country"); continue; }
+    if (String(row.market || "").toUpperCase() !== "HOME_AWAY") { reject("market"); continue; }
+    if (String(row.period || "").toUpperCase() !== "FULL_TIME") { reject("period"); continue; }
+    if (row.status && String(row.status).toLowerCase() !== "scheduled") { reject("status"); continue; }
+    if (row.active === false) { reject("inactive"); continue; }
 
     const homeTeam = String(row.homeName || "").trim();
     const awayTeam = String(row.awayName || "").trim();
@@ -44,13 +72,17 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
     const scrapedAt = String(row.scrapedAt || "").trim();
     const startMs = Date.parse(startTime);
     const scrapedMs = Date.parse(scrapedAt);
-    if (!homeTeam || !awayTeam || homeTeam.toLowerCase() === awayTeam.toLowerCase()) continue;
-    if (!Number.isFinite(startMs) || startMs <= now || startMs > now + 14 * 86400000) continue;
-    if (!Number.isFinite(scrapedMs) || scrapedMs > now + 5 * 60000 || now - scrapedMs > ODDS_FRESHNESS_MAX_AGE_MS) continue;
+    if (!homeTeam || !awayTeam || homeTeam.toLowerCase() === awayTeam.toLowerCase()) { reject("participants"); continue; }
+    if (!Number.isFinite(startMs)) { reject("invalid_start_time"); continue; }
+    if (startMs <= now) { reject("event_not_future"); continue; }
+    if (startMs > now + 14 * 86400000) { reject("event_too_far"); continue; }
+    if (!Number.isFinite(scrapedMs)) { reject("invalid_scraped_at"); continue; }
+    if (scrapedMs > now + 5 * 60000) { reject("scrape_time_in_future"); continue; }
+    if (now - scrapedMs > ODDS_FRESHNESS_MAX_AGE_MS) { reject("stale_quote"); continue; }
 
     const homeOdds = Number(row.homeOdds);
     const awayOdds = Number(row.awayOdds);
-    if (!Number.isFinite(homeOdds) || homeOdds <= 1 || !Number.isFinite(awayOdds) || awayOdds <= 1) continue;
+    if (!Number.isFinite(homeOdds) || homeOdds <= 1 || !Number.isFinite(awayOdds) || awayOdds <= 1) { reject("invalid_odds"); continue; }
     const eventId = String(row.eventId || "").trim();
     const competition = String(row.tournament || "").trim();
     const eventName = homeTeam + " - " + awayTeam;
@@ -71,10 +103,10 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
     };
     output.push({ ...common, outcome: "home", oddsDecimal: homeOdds });
     output.push({ ...common, outcome: "away", oddsDecimal: awayOdds });
+    diagnostics.acceptedRows++;
   }
-  return output;
+  return { items: output, diagnostics };
 }
-
 function mergeWinamaxOdds(taskItems, flashscoreItems) {
   const rows = [...(Array.isArray(taskItems) ? taskItems : []), ...(Array.isArray(flashscoreItems) ? flashscoreItems : [])];
   const selected = new Map();
@@ -140,9 +172,11 @@ async function loadFlashscoreWinamaxFeed(token) {
       "/items?clean=true&format=json&limit=1000", token);
     if (!dataset.ok) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: dataset.diagnostic || "http_" + dataset.status };
     if (!Array.isArray(dataset.data)) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: "invalid_payload" };
-    const items = normalizeFlashscoreWinamaxRows(dataset.data);
+    const normalized = normalizeFlashscoreWinamaxRows(dataset.data);
+    const items = normalized.items;
     return {
       items,
+      diagnostics: normalized.diagnostics,
       run: { id: run.id || null, finishedAt: run.finishedAt || null, datasetId: run.defaultDatasetId },
       diagnostic: items.length ? "ok" : "no_fresh_fr_winamax_singles"
     };
@@ -719,7 +753,8 @@ export default {
             actor: FLASHSCORE_ACTOR_PATH,
             run: flashscoreFeed.run,
             diagnostic: flashscoreFeed.diagnostic,
-            normalizedCount: flashscoreFeed.items.length
+            normalizedCount: flashscoreFeed.items.length,
+            diagnostics: flashscoreFeed.diagnostics || null
           },
           sourceCounts: {
             vavilov: taskFeed.items.length,
