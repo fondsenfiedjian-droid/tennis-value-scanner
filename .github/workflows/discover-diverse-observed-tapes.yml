@@ -1,6 +1,12 @@
 name: Discover diverse observed point-tape matches (diagnostics only)
 
 on:
+  push:
+    branches:
+      - feature/production-data-diagnostics
+    paths:
+      - "scripts/discover-observed-point-tape-matches.mjs"
+      - ".github/workflows/discover-diverse-observed-tapes.yml"
   workflow_dispatch:
     inputs:
       per_tour_target:
