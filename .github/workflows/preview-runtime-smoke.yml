@@ -8,6 +8,7 @@ on:
       - 'scripts/preview-runtime-smoke.mjs'
       - '.github/workflows/preview-runtime-smoke.yml'
       - 'index.html'
+      - 'developer/index.html'
 
 permissions:
   contents: read
