@@ -1479,7 +1479,7 @@ export default {
               "X-API-Key": env.LIVE_TENNIS_API_KEY,
               "Accept": "application/json"
             }
-          }
+          }, env
         );
 
         const body = await upstream.json();
