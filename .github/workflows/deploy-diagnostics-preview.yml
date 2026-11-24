@@ -55,4 +55,13 @@ jobs:
           fi
           printf '%s' "$LIVE_TENNIS_API_KEY" | npx --yes wrangler@4.165.0 secret put LIVE_TENNIS_API_KEY --config wrangler.diagnostics-preview.toml
 
+
+      - name: Verify diagnostics Worker and Live Tennis API authentication
+        run: |
+          base="https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev"
+          curl --fail --silent --show-error "$base/health" -o /tmp/diagnostics-health.json
+          node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
+          curl --fail --silent --show-error "$base/usage" -o /dev/null
+          echo "Live Tennis API authentication: HTTP 200"
+
 # Keep the isolated diagnostics deployment and secret setup in sync.
