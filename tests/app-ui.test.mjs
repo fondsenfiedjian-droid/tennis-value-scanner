@@ -988,7 +988,7 @@ test("settings sliders use a fine custom track with visible scale ticks and a co
 });
 
 test("independent API diagnostics and status-tab navigation fallback are present", () => {
-  assert.ok(html.includes("const worker=location.hostname.startsWith('deploy-preview-')"));
+  assert.ok(html.includes("const isPreviewHost=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app'"));
   assert.ok(html.includes("fetch(worker+'/health',{cache:'no-store'})"));
   assert.ok(html.includes("API: LIVE OK"));
   assert.ok(html.includes("APIFY_TOKEN. Источник коэффициентов недоступен."));
