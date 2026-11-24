@@ -1088,3 +1088,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Totals: 1,710 RAW rows and 1,607 CLEAN rows; timestamps are complete for every row. Provider point completeness is true for 9/14 RAW records and 3/14 CLEAN records. RAW serve tags appear in 1,044/1,710 rows; RAW score-derived winner appears in 1,675/1,710. CLEAN serve tags appear in 1,002/1,607 rows; CLEAN point_winner appears in 1,571/1,607.
 - Six selected junior players were found by search but returned zero records for the `tour=juniors` history query. Treat as a provider classification/query limitation to investigate, not as proof that junior tapes do not exist.
 - Full regression suite and project-state guard passed on the code commits before the final documentation-only updates. The diagnostics Worker remains isolated from Production; PR #173 is not merged.
+
+
+## 2026-11-24 — Junior history query classification
+- Provider reference clarifies that `tour=juniors` covers boys' and girls' junior Grand Slam draws, not the entire junior circuit. The earlier zero-row result for six junior-seed player queries therefore did not establish absence of junior match history.
+- Added five junior-age players to the bounded `tour=itf` seed list (Demin, Samson, Klugman, Fonseca and Andreeva) while retaining the dedicated junior-Grand-Slam query. Next diagnostics run will test whether their ITF-level histories expose junior event records and observed tapes.
+- Source: https://docs.livetennisapi.com/reference.html. This is a diagnostics-only query-scope correction.
