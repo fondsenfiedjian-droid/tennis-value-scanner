@@ -6,27 +6,35 @@ const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;
 const listFrom=payload=>{
   if(Array.isArray(payload))return payload;
   if(!payload||typeof payload!=="object")return [];
-  for(const key of ["data","markets","prices","items","results","history"])if(Array.isArray(payload[key]))return payload[key];
+  for(const key of ["data","prices","items","results","history"])if(Array.isArray(payload[key]))return payload[key];
   return [];
 };
-const historyRows=payload=>{
-  const rows=listFrom(payload);
-  if(!rows.length)return [];
-  const nested=rows.flatMap(group=>{
-    const prices=group?.prices??group?.history??group?.data;
-    if(!Array.isArray(prices))return [group];
-    return prices.map(price=>({
-      ...price,
-      market_name:price?.market_name??price?.marketName??group?.name??group?.market_name??group?.type,
-      outcome:price?.outcome??price?.selection??group?.outcome??group?.selection
-    }));
-  });
-  return nested;
+const priceRows=payload=>{
+  if(Array.isArray(payload?.prices))return payload.prices;
+  if(Array.isArray(payload?.data?.prices))return payload.data.prices;
+  if(Array.isArray(payload?.market?.prices))return payload.market.prices;
+  return listFrom(payload);
 };
-const marketId=item=>item?.id??item?.market_id??item?.marketId??item?.market?.id??null;
-const label=item=>item?.name??item?.market_name??item?.marketName??item?.type??item?.market_type??"Рынок";
 const dateOf=item=>item?.timestamp??item?.created_at??item?.createdAt??item?.updated_at??item?.date??item?.time??null;
-const priceOf=item=>item?.odds??item?.price??item?.odds_decimal??item?.oddsDecimal??item?.decimal_odds??item?.value??null;
+const timestampOf=value=>{
+  if(typeof value==="number"&&Number.isFinite(value)){
+    const millis=value<1e12?value*1000:value;
+    return Number.isFinite(millis)?millis:NaN;
+  }
+  if(typeof value==="string"&&/^\d{10,13}$/.test(value.trim())){
+    const numeric=Number(value);
+    return numeric<1e12?numeric*1000:numeric;
+  }
+  return value?Date.parse(value):NaN;
+};
+const formatDate=value=>{
+  const timestamp=timestampOf(value);
+  return Number.isFinite(timestamp)?new Date(timestamp).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Время не указано";
+};
+const probability=value=>{
+  const n=Number(value);
+  return Number.isFinite(n)&&n>=0&&n<=1?(n*100).toFixed(1)+"%":null;
+};
 function status(panel,message){panel.innerHTML='<div class="archive-meta">'+esc(message)+'</div>';}
 async function get(path){
  const controller=new AbortController();
@@ -40,29 +48,26 @@ async function get(path){
  return body;
 }
 async function load(panel,matchId){
- status(panel,"Загружаем историю рынка…");
+ status(panel,"Загружаем историю рыночных котировок…");
  try{
-  const marketPayload=await get("/markets?match_id="+encodeURIComponent(matchId));
-  const markets=listFrom(marketPayload);
-  if(!markets.length){status(panel,"История рынка пока не предоставлена API для этого матча.");return;}
-  const historyPayload=await get("/markets/"+encodeURIComponent(matchId)+"/prices?limit=100");
-  const rows=historyRows(historyPayload).slice().sort((a,b)=>Date.parse(dateOf(a)||0)-Date.parse(dateOf(b)||0)).slice(-24);
+  const payload=await get("/matches/"+encodeURIComponent(matchId)+"/prices?limit=100");
+  const rows=priceRows(payload).slice().sort((a,b)=>timestampOf(dateOf(a))-timestampOf(dateOf(b))).slice(-24);
   if(!rows.length){
-   status(panel,"Рынки найдены, но история изменения коэффициентов пока пуста.");
+   status(panel,"История котировок пока отсутствует. Для старых матчей данные могут быть удалены по сроку хранения API.");
    return;
   }
   const entries=rows.map(row=>{
-   const price=priceOf(row),date=dateOf(row);
-   const formattedDate=date&&Number.isFinite(Date.parse(date))?new Date(date).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Время не указано";
-   const outcome=row?.outcome??row?.selection??row?.runner_name??row?.name??"";
-   return '<div class="archive-meta">'+esc(formattedDate)+(outcome?' · '+esc(outcome):'')+' · <b>'+esc(price===null?"—":Number.isFinite(Number(price))?Number(price).toFixed(2):price)+'</b></div>';
+   const mid=probability(row?.mid),bid=probability(row?.bid),ask=probability(row?.ask);
+   const side=row?.side===1?"Сторона 1":row?.side===2?"Сторона 2":"Сторона не указана";
+   const quote=mid!==null?"mid "+mid:(bid!==null||ask!==null?"bid "+(bid??"—")+" / ask "+(ask??"—"):"Котировка недоступна");
+   const book=bid!==null||ask!==null?" · bid/ask "+(bid??"—")+" / "+(ask??"—"):"";
+   return '<div class="archive-meta">'+esc(formatDate(dateOf(row)))+' · '+esc(side)+' · <b>'+esc(quote)+'</b>'+esc(book)+'</div>';
   }).join("");
-  const marketNames=markets.map(label).filter(Boolean).slice(0,3).join(" · ");
-  panel.innerHTML='<div class="section-head" style="margin:0 0 8px"><h2>История коэффициентов</h2><span class="muted">Live Tennis API</span></div>'+
-   (marketNames?'<div class="archive-meta">'+esc(marketNames)+'</div>':"")+entries+
-   '<div class="archive-meta">Показаны последние '+rows.length+' наблюдений. История не меняет прогноз или EV автоматически.</div>';
+  panel.innerHTML='<div class="section-head" style="margin:0 0 8px"><h2>История рыночных котировок</h2><span class="muted">Live Tennis API · PRO</span></div>'+
+   entries+
+   '<div class="archive-meta">Показаны последние '+rows.length+' наблюдений. Значения mid/bid/ask — вероятностные котировки рынка от 0 до 100%, а не десятичные коэффициенты Winamax. Они не используются для расчёта прогноза или EV.</div>';
  }catch(error){
-  status(panel,error.status===403?"История коэффициентов требует доступа PRO Live Tennis API.":error.status===404?"История для этого матча или рынка не найдена.":error.message||"Не удалось загрузить историю коэффициентов.");
+  status(panel,error.status===403?"История рыночных котировок требует доступа PRO Live Tennis API.":error.status===404?"Для этого матча рынок не найден или котировки отсутствуют.":error.message||"Не удалось загрузить историю рыночных котировок.");
  }
 }
 function attach(card){
