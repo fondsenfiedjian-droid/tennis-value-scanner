@@ -23,6 +23,77 @@ if (health.status !== "ok") throw new Error("Preview Worker health check did not
 if (!health.liveTennisApiConfigured) throw new Error("Preview Worker is missing LIVE_TENNIS_API_KEY");
 if (!health.apifyTokenConfigured) throw new Error("Preview Worker is missing APIFY_TOKEN; Winamax feed cannot be verified");
 
+ 
+// Exercise the same live API chain used by the independent player-comparison screen.
+// These checks use only the isolated Preview Worker and public player names.
+const comparisonStartedAt = new Date().toISOString();
+const searchPlayer = async name => {
+  const payload = await getJson("/players/search?" + new URLSearchParams({ search: name, limit: "8" }));
+  const players = Array.isArray(payload.players) ? payload.players : [];
+  const exact = players.find(player => String(player?.name || "").trim().toLocaleLowerCase() === name.toLocaleLowerCase());
+  const selected = exact || players.find(player => Number.isSafeInteger(Number(player?.id)) && Number(player.id) > 0);
+  if (!selected || !Number.isSafeInteger(Number(selected.id)) || Number(selected.id) <= 0 || !String(selected.name || "").trim()) {
+    throw new Error("Player comparison smoke: /players/search did not return a selectable player for " + name);
+  }
+  return { id: Number(selected.id), name: String(selected.name) };
+};
+const comparisonPlayerA = await searchPlayer("Carlos Alcaraz");
+const comparisonPlayerB = await searchPlayer("Jannik Sinner");
+if (comparisonPlayerA.id === comparisonPlayerB.id) throw new Error("Player comparison smoke selected the same player ID twice");
+const comparisonResponse = await fetch(base + "/predict", {
+  method: "POST",
+  headers: { "content-type": "application/json", accept: "application/json" },
+  body: JSON.stringify({
+    playerIdA: comparisonPlayerA.id,
+    playerIdB: comparisonPlayerB.id,
+    playerA: comparisonPlayerA.name,
+    playerB: comparisonPlayerB.name,
+    surface: ""
+  }),
+  signal: AbortSignal.timeout(30000)
+});
+const comparisonPrediction = await comparisonResponse.json().catch(() => null);
+if (!comparisonResponse.ok) {
+  throw new Error("Player comparison smoke: /predict returned HTTP " + comparisonResponse.status +
+    " (" + String(comparisonPrediction?.error || comparisonPrediction?.accessStatus || "invalid response") + ")");
+}
+const probabilityA = Number(comparisonPrediction?.probabilityA);
+const probabilityB = Number(comparisonPrediction?.probabilityB);
+if (!Number.isFinite(probabilityA) || !Number.isFinite(probabilityB) ||
+    probabilityA <= 0 || probabilityA >= 100 || probabilityB <= 0 || probabilityB >= 100 ||
+    Math.abs(probabilityA + probabilityB - 100) > 0.05 ||
+    !Number.isFinite(Number(comparisonPrediction?.ratingA)) || Number(comparisonPrediction.ratingA) <= 0 ||
+    !Number.isFinite(Number(comparisonPrediction?.ratingB)) || Number(comparisonPrediction.ratingB) <= 0) {
+  throw new Error("Player comparison smoke: /predict returned invalid Elo ratings or probabilities");
+}
+const optionalComparisonChecks = await Promise.all([
+  ["historyA", "/player-history?" + new URLSearchParams({ id: String(comparisonPlayerA.id), limit: "5" })],
+  ["historyB", "/player-history?" + new URLSearchParams({ id: String(comparisonPlayerB.id), limit: "5" })],
+  ["h2h", "/player-h2h?" + new URLSearchParams({ p1: comparisonPlayerA.name, p2: comparisonPlayerB.name })]
+].map(async ([name, path]) => {
+  try {
+    const payload = await getJson(path);
+    return { name, ok: true, accessStatus: payload.accessStatus || "available",
+      count: Number.isFinite(Number(payload.count)) ? Number(payload.count) :
+        (Array.isArray(payload.data) ? payload.data.length : Array.isArray(payload.meetings) ? payload.meetings.length : null) };
+  } catch (error) {
+    return { name, ok: false, error: String(error.message || error).slice(0, 180) };
+  }
+}));
+const comparisonReport = {
+  checkedAt: comparisonStartedAt,
+  search: "passed",
+  profileAndElo: "passed",
+  playerA: comparisonPlayerA.name,
+  playerB: comparisonPlayerB.name,
+  ratingA: Number(comparisonPrediction.ratingA),
+  ratingB: Number(comparisonPrediction.ratingB),
+  probabilityA,
+  probabilityB,
+  source: comparisonPrediction.source || null,
+  supplementary: optionalComparisonChecks
+};
+
 const now = new Date();
 const from = new Date(now);
 from.setHours(0, 0, 0, 0);
@@ -151,6 +222,7 @@ for (const event of oddsEvents.values()) {
 const report = {
   checkedAt: new Date().toISOString(),
   previewWorkerBuild: health.buildId || null,
+  playerComparison: comparisonReport,
   upcomingMatches: matches.length,
   schedulePagesLoaded: pagesLoaded,
   scheduleTotalReported: total,
