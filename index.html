@@ -2106,6 +2106,60 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }catch(error){return {label:'нет истории',className:'flat',first:null};}
   }
 
+  function oddsMatchDiagnostic(m){
+    const p=m.players||{},a=normalizePlayer(playerName(p.p1||m.player1)),b=normalizePlayer(playerName(p.p2||m.player2));
+    if(!a||!b||a===b)return {code:'invalid_match',label:'Не удалось определить обоих игроков'};
+    const matchStart=matchDate(m),now=Date.now();
+    if(!isPreMatchMatch(m,matchStart,now))return {code:'not_prematch',label:'Матч уже начался, завершён или время не определено'};
+    const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
+    const providerItems=cachedOdds.filter(o=>{
+      const provider=String(o?.bookmaker||'').trim().toLowerCase(),config=ODDS_PROVIDER_REGISTRY[provider];
+      if(!config||!config.enabled)return false;
+      const country=String(o.bookmakerCountry||'').trim().toUpperCase();
+      if(country&&country!==config.country)return false;
+      if(!country&&provider!=='winamax')return false;
+      return true;
+    });
+    if(!providerItems.length)return {code:'no_provider_data',label:'Нет данных от подключённых букмекеров'};
+    const marketItems=providerItems.filter(o=>String(o.sport||'').toLowerCase()==='tennis'&&String(o.marketType||'').toLowerCase()==='match_winner'&&(o.line===null||o.line===undefined||o.line==='')&&['home','away'].includes(String(o.outcome||'').toLowerCase()));
+    if(!marketItems.length)return {code:'market_unavailable',label:'Нет рынка «Победитель матча» или формат котировок не поддерживается'};
+    const participantItems=marketItems.filter(o=>{const q=oddsEventParticipants(o);return q.home&&q.away&&q.home!==q.away;});
+    if(!participantItems.length)return {code:'participants_missing',label:'В котировках не распознаны оба игрока'};
+    const eventItems=participantItems.filter(o=>{
+      const eventName=String(o.eventName||'').trim(),parts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean),q=oddsEventParticipants(o);
+      return parts.length!==2||((playerNamesMatch(parts[0],q.home)&&playerNamesMatch(parts[1],q.away))||(playerNamesMatch(parts[0],q.away)&&playerNamesMatch(parts[1],q.home)));
+    });
+    if(!eventItems.length)return {code:'event_identity_conflict',label:'Название события противоречит полям игроков'};
+    const playerItems=eventItems.filter(o=>{
+      const q=oddsEventParticipants(o);
+      const aHome=playerNamesMatch(q.home,a),aAway=playerNamesMatch(q.away,a);
+      const bHome=playerNamesMatch(q.home,b),bAway=playerNamesMatch(q.away,b);
+      return aHome!==aAway&&bHome!==bAway&&aHome!==bHome;
+    });
+    if(!playerItems.length)return {code:'players_mismatch',label:'Имена игроков в котировках не совпадают'};
+    const tournamentItems=playerItems.filter(o=>tournamentCompatible(tournament,o.competition));
+    if(!tournamentItems.length)return {code:'tournament_mismatch',label:'Не совпадает название турнира'};
+    const timedItems=tournamentItems.filter(o=>{const d=new Date(o.startTime);return o.startTime&&!Number.isNaN(d.getTime())&&d.getTime()>now&&Math.abs(d-matchStart)<=36*60*60*1000;});
+    if(!timedItems.length)return {code:'time_mismatch',label:'Время события отсутствует, уже прошло или отличается более чем на 36 часов'};
+    const freshItems=timedItems.filter(o=>{const d=new Date(o.scrapedAt);return o.scrapedAt&&!Number.isNaN(d.getTime())&&now-d.getTime()<=ODDS_FRESHNESS_MAX_AGE_MS&&d.getTime()-now<=5*60*1000;});
+    if(!freshItems.length)return {code:'stale_quotes',label:'Котировки устарели или имеют некорректное время получения'};
+    const validItems=freshItems.filter(o=>{const n=Number(o.oddsDecimal);return Number.isFinite(n)&&n>1;});
+    if(!validItems.length)return {code:'invalid_odds',label:'Коэффициенты имеют некорректный формат'};
+    const groups=new Map();
+    for(const quote of validItems){const key=oddsEventGroupKey(quote);if(!key)continue;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(quote);}
+    let incomplete=false,unsynchronised=false;
+    for(const quotes of groups.values()){
+      const latest={};
+      for(const quote of quotes){const side=String(quote.outcome).toLowerCase(),current=latest[side];if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latest[side]=quote;}
+      if(!latest.home||!latest.away){incomplete=true;continue;}
+      const h=Date.parse(latest.home.scrapedAt),aTime=Date.parse(latest.away.scrapedAt);
+      if(!Number.isFinite(h)||!Number.isFinite(aTime)||Math.abs(h-aTime)>30*60*1000)unsynchronised=true;
+      else return {code:'available',label:'Полная актуальная пара найдена'};
+    }
+    if(unsynchronised)return {code:'unsynchronised_pair',label:'Коэффициенты получены в разное время — разница больше 30 минут'};
+    if(incomplete)return {code:'incomplete_pair',label:'Найден только один коэффициент из двух'};
+    return {code:'pair_not_grouped',label:'Котировки не удалось объединить в одну пару события'};
+  }
   function oddsSideForPlayer(o,playerA){
     const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
@@ -2258,7 +2312,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
         displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
         displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):(winnerEnabled?'Коэффициенты букмекеров не найдены':'Рынок победителя отключён');
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты не найдены · '+escapeHtml(oddsMatchDiagnostic(m).label);
       const oddsPairStatus=!winnerEnabled?'Рынок победителя отключён':allMatched.length>=2?'Полная свежая пара':allMatched.length===1?'Неполная пара · найден 1 исход':'Нет свежей полной пары';
       const oddsPairStatusClass=!winnerEnabled?'disabled':allMatched.length>=2?'complete':allMatched.length===1?'partial':'missing';
       const oddsObservedAt=Date.now();
