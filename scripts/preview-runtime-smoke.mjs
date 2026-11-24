@@ -111,7 +111,9 @@ for (const item of items) {
 const report = {
   previewWorkerBuild: health.buildId || null,
   upcomingMatches: matches.length,
-  schedulePagesLoaded: pagesLoaded,\n  scheduleTotalReported: total,\n  scheduleTruncated: hasMore,
+  schedulePagesLoaded: pagesLoaded,
+  scheduleTotalReported: total,
+  scheduleTruncated: hasMore,
   oddsRecords: items.length,
   recordsByBookmaker: bookmakers,
   completeFreshWinamaxPairs: completePairs,
