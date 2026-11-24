@@ -317,11 +317,15 @@ function findEloForSurface(profile, requestedSurface) {
   return overall === null ? null : { rating: overall, type: "overall", surface };
 }
 
-const LIVE_TENNIS_QUOTA_GUARD_URL = "https://tennis-value-api.fonds-enfiedjian.workers.dev/__live-tennis-quota-guard";
+function cacheKeyUrl(env, pathname) {
+  const namespace = String(env?.CACHE_NAMESPACE || "tennis-value-api");
+  const host = /^[a-z0-9-]{1,63}$/.test(namespace) ? namespace : "tennis-value-api";
+  return "https://" + host + ".fonds-enfiedjian.workers.dev" + pathname;
+}
 
-async function fetchLiveTennis(url, options = {}) {
+async function fetchLiveTennis(url, options = {}, env = {}) {
   const cache = caches.default;
-  const guardKey = new Request(LIVE_TENNIS_QUOTA_GUARD_URL, { method: "GET" });
+  const guardKey = new Request(cacheKeyUrl(env, "/__live-tennis-quota-guard/v2"), { method: "GET" });
   const guard = await cache.match(guardKey);
   if (guard) {
     const payload = await guard.json();
@@ -371,7 +375,7 @@ async function fetchLiveTennis(url, options = {}) {
 
 const playerProfileInflight = new Map();
 
-async function getPlayerProfile(playerId, apiKey) {
+async function getPlayerProfile(playerId, apiKey, env = {}) {
   // Share concurrent cache misses inside this Worker isolate to avoid duplicate quota use.
   const key = String(playerId);
   const pending = playerProfileInflight.get(key);
@@ -380,13 +384,13 @@ async function getPlayerProfile(playerId, apiKey) {
   const task = (async () => {
     // Elo profiles are effectively static for this model; cache them for seven days.
     const cache = caches.default;
-    const cacheKey = new Request("https://tennis-value-api.fonds-enfiedjian.workers.dev/__player-profile/" + encodeURIComponent(key));
+    const cacheKey = new Request(cacheKeyUrl(env, "/__player-profile/" + encodeURIComponent(key)));
     const cached = await cache.match(cacheKey);
     if (cached) return cached.json();
 
     const res = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(key), {
       headers: { "X-API-Key": apiKey, "Accept": "application/json" }
-    });
+    }, env);
     if (!res.ok) throw new Error("Player profile request failed (" + res.status + ")");
     const profile = await res.json();
     const cacheResponse = new Response(JSON.stringify(profile), {
@@ -921,6 +925,41 @@ export default {
       }
     }
 
+    if (path === "/history/coverage") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__history-coverage/v1");
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/history/coverage", {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis history coverage returned invalid JSON" }, 502);
+        }
+        if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(body, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        await cache.put(cacheKey, new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" }
+        }));
+        return response(body, 200, { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" });
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis history coverage", accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/usage") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
@@ -933,6 +972,325 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    // Live Tennis API PRO match-winner markets and price history.
+    // Only match-winner prices are exposed; derivative markets are not supported by the provider.
+    if (path === "/markets" || /^\/markets\/\d+\/prices$/.test(path) || /^\/matches\/\d+\/prices$/.test(path)) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+
+      let upstreamPath;
+      let cacheTtl = 60;
+      if (path === "/markets") {
+        const rawMatchId = url.searchParams.get("match_id") || "";
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match_id must be a positive integer" }, 400);
+        }
+        upstreamPath = "/markets?match_id=" + encodeURIComponent(String(Number(rawMatchId)));
+      } else {
+        const match = path.match(/^\/(markets|matches)\/(\d+)\/prices$/);
+        const rawMatchId = match?.[2] || "";
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match ID must be a positive integer" }, 400);
+        }
+        const isMarketRoute = match[1] === "markets";
+        const params = new URLSearchParams();
+        const rawLimit = url.searchParams.get("limit") || (isMarketRoute ? "50" : "100");
+        const maxLimit = isMarketRoute ? 200 : 500;
+        if (!/^\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
+          return response({ error: "limit must be an integer from 1 to " + maxLimit }, 400);
+        }
+        params.set("limit", String(Number(rawLimit)));
+        if (!isMarketRoute) {
+          const minutes = url.searchParams.get("minutes");
+          if (minutes !== null) {
+            if (!/^\d{1,4}$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 1440) {
+              return response({ error: "minutes must be an integer from 1 to 1440" }, 400);
+            }
+            params.set("minutes", String(Number(minutes)));
+          }
+          const cursor = url.searchParams.get("cursor");
+          if (cursor !== null) {
+            if (!cursor.trim() || cursor.length > 500) return response({ error: "cursor must contain 1 to 500 characters" }, 400);
+            params.set("cursor", cursor);
+          }
+        }
+        upstreamPath = isMarketRoute
+          ? "/markets/" + String(Number(rawMatchId)) + "/prices?" + params.toString()
+          : "/matches/" + String(Number(rawMatchId)) + "/prices?" + params.toString();
+        cacheTtl = 20;
+      }
+
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(cacheKeyUrl(env, "/__live-tennis-markets/v1" + path + "?" + url.searchParams.toString()), { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1" + upstreamPath, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); }
+        catch {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(
+            { error: "Live Tennis API returned a non-JSON response", accessStatus: "invalid_upstream_response" },
+            502,
+            retryAfter ? { "Retry-After": retryAfter } : {}
+          );
+        }
+        const retryAfter = upstream.headers.get("Retry-After");
+        const headers = {};
+        if (retryAfter) headers["Retry-After"] = retryAfter;
+        if (upstream.ok) {
+          headers["Cache-Control"] = "public, max-age=" + cacheTtl;
+          headers["X-Data-Cache"] = "MISS";
+          await cache.put(cacheKey, new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=" + cacheTtl }
+          }));
+        }
+        return response(body, upstream.status, headers);
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis market prices", accessStatus: "upstream_unavailable" }, 502);
+      }
+    }
+
+    if (path === "/players/search") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+
+      const query = (url.searchParams.get("search") || "").trim();
+      if (query.length < 2 || query.length > 80) {
+        return response({ error: "search must contain between 2 and 80 characters" }, 400);
+      }
+      const rawLimit = url.searchParams.get("limit") || "10";
+      if (!/^\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 20) {
+        return response({ error: "limit must be an integer from 1 to 20" }, 400);
+      }
+      const limit = Number(rawLimit);
+
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(
+          cacheKeyUrl(env, "/__player-search/v1/" +
+          encodeURIComponent(query.toLocaleLowerCase()) + "/" + limit),
+          { method: "GET" }
+        );
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const params = new URLSearchParams({ search: query, limit: String(limit) });
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/players?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis player search returned invalid JSON" }, 502);
+        }
+        if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Live Tennis player search failed",
+            accessStatus: upstream.status === 429 ? "rate_limited" :
+              upstream.status === 401 ? "unauthorized" : "upstream_error",
+            upstreamStatus: upstream.status
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.data)) {
+          return response({ error: "Live Tennis player search returned an unexpected payload", accessStatus: "invalid_payload" }, 502);
+        }
+
+        const players = body.data.filter(player =>
+          player && typeof player === "object" && !Array.isArray(player) &&
+          Number.isSafeInteger(Number(player.id)) && Number(player.id) > 0 &&
+          typeof player.name === "string" && player.name.trim()
+        ).slice(0, limit);
+        const payload = {
+          source: "Live Tennis API /players",
+          query,
+          retrievedAt: new Date().toISOString(),
+          count: players.length,
+          players
+        };
+        const headers = { "Cache-Control": "public, max-age=900", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not search Live Tennis players", accessStatus: "unavailable" }, 502);
+      }
+    }
+
+    if (path === "/player-history") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const rawPlayerId = url.searchParams.get("id") || "";
+      if (!/^\d{1,15}$/.test(rawPlayerId) || !Number.isSafeInteger(Number(rawPlayerId)) || Number(rawPlayerId) <= 0) {
+        return response({ error: "id must be a positive integer player identifier" }, 400);
+      }
+      const playerId = String(Number(rawPlayerId));
+      const rawLimit = url.searchParams.get("limit") || "20";
+      if (!/^\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 50) {
+        return response({ error: "limit must be an integer from 1 to 50" }, 400);
+      }
+      const limit = Number(rawLimit);
+      const tour = (url.searchParams.get("tour") || "").trim().toLowerCase();
+      if (tour && !["atp", "wta", "challenger", "itf", "juniors"].includes(tour)) {
+        return response({ error: "tour must be atp, wta, challenger, itf or juniors" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request,
+          "/__player-history/v1/" + playerId + "/" + limit + "/" + (tour || "all"));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const params = new URLSearchParams({
+          player: playerId,
+          draw: "singles",
+          limit: String(limit),
+          offset: "0"
+        });
+        if (tour) params.set("tour", tour);
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/history/matches?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis history returned invalid JSON", accessStatus: "invalid_payload" }, 502);
+        }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "basic_history_not_entitled"
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 429 ? "rate_limited"
+            : upstream.status === 400 ? "invalid_history_query"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Live Tennis completed-match history request failed",
+            playerId,
+            accessStatus,
+            upstreamStatus: upstream.status
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.data)) {
+          return response({ error: "Live Tennis history returned an unexpected payload", playerId, accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = {
+          playerId,
+          source: "Live Tennis API /history/matches",
+          period: "2023-present",
+          draw: "singles",
+          tour: tour || null,
+          retrievedAt: new Date().toISOString(),
+          count: body.data.length,
+          data: body.data,
+          meta: body.meta && typeof body.meta === "object" ? body.meta : null,
+          accessStatus: "available"
+        };
+        const headers = { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not retrieve completed-match history", playerId, accessStatus: "unavailable" }, 502);
+      }
+    }
+
+    if (path === "/player-h2h") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const player1 = (url.searchParams.get("p1") || "").trim();
+      const player2 = (url.searchParams.get("p2") || "").trim();
+      if (player1.length < 3 || player1.length > 80 || player2.length < 3 || player2.length > 80) {
+        return response({ error: "p1 and p2 must each contain between 3 and 80 characters" }, 400);
+      }
+      if (player1.toLocaleLowerCase() === player2.toLocaleLowerCase()) {
+        return response({ error: "p1 and p2 must identify different players" }, 400);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request,
+          "/__player-h2h/v1/" + encodeURIComponent(player1.toLocaleLowerCase()) + "/" +
+          encodeURIComponent(player2.toLocaleLowerCase()));
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const params = new URLSearchParams({ p1: player1, p2: player2 });
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/h2h?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis H2H returned invalid JSON", accessStatus: "invalid_payload" }, 502);
+        }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "basic_h2h_not_entitled"
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 429 ? "rate_limited"
+            : upstream.status === 400 ? "ambiguous_or_invalid_player_name"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({
+            error: "Live Tennis head-to-head request failed",
+            accessStatus,
+            upstreamStatus: upstream.status,
+            ...(upstream.status === 400 && body && typeof body === "object" ? { detail: body } : {})
+          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) ||
+            !body.totals || typeof body.totals !== "object" || !Array.isArray(body.meetings)) {
+          return response({ error: "Live Tennis H2H returned an unexpected payload", accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = {
+          source: "Live Tennis API /h2h",
+          period: "1968-present",
+          requested: { p1: player1, p2: player2 },
+          retrievedAt: new Date().toISOString(),
+          accessStatus: "available",
+          ...body
+        };
+        const headers = { "Cache-Control": "public, max-age=86400", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not retrieve head-to-head history", accessStatus: "unavailable" }, 502);
       }
     }
 
@@ -1259,8 +1617,8 @@ export default {
         }
         try {
           [profileA, profileB] = await Promise.all([
-            getPlayerProfile(playerIdA, env.LIVE_TENNIS_API_KEY),
-            getPlayerProfile(playerIdB, env.LIVE_TENNIS_API_KEY)
+            getPlayerProfile(playerIdA, env.LIVE_TENNIS_API_KEY, env),
+            getPlayerProfile(playerIdB, env.LIVE_TENNIS_API_KEY, env)
           ]);
         } catch {
           return response({ error: "Could not retrieve one or both player profiles" }, 502);
