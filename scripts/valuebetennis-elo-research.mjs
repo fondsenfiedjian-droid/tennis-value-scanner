@@ -113,7 +113,7 @@ function calculateRatings(matches, kFactor) {
       }
     }
   }
-  return { overall, surface, counts, lastPlayed };
+  return { overall, surface, counts, lastPlayed, names };
 }
 
 async function main() {
@@ -155,7 +155,7 @@ async function main() {
       const players = [...state.overall.entries()]
         .map(([id, rating]) => ({
           playerId: id,
-          playerName: names.get(id) ?? null,
+          playerName: state.names.get(id) ?? null,
           rating: Number(rating.toFixed(2)),
           matches: state.counts.get(id) ?? 0,
           lastPlayed: state.lastPlayed.get(id) ?? null,
