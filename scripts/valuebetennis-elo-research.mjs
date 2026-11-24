@@ -137,7 +137,7 @@ async function main() {
       a.tourney_id.localeCompare(b.tourney_id) ||
       a.match_num.localeCompare(b.match_num)
     );
-    if (!matches.length) throw new Error(`No valid ${tour.toUpperCase()} matches found`);
+    if (!matches.length) { const genres = [...new Set(rows.map(row => String(row.genre ?? "").trim()))].sort(); throw new Error(`No valid ${tour.toUpperCase()} matches found; source genre values: ${JSON.stringify(genres.slice(0, 40))}`); }
     report.tours[tour] = { inputMatches: matches.length, candidates: {}, snapshots: {} };
     for (const k of K_FACTORS) {
       const backtest = runBacktest(matches, {
