@@ -1,4 +1,4 @@
-name: Valuebetennis Elo research (preview only)\n# Preview-only research workflow; no deployment or publishing.
+name: Valuebetennis Elo research (preview only)\n# Preview-only research workflow; no deployment or publishing; player names included.
 
 on:
   workflow_dispatch:
