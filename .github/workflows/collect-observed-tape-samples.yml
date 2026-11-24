@@ -16,7 +16,7 @@ on:
       match_ids:
         description: "Comma-separated explicit match IDs (maximum 20)"
         required: true
-        default: "215017,212252,201427,179907"
+        default: "215017,212965,212252,209804,201427,200075,199254,198840,198048,196977,179907,174554"
 
 permissions:
   contents: read
@@ -40,11 +40,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Collect four explicitly selected observed samples
+      - name: Collect twelve explicitly selected observed samples
         if: github.event_name == 'push'
         run: |
           node scripts/collect-observed-point-tapes.mjs \
-            --ids 215017,212252,201427,179907 \
+            --ids 215017,212965,212252,209804,201427,200075,199254,198840,198048,196977,179907,174554 \
             --out artifacts/raw-observed-samples.jsonl
 
       - name: Collect manually selected observed samples
