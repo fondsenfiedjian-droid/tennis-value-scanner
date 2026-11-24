@@ -63,5 +63,9 @@ jobs:
           node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
           curl --fail --silent --show-error "$base/usage" -o /dev/null
           echo "Live Tennis API authentication: HTTP 200"
+          curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
+          node -e 'JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); console.log("History coverage endpoint: valid JSON")'
+          curl --fail --silent --show-error "$base/players/search?search=Novak%20Djokovic" -o /tmp/player-search.json
+          node -e 'JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); console.log("Player search endpoint: valid JSON")'
 
 # Keep the isolated diagnostics deployment and secret setup in sync.
