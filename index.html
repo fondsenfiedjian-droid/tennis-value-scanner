@@ -1139,6 +1139,22 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
       box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
     }
+
+    /* Terracotta EV+: suppress inherited ruby pseudo-frame and separator. */
+    body[data-skin="terracotta"] #mandatoryBets:before,
+    body[data-skin="terracotta"] #mandatoryBets.mandatory-bets:before{
+      content:none!important;display:none!important;background:none!important;
+      border:0!important;box-shadow:none!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets>.plan-summary{
+      border:0!important;border-bottom:1px solid #d88932!important;
+      background:transparent!important;box-shadow:none!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets{
+      border:1px solid #d88932!important;
+      background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
+      box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
+    }
   </style>
 </head>
 <body>
