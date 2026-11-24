@@ -24,5 +24,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Verify deployed Netlify preview Elo snapshot
+        run: |
+          node --input-type=module <<'NODE'
+          const url = "https://deploy-preview-174--tennis-value-scanner-developer.netlify.app/player-elo-snapshot.json";
+          const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+          if (!response.ok) throw new Error("Preview Elo snapshot returned HTTP " + response.status);
+          const data = await response.json();
+          const normalize = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+          const hasPlayer = (tour, name) => data.tours?.[tour]?.players?.filter(row => normalize(row?.[1]) === normalize(name)).length === 1;
+          if (data.model !== "Elo K=80" || !hasPlayer("atp", "Carlos Alcaraz") || !hasPlayer("atp", "Jannik Sinner")) {
+            throw new Error("Preview Elo snapshot is missing expected model or unique ATP players");
+          }
+          console.log(JSON.stringify({
+            model: data.model,
+            generatedAt: data.generatedAt,
+            atpPlayers: data.tours.atp.players.length,
+            wtaPlayers: data.tours.wta.players.length,
+            asOf: data.tours.atp.asOf
+          }, null, 2));
+          NODE
       - name: Diagnose Preview Worker schedule, Winamax feed and player profiles
         run: node scripts/preview-runtime-smoke.mjs
