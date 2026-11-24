@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 const regularPoint = value => {
   const key = String(value);
   return ({ "0": 0, "15": 1, "30": 2, "40": 3, AD: 4 })[key];
@@ -100,4 +102,41 @@ export function auditObservedWinnerTransitions(tape) {
     ? result.agreements / result.comparableTransitions
     : null;
   return result;
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const inputIndex = args.indexOf("--input");
+  if (inputIndex < 0 || !args[inputIndex + 1]) {
+    throw new Error("Usage: node scripts/audit-observed-point-winners.mjs --input path/to/tapes.jsonl");
+  }
+  const lines = (await readFile(args[inputIndex + 1], "utf8")).split(/\r?\n/).filter(Boolean);
+  let totalComparable = 0, totalAgreements = 0, totalDisagreements = 0;
+  for (const line of lines) {
+    const record = JSON.parse(line);
+    if (record?.metadata?.point_source !== "observed" || record?.metadata?.coverage !== "from_start") {
+      throw new Error("Refusing non-observed or non-from_start record " + record?.match_id);
+    }
+    const audit = auditObservedWinnerTransitions(record.tape);
+    totalComparable += audit.comparableTransitions;
+    totalAgreements += audit.agreements;
+    totalDisagreements += audit.disagreements;
+    console.log(JSON.stringify({
+      match_id: record.match_id,
+      points_complete: record.quality?.completenessFlag ?? null,
+      ...audit
+    }));
+  }
+  console.log(JSON.stringify({
+    matches: lines.length,
+    comparableTransitions: totalComparable,
+    agreements: totalAgreements,
+    disagreements: totalDisagreements,
+    agreementRate: totalComparable ? totalAgreements / totalComparable : null
+  }));
+  if (totalDisagreements > 0) process.exitCode = 2;
+}
+
+if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href) {
+  main().catch(error => { console.error(error.message); process.exitCode = 1; });
 }
