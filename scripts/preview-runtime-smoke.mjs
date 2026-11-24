@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const base = (process.env.PREVIEW_WORKER_URL || "https://integration-tvs2-pro-api-tennis-value-api.fonds-enfiedjian.workers.dev").replace(/\/+$/, "");
+const base = (process.env.PREVIEW_WORKER_URL || "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev").replace(/\/+$/, "");
 const getJson = async path => {
   const response = await fetch(base + path, {
     headers: { accept: "application/json" },
