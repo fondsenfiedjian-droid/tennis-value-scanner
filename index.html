@@ -4186,8 +4186,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('.brand-lockup').onclick=showMain;
   $('.brand-lockup').style.cursor='pointer';
-  $('#navBalance').onclick=showBalance;
-  $('#navHistory').onclick=showHistory;
+  if($('#navBalance'))$('#navBalance').onclick=showBalance;
+  if($('#navHistory'))$('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
   $('#navTests').onclick=showTests;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
