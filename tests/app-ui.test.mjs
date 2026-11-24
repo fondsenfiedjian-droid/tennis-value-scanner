@@ -150,6 +150,26 @@ test("daily plan shows no invented bankroll or stake amount", () => {
   assert.match(html, /mandatoryCount\.textContent=String\(bestBets\.length\)/);
   assert.match(html, /Размер ставки не рассчитан: банк и правило управления суммой не заданы/);
 });
+test("match cards use historical Elo when the profile API returns 422 without numeric Elo", () => {
+  assert.match(html, /res\.status===422&&result\?\.error==='Elo rating is unavailable for one or both players'/);
+  assert.match(html, /loadValuebetennisComparison\(exactNameA,exactNameB,diagnostic\)/);
+  assert.match(html, /resultMode==='valuebetennis-fallback'/);
+  assert.match(html, /historical\.probabilityExactA=historicalProbabilityA/);
+  assert.match(html, /mode==='valuebetennis-fallback'\?24\*60\*60\*1000/);
+  const fallbackStart = html.indexOf("if(resultMode==='valuebetennis-fallback'){");
+  const fallbackEnd = html.indexOf("result.evA=el.dataset.oddsA?", fallbackStart);
+  assert.ok(fallbackStart >= 0 && fallbackEnd > fallbackStart, "match-card fallback branch must precede production EV calculation");
+  const fallbackBranch = html.slice(fallbackStart, fallbackEnd);
+  assert.match(fallbackBranch, /Исторический Elo K=80/);
+  assert.match(fallbackBranch, /не рассчитывает EV и не допускает ставку в план/);
+  assert.doesNotMatch(fallbackBranch, /savePredictionSnapshot|dayBets\.push|evDayBets\.push/);
+});
+
+test("nested match-card controls do not toggle the parent card", () => {
+  assert.match(html, /card\.addEventListener\('click',e=>\{[\s\S]*?e\.target\.closest\('button,a,input,select,textarea,summary,details'\)/);
+  assert.match(html, /card\.addEventListener\('keydown',e=>\{\s*if\(e\.target!==card\)return/);
+});
+
 test("match cards expose current bookmaker odds without opening the details", () => {
   assert.match(html, /const oddsHtml=allMatched\.length\?/);
   assert.ok(html.includes(`class="match-bottom odds-visible">'+oddsHtml`));
