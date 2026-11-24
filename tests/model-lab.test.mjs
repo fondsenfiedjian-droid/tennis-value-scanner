@@ -10,19 +10,21 @@ const csv=[
   "m4;2025-01-03;gazon;B;C;B",
   "m5;2025-01-04;moquette intérieur;A;C;A",
   "bad;not-a-date;dur;A;B;A",
+  "invalid-calendar;2025-02-31;dur;A;B;A",
   "m5;2025-01-04;moquette intérieur;A;C;A"
 ].join("\n");
 
 test("CSV parser normalizes surfaces, sorts chronologically and rejects invalid or duplicate rows",()=>{
   const parsed=parseMatchCsv(csv);
   assert.equal(parsed.matches.length,5);
-  assert.equal(parsed.rejected,2);
+  assert.equal(parsed.rejected,3);
   assert.equal(parsed.matches[0].surface,"Hard");
   assert.equal(parsed.matches[1].surface,"Clay");
   assert.equal(parsed.matches[3].surface,"Grass");
   assert.equal(parsed.matches[4].surface,"Carpet");
   assert.equal(parsed.firstDate,"2025-01-01");
   assert.equal(parsed.lastDate,"2025-01-04");
+  assert.equal(parsed.matches.some(match=>match.id==="invalid-calendar"),false);
 });
 test("walk-forward comparison evaluates every model on the same sample",async()=>{
   const parsed=parseMatchCsv(csv);
