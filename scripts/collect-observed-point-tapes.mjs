@@ -28,7 +28,7 @@ export function summarizeRawTape(tape) {
 
 export function buildObservedTapeRecord(matchId, payload, options = {}) {
   const id = String(matchId ?? "").trim();
-  if (!/^\\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+  if (!/^\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
     throw new Error("matchId must be a positive integer");
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -86,13 +86,13 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
     throw new Error("Provide between 1 and 20 explicit match IDs");
   }
   const normalizedIds = [...new Set(ids.map(String))];
-  if (normalizedIds.some(id => !/^\\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
+  if (normalizedIds.some(id => !/^\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
     throw new Error("Every match ID must be a positive integer");
   }
   const target = resolve(output);
   let existing = [];
   try {
-    existing = (await readFile(target, "utf8")).split(/\\r?\\n/).filter(Boolean).map(line => JSON.parse(line));
+    existing = (await readFile(target, "utf8")).split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -112,7 +112,7 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   }
   await mkdir(dirname(target), { recursive: true });
   const content = [...records.values()].sort((a, b) => Number(a.match_id) - Number(b.match_id))
-    .map(record => JSON.stringify(record)).join("\\n") + "\\n";
+    .map(record => JSON.stringify(record)).join("\n") + "\n";
   await writeFile(target, content, "utf8");
   return { output: target, records: results, totalStored: records.size };
 }
