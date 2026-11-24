@@ -358,6 +358,48 @@ test("odds endpoint imports fresh French Winamax tennis singles from Flashscore 
   ));
 });
 
+test("Preview scheduled handler starts Flashscore French Winamax tennis odds every six hours", async () => {
+  let requestUrl = "";
+  let requestOptions = null;
+  const sandbox = {
+    Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date,
+    Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
+    console: { log() {}, error(message) { throw new Error(message); } },
+    fetch: async (url, options) => {
+      requestUrl = String(url);
+      requestOptions = options;
+      return new Response(JSON.stringify({ data: { id: "scheduled-run-1", status: "READY" } }), { status: 201 });
+    }
+  };
+  vm.runInNewContext(workerSource.replace("export default {", "globalThis.worker = {"), sandbox);
+  let pending;
+  sandbox.worker.scheduled(
+    { cron: "0 */6 * * *" },
+    { APIFY_TOKEN: "test-apify-token" },
+    { waitUntil(promise) { pending = promise; } }
+  );
+  assert.ok(pending, "scheduled handler should register its work with waitUntil");
+  await pending;
+  assert.equal(requestUrl, "https://api.apify.com/v2/acts/incognito_mode~flashscore-odds-scraper/runs?waitForFinish=0");
+  assert.equal(requestOptions.method, "POST");
+  assert.equal(requestOptions.headers.Authorization, "Bearer test-apify-token");
+  const input = JSON.parse(requestOptions.body);
+  assert.deepEqual(input, {
+    mode: "matches",
+    sports: ["tennis"],
+    days: ["0"],
+    status: "all",
+    bookmakerCountries: ["FR"],
+    bookmakers: ["Winamax"],
+    markets: ["HOME_AWAY"],
+    periods: ["FULL_TIME"],
+    maxMatches: 30,
+    maxItems: 500
+  });
+  const previewConfig = readFileSync(new URL("../wrangler.preview.toml", import.meta.url), "utf8");
+  assert.match(previewConfig, /crons\s*=\s*\["0 \*\/6 \* \* \*"\]/);
+});
+
 test("player history endpoint validates player ID, limit and tour without upstream calls", async () => {
   let calls = 0;
   workerSandbox.fetch = async () => { calls++; throw new Error("unexpected request"); };
