@@ -3314,7 +3314,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   let valuebetennisEloSnapshotPromise=null;
   function normalizeValuebetennisName(value){
-    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
   function resolveValuebetennisComparison(snapshot,nameA,nameB,diagnostic){
     const identityA=diagnostic?.profileIdentityA,identityB=diagnostic?.profileIdentityB;
@@ -3335,12 +3335,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const calibratedA=1500+(a.rating-1500)*slope,calibratedB=1500+(b.rating-1500)*slope;
     const probabilityA=1/(1+10**((calibratedB-calibratedA)/400));
     const freshness=date=>{
-      const parsed=/^\\d{8}$/.test(date)?Date.UTC(Number(date.slice(0,4)),Number(date.slice(4,6))-1,Number(date.slice(6,8))):NaN;
+      const parsed=/^\d{8}$/.test(date)?Date.UTC(Number(date.slice(0,4)),Number(date.slice(4,6))-1,Number(date.slice(6,8))):NaN;
       if(!Number.isFinite(parsed))return 'unknown';
       const ageDays=Math.max(0,(Date.now()-parsed)/86400000);
       return ageDays<=30?'fresh':ageDays<=90?'recent':'stale';
     };
-    const formatDate=date=>/^\\d{8}$/.test(date)?date.slice(0,4)+'-'+date.slice(4,6)+'-'+date.slice(6,8):'—';
+    const formatDate=date=>/^\d{8}$/.test(date)?date.slice(0,4)+'-'+date.slice(4,6)+'-'+date.slice(6,8):'—';
     const official=identity=>({tour:identity?.tour||tourA,ranking:Number(identity?.ranking)||null,country:null});
     return {
       playerA:nameA,playerB:nameB,
