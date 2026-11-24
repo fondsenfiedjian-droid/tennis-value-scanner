@@ -19,7 +19,7 @@ test("Production and Developer have distinct install identities and scopes",()=>
   assert.equal(devManifest.scope,"/developer/");
   assert.match(devManifest.name,/Developer/);
 });
-test("both editions expose an in-app version and Developer has a separate label",()=>{
+test("both edition manifests declare Chromium install icon sizes",()=>{\n  for(const manifest of [rootManifest,devManifest]){\n    const sizes=manifest.icons.flatMap(icon=>String(icon.sizes||"").split(/\\s+/));\n    assert.ok(sizes.includes("192x192"));\n    assert.ok(sizes.includes("512x512"));\n  }\n});\ntest("both editions expose an in-app version and Developer has a separate label",()=>{
   assert.match(rootHtml,/id="editionVersion"/);
   assert.match(devHtml,/version:"2\.1\.0-dev\.1"/);
   assert.match(rootHtml,/edition-runtime\.js/);
