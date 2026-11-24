@@ -76,6 +76,8 @@ jobs:
           odds_status="$(curl --silent --show-error "$base/odds" -o /tmp/odds-diagnostics.json -w '%{http_code}')"
           if [ "$odds_status" = "200" ]; then
             node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/odds-diagnostics.json","utf8")); console.log("Apify odds rows:",d.count,"; task run:",JSON.stringify(d.taskRun)); if(d.taskRun?.schedule) console.log("Apify schedule:",JSON.stringify(d.taskRun.schedule)); else console.log("Apify schedule metadata:",d.taskRun?.scheduleDiagnostic||d.taskRunDiagnostic);'
+          elif [ "$odds_status" = "500" ] && node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/odds-diagnostics.json","utf8")); process.exit(d.error==="APIFY_TOKEN secret is not configured"?0:1)'; then
+            echo "::warning::APIFY_TOKEN is not configured on the isolated diagnostics Worker; Apify schedule details were skipped."
           else
             echo "Apify diagnostics endpoint returned HTTP $odds_status"
             cat /tmp/odds-diagnostics.json
