@@ -1,4 +1,4 @@
-name: Valuebetennis Elo research (preview only)
+name: Valuebetennis Elo research (preview only)\n# Triggered on preview-branch changes only.
 
 on:
   workflow_dispatch:
