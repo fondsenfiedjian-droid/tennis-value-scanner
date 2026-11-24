@@ -21,6 +21,9 @@ self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // Never intercept Developer Edition paths from the root Production worker.
+  if (url.pathname.startsWith("/developer/")) return;
+
   // Never cache API requests or non-GET requests.
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
