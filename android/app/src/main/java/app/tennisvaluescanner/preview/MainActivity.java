@@ -18,7 +18,7 @@ import android.widget.ProgressBar;
 import android.graphics.Color;
 
 public class MainActivity extends Activity {
-    private static final String HOME = "https://deploy-preview-172--tennis-value-scanner-developer.netlify.app/developer/";
+    private static final String HOME = "https://deploy-preview-172--tennis-value-scanner-developer.netlify.app/";
     private static final String DEVELOPER_HOST = "deploy-preview-172--tennis-value-scanner-developer.netlify.app";
     private WebView webView;
     private ProgressBar progress;
