@@ -127,11 +127,6 @@ async function main() {
     }
     rows.push(...parsed);
     console.log(`Loaded ${parsed.length} rows from ${path}`);
-    if (year === YEARS[0]) {
-      console.log("Valuebetennis columns:", Object.keys(parsed[0]).join(" | "));
-      console.log("Valuebetennis first row:", JSON.stringify(parsed[0]));
-      console.log("Valuebetennis genre values:", [...new Set(parsed.map(row => String(row.genre ?? "").trim()))].slice(0, 12));
-    }
   }
 
   const report = {
@@ -187,6 +182,40 @@ async function main() {
     }
   }
 
+  const eloSnapshot = {
+    version: 1,
+    generatedAt: report.generatedAt,
+    source: ATTRIBUTION,
+    model: "Elo K=80",
+    probabilityCalibration: {},
+    tours: {}
+  };
+  for (const tour of ["atp", "wta"]) {
+    const candidate = report.tours[tour].candidates.k80;
+    const latestEvaluation = [...candidate.calibrationValidation]
+      .filter(item => item.candidate === "elo" && item.scope === "tour" && item.calibrator?.slope)
+      .sort((a, b) => String(a.evaluationYear).localeCompare(String(b.evaluationYear)))
+      .at(-1);
+    if (!latestEvaluation) throw new Error(`No out-of-sample Elo calibrator found for ${tour.toUpperCase()}`);
+    eloSnapshot.probabilityCalibration[tour] = {
+      slope: latestEvaluation.calibrator.slope,
+      trainedThrough: latestEvaluation.trainingYear,
+      validatedOn: latestEvaluation.evaluationYear,
+      validationMatches: latestEvaluation.raw?.matches ?? 0
+    };
+    const snap = report.tours[tour].snapshots.k80;
+    eloSnapshot.tours[tour] = {
+      asOf: snap.asOf,
+      players: snap.players.map(player => [
+        player.playerId,
+        player.playerName,
+        player.rating,
+        player.matches,
+        player.lastPlayed
+      ])
+    };
+  }
+  await writeFile("player-elo-snapshot.json", JSON.stringify(eloSnapshot));
   await mkdir("artifacts", { recursive: true });
   await writeFile("artifacts/player-elo-research.json", JSON.stringify(report));
   await writeFile("artifacts/player-elo-research-summary.json", JSON.stringify({
