@@ -16,7 +16,7 @@ async function apifyJson(url, token) {
   const upstream = await fetch(url, {
     headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }
   });
-  if (!upstream.ok) return { ok: false, status: upstream.status };
+  if (!upstream.ok) return { ok: false, status: upstream.status, retryAfter: upstream.headers.get("Retry-After") };
   try {
     return { ok: true, data: await upstream.json() };
   } catch {
@@ -101,7 +101,7 @@ async function loadVavilovWinamaxFeed(token) {
   const datasetUrl = "https://api.apify.com/v2/actor-tasks/" + APIFY_TASK_ID +
     "/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000";
   const dataset = await apifyJson(datasetUrl, token);
-  if (!dataset.ok) return { items: [], run: null, diagnostic: dataset.diagnostic || "http_" + dataset.status };
+  if (!dataset.ok) return { items: [], run: null, diagnostic: dataset.diagnostic || "http_" + dataset.status, retryAfter: dataset.retryAfter };
   if (!Array.isArray(dataset.data)) return { items: [], run: null, diagnostic: "invalid_payload" };
 
   let run = null, diagnostic = "not_checked";
@@ -131,7 +131,7 @@ async function loadVavilovWinamaxFeed(token) {
 async function loadFlashscoreWinamaxFeed(token) {
   try {
     const meta = await apifyJson("https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs/last?status=SUCCEEDED", token);
-    if (!meta.ok) return { items: [], run: null, diagnostic: meta.diagnostic || "http_" + meta.status };
+    if (!meta.ok) return { items: [], run: null, diagnostic: meta.diagnostic || "http_" + meta.status, retryAfter: meta.retryAfter };
     const run = meta.data?.data || meta.data;
     if (!run || typeof run !== "object" || Array.isArray(run) || run.status !== "SUCCEEDED" || !run.defaultDatasetId) {
       return { items: [], run: null, diagnostic: "no_successful_run" };
@@ -700,6 +700,14 @@ export default {
           loadFlashscoreWinamaxFeed(env.APIFY_TOKEN)
         ]);
         const items = mergeWinamaxOdds(taskFeed.items, flashscoreFeed.items);
+        if (!items.length && taskFeed.diagnostic === "http_429" && flashscoreFeed.diagnostic === "http_429") {
+          return response({ error: "Apify odds sources are rate limited", upstreamStatus: 429 }, 429,
+            taskFeed.retryAfter ? { "Retry-After": taskFeed.retryAfter } : {});
+        }
+        const invalidDiagnostics = ["invalid_payload", "invalid_json"];
+        if (!items.length && invalidDiagnostics.includes(taskFeed.diagnostic) && invalidDiagnostics.includes(flashscoreFeed.diagnostic)) {
+          return response({ error: "Apify odds sources returned invalid data" }, 502);
+        }
         const payload = {
           source: "Apify Winamax task",
           taskId: APIFY_TASK_ID,
