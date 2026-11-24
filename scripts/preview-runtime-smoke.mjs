@@ -23,11 +23,49 @@ if (health.status !== "ok") throw new Error("Preview Worker health check did not
 if (!health.liveTennisApiConfigured) throw new Error("Preview Worker is missing LIVE_TENNIS_API_KEY");
 if (!health.apifyTokenConfigured) throw new Error("Preview Worker is missing APIFY_TOKEN; Winamax feed cannot be verified");
 
-const [schedule, odds] = await Promise.all([
-  getJson("/matches?status=upcoming&limit=200"),
-  getJson("/odds")
-]);
-const matches = Array.isArray(schedule.data) ? schedule.data : [];
+const now = new Date();
+const from = new Date(now);
+from.setHours(0, 0, 0, 0);
+const to = new Date(from);
+to.setDate(to.getDate() + 7);
+to.setMilliseconds(-1);
+const rows = [];
+let offset = 0;
+let pagesLoaded = 0;
+let total = null;
+let hasMore = false;
+for (let page = 0; page < 4; page++) {
+  const params = new URLSearchParams({
+    status: "upcoming",
+    draw: "singles",
+    limit: "200",
+    from: from.toISOString(),
+    to: to.toISOString(),
+    offset: String(offset)
+  });
+  const payload = await getJson("/matches?" + params.toString());
+  const pageRows = Array.isArray(payload.data) ? payload.data : [];
+  rows.push(...pageRows);
+  pagesLoaded++;
+  const meta = payload.meta && typeof payload.meta === "object" ? payload.meta : {};
+  if (meta.total !== null && meta.total !== undefined && Number.isFinite(Number(meta.total))) total = Number(meta.total);
+  hasMore = meta.has_more === true;
+  if (!hasMore) break;
+  const count = Number(meta.count);
+  if (!Number.isInteger(count) || count <= 0 || pageRows.length === 0) {
+    throw new Error("Schedule pagination metadata is inconsistent");
+  }
+  const currentOffset = Number.isInteger(Number(meta.offset)) ? Number(meta.offset) : offset;
+  offset = currentOffset + count;
+}
+const seen = new Set();
+const matches = rows.filter(match => {
+  const id = String(match?.id ?? match?.matchId ?? "");
+  if (!id || seen.has(id)) return false;
+  seen.add(id);
+  return true;
+});
+const odds = await getJson("/odds");
 const items = Array.isArray(odds.items) ? odds.items : [];
 if (!Array.isArray(odds.items)) throw new Error("/odds response does not contain an items array");
 
@@ -72,7 +110,7 @@ for (const item of items) {
 }
 const report = {
   previewWorkerBuild: health.buildId || null,
-  upcomingMatches: matches.length,
+  upcomingMatches: matches.length,\n  schedulePagesLoaded: pagesLoaded,\n  scheduleTotalReported: total,\n  scheduleTruncated: hasMore,
   oddsRecords: items.length,
   recordsByBookmaker: bookmakers,
   completeFreshWinamaxPairs: completePairs,
