@@ -1080,3 +1080,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The metadata-aware discovery collector now accepts the discovery report as a metadata sidecar and attaches each match's participants, stable player IDs, scheduled time, surface, tournament, round and result identity to the corresponding private RAW/CLEAN tape record.
 - CLI supports `--metadata <discovery-json>`; the diverse discovery workflow passes its discovery report to the collector.
 - Regression coverage verifies that match identity survives serialization into the stored tape JSONL. The full regression suite passed on commit `3e08a850578b7fc5c09bee4a0482b664fec9dc91`; the final metadata-aware discovery run is pending.
+
+
+## 2026-11-24 — Verified metadata-aware diverse tape artifact
+- Discovery run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45464851599 completed successfully after the nested metadata extractor and collector sidecar integration.
+- The private artifact contains 14 paired RAW/CLEAN tape records; all 14 now retain both player names and IDs, scheduled date/time, surface and tournament metadata.
+- Totals: 1,710 RAW rows and 1,607 CLEAN rows; timestamps are complete for every row. Provider point completeness is true for 9/14 RAW records and 3/14 CLEAN records. RAW serve tags appear in 1,044/1,710 rows; RAW score-derived winner appears in 1,675/1,710. CLEAN serve tags appear in 1,002/1,607 rows; CLEAN point_winner appears in 1,571/1,607.
+- Six selected junior players were found by search but returned zero records for the `tour=juniors` history query. Treat as a provider classification/query limitation to investigate, not as proof that junior tapes do not exist.
+- Full regression suite and project-state guard passed on the code commits before the final documentation-only updates. The diagnostics Worker remains isolated from Production; PR #173 is not merged.
