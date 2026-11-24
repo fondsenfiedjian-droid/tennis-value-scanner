@@ -3,7 +3,7 @@
  * Discover diverse Live Tennis API matches whose point tape is genuinely observed
  * from the opening point. Uses only the isolated diagnostics preview Worker.
  */
-const BASE = (process.env.DIAGNOSTICS_BASE || "https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev").replace(/\/$/, "");
+import { extractObservedMatchMetadata } from "./observed-match-metadata.mjs";\n\nconst BASE = (process.env.DIAGNOSTICS_BASE || "https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev").replace(/\/$/, "");
 const SEEDS = {
   atp: ["Novak Djokovic", "Carlos Alcaraz", "Jannik Sinner"],
   wta: ["Iga Swiatek", "Coco Gauff", "Aryna Sabalenka"],
@@ -101,10 +101,7 @@ async function main() {
         tour,
         seed_player: candidate.seed,
         seed_player_id: candidate.player_id,
-        player1: first(m, ["player1", "player_1", "player1_name", "player_1_name", "home_player", "playerA"]),
-        player2: first(m, ["player2", "player_2", "player2_name", "player_2_name", "away_player", "playerB"]),
-        date: first(m, ["date", "start_time", "match_date", "startDate", "datetime"]),
-        surface: first(m, ["surface", "court_surface"]),
+        ...extractObservedMatchMetadata(m),
         raw_rows: raw.tape.length,
         clean_rows: clean.tape.length,
         point_source: raw.meta.point_source,
