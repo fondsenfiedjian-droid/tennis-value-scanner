@@ -32,8 +32,8 @@ async function renderHistory(payload, responseOptions = {}) {
     fetch: async (url, options) => {
       requests.push({ url: String(url), options });
       return new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
+        status: responseOptions.status ?? 200,
+        headers: { "Content-Type": "application/json", ...(responseOptions.headers ?? {}) }
       });
     }
   };
