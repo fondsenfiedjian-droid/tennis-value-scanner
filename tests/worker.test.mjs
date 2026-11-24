@@ -3551,6 +3551,14 @@ test("Live Tennis history packages validate requests and protect raw archive dow
   assert.equal(requested, null);
 
   env.TVS_RESEARCH_ACCESS_TOKEN = "research-test-token";
+  const previewFlagMissing = new Request("https://worker.test/history/packages/2022?kind=archive&format=csv", {
+    headers: { "X-Research-Access": "research-test-token" }
+  });
+  const previewDenied = await worker.fetch(previewFlagMissing, env);
+  assert.equal(previewDenied.status, 403);
+  assert.equal(requested, null);
+
+  env.TVS_RESEARCH_PREVIEW_ONLY = "true";
   const request = new Request("https://worker.test/history/packages/2022?kind=archive&format=csv", {
     headers: { "X-Research-Access": "research-test-token" }
   });
