@@ -78,7 +78,9 @@ function attach(card){
  if(!matchId||!/^[1-9]\d{0,14}$/.test(matchId))return;
  const details=card.querySelector(".match-details");if(!details)return;
  const panel=document.createElement("div");panel.className="market-history-panel model-result model-muted";panel.setAttribute("aria-live","polite");
- details.append(panel);loaded.add(card);load(panel,matchId);
+ const playersText=card.querySelector(".match-players")?.textContent??"";
+ const playerNames=playersText.split("—").map(value=>value.replace(/\s+/g," ").trim()).filter(Boolean);
+ details.append(panel);loaded.add(card);load(panel,matchId,playerNames);
 }
 document.addEventListener("click",event=>{
  const card=event.target.closest(".match-card");
