@@ -705,7 +705,7 @@ export default {
             taskFeed.retryAfter ? { "Retry-After": taskFeed.retryAfter } : {});
         }
         const invalidDiagnostics = ["invalid_payload", "invalid_json"];
-        if (!items.length && invalidDiagnostics.includes(taskFeed.diagnostic) && invalidDiagnostics.includes(flashscoreFeed.diagnostic)) {
+        if (!items.length && (invalidDiagnostics.includes(taskFeed.diagnostic) || invalidDiagnostics.includes(flashscoreFeed.diagnostic))) {
           return response({ error: "Apify odds sources returned invalid data" }, 502);
         }
         const payload = {
