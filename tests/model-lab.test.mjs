@@ -106,3 +106,19 @@ test("parser excludes conflicting duplicate IDs within one CSV",()=>{
   assert.equal(parsed.conflicts,1);
   assert.equal(parsed.rejected,2);
 });
+
+test("an ID conflicted inside one file stays excluded when another file contains a valid row",()=>{
+  const conflicted=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "collision;2025-04-01;dur;A;B;A",
+    "collision;2025-04-01;dur;A;B;B"
+  ].join("\n"));
+  const other=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "collision;2025-04-01;dur;A;B;A",
+    "valid;2025-04-02;dur;A;C;C"
+  ].join("\n"));
+  const merged=mergeMatchDatasets([conflicted,other]);
+  assert.deepEqual(merged.matches.map(match=>match.id),["valid"]);
+  assert.equal(merged.conflicts,1);
+});
