@@ -9,13 +9,32 @@ const listFrom=payload=>{
   for(const key of ["data","markets","prices","items","results","history"])if(Array.isArray(payload[key]))return payload[key];
   return [];
 };
+const historyRows=payload=>{
+  const rows=listFrom(payload);
+  if(!rows.length)return [];
+  const nested=rows.flatMap(group=>{
+    const prices=group?.prices??group?.history??group?.data;
+    if(!Array.isArray(prices))return [group];
+    return prices.map(price=>({
+      ...price,
+      market_name:price?.market_name??price?.marketName??group?.name??group?.market_name??group?.type,
+      outcome:price?.outcome??price?.selection??group?.outcome??group?.selection
+    }));
+  });
+  return nested;
+};
 const marketId=item=>item?.id??item?.market_id??item?.marketId??item?.market?.id??null;
 const label=item=>item?.name??item?.market_name??item?.marketName??item?.type??item?.market_type??"Рынок";
 const dateOf=item=>item?.timestamp??item?.created_at??item?.createdAt??item?.updated_at??item?.date??item?.time??null;
 const priceOf=item=>item?.odds??item?.price??item?.odds_decimal??item?.oddsDecimal??item?.decimal_odds??item?.value??null;
 function status(panel,message){panel.innerHTML='<div class="archive-meta">'+esc(message)+'</div>';}
 async function get(path){
- const response=await fetch(API+path,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ let response;
+ try{
+  response=await fetch(API+path,{headers:{Accept:"application/json"},signal:controller.signal});
+ }finally{clearTimeout(timeout);}
  let body={};try{body=await response.json();}catch{}
  if(!response.ok){const error=new Error(body?.error||("HTTP "+response.status));error.status=response.status;error.accessStatus=body?.accessStatus;throw error;}
  return body;
@@ -27,7 +46,7 @@ async function load(panel,matchId){
   const markets=listFrom(marketPayload);
   if(!markets.length){status(panel,"История рынка пока не предоставлена API для этого матча.");return;}
   const historyPayload=await get("/markets/"+encodeURIComponent(matchId)+"/prices?limit=100");
-  const rows=listFrom(historyPayload).slice().sort((a,b)=>Date.parse(dateOf(a)||0)-Date.parse(dateOf(b)||0)).slice(-24);
+  const rows=historyRows(historyPayload).slice().sort((a,b)=>Date.parse(dateOf(a)||0)-Date.parse(dateOf(b)||0)).slice(-24);
   if(!rows.length){
    status(panel,"Рынки найдены, но история изменения коэффициентов пока пуста.");
    return;
