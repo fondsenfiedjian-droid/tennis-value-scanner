@@ -150,9 +150,7 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   }
   await mkdir(dirname(target), { recursive: true });
   const content = [...records.values()].sort((a, b) => Number(a.match_id) - Number(b.match_id))
-    .map(record => JSON.stringify(record)).join("
-") + "
-";
+    .map(record => JSON.stringify(record)).join("\n") + "\n";
   await writeFile(target, content, "utf8");
   return { output: target, records: results, totalStored: records.size };
 }
@@ -160,14 +158,21 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node scripts/collect-observed-point-tapes.mjs --ids 215017,212252 --out data/raw-observed-tapes.jsonl [--base URL]");
+    console.log("Usage: node scripts/collect-observed-point-tapes.mjs --ids 215017,212252 --metadata artifacts/discovered-observed-matches.json --out data/raw-observed-tapes.jsonl [--base URL]");
     return;
   }
   if (!args.ids || !args.out) throw new Error("--ids and --out are required");
+  let matchMetadataById = {};
+  if (args.metadata) {
+    const discovery = JSON.parse(await readFile(resolve(args.metadata), "utf8"));
+    if (!Array.isArray(discovery.matches)) throw new Error("--metadata file must contain a matches array");
+    matchMetadataById = Object.fromEntries(discovery.matches.map(match => [String(match.match_id), match]));
+  }
   const result = await collectObservedTapes({
     ids: args.ids.split(",").map(value => value.trim()).filter(Boolean),
     output: args.out,
-    base: args.base || process.env.DIAGNOSTICS_BASE || DEFAULT_BASE
+    base: args.base || process.env.DIAGNOSTICS_BASE || DEFAULT_BASE,
+    matchMetadataById
   });
   console.log(JSON.stringify(result, null, 2));
 }
