@@ -25,7 +25,7 @@ test("both editions expose an in-app version and Developer has a separate label"
   assert.match(devHtml,/edition-runtime\.js/);
 });
 test("model laboratory is gated to Developer Edition",()=>{
-  assert.match(devHtml,/channel:"developer"/);
+  assert.match(devHtml,/channel:"developer"/);\n  assert.match(devRuntime,/document.getElementById\\("labView"\\)\\?\\.remove\\(\\)/);
   assert.match(devRuntime,/if\(!isDeveloper\).*quickLab/s);
   assert.match(devRuntime,/tvs-lab-models-v1/);
   assert.match(devRuntime,/labK/);
