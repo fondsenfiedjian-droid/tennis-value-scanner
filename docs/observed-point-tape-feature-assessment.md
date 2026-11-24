@@ -220,3 +220,30 @@ The paired artifact now contains identity metadata and can be joined to score/ta
 ### Junior tour classification clarification
 
 The provider's current reference states that the `tour=juniors` filter covers the boys' and girls' **junior Grand Slam draws**, not every junior-circuit event. Therefore zero history rows for the six selected players under `tour=juniors` was an overly narrow query, not evidence that junior data is absent. The discovery seed list now also checks five junior-age players under `tour=itf` (Demin, Samson, Klugman, Fonseca and Andreeva), where non-Grand-Slam junior event records may be classified. The next run will test this bounded adjustment. Source: https://docs.livetennisapi.com/reference.html.
+
+
+### Expanded junior-age ITF discovery: 16-match sample (2026-11-24)
+
+Workflow https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45465141446 completed successfully after adding five junior-age players to the `tour=itf` seed list.
+
+| Tour query | Candidates | Tape checks | Accepted |
+|---|---:|---:|---:|
+| ATP | 150 | 14 | 4 |
+| WTA | 150 | 4 | 4 |
+| Challenger | 200 | 8 | 4 |
+| ITF | 311 | 15 | 4 |
+| Junior Grand Slam | 0 | 0 | 0 |
+| **Total** | **811** | **41** | **16** |
+
+Two additional ITF matches were discovered through junior-age players:
+- Yaroslav Demin – Matthew Dellavedova, M25 Qian Daohu, 2026-10-15 (match 204244): 172 RAW / 165 CLEAN rows.
+- Yaroslav Demin – Filip Peliwo, M25 Qian Daohu, 2026-10-14 (match 203062): 131 RAW / 120 CLEAN rows.
+- Hannah Klugman – Fiona Crawley, W75 Glasgow, 2026-10-31 (match 212854): 132 RAW / 124 CLEAN rows.
+
+The fourth ITF match in this run is the previously found Katerina Zajickova – Brenda Fruhvirtova match (201310). The sample now has 16 matches: ATP 4, WTA 4, Challenger 4, ITF 4, and zero junior Grand Slam records.
+
+Paired tape quality across 16 matches:
+- RAW 1,957 rows; timestamps 1,957/1,957; server 1,942; serve 1,044; score-derived winner 1,915; provider `points.complete=true` in 10/16 matches.
+- CLEAN 1,840 rows; timestamps and server 1,840/1,840; serve 1,002; point_winner 1,795; provider `points.complete=true` in 3/16 matches.
+
+This resolves the apparent junior-data gap: junior-age players do appear in ITF histories, while the provider's `tour=juniors` filter is scoped to junior Grand Slam draws. It does not yet establish broad coverage of the junior circuit; only two additional junior-age player matches passed the observed-from-start tape gate in this bounded run.
