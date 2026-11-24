@@ -9,6 +9,148 @@ const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const WORKER_BUILD_ID = "tvs2-pro-data-2026-11-24-1";
 
+
+const FLASHSCORE_ACTOR_PATH = "incognito_mode~flashscore-odds-scraper";
+
+async function apifyJson(url, token) {
+  const upstream = await fetch(url, {
+    headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }
+  });
+  if (!upstream.ok) return { ok: false, status: upstream.status };
+  try {
+    return { ok: true, data: await upstream.json() };
+  } catch {
+    return { ok: false, status: 502, diagnostic: "invalid_json" };
+  }
+}
+
+function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
+  if (!Array.isArray(rows)) return [];
+  const output = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    if (row.recordType && row.recordType !== "odds") continue;
+    if (String(row.sport || "").toLowerCase() !== "tennis") continue;
+    if (String(row.bookmakerName || "").trim().toLowerCase() !== "winamax") continue;
+    if (String(row.bookmakerCountry || "").trim().toUpperCase() !== "FR") continue;
+    if (String(row.market || "").toUpperCase() !== "HOME_AWAY") continue;
+    if (String(row.period || "").toUpperCase() !== "FULL_TIME") continue;
+    if (row.status && String(row.status).toLowerCase() !== "scheduled") continue;
+    if (row.active === false) continue;
+
+    const homeTeam = String(row.homeName || "").trim();
+    const awayTeam = String(row.awayName || "").trim();
+    const startTime = String(row.startTime || "").trim();
+    const scrapedAt = String(row.scrapedAt || "").trim();
+    const startMs = Date.parse(startTime);
+    const scrapedMs = Date.parse(scrapedAt);
+    if (!homeTeam || !awayTeam || homeTeam.toLowerCase() === awayTeam.toLowerCase()) continue;
+    if (!Number.isFinite(startMs) || startMs <= now || startMs > now + 14 * 86400000) continue;
+    if (!Number.isFinite(scrapedMs) || scrapedMs > now + 5 * 60000 || now - scrapedMs > ODDS_FRESHNESS_MAX_AGE_MS) continue;
+
+    const homeOdds = Number(row.homeOdds);
+    const awayOdds = Number(row.awayOdds);
+    if (!Number.isFinite(homeOdds) || homeOdds <= 1 || !Number.isFinite(awayOdds) || awayOdds <= 1) continue;
+    const eventId = String(row.eventId || "").trim();
+    const competition = String(row.tournament || "").trim();
+    const eventName = homeTeam + " - " + awayTeam;
+    const common = {
+      bookmaker: "Winamax",
+      bookmakerCountry: "FR",
+      sport: "tennis",
+      marketType: "match_winner",
+      line: null,
+      eventId,
+      homeTeam,
+      awayTeam,
+      eventName,
+      competition,
+      startTime,
+      scrapedAt,
+      source: "Flashscore"
+    };
+    output.push({ ...common, outcome: "home", oddsDecimal: homeOdds });
+    output.push({ ...common, outcome: "away", oddsDecimal: awayOdds });
+  }
+  return output;
+}
+
+function mergeWinamaxOdds(taskItems, flashscoreItems) {
+  const rows = [...(Array.isArray(taskItems) ? taskItems : []), ...(Array.isArray(flashscoreItems) ? flashscoreItems : [])];
+  const selected = new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const home = String(row.homeTeam || row.homeName || "").trim().toLowerCase();
+    const away = String(row.awayTeam || row.awayName || "").trim().toLowerCase();
+    const start = Date.parse(row.startTime || "");
+    const outcome = String(row.outcome || "").toLowerCase();
+    const provider = String(row.bookmaker || row.bookmakerName || "").toLowerCase();
+    const identity = home && away && Number.isFinite(start) && ["home", "away"].includes(outcome)
+      ? [provider, [home, away].sort().join("|"), Math.round(start / 60000), outcome].join("|")
+      : String(row.eventId || "") + "|" + outcome + "|" + String(row.scrapedAt || "");
+    if (!identity) continue;
+    const previous = selected.get(identity);
+    if (!previous || (Date.parse(row.scrapedAt || "") || 0) > (Date.parse(previous.scrapedAt || "") || 0)) {
+      selected.set(identity, row);
+    }
+  }
+  return [...selected.values()];
+}
+
+async function loadVavilovWinamaxFeed(token) {
+  const datasetUrl = "https://api.apify.com/v2/actor-tasks/" + APIFY_TASK_ID +
+    "/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000";
+  const dataset = await apifyJson(datasetUrl, token);
+  if (!dataset.ok) return { items: [], run: null, diagnostic: dataset.diagnostic || "http_" + dataset.status };
+  if (!Array.isArray(dataset.data)) return { items: [], run: null, diagnostic: "invalid_payload" };
+
+  let run = null, diagnostic = "not_checked";
+  try {
+    const meta = await apifyJson("https://api.apify.com/v2/actor-tasks/" + APIFY_TASK_ID + "/runs/last?status=SUCCEEDED", token);
+    if (!meta.ok) diagnostic = meta.diagnostic || "http_" + meta.status;
+    else {
+      const value = meta.data?.data || meta.data;
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        const origin = typeof value.meta?.origin === "string" ? value.meta.origin : null;
+        run = {
+          status: typeof value.status === "string" ? value.status : "SUCCEEDED",
+          startedAt: value.startedAt || null,
+          finishedAt: value.finishedAt || null,
+          origin,
+          scheduled: Boolean(value.meta?.scheduleId || value.meta?.scheduledActorTaskId || origin === "SCHEDULER")
+        };
+        diagnostic = "ok";
+      } else diagnostic = "invalid_payload";
+    }
+  } catch {
+    diagnostic = "request_failed";
+  }
+  return { items: dataset.data, run, diagnostic };
+}
+
+async function loadFlashscoreWinamaxFeed(token) {
+  try {
+    const meta = await apifyJson("https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs/last?status=SUCCEEDED", token);
+    if (!meta.ok) return { items: [], run: null, diagnostic: meta.diagnostic || "http_" + meta.status };
+    const run = meta.data?.data || meta.data;
+    if (!run || typeof run !== "object" || Array.isArray(run) || run.status !== "SUCCEEDED" || !run.defaultDatasetId) {
+      return { items: [], run: null, diagnostic: "no_successful_run" };
+    }
+    const dataset = await apifyJson("https://api.apify.com/v2/datasets/" + encodeURIComponent(run.defaultDatasetId) +
+      "/items?clean=true&format=json&limit=1000", token);
+    if (!dataset.ok) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: dataset.diagnostic || "http_" + dataset.status };
+    if (!Array.isArray(dataset.data)) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: "invalid_payload" };
+    const items = normalizeFlashscoreWinamaxRows(dataset.data);
+    return {
+      items,
+      run: { id: run.id || null, finishedAt: run.finishedAt || null, datasetId: run.defaultDatasetId },
+      diagnostic: items.length ? "ok" : "no_fresh_fr_winamax_singles"
+    };
+  } catch {
+    return { items: [], run: null, diagnostic: "request_failed" };
+  }
+}
+
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
     "bookmaker", "bookmakerCountry", "sport", "marketType", "line",
@@ -537,13 +679,11 @@ export default {
       if (request.method !== "GET") {
         return response({ error: "Method not allowed" }, 405);
       }
-
       if (!env.APIFY_TOKEN) {
         return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
       }
 
       try {
-        // Cache Winamax odds for five minutes to avoid repeated Apify dataset reads.
         const cache = caches.default;
         const cacheKey = new Request(request.url, { method: "GET" });
         const cached = await cache.match(cacheKey);
@@ -553,88 +693,30 @@ export default {
           return new Response(cached.body, { status: cached.status, headers });
         }
 
-        // Resolve the most recent successful task run dataset dynamically.
-        // This avoids pinning the feed to a dataset created by an earlier run.
-        const upstream = await fetch(
-          `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000`,
-          {
-            headers: {
-              "Authorization": `Bearer ${env.APIFY_TOKEN}`,
-              "Accept": "application/json"
-            }
-          }
-        );
-
-        if (!upstream.ok) {
-          const retryAfter = upstream.headers.get("Retry-After");
-          return response({
-            error: "Apify task dataset request failed",
-            taskId: APIFY_TASK_ID,
-            upstreamStatus: upstream.status
-          }, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
-        }
-
-        let items;
-        try {
-          items = await upstream.json();
-        } catch {
-          return response({ error: "Apify task dataset response was not valid JSON", taskId: APIFY_TASK_ID }, 502);
-        }
-        if (!Array.isArray(items)) {
-          return response({ error: "Apify task dataset response was not an array", taskId: APIFY_TASK_ID }, 502);
-        }
-        // Best-effort metadata lookup: identify whether the latest successful
-        // task run was started manually, by API, or by an Apify schedule.
-        // A metadata failure must never take down an otherwise healthy odds feed.
-        let taskRun = null;
-        let taskRunDiagnostic = "not_checked";
-        try {
-          const runResponse = await fetch(
-            `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last?status=SUCCEEDED`,
-            {
-              headers: {
-                "Authorization": `Bearer ${env.APIFY_TOKEN}`,
-                "Accept": "application/json"
-              }
-            }
-          );
-          if (!runResponse.ok) {
-            taskRunDiagnostic = "http_" + runResponse.status;
-          } else {
-            let runPayload;
-            try {
-              runPayload = await runResponse.json();
-            } catch {
-              taskRunDiagnostic = "invalid_json";
-            }
-            if (runPayload !== undefined) {
-              const run = runPayload?.data || runPayload;
-              if (run && typeof run === "object" && !Array.isArray(run)) {
-                const origin = typeof run.meta?.origin === "string" ? run.meta.origin : null;
-                taskRun = {
-                  status: typeof run.status === "string" ? run.status : "SUCCEEDED",
-                  startedAt: run.startedAt || null,
-                  finishedAt: run.finishedAt || null,
-                  origin,
-                  scheduled: Boolean(run.meta?.scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER")
-                };
-                taskRunDiagnostic = "ok";
-              } else if (taskRunDiagnostic !== "invalid_json") {
-                taskRunDiagnostic = "invalid_payload";
-              }
-            }
-          }
-        } catch {
-          taskRunDiagnostic = "request_failed";
-          // Keep feed availability independent from optional run metadata.
-        }
+        // Both sources are read independently: an unavailable legacy task must not hide
+        // valid French Winamax singles from the Flashscore Actor.
+        const [taskFeed, flashscoreFeed] = await Promise.all([
+          loadVavilovWinamaxFeed(env.APIFY_TOKEN),
+          loadFlashscoreWinamaxFeed(env.APIFY_TOKEN)
+        ]);
+        const items = mergeWinamaxOdds(taskFeed.items, flashscoreFeed.items);
         const payload = {
           source: "Apify Winamax task",
           taskId: APIFY_TASK_ID,
           retrievedAt: new Date().toISOString(),
           count: items.length,
-          taskRun,
-          taskRunDiagnostic,
+          taskRun: taskFeed.run,
+          taskRunDiagnostic: taskFeed.diagnostic,
+          flashscore: {
+            actor: FLASHSCORE_ACTOR_PATH,
+            run: flashscoreFeed.run,
+            diagnostic: flashscoreFeed.diagnostic,
+            normalizedCount: flashscoreFeed.items.length
+          },
+          sourceCounts: {
+            vavilov: taskFeed.items.length,
+            flashscore: flashscoreFeed.items.length
+          },
           diagnostics: diagnoseOddsItems(items),
           items
         };
@@ -652,7 +734,7 @@ export default {
           "Cache-Control": "public, max-age=300",
           "X-Data-Cache": "MISS"
         });
-      } catch (error) {
+      } catch {
         return response({ error: "Could not retrieve odds from Apify" }, 502);
       }
     }
