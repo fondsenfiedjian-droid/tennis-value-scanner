@@ -70,3 +70,50 @@ Documentation checked:
 - https://docs.livetennisapi.com/point-by-point-history.html (sections on raw/clean, points/default, coverage and metadata)
 - https://docs.livetennisapi.com/changelog (2026-09-20 enrichment join and 2026-09-22 winner derivation)
 - https://docs.livetennisapi.com/reference.html
+
+
+## Expanded sample: 12 observed matches
+
+The diagnostics-only collector was expanded to twelve explicitly selected matches from the previously queried Djokovic player-history sample. The run completed successfully on 2026-11-24; all twelve requests returned observed, from-start tapes with complete timestamps. This remains a single-player historical sample, not a representative ATP/WTA/Challenger/ITF sample and not a predictive backtest.
+
+Workflow: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45458170689
+
+| Match ID | Rows | points.complete | serve present | outcome present | winner present |
+|---|---:|---|---:|---:|---:|
+| 174554 | 187 | false | 0 | 0 | 179 |
+| 179907 | 315 | false | 0 | 0 | 304 |
+| 196977 | 135 | true | 99 | 96 | 133 |
+| 198048 | 201 | false | 165 | 129 | 197 |
+| 198840 | 185 | false | 126 | 126 | 180 |
+| 199254 | 168 | false | 99 | 88 | 166 |
+| 200075 | 90 | true | 70 | 69 | 88 |
+| 201427 | 121 | true | 105 | 104 | 119 |
+| 209804 | 190 | true | 152 | 152 | 188 |
+| 212252 | 229 | true | 165 | 44 | 227 |
+| 212965 | 211 | false | 127 | 47 | 208 |
+| 215017 | 184 | true | 152 | 149 | 182 |
+| **Total** | **2,216** | **6 true / 6 false** | **1,260** | **1,004** | **2,171** |
+
+Aggregate field coverage across 2,216 raw rows:
+- timestamps: 2,216/2,216 (100%)
+- server: 2,204/2,216 (99.5%)
+- serve: 1,260/2,216 (56.9%)
+- winner: 2,171/2,216 (98.0%)
+- outcome: 1,004/2,216 (45.3%)
+- danger: 2,216/2,216 (100%)
+- win_probability_p1: 2,216/2,216 (100%)
+- win_probability_p1_model: 1,714/2,216 (77.3%)
+- is_tiebreak: 2,216/2,216 (100%)
+
+Observed `serve` values: first serve 825, second serve 435. Observed `outcome` tags: forced_error 318, unforced_error 294, winner 255, ace 108, double_fault 29. These are counts of enriched tape rows, not independently verified point outcomes or complete match-level statistics. In particular, the uneven outcome coverage across matches means pooled raw counts are not comparable player-performance rates.
+
+The provider metadata reports 2,171 legal transitions out of 2,192 transitions total and 12 resent rows across these records. Six matches have `points.complete=true`, six do not. Thus a blanket completeness filter would discard half the sample; a safer analysis should retain per-match quality and test sensitivity to strict complete-only subsets.
+
+### Interpretation after expansion
+
+- Serve and outcome enrichment are genuinely present in this sample, but incomplete and uneven by match. They are candidates for carefully masked exploratory features, not reliable universal inputs.
+- `danger` and `win_probability_p1` are complete in every row but are provider-model outputs. Their coverage does not make them independent ground-truth predictors.
+- `win_probability_p1_model` is absent in 502 rows, consistent with an earlier schema/version boundary; its missingness must be modeled or the feature excluded from comparisons that require uniform coverage.
+- Because this is one player's history, it cannot establish cross-player generalization, tour-level coverage, or a measurable improvement in match-winner prediction.
+
+Next analytical gate: collect a similarly controlled observed sample across different players and tours, obtain clean sequences alongside raw provenance, and then run chronological, match-grouped tests against the existing Elo/form baseline. Do not feed any new field into Production before that evidence exists.
