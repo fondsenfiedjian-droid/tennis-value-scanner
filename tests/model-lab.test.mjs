@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseMatchCsv, runWalkForward } from "../developer/model-lab-core.mjs";
+import { parseMatchCsv, mergeMatchDatasets, runWalkForward } from "../developer/model-lab-core.mjs";
 
 const csv=[
   "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
@@ -65,4 +65,32 @@ test("same-day outcomes do not update Elo before that day's predictions finish",
   ]);
   assert.equal(output.results[0].n,2);
   assert.equal(output.results[0].brier,0.25);
+});
+
+test("date-only day/month/year parsing is stable and rejects impossible dates",()=>{
+  const parsed=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "dmy;04/02/2025;dur;A;B;A",
+    "bad-dmy;31/02/2025;dur;A;B;A"
+  ].join("\\n"));
+  assert.equal(parsed.matches.length,1);
+  assert.equal(parsed.matches[0].date,"2025-02-04");
+  assert.equal(parsed.rejected,1);
+});
+test("CSV merge keeps identical duplicates once and excludes conflicting match IDs",()=>{
+  const first=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "same;2025-03-01;dur;A;B;A",
+    "conflict;2025-03-02;dur;A;C;A"
+  ].join("\\n"));
+  const second=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "same;2025-03-01;dur;A;B;A",
+    "conflict;2025-03-02;dur;A;C;C",
+    "new;2025-03-03;gazon;B;C;B"
+  ].join("\\n"));
+  const merged=mergeMatchDatasets([first,second]);
+  assert.deepEqual(merged.matches.map(match=>match.id),["same","new"]);
+  assert.equal(merged.conflicts,1);
+  assert.equal(merged.rejected,3);
 });
