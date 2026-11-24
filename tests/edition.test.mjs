@@ -36,6 +36,9 @@ test("model laboratory is removed from Production and enabled only in Developer"
   assert.match(devRuntime,/labForm/);
   assert.match(devRuntime,/labH2h/);
   assert.match(devRuntime,/Запустить сравнение моделей/);
+  assert.match(devRuntime,/models\.length>=6/);
+  assert.match(devRuntime,/labProgress\"\)\.textContent=/);
+  assert.ok(!devRuntime.includes("labRunStatus"));
 });
 test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/tvs-developer:/);
