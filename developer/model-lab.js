@@ -19,7 +19,7 @@ export function mountModelLab(root,readModels){
  });
  run.addEventListener("click",async()=>{
   if(!dataset)return;
-  const models=readModels().slice(0,6);if(!models.some(model=>model.id==="general-elo-v2"))models.unshift({id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:.3,formWeight:80,h2hWeight:60});
+  let models=readModels().slice(0,6);if(!models.some(model=>model.id==="general-elo-v2")){models=models.slice(0,5);models.unshift({id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:.3,formWeight:80,h2hWeight:60});}
   run.disabled=true;progress.textContent="Подготовка walk-forward расчёта…";results.replaceChildren();
   try{
    const output=await runWalkForward(dataset.matches,models,{onProgress:p=>{progress.textContent="Обработано "+p.processed.toLocaleString("ru-RU")+" / "+p.total.toLocaleString("ru-RU")+" матчей · "+p.percent+"% · дата "+p.date;}});
