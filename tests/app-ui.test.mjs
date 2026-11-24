@@ -536,9 +536,10 @@ test("approved bottom navigation contains Home, Matches, Compare, Statistics and
 
 test("home screen follows the approved daily-pick reference order",()=>{
   const home=html.slice(html.indexOf('<div class="app">'),html.indexOf('<div class="compare-view"'));
-  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('class="plan-summary"'));
-  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBets"'));
-  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('id="additionalOpportunities"'));
+  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('id="mandatoryBets"'));
+  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('class="plan-summary"'));
+  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBetsContent"'));
+  assert.ok(home.indexOf('id="mandatoryBetsContent"')<home.indexOf('id="additionalOpportunities"'));
   assert.ok(home.indexOf('id="additionalOpportunities"')<home.indexOf('class="quick-links"'));
   assert.match(home,/data-day="today"/);
   assert.match(home,/data-day="tomorrow"/);
@@ -604,7 +605,7 @@ test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow"
   assert.match(html,/function showTomorrow\(\)/);
   assert.match(html,/id="liveRefreshPageBtn"/);
   assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
-  assert.match(html,/id="headerSettings"/);
+  assert.match(html,/id="navSettings"/);
   assert.match(html,/\$\('#headerSettings'\)\.onclick=open/);
   assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
 });
