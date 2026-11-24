@@ -172,3 +172,17 @@ The discovery script's previous flat-field-only lookup therefore produced null p
 Junior limitation: each of the six selected junior-seed players was found in player search, but their `tour=juniors` history requests returned zero records. This does not establish that no junior point tapes exist. A bounded follow-up should compare provider tour classifications for a small set of known junior-age players and inspect whether junior-level events are classified under ITF or another history tour value.
 
 No model features are approved by this sample. It is a data-discovery and provenance result only. Raw artifacts remain private and are not committed to the repository.
+
+
+### Match identity and point-state completeness audit
+
+The discovery report now correctly resolves participant names and scheduled times from the provider's nested history schema. The paired tape collector is also updated to persist those metadata fields beside the RAW/CLEAN sequences, so the tape artifact is self-describing rather than requiring a separate ID lookup.
+
+The inspected 14-match sample (prior successful collection) had:
+- RAW: 1,710 rows; all 1,710 timestamps present; server on 1,697 rows; serve tags on 1,044 rows; score-derived winner on 1,675 rows.
+- CLEAN: 1,607 rows; all 1,607 timestamps and server values present; serve tags on 1,002 rows; point_winner on 1,571 rows.
+- Provider `points.complete=true`: RAW 9/14 matches; CLEAN 3/14 matches.
+
+The completeness flag differs between raw and clean representations and is not an independent quality guarantee. The full sample is not uniformly complete. Keep per-match flags and field-level missingness; do not pool unadjusted serve/outcome counts into player rates.
+
+The 14-match sample is still a small, deliberately selected convenience sample: four ATP matches involving Carlos Alcaraz, four WTA, four Challenger and two ITF. It is not representative of tours, players, surfaces or match conditions, and cannot support model claims. It establishes that the PRO feed can provide useful observed point histories across four queried tour categories.
