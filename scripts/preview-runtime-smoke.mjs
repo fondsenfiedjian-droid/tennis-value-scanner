@@ -161,6 +161,18 @@ const items = Array.isArray(odds.items) ? odds.items : [];
 if (!Array.isArray(odds.items)) throw new Error("/odds response does not contain an items array");
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+
+const developerHtml = readFileSync(new URL("../developer/index.html", import.meta.url), "utf8");
+const developerComparisonChecks = {
+  fallbackRenderer: developerHtml.includes("function renderCompareUnavailableElo("),
+  handlesMissingElo422: developerHtml.includes("response.status===422&&payload?.error==='Elo rating is unavailable for one or both players'"),
+  keepsHistoryAndH2H: developerHtml.includes("loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB).catch"),
+  doesNotTreatEloRankAsRating: developerHtml.includes("Место в Elo-рейтинге не является рейтингом Elo")
+};
+if (Object.values(developerComparisonChecks).some(value => value !== true)) {
+  throw new Error("Developer comparison fallback is missing or incomplete: " + JSON.stringify(developerComparisonChecks));
+}
+
 const start = html.indexOf("function normalizePlayer(s)");
 const end = html.indexOf("function normalizeTour(value)", start);
 if (start < 0 || end <= start) throw new Error("Could not load the TVS odds-matching functions");
@@ -243,6 +255,7 @@ const report = {
   checkedAt: new Date().toISOString(),
   previewWorkerBuild: health.buildId || null,
   playerComparison: comparisonReport,
+  developerComparisonUi: developerComparisonChecks,
   upcomingMatches: matches.length,
   schedulePagesLoaded: pagesLoaded,
   scheduleTotalReported: total,
