@@ -3526,7 +3526,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
          const opponentOdds=other&&Number.isFinite(Number(other.oddsDecimal))?Number(other.oddsDecimal).toFixed(2):'—';
          const selectedTrend=oddsMovement(bet.match,chosen,bet.player);
          const opponentName=String(bet.opponent||'Соперник');
-         const surname=value=>{const parts=String(value||'').trim().split(/\\s+/).filter(Boolean);return parts.length?parts[parts.length-1]:'—';};
+         const surname=value=>{const parts=String(value||'').trim().split(/\s+/).filter(Boolean);return parts.length?parts[parts.length-1]:'—';};
          const opponentTrend=oddsMovement(bet.match,other,opponentName);
          const movementHtml=trend=>'<span class="ev-bet-trend '+trend.className+'">'+escapeHtml(trend.label)+'</span>';
          const date=matchDate(bet.match);
