@@ -1,0 +1,64 @@
+name: Discover diverse observed point-tape matches (diagnostics only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      per_tour_target:
+        description: "Maximum accepted matches per tour"
+        required: true
+        default: "4"
+      max_tape_checks_per_tour:
+        description: "Maximum candidate tape checks per tour"
+        required: true
+        default: "12"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: observed-tape-discovery-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out diagnostics branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/production-data-diagnostics
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Discover verified observed matches across tours
+        env:
+          PER_TOUR_TARGET: ${{ inputs.per_tour_target }}
+          MAX_TAPE_CHECKS_PER_TOUR: ${{ inputs.max_tape_checks_per_tour }}
+        run: |
+          mkdir -p artifacts
+          node scripts/discover-observed-point-tape-matches.mjs > artifacts/discovered-observed-matches.json
+
+      - name: Collect paired RAW/CLEAN tapes for discovered IDs
+        run: |
+          IDS=$(node -e "const x=require('./artifacts/discovered-observed-matches.json'); console.log(x.matches.map(m=>m.match_id).join(','))")
+          if [ -z "$IDS" ]; then echo "No verified matches discovered"; exit 1; fi
+          node scripts/collect-observed-point-tapes.mjs --ids "$IDS" --out artifacts/diverse-observed-point-tapes.jsonl
+
+      - name: Audit and summarize diverse sample
+        run: |
+          node scripts/audit-observed-point-winners.mjs --input artifacts/diverse-observed-point-tapes.jsonl
+          node scripts/summarize-observed-tape-features.mjs --input artifacts/diverse-observed-point-tapes.jsonl
+
+      - name: Upload private discovery and tape artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: diverse-observed-point-tape-samples
+          path: |
+            artifacts/discovered-observed-matches.json
+            artifacts/diverse-observed-point-tapes.jsonl
+          if-no-files-found: error
+          retention-days: 7
