@@ -41,6 +41,10 @@ function toBacktestRows(rows, tour) {
     const loser = winner === p1 ? p2 : p1;
     output.push({
       tourney_date: date,
+      player1_id: p1,
+      player2_id: p2,
+      player1_name: String(row.joueur1 ?? "").trim(),
+      player2_name: String(row.joueur2 ?? "").trim(),
       winner_id: winner,
       loser_id: loser,
       surface: surfaceName(row.surface),
@@ -65,6 +69,8 @@ function calculateRatings(matches, kFactor) {
   const names = new Map();
   const grouped = new Map();
   for (const m of matches) {
+    names.set(m.player1_id, m.player1_name);
+    names.set(m.player2_id, m.player2_name);
     if (!grouped.has(m.tourney_date)) grouped.set(m.tourney_date, []);
     grouped.get(m.tourney_date).push(m);
   }
@@ -149,6 +155,7 @@ async function main() {
       const players = [...state.overall.entries()]
         .map(([id, rating]) => ({
           playerId: id,
+          playerName: names.get(id) ?? null,
           rating: Number(rating.toFixed(2)),
           matches: state.counts.get(id) ?? 0,
           lastPlayed: state.lastPlayed.get(id) ?? null,
