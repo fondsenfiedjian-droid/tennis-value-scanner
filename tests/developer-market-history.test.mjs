@@ -12,7 +12,11 @@ async function renderHistory(payload) {
   const card = {
     dataset: { liveMatchId: "12345" },
     classList: { contains(value) { return value === "expanded"; } },
-    querySelector(selector) { return selector === ".match-details" ? details : null; }
+    querySelector(selector) {
+      if (selector === ".match-details") return details;
+      if (selector === ".match-players") return { textContent: "Player One — Player Two" };
+      return null;
+    }
   };
   const requests = [];
   const document = {
@@ -45,13 +49,16 @@ test("Developer market history reads the documented top-level prices array and l
   const { panel, requests } = await renderHistory({
     id: 12345,
     prices: [
-      { side: 1, mid: 0.52, bid: 0.51, ask: 0.53, timestamp: "2026-11-24T10:00:00Z" }
+      { side: 1, mid: 0.52, bid: 0.51, ask: 0.53, synthetic: true, price_source: "prediction_market", timestamp: "2026-11-24T10:00:00Z" }
     ]
   });
   assert.equal(requests.length, 1);
   assert.match(requests[0].url, /\/matches\/12345\/prices\?limit=100$/);
   assert.match(panel.innerHTML, /История рыночных котировок/);
   assert.match(panel.innerHTML, /52\.0%/);
+  assert.match(panel.innerHTML, /Player One/);
+  assert.match(panel.innerHTML, /bid\/ask оценочные/);
+  assert.match(panel.innerHTML, /prediction_market/);
   assert.match(panel.innerHTML, /не десятичные коэффициенты Winamax/);
 });
 
@@ -60,10 +67,11 @@ test("Developer market history also reads prices nested under data", async () =>
     data: {
       id: 12345,
       prices: [
-        { side: 2, mid: 0.67, timestamp: "2026-11-24T10:01:00Z" }
+        { side: 2, mid: 0.67, bid: 0.66, ask: 0.68, synthetic: false, timestamp: "2026-11-24T10:01:00Z" }
       ]
     }
   });
   assert.match(panel.innerHTML, /67\.0%/);
-  assert.match(panel.innerHTML, /Сторона 2/);
+  assert.match(panel.innerHTML, /Сторона 2 · Player Two/);
+  assert.match(panel.innerHTML, /реальный стакан/);
 });
