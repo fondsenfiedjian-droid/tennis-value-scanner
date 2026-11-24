@@ -6,6 +6,8 @@ on:
       - feature/production-data-diagnostics
     paths:
       - "scripts/collect-observed-point-tapes.mjs"
+      - "scripts/audit-observed-point-winners.mjs"
+      - "tests/audit-observed-point-winners.test.mjs"
       - ".github/workflows/collect-observed-tape-samples.yml"
   workflow_dispatch:
     inputs:
@@ -51,6 +53,10 @@ jobs:
           node scripts/collect-observed-point-tapes.mjs \
             --ids "$MATCH_IDS" \
             --out artifacts/raw-observed-samples.jsonl
+
+      - name: Audit winner against score transitions
+        run: |
+          node scripts/audit-observed-point-winners.mjs --input artifacts/raw-observed-samples.jsonl
 
       - name: Upload raw samples as a private workflow artifact
         uses: actions/upload-artifact@v4
