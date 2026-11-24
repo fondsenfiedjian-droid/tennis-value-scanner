@@ -120,6 +120,6 @@ test("an ID conflicted inside one file stays excluded when another file contains
     "valid;2025-04-02;dur;A;C;C"
   ].join("\n"));
   const merged=mergeMatchDatasets([conflicted,other]);
-  assert.deepEqual(merged.matches.map(match=>match.id),["valid"]);
+  assert.deepEqual(merged.matches.map(match=>match.id),["local-valid","valid"]);
   assert.equal(merged.conflicts,1);
 });
