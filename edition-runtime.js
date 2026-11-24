@@ -1,6 +1,6 @@
 (function(){
 "use strict";
-const edition=window.TVS_EDITION||{channel:"production",version:"2.0.0",modelVersion:"general-elo-v2"};
+const host=location.hostname;\nconst isPreview=host.startsWith("deploy-preview-")||host.includes("--tennis-value-scanner-developer.netlify.app")||location.pathname.startsWith("/developer/");\nconst edition=window.TVS_EDITION||(isPreview?{channel:"developer",version:"2.1.0-dev.2",modelVersion:"general-elo-v2"}:{channel:"production",version:"2.0.0",modelVersion:"general-elo-v2"});
 const isDeveloper=edition.channel==="developer";
 document.documentElement.dataset.edition=edition.channel;
 document.body.dataset.edition=edition.channel;
