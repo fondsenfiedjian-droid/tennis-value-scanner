@@ -52,7 +52,7 @@ jobs:
         run: |
           IDS=$(node -e "const x=require('./artifacts/discovered-observed-matches.json'); console.log(x.matches.map(m=>m.match_id).join(','))")
           if [ -z "$IDS" ]; then echo "No verified matches discovered"; exit 1; fi
-          node scripts/collect-observed-point-tapes.mjs --ids "$IDS" --out artifacts/diverse-observed-point-tapes.jsonl
+          node scripts/collect-observed-point-tapes.mjs --ids "$IDS" --metadata artifacts/discovered-observed-matches.json --out artifacts/diverse-observed-point-tapes.jsonl
 
       - name: Audit and summarize diverse sample
         run: |
