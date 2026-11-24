@@ -1235,7 +1235,7 @@ export default {
         return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
       }
       const rawMatchId = url.searchParams.get("id") || "";
-      if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+      if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
         return response({ error: "id must be a positive integer match identifier" }, 400);
       }
       const matchId = String(Number(rawMatchId));
