@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 const source = await readFile(new URL("../developer/market-history.js", import.meta.url), "utf8");
 
-async function renderHistory(payload) {
+async function renderHistory(payload, responseOptions = {}) {
   const listeners = {};
   const panel = { innerHTML: "", className: "", setAttribute() {} };
   const details = { append(node) { assert.equal(node, panel); } };
@@ -74,4 +74,18 @@ test("Developer market history also reads prices nested under data", async () =>
   assert.match(panel.innerHTML, /67\.0%/);
   assert.match(panel.innerHTML, /Сторона 2 · Player Two/);
   assert.match(panel.innerHTML, /реальный стакан/);
+});
+
+\ntest("Developer market history explains merged match identifiers", async () => {
+  const { panel } = await renderHistory({ error: "Merged match" }, { status: 410 });
+  assert.match(panel.innerHTML, /объединил этот идентификатор матча/);
+});
+
+test("Developer market history explains rate limits and Retry-After", async () => {
+  const { panel } = await renderHistory({ error: "Rate limit exceeded" }, {
+    status: 429,
+    headers: { "Retry-After": "30" }
+  });
+  assert.match(panel.innerHTML, /Достигнут лимит запросов/);
+  assert.match(panel.innerHTML, /через 30 сек/);
 });
