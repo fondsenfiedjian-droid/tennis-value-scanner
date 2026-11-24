@@ -32,3 +32,5 @@ export function mountModelLab(root,readModels){
   finally{run.disabled=false;}
  });
 }
+
+window.TVSModelLab={mount:mountModelLab};
