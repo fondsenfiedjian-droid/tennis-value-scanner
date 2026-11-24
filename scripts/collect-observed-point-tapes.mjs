@@ -26,46 +26,71 @@ export function summarizeRawTape(tape) {
   };
 }
 
-export function buildObservedTapeRecord(matchId, payload, options = {}) {
+function validateObservedPayload(matchId, payload, sequence) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("Tape payload must be an object for match " + matchId + " (" + sequence + ")");
+  }
+  if (payload.accessStatus !== "available") {
+    throw new Error("Tape is not available for match " + matchId + " (" + sequence + "): " + String(payload.accessStatus ?? "unknown"));
+  }
+  if (!payload.meta || payload.meta.point_source !== "observed" || payload.meta.coverage !== "from_start") {
+    throw new Error("Refusing non-observed or non-from_start " + sequence + " tape for match " + matchId);
+  }
+  if (!Array.isArray(payload.tape) || payload.tape.length < 2) {
+    throw new Error("Observed " + sequence + " tape must contain at least two rows for match " + matchId);
+  }
+  return payload;
+}
+
+export function buildObservedTapeRecord(matchId, rawPayload, options = {}) {
   const id = String(matchId ?? "").trim();
   if (!/^\d{1,15}$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
     throw new Error("matchId must be a positive integer");
   }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("Tape payload must be an object");
-  }
-  if (payload.accessStatus !== "available") {
-    throw new Error("Tape is not available: " + String(payload.accessStatus ?? "unknown"));
-  }
-  if (!payload.meta || payload.meta.point_source !== "observed" || payload.meta.coverage !== "from_start") {
-    throw new Error("Refusing non-observed or non-from_start tape");
-  }
-  if (!Array.isArray(payload.tape) || payload.tape.length < 2) {
-    throw new Error("Observed tape must contain at least two rows");
-  }
-  const stats = summarizeRawTape(payload.tape);
+  const raw = validateObservedPayload(id, rawPayload, "raw");
+  const stats = summarizeRawTape(raw.tape);
   if (stats.timestampRows !== stats.rows) {
-    throw new Error("Observed tape has missing timestamps; quarantined");
+    throw new Error("Observed raw tape has missing timestamps; quarantined");
   }
+
+  let cleanTape = null;
+  let cleanQuality = null;
+  let cleanPoints = null;
+  if (options.cleanPayload) {
+    const clean = validateObservedPayload(id, options.cleanPayload, "clean");
+    cleanTape = clean.tape;
+    const cleanStats = summarizeRawTape(clean.tape);
+    cleanQuality = {
+      ...cleanStats,
+      timestampsComplete: cleanStats.timestampRows === cleanStats.rows,
+      pointsComplete: clean.meta.points?.complete === true,
+      completenessFlag: typeof clean.meta.points?.complete === "boolean" ? clean.meta.points.complete : null
+    };
+    cleanPoints = clean.meta.points ?? null;
+  }
+
   return {
     schema: "tennis-value-scanner.observed-point-tape.v1",
     match_id: id,
     source: "Live Tennis API PRO",
-    request: { points: "default", sequence: "raw" },
+    request: { points: "default", sequence: "raw", clean_sequence: cleanTape ? "clean" : null },
     fetched_at: options.fetchedAt || new Date().toISOString(),
     metadata: {
       ...options.matchMetadata,
-      coverage: payload.meta.coverage,
-      point_source: payload.meta.point_source,
-      points: payload.meta.points ?? null
+      coverage: raw.meta.coverage,
+      point_source: raw.meta.point_source,
+      points: raw.meta.points ?? null,
+      clean_points: cleanPoints
     },
     quality: {
       ...stats,
       timestampsComplete: true,
-      pointsComplete: payload.meta.points?.complete === true,
-      completenessFlag: typeof payload.meta.points?.complete === "boolean" ? payload.meta.points.complete : null
+      pointsComplete: raw.meta.points?.complete === true,
+      completenessFlag: typeof raw.meta.points?.complete === "boolean" ? raw.meta.points.complete : null
     },
-    tape: payload.tape
+    clean_quality: cleanQuality,
+    tape: raw.tape,
+    clean_tape: cleanTape
   };
 }
 
@@ -99,15 +124,26 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   const records = new Map(existing.map(record => [String(record.match_id), record]));
   const results = [];
   for (const id of normalizedIds) {
-    const url = new URL("/match-tape", base);
-    url.search = new URLSearchParams({ id, points: "default", sequence: "raw" }).toString();
-    const response = await fetchImpl(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20000) });
-    let payload;
-    try { payload = await response.json(); } catch { throw new Error("Invalid JSON for match " + id + " (HTTP " + response.status + ")"); }
-    if (!response.ok) throw new Error("Match " + id + " request failed: HTTP " + response.status + " " + String(payload.error ?? ""));
-    const record = buildObservedTapeRecord(id, payload);
+    const requestTape = async sequence => {
+      const url = new URL("/match-tape", base);
+      url.search = new URLSearchParams({ id, points: "default", sequence }).toString();
+      const response = await fetchImpl(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+      let payload;
+      try { payload = await response.json(); } catch { throw new Error("Invalid JSON for match " + id + " (" + sequence + ", HTTP " + response.status + ")"); }
+      if (!response.ok) throw new Error("Match " + id + " (" + sequence + ") request failed: HTTP " + response.status + " " + String(payload.error ?? ""));
+      return payload;
+    };
+    const rawPayload = await requestTape("raw");
+    const cleanPayload = await requestTape("clean");
+    const record = buildObservedTapeRecord(id, rawPayload, { cleanPayload });
     records.set(id, record);
-    results.push({ match_id: id, rows: record.quality.rows, points_complete: record.quality.completenessFlag });
+    results.push({
+      match_id: id,
+      raw_rows: record.quality.rows,
+      clean_rows: record.clean_quality.rows,
+      raw_points_complete: record.quality.completenessFlag,
+      clean_points_complete: record.clean_quality.completenessFlag
+    });
     if (delayMs > 0) await sleep(delayMs);
   }
   await mkdir(dirname(target), { recursive: true });
