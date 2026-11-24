@@ -36,8 +36,8 @@ const reset=()=>{document.getElementById("labModelName").value="ELO experiment";
 document.getElementById("labReset").onclick=reset;
 document.getElementById("labSave").onclick=()=>{
 const name=document.getElementById("labModelName").value.trim();if(!name){alert("Укажи название модели.");return;}
-const models=readModels();models.push({id:"experiment-"+Date.now().toString(36),name,k:Number(document.getElementById("labK").value),surfaceWeight:Number(document.getElementById("labSurface").value),formWeight:Number(document.getElementById("labForm").value),h2hWeight:Number(document.getElementById("labH2h").value),kind:"experiment",createdAt:new Date().toISOString()});
-try{saveModels(models);renderModels();document.getElementById("labRunStatus").textContent="Вариант сохранён. Для оценки требуется исторический прогон.";}catch(error){alert("Не удалось сохранить профиль: "+String(error.message||error));}
+const models=readModels();if(models.length>=6){alert("Достигнут лимит: не более шести профилей вместе с базовой моделью.");return;}models.push({id:"experiment-"+Date.now().toString(36),name,k:Number(document.getElementById("labK").value),surfaceWeight:Number(document.getElementById("labSurface").value),formWeight:Number(document.getElementById("labForm").value),h2hWeight:Number(document.getElementById("labH2h").value),kind:"experiment",createdAt:new Date().toISOString()});
+try{saveModels(models);renderModels();document.getElementById("labProgress").textContent="Вариант сохранён. Для оценки требуется исторический прогон.";}catch(error){alert("Не удалось сохранить профиль: "+String(error.message||error));}
 };
 document.getElementById("labBack").onclick=()=>{const home=document.getElementById("navHome");if(home)home.click();else{view.style.display="none";document.querySelector(".app").style.display="block";}};
 function renderModels(){const list=document.getElementById("labModelList");list.innerHTML="";readModels().forEach(model=>{
