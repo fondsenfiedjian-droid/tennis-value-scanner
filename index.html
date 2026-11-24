@@ -1073,8 +1073,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     .ev-bet-details b{color:#eee1dc}
     .ev-bet-details .ev-bet-positive{color:#e6bd58}
     .ev-bet-details .ev-bet-stake{color:#d8a184}
-    .mandatory-bets{padding:10px}
-    .mandatory-bets .section-head{margin:0 0 7px}
+    .mandatory-bets{margin:0 0 13px;padding:10px;border:1px solid #a51f45;border-radius:17px;background:linear-gradient(145deg,#171018,#0c0c10)}
+    .mandatory-bets>.plan-summary{margin:0 0 9px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+    .mandatory-bets .plan-summary-heading{margin-bottom:6px}
+    .mandatory-bets .plan-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .mandatory-bets .plan-summary-item{padding:5px 3px}
+    .mandatory-bets .ev-bet-list{gap:6px}
     @media(max-width:390px){.ev-bet-row{grid-template-columns:minmax(84px,1.05fr) minmax(54px,.75fr) minmax(58px,.75fr);gap:3px}.ev-bet-player{font-size:11px}.ev-bet-row.selected .ev-bet-odds{font-size:18px}}
 
   </style>
@@ -1104,18 +1108,19 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
   <section id="bestBet" class="best-bet daily-pick" role="region" aria-label="Ставка дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></section>
 
-  <section class="plan-summary" aria-label="Сводка плана ставок">
-    <div class="plan-summary-heading"><b>▥ &nbsp; СТАВКИ С ПОЛОЖИТЕЛЬНЫМ EV+</b><span id="planUpdated">Ожидаю данные</span></div>
-    <div class="plan-summary-grid">
-      <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ СТАВКИ</span><b id="planMandatoryCount">0</b></div>
-      <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>банк не задан · сумма не рассчитана</small></div>
-      <div class="plan-summary-item"><span>РИСК БАНКА</span><b id="planExposure">—</b><small>риск не рассчитывается</small></div>
-      <div class="plan-summary-item"><span>В НАБЛЮДЕНИИ</span><b id="additionalCountSummary">0</b></div>
+  <section id="mandatoryBets" class="mandatory-bets" aria-label="Ставки с положительным EV+">
+    <div class="plan-summary" aria-label="Сводка ставок">
+      <div class="plan-summary-heading"><b>СТАВКИ С ПОЛОЖИТЕЛЬНЫМ EV+</b><span id="planUpdated">Ожидаю данные</span></div>
+      <div class="plan-summary-grid">
+        <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ СТАВКИ</span><b id="planMandatoryCount">0</b></div>
+        <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>банк не задан · сумма не рассчитана</small></div>
+        <div class="plan-summary-item"><span>РИСК БАНКА</span><b id="planExposure">—</b><small>риск не рассчитывается</small></div>
+        <div class="plan-summary-item"><span>В НАБЛЮДЕНИИ</span><b id="additionalCountSummary">0</b></div>
+      </div>
     </div>
+    <div id="mandatoryBetsContent" class="ev-bet-list"><div class="muted">Ожидаю расчёта вероятностей…</div></div>
   </section>
   <div class="plan-refresh-row"><span id="oddsStatus" class="muted" role="status" aria-live="polite">Коэффициенты Winamax ещё не загружены.</span><button class="plan-refresh" id="refreshBtn" aria-label="Обновить данные">↻</button></div>
-
-  <section id="mandatoryBets" class="mandatory-bets" aria-label="Обязательные ставки"><div class="section-head"><h2>Обязательные ставки</h2><span class="muted">Строгий отбор</span></div><div id="mandatoryBetsContent" class="ev-bet-list"><div class="muted">Ожидаю расчёта вероятностей…</div></div></section>
   <section id="additionalOpportunities" class="additional-opportunities" aria-live="polite"><div class="additional-opportunities-head"><h2>Дополнительные возможности</h2><span class="muted" id="additionalCount">0</span></div><div id="additionalOpportunitiesContent" class="additional-opportunities-content"><div class="muted">Ожидаю проверки матчей…</div></div></section>
 
   <nav class="quick-links" aria-label="Быстрые разделы">
