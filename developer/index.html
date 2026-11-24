@@ -1059,8 +1059,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 (function(){
  const prefix="tvs-developer:",proto=Storage.prototype;
  ["getItem","setItem","removeItem"].forEach(method=>{const original=proto[method];proto[method]=function(key,...args){return original.call(this,prefix+String(key),...args);};});
- const originalOpen=indexedDB.open.bind(indexedDB);
- indexedDB.open=function(name,...args){return originalOpen(prefix+String(name),...args);};
+ try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){return originalOpen.call(this,prefix+String(name),...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
 })();
 </script>
 <div class="app">
