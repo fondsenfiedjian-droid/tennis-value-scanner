@@ -1065,8 +1065,8 @@ test("odds diagnostics report a complete fresh pair as available", () => {
 
 
 test("odds fallback grouping normalizes equivalent timestamps with different UTC offsets", () => {
-  const startA = "2026-11-23T12:00:00.000Z";
-  const startB = "2026-11-23T13:00:00.000+01:00";
+  const startA = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const startB = new Date(Date.parse(startA) + 60 * 60 * 1000).toISOString().replace("Z", "+01:00");
   const home = makeWinamaxQuote({ eventId: "", startTime: startA, outcome: "home" });
   const away = { ...makeWinamaxQuote({ eventId: "", startTime: startB, outcome: "away", oddsDecimal: 1.8 }) };
   const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: startA, tournament_name: "ATP Finals" };
