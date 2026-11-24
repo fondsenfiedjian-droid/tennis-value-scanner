@@ -2342,8 +2342,17 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
       const toggle=()=>{const open=card.classList.toggle('expanded');card.setAttribute('aria-expanded',String(open));const hint=card.querySelector('.card-hint');if(hint)hint.textContent=open?'Нажми, чтобы свернуть':'Нажми, чтобы открыть подробности';};
-      card.addEventListener('click',toggle);
-      card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
+      // Nested controls inside an expanded match card must keep their own click/keyboard behavior.
+      // In particular, clicking the player-comparison summary or its statistics button must not collapse the card.
+      card.addEventListener('click',e=>{
+        if(e.target.closest('button,a,input,select,textarea,summary,details'))return;
+        if(card.classList.contains('expanded')&&e.target.closest('.match-details'))return;
+        toggle();
+      });
+      card.addEventListener('keydown',e=>{
+        if(e.target!==card)return;
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}
+      });
     });
     loadPredictions(filtered);
   }
