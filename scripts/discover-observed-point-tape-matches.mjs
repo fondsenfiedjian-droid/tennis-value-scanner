@@ -2,6 +2,7 @@
 /**
  * Discover diverse Live Tennis API matches whose point tape is genuinely observed
  * from the opening point. Uses only the isolated diagnostics preview Worker.
+ * Match metadata is extracted from the provider history record schema.
  */
 import { extractObservedMatchMetadata } from "./observed-match-metadata.mjs";
 
