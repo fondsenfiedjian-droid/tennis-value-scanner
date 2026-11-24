@@ -52,6 +52,19 @@ jobs:
           fi
           npx --yes wrangler@4.165.0 deploy --config wrangler.diagnostics-preview.toml
 
+      - name: Configure Apify token for diagnostics Worker when available
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN_PREVIEW || secrets.APIFY_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$APIFY_TOKEN" ]; then
+            printf '%s' "$APIFY_TOKEN" | npx --yes wrangler@4.165.0 secret put APIFY_TOKEN --config wrangler.diagnostics-preview.toml
+            echo "Apify token configured on isolated diagnostics Worker."
+          else
+            echo "::warning::No APIFY_TOKEN_PREVIEW or APIFY_TOKEN GitHub secret; Apify schedule details will be skipped."
+          fi
+
       - name: Configure Live Tennis API key
         env:
           LIVE_TENNIS_API_KEY: ${{ secrets.LIVE_TENNIS_API_KEY_PREVIEW }}
