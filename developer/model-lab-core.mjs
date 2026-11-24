@@ -34,9 +34,9 @@ function parseDate(value){
  return "";
 }
 export function mergeMatchDatasets(parts){
- const unique=new Map(),conflicts=new Set();let totalRows=0,rejected=0;
+ const unique=new Map(),conflicts=new Set();let totalRows=0,rejected=0,conflictCount=0;
  for(const part of parts){
-  totalRows+=part.totalRows;rejected+=part.rejected;
+  totalRows+=part.totalRows;rejected+=part.rejected;conflictCount+=part.conflicts||0;
   for(const match of part.matches){
    if(conflicts.has(match.id)){rejected++;continue;}
    const existing=unique.get(match.id);
@@ -48,7 +48,7 @@ export function mergeMatchDatasets(parts){
  }
  const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  if(!matches.length)throw new Error("После объединения CSV не осталось однозначных матчей: проверьте совпадающие ID и содержимое файлов.");
- return {matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size};
+ return {matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflictCount+conflicts.size};
 }
 export function parseMatchCsv(source){
  const rows=parseRows(String(source||"").replace(/^\uFEFF/,""));
