@@ -7,6 +7,12 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/build-developer-preview-apk.yml'
+  pull_request:
+    branches:
+      - feature/tvs2-editions-lab
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-developer-preview-apk.yml'
   workflow_dispatch:
 
 permissions:
@@ -51,6 +57,7 @@ jobs:
           retention-days: 30
 
       - name: Publish latest preview APK
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: developer-preview-latest
