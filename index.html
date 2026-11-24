@@ -3316,15 +3316,29 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   function normalizeValuebetennisName(value){
     return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   }
-  // Preview-only fallback: exact unique identity, overall Elo only, no guessed ratings or surface adjustment.
+  function valuebetennisNameKeys(value){
+    const normalized=normalizeValuebetennisName(value);
+    if(!normalized)return [];
+    const tokens=normalized.split(/\s+/).filter(Boolean);
+    // Keep exact spelling as the primary key; token order is a cautious fallback for reversed first/last names.
+    return tokens.length>1?[normalized,[...tokens].sort().join(' ')]:[normalized];
+  }
+  // Preview-only fallback: unique identity in the same tour; no guessed ratings or surface adjustment.
   function resolveValuebetennisComparison(snapshot,nameA,nameB,diagnostic){
     const identityA=diagnostic?.profileIdentityA,identityB=diagnostic?.profileIdentityB;
     const tourA=String(identityA?.tour||'').toLowerCase(),tourB=String(identityB?.tour||'').toLowerCase();
     if(!['atp','wta'].includes(tourA)||tourA!==tourB)return null;
     const tourData=snapshot?.tours?.[tourA],rows=Array.isArray(tourData?.players)?tourData.players:[];
     const findPlayer=name=>{
-      const key=normalizeValuebetennisName(name);
-      const matches=rows.filter(row=>normalizeValuebetennisName(row?.[1])===key);
+      const keys=valuebetennisNameKeys(name);
+      if(!keys.length)return null;
+      const exact=rows.filter(row=>normalizeValuebetennisName(row?.[1])===keys[0]);
+      let matches=exact;
+      if(matches.length===0&&keys.length>1){
+        const reversed=rows.filter(row=>valuebetennisNameKeys(row?.[1]).includes(keys[1]));
+        matches=reversed;
+      }
+      // Ambiguous names are rejected; never select a player by approximate similarity.
       if(matches.length!==1)return null;
       const row=matches[0],rating=Number(row[2]),matchesPlayed=Number(row[3]);
       if(!Number.isFinite(rating)||rating<=0||!Number.isFinite(matchesPlayed)||matchesPlayed<10)return null;
