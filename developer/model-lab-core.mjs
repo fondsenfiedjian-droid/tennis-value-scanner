@@ -41,7 +41,7 @@ export function mergeMatchDatasets(parts){
    if(conflicts.has(match.id)){rejected++;continue;}
    const existing=unique.get(match.id);
    if(!existing){unique.set(match.id,match);continue;}
-   const same=existing.date===match.date&&existing.surface===match.surface&&existing.p1===match.p1&&existing.p2===match.p2&&existing.winner===match.winner;
+   const same=existing.date===match.date&&existing.surface===match.surface&&pairKey(existing.p1,existing.p2)===pairKey(match.p1,match.p2)&&existing.winner===match.winner;
    if(same){rejected++;continue;}
    unique.delete(match.id);conflicts.add(match.id);rejected+=2;
   }
@@ -58,18 +58,23 @@ export function parseMatchCsv(source){
  const ix={id:index("match_id","matchid","id"),date:index("date","match_date","matchdate"),surface:index("surface","court"),p1:index("joueur1_id","player1_id","player_a_id"),p2:index("joueur2_id","player2_id","player_b_id"),winner:index("vainqueur_id","winner_id","winnerid")};
  const missing=Object.entries(ix).filter(([key,value])=>key!=="id"&&value<0).map(([key])=>key);
  if(missing.length)throw new Error("Не найдены обязательные столбцы: "+missing.join(", "));
- const seen=new Set(),matches=[];let rejected=0;
+ const unique=new Map(),conflicts=new Set();let rejected=0;
  for(let i=1;i<rows.length;i++){
   const cells=rows[i],date=parseDate(cells[ix.date]),p1=String(cells[ix.p1]||"").trim(),p2=String(cells[ix.p2]||"").trim(),winner=String(cells[ix.winner]||"").trim();
   if(!date||!p1||!p2||p1===p2||!(winner===p1||winner===p2)){rejected++;continue;}
   const id=ix.id>=0?String(cells[ix.id]||"").trim():"";
   const key=id||[date,...[p1,p2].sort()].join("|");
-  if(seen.has(key)){rejected++;continue;}seen.add(key);
-  matches.push({id:id||key,date,surface:surfaceName(ix.surface>=0?cells[ix.surface]:""),p1,p2,winner});
+  const match={id:id||key,date,surface:surfaceName(ix.surface>=0?cells[ix.surface]:""),p1,p2,winner};
+  if(conflicts.has(key)){rejected++;continue;}
+  const existing=unique.get(key);
+  if(!existing){unique.set(key,match);continue;}
+  const same=existing.date===match.date&&existing.surface===match.surface&&pairKey(existing.p1,existing.p2)===pairKey(match.p1,match.p2)&&existing.winner===match.winner;
+  if(same){rejected++;continue;}
+  unique.delete(key);conflicts.add(key);rejected+=2;
  }
- matches.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
- if(!matches.length)throw new Error("Не найдено завершённых матчей с корректными датами, ID игроков и победителем.");
- return {matches,rejected,totalRows:rows.length-1,firstDate:matches[0].date,lastDate:matches[matches.length-1].date};
+ const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+ if(!matches.length)throw new Error("Не найдено однозначных завершённых матчей с корректными датами, ID игроков и победителем.");
+ return {matches,rejected,totalRows:rows.length-1,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size};
 }
 const pairKey=(a,b)=>a<b?a+"|"+b:b+"|"+a;
 function createState(){return {ratings:new Map(),surfaceRatings:new Map(),form:new Map(),h2h:new Map()};}
