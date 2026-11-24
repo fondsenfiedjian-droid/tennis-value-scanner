@@ -592,12 +592,70 @@ export default {
               const run = runPayload?.data || runPayload;
               if (run && typeof run === "object" && !Array.isArray(run)) {
                 const origin = typeof run.meta?.origin === "string" ? run.meta.origin : null;
+                const scheduleId = typeof run.meta?.scheduleId === "string" ? run.meta.scheduleId : null;
+                const stats = run.stats && typeof run.stats === "object" ? run.stats : {};
+                let taskSchedule = null;
+                let taskScheduleDiagnostic = scheduleId ? "not_checked" : "no_schedule_id";
+                if (scheduleId) {
+                  try {
+                    const scheduleResponse = await fetch(
+                      "https://api.apify.com/v2/schedules/" + encodeURIComponent(scheduleId),
+                      {
+                        headers: {
+                          "Authorization": `Bearer ${env.APIFY_TOKEN}`,
+                          "Accept": "application/json"
+                        }
+                      }
+                    );
+                    if (!scheduleResponse.ok) {
+                      taskScheduleDiagnostic = "http_" + scheduleResponse.status;
+                    } else {
+                      let schedulePayload;
+                      try { schedulePayload = await scheduleResponse.json(); }
+                      catch { schedulePayload = null; }
+                      const schedule = schedulePayload?.data || schedulePayload;
+                      if (schedule && typeof schedule === "object" && !Array.isArray(schedule)) {
+                        const actions = Array.isArray(schedule.actions) ? schedule.actions : [];
+                        taskSchedule = {
+                          name: typeof schedule.name === "string" ? schedule.name : (schedule.title || null),
+                          cronExpression: schedule.cronExpression || schedule.uiState?.data?.cronExpression || null,
+                          timezone: schedule.timezone || schedule.uiState?.data?.timezone || null,
+                          isEnabled: typeof schedule.isEnabled === "boolean" ? schedule.isEnabled : null,
+                          lastRunAt: schedule.lastRunAt || null,
+                          nextRunAt: schedule.nextRunAt || null,
+                          taskBound: actions.some(action => action?.actorTaskId === APIFY_TASK_ID)
+                        };
+                        taskScheduleDiagnostic = "ok";
+                      } else {
+                        taskScheduleDiagnostic = "invalid_payload";
+                      }
+                    }
+                  } catch {
+                    taskScheduleDiagnostic = "request_failed";
+                  }
+                }
+                const metric = value => value === null || value === undefined || !Number.isFinite(Number(value)) ? null : Number(value);
                 taskRun = {
+                  runId: run.id || null,
+                  actorId: run.actId || run.actorId || null,
+                  defaultDatasetId: run.defaultDatasetId || null,
                   status: typeof run.status === "string" ? run.status : "SUCCEEDED",
                   startedAt: run.startedAt || null,
                   finishedAt: run.finishedAt || null,
+                  exitCode: metric(run.exitCode),
+                  statusMessage: typeof run.statusMessage === "string" ? run.statusMessage.slice(0, 180) : null,
+                  usageTotalUsd: metric(run.usageTotalUsd),
+                  stats: {
+                    durationMillis: metric(stats.durationMillis),
+                    requestsFinished: metric(stats.requestsFinished),
+                    requestsFailed: metric(stats.requestsFailed),
+                    requestsRetried: metric(stats.requestsRetried),
+                    computeUnits: metric(stats.computeUnits)
+                  },
                   origin,
-                  scheduled: Boolean(run.meta?.scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER")
+                  scheduled: Boolean(scheduleId || run.meta?.scheduledActorTaskId || origin === "SCHEDULER"),
+                  schedule: taskSchedule,
+                  scheduleDiagnostic: taskScheduleDiagnostic
                 };
                 taskRunDiagnostic = "ok";
               } else if (taskRunDiagnostic !== "invalid_json") {
