@@ -16,7 +16,8 @@ async function renderHistory(payload) {
   };
   const requests = [];
   const document = {
-    addEventListener(name, callback) { listeners[name] = callback; }
+    addEventListener(name, callback) { listeners[name] = callback; },
+    createElement() { return panel; }
   };
   const context = {
     location: { hostname: "deploy-preview-172--tennis-value-scanner-developer.netlify.app" },
