@@ -2114,13 +2114,13 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
     const providerItems=cachedOdds.filter(o=>{
       const provider=String(o?.bookmaker||'').trim().toLowerCase(),config=ODDS_PROVIDER_REGISTRY[provider];
-      if(!config||!config.enabled)return false;
+      // The TVS betting model is Winamax-only; never diagnose a different bookmaker as usable.
+      if(provider!=='winamax'||!config||!config.enabled)return false;
       const country=String(o.bookmakerCountry||'').trim().toUpperCase();
       if(country&&country!==config.country)return false;
-      if(!country&&provider!=='winamax')return false;
       return true;
     });
-    if(!providerItems.length)return {code:'no_provider_data',label:'Нет данных от подключённых букмекеров'};
+    if(!providerItems.length)return {code:'no_provider_data',label:'Нет данных Winamax'};
     const marketItems=providerItems.filter(o=>String(o.sport||'').toLowerCase()==='tennis'&&String(o.marketType||'').toLowerCase()==='match_winner'&&(o.line===null||o.line===undefined||o.line==='')&&['home','away'].includes(String(o.outcome||'').toLowerCase()));
     if(!marketItems.length)return {code:'market_unavailable',label:'Нет рынка «Победитель матча» или формат котировок не поддерживается'};
     const participantItems=marketItems.filter(o=>{const q=oddsEventParticipants(o);return q.home&&q.away&&q.home!==q.away;});
