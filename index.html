@@ -2139,7 +2139,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const unsupportedDrawItems=eventItems.filter(o=>{
       const competition=normalizePlayer(o.competition||'');
       const q=oddsEventParticipants(o);
-      const doubles=/doubles|mixed doubles/.test(competition)||/\\//.test(q.home+' '+q.away);
+      const doubles=/doubles|mixed doubles/.test(competition)||/\//.test(q.home+' '+q.away);
       const teamCompetition=/davis cup|coupe davis|billie jean king cup|fed cup|united cup/.test(competition);
       // Davis Cup/BJK Cup also contain individual singles rubbers. Exclude only country-vs-country ties.
       const countryTie=teamCompetition&&isCountryTeamName(q.home)&&isCountryTeamName(q.away);
