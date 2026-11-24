@@ -2134,10 +2134,16 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       return parts.length!==2||((playerNamesMatch(parts[0],q.home)&&playerNamesMatch(parts[1],q.away))||(playerNamesMatch(parts[0],q.away)&&playerNamesMatch(parts[1],q.home)));
     });
     if(!eventItems.length)return {code:'event_identity_conflict',label:'Название события противоречит полям игроков'};
+    const teamCountries=new Set(['argentina','australia','austria','belgium','brazil','canada','chile','china','colombia','croatia','czech republic','czechia','denmark','france','germany','great britain','britain','united kingdom','hungary','india','italy','japan','kazakhstan','netherlands','norway','poland','serbia','slovakia','slovenia','south korea','korea republic','spain','sweden','switzerland','ukraine','united states','usa','argentine','autriche','allemagne','belgique','bresil','chine','colombie','danemark','espagne','etats unis','grande bretagne','hongrie','inde','italie','japon','pays bas','royaume uni','republique tcheque','coree du sud','serbie','slovaquie','slovenie','suede','suisse']);
+    const isCountryTeamName=value=>teamCountries.has(normalizePlayer(value));
     const unsupportedDrawItems=eventItems.filter(o=>{
       const competition=normalizePlayer(o.competition||'');
       const q=oddsEventParticipants(o);
-      return /doubles|mixed doubles|davis cup|coupe davis|billie jean king cup|united cup/.test(competition)||/\//.test(q.home+' '+q.away);
+      const doubles=/doubles|mixed doubles/.test(competition)||/\\//.test(q.home+' '+q.away);
+      const teamCompetition=/davis cup|coupe davis|billie jean king cup|fed cup|united cup/.test(competition);
+      // Davis Cup/BJK Cup also contain individual singles rubbers. Exclude only country-vs-country ties.
+      const countryTie=teamCompetition&&isCountryTeamName(q.home)&&isCountryTeamName(q.away);
+      return doubles||countryTie;
     });
     const singlesItems=eventItems.filter(o=>!unsupportedDrawItems.includes(o));
     if(!singlesItems.length&&unsupportedDrawItems.length)return {code:'unsupported_draw',label:'В Winamax есть только командные или парные события; одиночных котировок нет'};
