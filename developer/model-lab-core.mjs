@@ -105,19 +105,20 @@ export async function runWalkForward(matches,models,{onProgress=()=>{}}={}){
    const form=formMean(state,a)-formMean(state,b);
    const h2h=h2hDifference(state,a,b);
    const p=eloProbability(base+config.surfaceWeight*surface+config.formWeight*form+config.h2hWeight*h2h);
-   return {match,p,y:match.winner===a?1:0};
+   const surfaceP=match.surface?eloProbability(surface):null;
+   return {match,p,surfaceP,y:match.winner===a?1:0};
   }));
   configs.forEach((config,modelIndex)=>predictions[modelIndex].forEach(item=>addMetric(config.metrics,item.p,item.y)));
   configs.forEach((config,modelIndex)=>{
    const state=config.state;
-   predictions[modelIndex].forEach(({match,p,y})=>{
+   predictions[modelIndex].forEach(({match,p,surfaceP,y})=>{
     const outcome=y,a=match.p1,b=match.p2;
     const delta=config.k*(outcome-p);
     state.ratings.set(a,rating(state.ratings,a)+delta);
     state.ratings.set(b,rating(state.ratings,b)-delta);
     if(match.surface){
      const ka=a+"|"+match.surface,kb=b+"|"+match.surface;
-     const ra=rating(state.surfaceRatings,ka),rb=rating(state.surfaceRatings,kb),surfaceDelta=config.k*.5*(outcome-eloProbability(ra-rb));
+     const ra=rating(state.surfaceRatings,ka),rb=rating(state.surfaceRatings,kb),surfaceDelta=config.k*.5*(outcome-(surfaceP??eloProbability(ra-rb)));
      state.surfaceRatings.set(ka,ra+surfaceDelta);state.surfaceRatings.set(kb,rb-surfaceDelta);
     }
     pushForm(state,a,outcome);pushForm(state,b,1-outcome);updateH2h(state,a,b,match.winner);
