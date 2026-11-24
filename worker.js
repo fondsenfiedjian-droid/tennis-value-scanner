@@ -971,7 +971,7 @@ export default {
       }
       const format = url.searchParams.get("format");
       if (format !== null) {
-        if (!env.TVS_RESEARCH_ACCESS_TOKEN || request.headers.get("X-Research-Access") !== env.TVS_RESEARCH_ACCESS_TOKEN) {
+        if (env.TVS_RESEARCH_PREVIEW_ONLY !== "true" || !env.TVS_RESEARCH_ACCESS_TOKEN || request.headers.get("X-Research-Access") !== env.TVS_RESEARCH_ACCESS_TOKEN) {
           return response({ error: "Research package downloads require a valid preview access token" }, 403);
         }
         if (!period) return response({ error: "format requires a package period" }, 400);
