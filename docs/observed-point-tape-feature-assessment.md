@@ -49,3 +49,24 @@ It is **not an independent validation of the real-world point winner**: the prov
 - Provider changelog on observed `serve`/`outcome` enrichment: https://docs.livetennisapi.com/changelog
 
 This file belongs to the diagnostics branch only. Production remains unchanged.
+
+
+## Provider-contract clarification (verified against API docs v1.13.91)
+
+The raw/clean distinction is essential to interpreting this sample:
+
+- `sequence=raw` is commit order, not authoritative point order. Independent sources can race; later committed rows can correct earlier states, and raw timestamps/order may be non-monotonic.
+- `sequence=clean` keeps the last assertion for each distinct score state and orders states by match progress. This is the provider's authoritative order for ordinary point-sequence analysis, but deuce states can cycle and tie in progress ranking. The provider explicitly warns that clean rows are not guaranteed to be point-monotonic at deuce.
+- The `winner` field on raw rows is judged against the previous raw row; on clean rows it is judged against the previous clean row. Re-sends, set openers, backward corrections and multi-game jumps can therefore have null `winner`. A transition where games total rises by exactly one attributes the game point to the side whose game count rose, even if intermediate points were missed.
+- The earlier audit's 825/825 result is a raw-sequence implementation consistency check, not validation against an independent official point-winner source. It must not be used as a model-quality claim.
+- `serve` and `outcome` are attached to observed rows only when the per-point stream matches the exact score state: set count, every set's games, in-game points and tiebreak flag. No score-based inference fills missing tags. A repeated score state (such as a deuce cycle) can be ambiguous and remains null.
+- `serve=1|2` represents first/second serve. `outcome` vocabulary is `ace`, `double_fault`, `winner`, `forced_error`, `unforced_error`. Enrichment is not universal; inspect `meta.enrichment` for each match. A null tag is unknown/not joined, not a negative event.
+- The provider's own description says raw rows can contain a transient incorrect `server` assertion that is later corrected by a higher-trust source. Do not use raw `server` as a clean feature without correction handling. Also exclude tiebreak server inference unless its sequence is independently validated.
+- `danger` and `win_probability_p1` are model fields, not raw observations. The public docs describe `danger` as a per-state model field but do not provide a general numeric interpretation suitable for independent feature engineering. Keep it opaque until the provider supplies a precise definition.
+
+For research, collect raw tapes to preserve provenance and corrections, but derive analytical sequences according to the documented clean ordering and explicitly handle deuce cycles, repeated states and ambiguous transitions. Do not silently treat raw rows as distinct played points.
+
+Documentation checked:
+- https://docs.livetennisapi.com/point-by-point-history.html (sections on raw/clean, points/default, coverage and metadata)
+- https://docs.livetennisapi.com/changelog (2026-09-20 enrichment join and 2026-09-22 winner derivation)
+- https://docs.livetennisapi.com/reference.html
