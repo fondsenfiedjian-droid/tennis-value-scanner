@@ -8,7 +8,11 @@ export function mountModelLab(root,readModels){
   const selected=Array.from(file.files||[]);if(!selected.length)return;
   meta.textContent="Читаю CSV-файл…";results.textContent="";run.disabled=true;
   try{
-   const parsed=await Promise.all(selected.map(async item=>parseMatchCsv(await item.text())));
+   const parsed=[];
+   for(let index=0;index<selected.length;index++){
+    meta.textContent="Читаю CSV "+(index+1)+" / "+selected.length+": "+selected[index].name;
+    parsed.push(parseMatchCsv(await selected[index].text()));
+   }
    dataset=mergeMatchDatasets(parsed);
    meta.textContent=selected.map(item=>item.name).join(" + ")+" · строк: "+dataset.totalRows+" · матчей: "+dataset.matches.length+" · исключено: "+dataset.rejected+" · конфликтующих ID: "+dataset.conflicts+" · "+dataset.firstDate+" — "+dataset.lastDate;run.disabled=false;
   }
