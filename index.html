@@ -1051,6 +1051,32 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   .edition-version{display:inline-flex;align-items:center;white-space:nowrap;border:1px solid #625954;border-radius:7px;padding:4px 6px;color:#d6c2b8;font-size:9px;font-weight:800;letter-spacing:.04em}
     body[data-edition="developer"] .edition-version{border-color:#347c98;color:#8cecff;background:#102333}
     #quickLab[hidden]{display:none!important}
+  
+    /* Compact EV+ cards: surnames left, odds centered, movement at right */
+    .ev-bet-list{display:grid;gap:7px}
+    .ev-bet-card{border:1px solid #55413c;border-radius:11px;background:linear-gradient(110deg,#191312,#100e0e 72%);overflow:hidden}
+    .ev-bet-toggle{display:block;width:100%;padding:7px 9px 4px;border:0;background:transparent;color:inherit;text-align:left}
+    .ev-bet-row{display:grid;grid-template-columns:minmax(92px,1.15fr) minmax(58px,.8fr) minmax(64px,.8fr);align-items:center;gap:5px;min-height:27px}
+    .ev-bet-player{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:750;color:#e8e1de}
+    .ev-bet-odds{justify-self:center;font-size:12px;font-weight:750;color:#8c8582;font-variant-numeric:tabular-nums}
+    .ev-bet-row.selected .ev-bet-player{color:#fff0ec}
+    .ev-bet-row.selected .ev-bet-odds{font-size:19px;font-weight:900;color:#d94d55;text-shadow:0 0 9px #a51f4538}
+    .ev-bet-trend{justify-self:end;white-space:nowrap;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;color:#929096}
+    .ev-bet-trend.up{color:#54bd79}
+    .ev-bet-trend.down{color:#e16a70}
+    .ev-bet-trend.flat{color:#929096}
+    .ev-bet-foot{display:flex;justify-content:flex-end;align-items:center;height:13px;padding-right:1px;color:#c66b49}
+    .ev-bet-foot svg{width:12px;height:12px}
+    .ev-bet-details{display:none;padding:8px 10px 10px;border-top:1px solid #46332f;background:#151111;color:#c9bdb6;font-size:10px;line-height:1.55}
+    .ev-bet-card.expanded .ev-bet-details{display:block}
+    .ev-bet-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px}
+    .ev-bet-details b{color:#eee1dc}
+    .ev-bet-details .ev-bet-positive{color:#e6bd58}
+    .ev-bet-details .ev-bet-stake{color:#d8a184}
+    .mandatory-bets{padding:10px}
+    .mandatory-bets .section-head{margin:0 0 7px}
+    @media(max-width:390px){.ev-bet-row{grid-template-columns:minmax(84px,1.05fr) minmax(54px,.75fr) minmax(58px,.75fr);gap:3px}.ev-bet-player{font-size:11px}.ev-bet-row.selected .ev-bet-odds{font-size:18px}}
+
   </style>
 </head>
 <body>
@@ -1089,7 +1115,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   </section>
   <div class="plan-refresh-row"><span id="oddsStatus" class="muted" role="status" aria-live="polite">Коэффициенты Winamax ещё не загружены.</span><button class="plan-refresh" id="refreshBtn" aria-label="Обновить данные">↻</button></div>
 
-  <section id="mandatoryBets" class="mandatory-bets" aria-label="Обязательные ставки"><div class="section-head"><h2>Обязательные ставки</h2><span class="muted">Строгий отбор</span></div><div id="mandatoryBetsContent" class="mandatory-bets-content"><div class="muted">Ожидаю расчёта вероятностей…</div></div></section>
+  <section id="mandatoryBets" class="mandatory-bets" aria-label="Обязательные ставки"><div class="section-head"><h2>Обязательные ставки</h2><span class="muted">Строгий отбор</span></div><div id="mandatoryBetsContent" class="ev-bet-list"><div class="muted">Ожидаю расчёта вероятностей…</div></div></section>
   <section id="additionalOpportunities" class="additional-opportunities" aria-live="polite"><div class="additional-opportunities-head"><h2>Дополнительные возможности</h2><span class="muted" id="additionalCount">0</span></div><div id="additionalOpportunitiesContent" class="additional-opportunities-content"><div class="muted">Ожидаю проверки матчей…</div></div></section>
 
   <nav class="quick-links" aria-label="Быстрые разделы">
@@ -1808,6 +1834,52 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }
     return selected;
   }
+
+  const ODDS_HISTORY_KEY='tvs-winamax-odds-history-v1';
+  function oddsHistoryIdentity(match,quote,player){
+    const event=String(quote?.eventId||match?.id||match?.event_id||'').trim();
+    const start=String(quote?.startTime||'').trim();
+    const bookmaker=String(quote?.bookmaker||'Winamax').trim().toLowerCase();
+    const outcome=String(quote?.outcome||'').trim().toLowerCase();
+    return [bookmaker,event||normalizePlayer(playerName(match?.players?.p1||match?.player1))+'|'+normalizePlayer(playerName(match?.players?.p2||match?.player2))+'|'+start,outcome].join('|');
+  }
+  function recordOddsHistory(match,quoteA,quoteB,playerA,playerB){
+    try{
+      const raw=localStorage.getItem(ODDS_HISTORY_KEY);
+      const history=raw?JSON.parse(raw):{};
+      for(const [quote,player] of [[quoteA,playerA],[quoteB,playerB]]){
+        if(!quote||!Number.isFinite(Number(quote.oddsDecimal)))continue;
+        const timestamp=Date.parse(quote.scrapedAt);
+        if(!Number.isFinite(timestamp))continue;
+        const key=oddsHistoryIdentity(match,quote,player);
+        const rows=Array.isArray(history[key])?history[key]:[];
+        if(!rows.some(row=>Number(row.timestamp)===timestamp)){
+          rows.push({timestamp,odds:Number(quote.oddsDecimal)});
+          rows.sort((a,b)=>a.timestamp-b.timestamp);
+          history[key]=rows.slice(-24);
+        }
+      }
+      const keys=Object.keys(history);
+      if(keys.length>1200)keys.slice(0,keys.length-1200).forEach(key=>delete history[key]);
+      localStorage.setItem(ODDS_HISTORY_KEY,JSON.stringify(history));
+    }catch(error){}
+  }
+  function oddsMovement(match,quote,player){
+    try{
+      if(!quote)return {label:'нет истории',className:'flat',first:null};
+      const raw=localStorage.getItem(ODDS_HISTORY_KEY);
+      const history=raw?JSON.parse(raw):{};
+      const rows=history[oddsHistoryIdentity(match,quote,player)]||[];
+      if(rows.length<2)return {label:'наблюдение',className:'flat',first:rows[0]?.odds??null};
+      const first=Number(rows[0].odds),last=Number(rows[rows.length-1].odds);
+      if(!(first>1&&last>1))return {label:'наблюдение',className:'flat',first:null};
+      const change=(last/first-1)*100;
+      if(Math.abs(change)<0.15)return {label:'→ 0,0%',className:'flat',first};
+      const up=change>0;
+      return {label:(up?'↑ ':'↓ ')+(up?'+':'')+change.toFixed(1).replace('.',',')+'%',className:up?'up':'down',first};
+    }catch(error){return {label:'нет истории',className:'flat',first:null};}
+  }
+
   function oddsSideForPlayer(o,playerA){
     const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
@@ -1947,6 +2019,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       // Prediction and EV use the actual best live quotes; the configured odds range only filters value candidates.
       const displayQuoteA=bestQuoteForSide(allMatched,'1'),displayQuoteB=bestQuoteForSide(allMatched,'2');
       const oddsA=displayQuoteA?Number(displayQuoteA.oddsDecimal):null,oddsB=displayQuoteB?Number(displayQuoteB.oddsDecimal):null;
+      recordOddsHistory(m,displayQuoteA,displayQuoteB,a,b);
       const bookmakerA=displayQuoteA?String(displayQuoteA.bookmaker||'').trim():'';
       const bookmakerB=displayQuoteB?String(displayQuoteB.bookmaker||'').trim():'';
       const providers=[...new Set([bookmakerA,bookmakerB].filter(Boolean))];
@@ -3436,7 +3509,22 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const initials=String(best.player||'').split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase();
       box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><span class="best-bet-value-pill">Высокая ценность</span><div class="best-bet-navigation"><span class="best-bet-counter">'+(bestBetCarouselIndex+1)+' / '+bestBets.length+'</span>'+(bestBets.length>1?'<button type="button" id="bestBetPrev" aria-label="Предыдущая рекомендация">‹</button><button type="button" id="bestBetNext" aria-label="Следующая рекомендация">›</button>':'')+'</div></div><button type="button" id="bestBetOpen" class="best-bet-open"><span class="daily-pick-photo">'+(selectedPhoto?'<img src="'+escapeHtml(selectedPhoto)+'" alt="'+escapeHtml(best.player)+'" loading="lazy">':'<span class="daily-pick-initials">'+escapeHtml(initials)+'</span>')+'</span><span class="daily-pick-info"><span class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</span><span class="daily-pick-event">'+escapeHtml(best.match?.tournament?.name||best.match?.tournament||best.match?.competition||'Турнир не указан')+' · '+(matchDate(best.match)?matchDate(best.match).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время не указано')+'</span><span class="daily-pick-metrics"><span>Выбор<b>'+escapeHtml(best.player)+'</b></span><span>Коэффициент<b class="daily-odds">'+best.odds.toFixed(2)+'</b></span><span>EV<b class="daily-ev">+'+best.ev.toFixed(1)+'%</b></span></span><span class="daily-bookmaker">Букмекер: '+escapeHtml(best.bookmaker||'Winamax')+'</span><span class="daily-pick-confidence">◈ Надёжность: '+best.reliabilityScore+'/100</span></span></button><div class="best-bet-footnote">Динамическая карточка выбранной ставки. '+(bestBets.length>1?'Перелистывай кандидатов стрелками.':'')+' Размер ставки не рассчитан: банк и правило управления суммой не заданы. '+coverage+'</div>';
       const mandatoryList=$('#mandatoryBetsContent');
-      if(mandatoryList)mandatoryList.innerHTML=bestBets.length?bestBets.map(bet=>'<article class="mandatory-bet-row"><div class="mandatory-bet-match"><b>'+escapeHtml(bet.player)+' — '+escapeHtml(bet.opponent)+'</b><small>'+escapeHtml(bet.bookmaker||'Winamax')+' · Победа '+escapeHtml(bet.player)+'</small></div><div><small>Коэф.</small><b>'+bet.odds.toFixed(2)+'</b></div><div><small>Вероятность</small><b>'+bet.probability.toFixed(1)+'%</b></div><div><small>EV</small><b class="daily-ev">+'+bet.ev.toFixed(1)+'%</b></div><div class="mandatory-stake"><small>Сумма</small><b>—</b></div></article>').join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+      if(mandatoryList)mandatoryList.innerHTML=bestBets.length?bestBets.map((bet,index)=>{
+         const quotes=oddsForMatch(bet.match)||[];
+         const chosen=quotes.find(q=>oddsSideForPlayer(q,bet.player)===String(bet.side))||quotes.find(q=>playerNamesMatch(playerName(oddsEventParticipants(q).home),bet.player)||playerNamesMatch(playerName(oddsEventParticipants(q).away),bet.player))||null;
+         const other=quotes.find(q=>q!==chosen)||null;
+         const opponentOdds=other&&Number.isFinite(Number(other.oddsDecimal))?Number(other.oddsDecimal).toFixed(2):'—';
+         const selectedTrend=oddsMovement(bet.match,chosen,bet.player);
+         const opponentName=String(bet.opponent||'Соперник');
+         const opponentTrend=oddsMovement(bet.match,other,opponentName);
+         const movementHtml=trend=>'<span class="ev-bet-trend '+trend.className+'">'+escapeHtml(trend.label)+'</span>';
+         const date=matchDate(bet.match);
+         const eventName=bet.match?.tournament?.name||bet.match?.tournament||bet.match?.competition||bet.match?.tournament_name||'Турнир не указан';
+         return '<article class="ev-bet-card" data-ev-bet="'+index+'"><button type="button" class="ev-bet-toggle" aria-expanded="false"><span class="ev-bet-row"><span class="ev-bet-player">'+escapeHtml(opponentName)+'</span><span class="ev-bet-odds">'+opponentOdds+'</span>'+movementHtml(opponentTrend)+'</span><span class="ev-bet-row selected"><span class="ev-bet-player">'+escapeHtml(bet.player)+'</span><span class="ev-bet-odds">'+bet.odds.toFixed(2)+'</span>'+movementHtml(selectedTrend)+'</span><span class="ev-bet-foot"><svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m2 4.5 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><div class="ev-bet-details"><div><b>'+escapeHtml(eventName)+'</b> · '+escapeHtml(bet.bookmaker||'Winamax')+(date?' · '+escapeHtml(date.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'')+'</div><div class="ev-bet-details-grid"><span>EV+: <b class="ev-bet-positive">+'+bet.ev.toFixed(2)+'%</b></span><span>Вероятность: <b>'+bet.probability.toFixed(1)+'%</b></span><span>Справедливый коэффициент: <b>'+Number(bet.fairOdds||bet.fairOddsDecimal||0).toFixed(2)+'</b></span><span>Надёжность: <b>'+bet.reliabilityScore+'/100</b></span><span>Рекомендуемый исход: <b>'+escapeHtml(bet.player)</b></span><span>Размер ставки: <b class="ev-bet-stake">не рассчитан</b></span></div><div>Первый зафиксированный коэффициент: <b>'+ (selectedTrend.first?Number(selectedTrend.first).toFixed(2):'история накапливается')+'</b> · Текущий: <b>'+bet.odds.toFixed(2)+'</b></div><div>Движение рассчитывается по сохранённым снимкам Winamax. При первом запуске история появится после нескольких обновлений.</div></div></article>';
+       }).join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+       mandatoryList?.querySelectorAll('.ev-bet-toggle').forEach(toggle=>{
+         toggle.onclick=()=>{const card=toggle.closest('.ev-bet-card');const expanded=card.classList.toggle('expanded');toggle.setAttribute('aria-expanded',String(expanded));};
+       });
       const summaryWatch=$('#additionalCountSummary');if(summaryWatch)summaryWatch.textContent='—';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
       const openDetails=()=>{
