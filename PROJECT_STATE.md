@@ -1120,3 +1120,18 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Provider RAW points_complete flag was true for 3/4 tapes. The fourth tape (179907) still had timestamps and 314/315 server labels, but had 4 short-game indicators and several transition anomalies. Do not promote it to a complete-quality training example solely because coverage is from_start.
 - This is an internal consistency check between provider score states and provider winner labels, not independent ground-truth validation. It does not establish predictive accuracy or prove the source winner labels independently correct.
 - The audit supports using carefully filtered observed score transitions as a research dataset, with per-match quality flags and exclusions preserved. No Production data path or model feature was changed.
+
+
+## TVS 2.0 execution plan — status as of 2026-11-24
+1. **Data diagnostics:** substantially complete for the current point-tape sample. Identity metadata is populated for all 16 sampled matches; point-winner internal transition audit completed for four raw tapes (825/825 classifiable transitions agreed). Remaining: expand coverage and retain per-match quality flags; do not treat partial serve/outcome labels as exhaustive.
+2. **Preview integration verification:** in progress. PR #170/#171/#172 are open drafts and report clean mergeability. Their current heads have successful Worker build/tests; PR #172 also has a ready Netlify Deploy Preview (`deploy-preview-172--tennis-value-scanner-developer.netlify.app`). This confirms deployment readiness only, not full browser-level functional acceptance.
+3. **Production/Developer isolation:** pending end-to-end verification across API base URLs, storage/cache namespaces, service workers, and credentials. No production changes authorized or performed.
+4. **Core workflow acceptance:** pending. Verify upcoming match list, player matching, Winamax odds pairing/freshness, probability/fair odds/EV, recommendation tiers, and empty/no-value states using preview data.
+5. **Model research integration:** pending. Continue Elo K-factor and calibration backtests; evaluate point-tape-derived features separately with strict train/test time separation. No experimental feature enters the production model before out-of-sample evidence.
+6. **Release gate:** only after items 2–5 pass, prepare a release summary and request explicit user approval before any merge or production deployment.
+
+### Current safe boundary
+- PR #173 and the diagnostics branch remain isolated from Production.
+- PRs #170–#172 are open drafts; no merges performed.
+- Diagnostics Worker deploys only to `tennis-value-api-diagnostics-preview`.
+- Do not modify the Winamax Apify task/scraper without a separately established defect and explicit scope.
