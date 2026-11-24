@@ -604,6 +604,57 @@ async function getPlayerProfile(playerId, apiKey, env = {}) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    if (!env.APIFY_TOKEN) {
+      console.error("Flashscore scheduled run skipped: APIFY_TOKEN is not configured");
+      return;
+    }
+    const run = async () => {
+      const input = {
+        mode: "matches",
+        sports: ["tennis"],
+        days: ["0"],
+        status: "all",
+        bookmakerCountries: ["FR"],
+        bookmakers: ["Winamax"],
+        markets: ["HOME_AWAY"],
+        periods: ["FULL_TIME"],
+        maxMatches: 30,
+        maxItems: 500
+      };
+      const upstream = await fetch(
+        "https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs?waitForFinish=0",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + env.APIFY_TOKEN,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(input)
+        }
+      );
+      if (!upstream.ok) {
+        const detail = await upstream.text().catch(() => "");
+        console.error("Flashscore scheduled run failed", upstream.status, detail.slice(0, 300));
+        return;
+      }
+      let payload;
+      try { payload = await upstream.json(); }
+      catch {
+        console.error("Flashscore scheduled run returned invalid JSON");
+        return;
+      }
+      const data = payload && typeof payload === "object" ? payload.data : null;
+      console.log("Flashscore scheduled run started", {
+        runId: data?.id || null,
+        status: data?.status || null,
+        actor: FLASHSCORE_ACTOR_PATH
+      });
+    };
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(run());
+    else await run();
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
