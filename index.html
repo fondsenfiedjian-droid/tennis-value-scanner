@@ -4134,6 +4134,14 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
               const exactNameA=String(diagnostic.profileIdentityA.name),exactNameB=String(diagnostic.profileIdentityB.name);
               const historical=await loadValuebetennisComparison(exactNameA,exactNameB,diagnostic);
               if(!historical)throw new Error('Численный Elo API недоступен; исторический Elo для этой пары не найден или неоднозначен');
+              // Normalize the research-only result to the same probability contract without treating it as a production model.
+              const historicalProbabilityA=Number(historical.probabilityA)/100;
+              const historicalProbabilityB=Number(historical.probabilityB)/100;
+              if(!Number.isFinite(historicalProbabilityA)||!Number.isFinite(historicalProbabilityB)||historicalProbabilityA<=0||historicalProbabilityB<=0||Math.abs(historicalProbabilityA+historicalProbabilityB-1)>1e-10)throw new Error('Исторический Elo вернул некорректные вероятности');
+              historical.probabilityExactA=historicalProbabilityA;
+              historical.probabilityExactB=historicalProbabilityB;
+              historical.fairOddsA=Number((1/historicalProbabilityA).toFixed(3));
+              historical.fairOddsB=Number((1/historicalProbabilityB).toFixed(3));
               result=historical;
               resultMode='valuebetennis-fallback';
             }else throw new Error(result.error||('Ошибка '+res.status));
