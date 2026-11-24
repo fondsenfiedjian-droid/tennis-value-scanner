@@ -14,7 +14,7 @@ test("Developer Edition comparison handles profiles without numeric Elo", () => 
   assert.match(developerHtml, /loadCompareSupplementary\(requestId,idA,idB,exactNameA,exactNameB\)\.catch/);
 });
 
-const developerHtml = readFileSync(new URL("../developer/index.html", import.meta.url), "utf8");
+
 
 test("comparison view provides independent player autocomplete fields", () => {
   assert.match(html, /id="compareNameA"[^>]*aria-controls="compareSuggestionsA"/);
