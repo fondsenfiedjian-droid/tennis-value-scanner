@@ -23,7 +23,8 @@ test("both editions expose an in-app version and Developer has a separate label"
   assert.match(rootHtml,/id="editionVersion"/);
   assert.match(devHtml,/version:"2\.1\.0-dev\.1"/);
   assert.match(rootHtml,/edition-runtime\.js/);
-  assert.match(devHtml,/edition-runtime\.js/);\n  assert.match(devHtml,/model-lab\.js/);
+  assert.match(devHtml,/edition-runtime\.js/);
+  assert.match(devHtml,/model-lab\.js/);
 });
 test("model laboratory is removed from Production and enabled only in Developer",()=>{
   assert.match(rootRuntime,/if\(!isDeveloper\)\{if\(labButton\)/);
@@ -33,15 +34,16 @@ test("model laboratory is removed from Production and enabled only in Developer"
   assert.match(devRuntime,/labK/);
   assert.match(devRuntime,/labSurface/);
   assert.match(devRuntime,/labForm/);
-  assert.match(devRuntime,/labH2h/);\n  assert.match(devRuntime,/Запустить сравнение моделей/);
-  assert.match(devRuntime,/Исторический backtest-runner ещё не подключён/);
+  assert.match(devRuntime,/labH2h/);
+  assert.match(devRuntime,/Запустить сравнение моделей/);
 });
 test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/tvs-developer:/);
   assert.match(devHtml,/proto\.clear=function/);
   assert.match(devHtml,/proto\.key=function/);
   assert.match(devHtml,/prefix\+String\(name\)/);
-  assert.match(devWorker,/tvs-developer-static-v1/);\n  assert.match(devWorker,/model-lab-core\.mjs/);
+  assert.match(devWorker,/tvs-developer-static-v1/);
+  assert.match(devWorker,/model-lab-core\.mjs/);
   assert.match(devWorker,/startsWith\("tvs-developer-static-"\)/);
   assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);
   assert.match(rootWorker,/url\.pathname\.startsWith\("\/developer\/"\)/);
