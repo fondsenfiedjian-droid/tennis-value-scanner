@@ -1096,3 +1096,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The player-side mapper now returns null if an initial-only name matches both participants (for example, “J. Sinner” against two players with the same surname and initial). No arbitrary home/away selection is allowed.
 - Added tests for both outcome directions, reversed player order, unrelated players and ambiguous initials.
 - Preview-only change; Winamax ingestion, Apify task, model probabilities and EV formula are unchanged. No Production deployment or merge.
+
+
+## 2026-11-24 — Explain missing Winamax quotes in TVS 2.0
+- Ported the read-only missing-odds diagnostic classifier from research PR #162 into the TVS 2.0 integration branch.
+- Scheduled matches remain visible even without a complete fresh quote pair; their cards now report the first detected cause (provider/market, participant or event identity, tournament, time window, freshness, invalid odds, incomplete or unsynchronised pair).
+- Only complete, fresh, correctly matched Winamax pairs continue into prediction and EV. Diagnostics do not fabricate quotes or change the Apify task.
+- The diagnostic participant check uses the same strict one-to-one player mapping as the odds matcher.
+- Added regression tests for no provider data, player mismatch, tournament mismatch, stale quotes, incomplete pair and valid complete pair. Preview-only; no Production deployment or merge.
