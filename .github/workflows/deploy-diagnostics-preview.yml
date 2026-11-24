@@ -31,6 +31,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Test worker endpoints and Apify diagnostics
+        run: node --test tests/worker.test.mjs
+
       - name: Test observed point-winner audit
         run: node --test tests/audit-observed-point-winners.test.mjs
 
@@ -69,6 +72,15 @@ jobs:
           node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
           curl --fail --silent --show-error "$base/usage" -o /dev/null
           echo "Live Tennis API authentication: HTTP 200"
+
+          odds_status="$(curl --silent --show-error "$base/odds" -o /tmp/odds-diagnostics.json -w '%{http_code}')"
+          if [ "$odds_status" = "200" ]; then
+            node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/odds-diagnostics.json","utf8")); console.log("Apify odds rows:",d.count,"; task run:",JSON.stringify(d.taskRun)); if(d.taskRun?.schedule) console.log("Apify schedule:",JSON.stringify(d.taskRun.schedule)); else console.log("Apify schedule metadata:",d.taskRun?.scheduleDiagnostic||d.taskRunDiagnostic);'
+          else
+            echo "Apify diagnostics endpoint returned HTTP $odds_status"
+            cat /tmp/odds-diagnostics.json
+            exit 1
+          fi
 
           curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
           node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); for(const k of ["as_of","built_at","method","totals","buckets","inventory","ledger_max_computed_at"]) if(d[k]!==undefined) console.log("Coverage "+k+":",JSON.stringify(d[k]).slice(0,3500));'
