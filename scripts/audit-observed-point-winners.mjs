@@ -24,6 +24,18 @@ function scoreAdvance(before, after) {
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 function inferPointWinner(previous, current) {
+  // A set-score increment is the clearest signal for a completed-set transition.
+  // Count it separately before examining ordinary game/point score changes.
+  if (Array.isArray(previous?.sets) && Array.isArray(current?.sets) &&
+      previous.sets.length === 2 && current.sets.length === 2 &&
+      !same(previous.sets, current.sets)) {
+    const d0 = Number(current.sets[0]) - Number(previous.sets[0]);
+    const d1 = Number(current.sets[1]) - Number(previous.sets[1]);
+    if (d0 === 1 && d1 === 0) return 1;
+    if (d1 === 1 && d0 === 0) return 2;
+    return null;
+  }
+
   if (same(previous?.sets, current?.sets) && same(previous?.games, current?.games)) {
     const a = previous?.points, b = current?.points;
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== 2 || b.length !== 2) return null;
