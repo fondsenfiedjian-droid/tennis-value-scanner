@@ -1116,3 +1116,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ## 2026-11-24 — Execution roadmap
 - Added docs/TVS2_ROADMAP.md as the consolidated ordered plan for diagnostics, TVS 2.0 shell, Winamax validation, Developer Edition, historical data, model research, outcome feedback and release gates.
 - The immediate next priority is to verify current Winamax quote matching on the Developer Preview and report actual missing-pair causes. Point-state semantics remain research-only.
+
+
+## 2026-11-24 — Read-only Preview runtime verification
+- Added a Preview-only GitHub Actions smoke workflow that checks the isolated TVS 2.0 Worker, current upcoming schedule and Winamax Apify feed.
+- It executes the same frontend odds-matching/diagnostic functions against the live Preview responses and reports only aggregate counts and missing-pair reason totals; no player-level rows, odds payloads, credentials or personal data are printed.
+- This is read-only and calls only the isolated integration Preview Worker. It does not call or modify Production and does not alter the Apify task.
