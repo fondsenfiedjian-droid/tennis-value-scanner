@@ -43,5 +43,5 @@ test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/prefix\+String\(name\)/);
   assert.match(devWorker,/tvs-developer-static-v1/);
   assert.match(devWorker,/startsWith\("tvs-developer-static-"\)/);
-  assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);
+  assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);\n  assert.match(rootWorker,/url\.pathname\.startsWith\("\/developer\/"\)/);
 });
