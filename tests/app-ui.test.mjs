@@ -1062,3 +1062,20 @@ test("odds diagnostics report a complete fresh pair as available", () => {
   const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
   assert.equal(getOddsMatching([home, away]).oddsMatchDiagnostic(match).code, "available");
 });
+
+
+test("odds fallback grouping normalizes equivalent timestamps with different UTC offsets", () => {
+  const startA = "2026-11-23T12:00:00.000Z";
+  const startB = "2026-11-23T13:00:00.000+01:00";
+  const home = makeWinamaxQuote({ eventId: "", startTime: startA, outcome: "home" });
+  const away = { ...makeWinamaxQuote({ eventId: "", startTime: startB, outcome: "away", oddsDecimal: 1.8 }) };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: startA, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 2);
+});
+
+test("odds fallback grouping rejects invalid timestamps instead of creating unstable keys", () => {
+  const home = makeWinamaxQuote({ eventId: "", startTime: "not-a-date", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
