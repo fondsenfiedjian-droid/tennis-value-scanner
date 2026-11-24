@@ -28,7 +28,7 @@ view.innerHTML='<header class="screen-header"><div><div class="brand">ЛАБОР
 '<div class="field"><label for="labH2h">Вес H2H: <output id="labH2hValue">60</output></label><input id="labH2h" type="range" min="0" max="150" step="5" value="60"></div>'+
 '<div class="actions"><button type="button" id="labReset">Сбросить</button><button type="button" class="primary" id="labSave">Сохранить вариант</button></div>'+
 '<p class="archive-meta">Параметры сохраняются только в Developer Edition. Сохранение профиля пока не переключает расчёт рабочего сканера.</p></section>'+
-'<section class="more-screen-card" style="margin-top:12px"><h2>Проверка и сравнение</h2><div class="notice">Исторический backtest-runner ещё не подключён. До его подключения лаборатория хранит версии и параметры, но не показывает вымышленные Brier, LogLoss или ROI. Следующий этап — прогон всех вариантов на одной хронологической выборке.</div><div id="labRunStatus" class="archive-meta" role="status">Нет выполненных сравнительных прогонов.</div></section>'+
+'<section class="more-screen-card" style="margin-top:12px"><h2>Историческое моделирование</h2><p>Загрузи CSV с историей матчей. Файл обрабатывается локально в Developer Edition и не отправляется на сервер.</p><div class="field"><label for="labDatasetFile">Историческая база CSV</label><input id="labDatasetFile" type="file" accept=".csv,text/csv"></div><div id="labDatasetMeta" class="archive-meta">Ожидаю файл с датой, ID игроков, покрытием и победителем.</div><div class="actions"><button type="button" class="primary" id="labRunButton" disabled>Запустить сравнение моделей</button></div><div id="labProgress" class="archive-meta" role="status">Прогон выполняется по хронологии; матчи одного календарного дня не обновляют рейтинги до завершения прогнозов этого дня.</div><div id="labResults" class="research-table-wrap"></div></section>'+
 '<div class="stats-actions"><button type="button" id="labBack">← На главную</button></div>';
 const bind=(id,out,format=v=>v)=>{const input=document.getElementById(id),target=document.getElementById(out);input.addEventListener("input",()=>target.textContent=format(input.value));};
 bind("labK","labKValue");bind("labSurface","labSurfaceValue",v=>Number(v).toFixed(2));bind("labForm","labFormValue");bind("labH2h","labH2hValue");
@@ -46,6 +46,7 @@ const meta=document.createElement("div");meta.className="archive-meta";meta.text
 if(model.kind==="experiment"){const remove=document.createElement("button");remove.type="button";remove.className="more-screen-action";remove.textContent="Удалить вариант";remove.onclick=()=>{saveModels(readModels().filter(x=>x.id!==model.id));renderModels();};card.appendChild(remove);}list.appendChild(card);
 });}
 renderModels();
+if(window.TVSModelLab?.mount)window.TVSModelLab.mount(view,readModels);
 }
 labButton.onclick=showLab;labButton.hidden=false;labButton.removeAttribute("aria-hidden");
 })();
