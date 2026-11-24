@@ -47,7 +47,7 @@ async function get(path){
  if(!response.ok){const error=new Error(body?.error||("HTTP "+response.status));error.status=response.status;error.accessStatus=body?.accessStatus;throw error;}
  return body;
 }
-async function load(panel,matchId){
+async function load(panel,matchId,playerNames){
  status(panel,"Загружаем историю рыночных котировок…");
  try{
   const payload=await get("/matches/"+encodeURIComponent(matchId)+"/prices?limit=100");
@@ -58,10 +58,12 @@ async function load(panel,matchId){
   }
   const entries=rows.map(row=>{
    const mid=probability(row?.mid),bid=probability(row?.bid),ask=probability(row?.ask);
-   const side=row?.side===1?"Сторона 1":row?.side===2?"Сторона 2":"Сторона не указана";
+   const side=row?.side===1?"Сторона 1"+(playerNames[0]?" · "+playerNames[0]:""):row?.side===2?"Сторона 2"+(playerNames[1]?" · "+playerNames[1]:""):"Сторона не указана";
    const quote=mid!==null?"mid "+mid:(bid!==null||ask!==null?"bid "+(bid??"—")+" / ask "+(ask??"—"):"Котировка недоступна");
    const book=bid!==null||ask!==null?" · bid/ask "+(bid??"—")+" / "+(ask??"—"):"";
-   return '<div class="archive-meta">'+esc(formatDate(dateOf(row)))+' · '+esc(side)+' · <b>'+esc(quote)+'</b>'+esc(book)+'</div>';
+   const bookQuality=row?.synthetic===true?" · bid/ask оценочные":row?.synthetic===false?" · реальный стакан":row?.synthetic===null||row?.synthetic===undefined?" · тип стакана неизвестен":"";
+   const source=row?.price_source?" · источник "+String(row.price_source):"";
+   return '<div class="archive-meta">'+esc(formatDate(dateOf(row)))+' · '+esc(side)+' · <b>'+esc(quote)+'</b>'+esc(book)+esc(bookQuality)+esc(source)+'</div>';
   }).join("");
   panel.innerHTML='<div class="section-head" style="margin:0 0 8px"><h2>История рыночных котировок</h2><span class="muted">Live Tennis API · PRO</span></div>'+
    entries+
