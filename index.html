@@ -33,7 +33,7 @@
     .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
     .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#080808ed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
-    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
     .nav b{display:block;font-size:18px;margin-bottom:3px}
     .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
     .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#1b1715;border:1px solid var(--line);border-radius:22px;padding:18px}
@@ -1366,6 +1366,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
 <div class="stats-view" id="statsView">
   <h1>Статистика прогнозов</h1>
+  <button type="button" id="statsOpenTests" class="linkbtn">Проверка прогнозов →</button>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <section class="panel research-journal" id="researchTestJournal" style="margin-top:16px">
     <div class="section-head" style="margin-top:0"><h2>Журнал исследований модели</h2><button type="button" class="linkbtn" id="researchJournalRefresh">Обновить</button></div>
@@ -1434,7 +1435,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   <button id="navMatches" aria-label="Матчи"><b>🎾</b>Матчи</button>
   <button id="navCompare" aria-label="Сравнение"><b>⇄</b>Сравнение</button>
   <button id="navStats" aria-label="Статистика"><b>▥</b>Статистика</button>
-  <button id="navTests" aria-label="Тесты"><b>✓</b>Тесты</button>
   <button id="navSettings" aria-label="Настройки"><b>⚙</b>Настройки</button>
 </div></div>
 
@@ -4394,7 +4394,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   if($('#navBalance'))$('#navBalance').onclick=showBalance;
   if($('#navHistory'))$('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
-  $('#navTests').onclick=showTests;
+  $('#statsOpenTests').onclick=showTests;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
