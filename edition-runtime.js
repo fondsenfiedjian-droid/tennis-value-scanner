@@ -13,9 +13,9 @@ const KEY="tvs-lab-models-v1";
 const baseline={id:"general-elo-v2",name:"ELO baseline",k:32,surfaceWeight:0.3,formWeight:80,h2hWeight:60,kind:"baseline",createdAt:"built-in"};
 const readModels=()=>{try{const saved=JSON.parse(localStorage.getItem(KEY)||"null");return Array.isArray(saved)&&saved.some(x=>x&&x.id===baseline.id)?saved:[baseline];}catch(_){return [baseline];}};
 const saveModels=models=>localStorage.setItem(KEY,JSON.stringify(models));
+const existingShowLab=labButton.onclick;
 function showLab(){
-document.querySelectorAll(".screen-view").forEach(el=>el.style.display="none");
-document.querySelectorAll(".app,.compare-view,.stats-view").forEach(el=>el.style.display="none");
+if(typeof existingShowLab==="function")existingShowLab();
 const view=document.getElementById("labView");if(!view)return;
 view.style.display="block";
 view.innerHTML='<header class="screen-header"><div><div class="brand">ЛАБОРАТОРИЯ МОДЕЛЕЙ</div><div class="sub">DEVELOPER EDITION · экспериментальные конфигурации</div></div></header>'+
