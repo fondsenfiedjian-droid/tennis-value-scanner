@@ -127,6 +127,11 @@ async function main() {
     }
     rows.push(...parsed);
     console.log(`Loaded ${parsed.length} rows from ${path}`);
+    if (year === YEARS[0]) {
+      console.log("Valuebetennis columns:", Object.keys(parsed[0]).join(" | "));
+      console.log("Valuebetennis first row:", JSON.stringify(parsed[0]));
+      console.log("Valuebetennis genre values:", [...new Set(parsed.map(row => String(row.genre ?? "").trim()))].slice(0, 12));
+    }
   }
 
   const report = {
@@ -143,7 +148,7 @@ async function main() {
       a.tourney_id.localeCompare(b.tourney_id) ||
       a.match_num.localeCompare(b.match_num)
     );
-    if (!matches.length) { const sample = rows.find(row => String(row.genre ?? "").trim().toLowerCase() === tour); throw new Error(`No valid ${tour.toUpperCase()} matches found; sample source row: ${JSON.stringify(sample)}`); }
+    if (!matches.length) throw new Error(`No valid ${tour.toUpperCase()} matches found; inspect the source schema diagnostics above.`);
     report.tours[tour] = { inputMatches: matches.length, candidates: {}, snapshots: {} };
     for (const k of K_FACTORS) {
       const backtest = runBacktest(matches, {
