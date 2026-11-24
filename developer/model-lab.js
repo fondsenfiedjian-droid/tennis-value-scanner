@@ -1,4 +1,4 @@
-import { parseMatchCsv, runWalkForward } from "./model-lab-core.mjs";
+import { parseMatchCsv, mergeMatchDatasets, runWalkForward } from "./model-lab-core.mjs";
 
 export function mountModelLab(root,readModels){
  const file=root.querySelector("#labDatasetFile"),meta=root.querySelector("#labDatasetMeta"),run=root.querySelector("#labRunButton"),progress=root.querySelector("#labProgress"),results=root.querySelector("#labResults");
@@ -9,11 +9,8 @@ export function mountModelLab(root,readModels){
   meta.textContent="Читаю CSV-файл…";results.textContent="";run.disabled=true;
   try{
    const parsed=await Promise.all(selected.map(async item=>parseMatchCsv(await item.text())));
-   const unique=new Map();let totalRows=0,rejected=0;
-   parsed.forEach(part=>{totalRows+=part.totalRows;rejected+=part.rejected;part.matches.forEach(match=>{if(unique.has(match.id))rejected++;else unique.set(match.id,match);});});
-   const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
-   dataset={matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date};
-   meta.textContent=selected.map(item=>item.name).join(" + ")+" · строк: "+totalRows+" · матчей: "+matches.length+" · исключено: "+rejected+" · "+dataset.firstDate+" — "+dataset.lastDate;run.disabled=false;
+   dataset=mergeMatchDatasets(parsed);
+   meta.textContent=selected.map(item=>item.name).join(" + ")+" · строк: "+dataset.totalRows+" · матчей: "+dataset.matches.length+" · исключено: "+dataset.rejected+" · конфликтующих ID: "+dataset.conflicts+" · "+dataset.firstDate+" — "+dataset.lastDate;run.disabled=false;
   }
   catch(error){dataset=null;meta.textContent="Ошибка файла: "+String(error.message||error);run.disabled=true;}
  });
