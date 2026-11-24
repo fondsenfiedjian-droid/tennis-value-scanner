@@ -1102,3 +1102,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Two additional accepted ITF matches involve junior-age seeds: Yaroslav Demin (M25 Qian Daohu, IDs 204244 and 203062) and Hannah Klugman (W75 Glasgow, ID 212854). This confirms that junior-age player history is discoverable under ITF for these events; `tour=juniors` remains the separate junior Grand Slam filter.
 - Totals: 1,957 RAW rows and 1,840 CLEAN rows. All timestamps present. RAW provider completeness flag true for 10/16; CLEAN for 3/16. Keep the flag and row missingness per match; do not treat this convenience sample as representative.
 - Artifact remains private and diagnostics-only. No production model features were added.
+
+
+## 2026-11-24 — Point-tape field coverage audit (16-match sample)
+- Audited private artifact from discovery run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45465141446 (16 paired tapes; 1,957 RAW rows; 1,840 CLEAN rows).
+- Match identity is complete in all 16 records: both player names, both player IDs, scheduled date/time, surface and tournament are populated.
+- All 1,957 RAW and 1,840 CLEAN rows contain timestamps and score-state fields (points, games, sets). CLEAN rows contain a non-null server in 1,840/1,840; RAW server is present in 1,942/1,957 (99.2%).
+- RAW serve tag is present in 1,044/1,957 rows (53.3%); RAW outcome is present in 554/1,957 (28.3%). Missing values mean unknown/unavailable, not that no serve/event occurred.
+- RAW winner is present in 1,915/1,957 rows (97.9%). CLEAN point_winner is present in 1,795/1,840 rows (97.6%). These are different field names/representations; do not count RAW point_winner as expected coverage.
+- Provider completeness flag: RAW true for 10/16 matches; CLEAN true for 3/16. The flag is not equivalent to full serve/outcome annotation. The sample is deliberately selected for observed-from-start coverage and is not a representative tour-wide sample.
+- Current interpretation: score progression, timestamps and winner labels are promising for point-state/probability research; serve/outcome detail is incomplete and must not be treated as exhaustive point-event ground truth. No production model features have been enabled.
