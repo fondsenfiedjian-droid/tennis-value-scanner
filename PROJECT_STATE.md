@@ -1066,3 +1066,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Bulk history-package downloads remain outside the public Production diagnostic API.
 - Regression tests added for malformed parameters, player-history response handling, and health endpoint route advertisement.
 - Status: draft / awaiting automated checks and review. Not merged and not deployed to Production.
+
+
+## 2026-11-24 — Observed point-tape discovery metadata correction
+- Diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45460442729 completed successfully on `feature/production-data-diagnostics`; it discovered 14 observed-from-start tapes across ATP (4), WTA (4), Challenger (4), and ITF (2), with no junior candidates returned by the selected `tour=juniors` history queries.
+- Inspection of the private artifact identified the actual history schema: participant names/IDs are nested under `players.p1` and `players.p2`; match time is `scheduled_time`; tournament, round, status, surface and winner are top-level fields.
+- The discovery report previously emitted null player names and dates because it searched only legacy flat aliases. A dedicated metadata extractor and regression tests now read the provider's actual nested schema while preserving legacy fallbacks.
+- The junior result is a query-coverage finding, not proof that the provider has no junior data. Selected junior players were found in player search, but their `tour=juniors` history requests returned zero rows. A bounded check of alternate provider tour classifications remains open.
+- Diagnostics remain isolated. PR #173 is open/unmerged; no Production Worker or frontend changes are authorized.
