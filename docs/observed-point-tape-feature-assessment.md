@@ -117,3 +117,31 @@ The provider metadata reports 2,171 legal transitions out of 2,192 transitions t
 - Because this is one player's history, it cannot establish cross-player generalization, tour-level coverage, or a measurable improvement in match-winner prediction.
 
 Next analytical gate: collect a similarly controlled observed sample across different players and tours, obtain clean sequences alongside raw provenance, and then run chronological, match-grouped tests against the existing Elo/form baseline. Do not feed any new field into Production before that evidence exists.
+
+
+## Paired raw/clean collection: 12-match result
+
+The collector now fetches both `sequence=raw` and `sequence=clean` for each explicitly selected match, preserving both in the same private artifact. The paired collection completed successfully in diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45458350581.
+
+Across the same twelve matches:
+- raw sequence: 2,216 rows
+- clean sequence: 2,054 rows
+- clean sequence retained 92.7% of raw rows (162 fewer rows after collapsing repeated/corrected score states)
+- clean timestamps: 2,054/2,054
+- clean server: 2,054/2,054
+- clean serve: 1,178/2,054 (57.4%)
+- clean winner: 1,994/2,054 (97.1%)
+- clean point_winner: 1,994/2,054 (97.1%)
+- clean outcome: 943/2,054 (45.9%)
+- clean danger and win_probability_p1: 2,054/2,054
+- clean win_probability_p1_model: 1,595/2,054 (77.7%)
+
+The clean sequence exposes `point_winner`, unlike the raw sequence in this sample. For all 1,994 clean rows where both `winner` and `point_winner` were non-null, the values were identical (1,994/1,994). This is an internal provider-field consistency result only; it is not independent confirmation by an external point scorer. Do not treat `winner` and `point_winner` as two independent labels or double-count them as separate evidence.
+
+Clean categorical counts:
+- `serve`: first serve 772, second serve 406.
+- `outcome`: forced_error 299, unforced_error 273, winner 241, ace 103, double_fault 27.
+
+The clean representation is the better sequence for feature calculations because it collapses repeated/corrected score states and supplies `point_winner`. However, it still has deuce-cycle ordering caveats from the provider documentation, and the `points.complete` flag returned with clean mode was false for 11 of 12 matches. Keep raw provenance and raw completeness metadata alongside clean analytical rows; do not silently substitute clean-mode completeness for raw source completeness.
+
+The raw/clean paired collector and summary changes are diagnostics-only. No model feature was added to Production.
