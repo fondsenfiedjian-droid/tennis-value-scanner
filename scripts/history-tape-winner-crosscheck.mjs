@@ -7,10 +7,26 @@ const side = value => value === 1 || value === "1" ? 1 : value === 2 || value ==
 const numberOrNull = value => Number.isInteger(value) ? value : null;
 
 function asPayloads(document) {
-  if (Array.isArray(document)) return document;
-  if (Array.isArray(document?.matches)) return document.matches;
-  if (Array.isArray(document?.data) && !Array.isArray(document?.tape)) return document.data;
-  return [document];
+  let payloads;
+  if (Array.isArray(document)) payloads = document;
+  else if (Array.isArray(document?.matches)) payloads = document.matches;
+  else if (Array.isArray(document?.data) && !Array.isArray(document?.tape)) payloads = document.data;
+  else payloads = [document];
+
+  return payloads.map(payload => {
+    const metadata = payload?.metadata;
+    const isCollectorSample = Array.isArray(payload?.clean_tape) &&
+      metadata?.point_source === "observed" &&
+      metadata?.coverage === "from_start" &&
+      metadata?.clean_points?.basis === "clean";
+    if (!isCollectorSample) return payload;
+
+    return {
+      match: { id: payload.match_id },
+      meta: { match_id: payload.match_id, sequence: "clean" },
+      tape: payload.clean_tape
+    };
+  });
 }
 
 function eligibleBasis(meta = {}) {
@@ -127,7 +143,13 @@ async function main() {
     throw new Error("Usage: node scripts/history-tape-winner-crosscheck.mjs --input FILE.json [--out report.json]");
   }
   const inputPath = resolve(args[inputIndex + 1]);
-  const document = JSON.parse(await readFile(inputPath, "utf8"));
+  const inputText = await readFile(inputPath, "utf8");
+  let document;
+  try {
+    document = JSON.parse(inputText);
+  } catch {
+    document = inputText.split(/\\r?\\n/).filter(line => line.trim()).map(line => JSON.parse(line));
+  }
   const report = auditHistoryTapeWinnerCrosscheck(document);
   const json = JSON.stringify(report, null, 2) + "\n";
   if (outputIndex >= 0 && args[outputIndex + 1]) {

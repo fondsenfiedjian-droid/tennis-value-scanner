@@ -81,3 +81,36 @@ test("aggregates by origin and never emits match IDs or player names", () => {
   assert.equal(serialized.includes("Private A"), false);
   assert.equal(serialized.includes("Private B"), false);
 });
+
+
+test("adapts an observed from-start collector JSONL record through its clean tape only", () => {
+  const report = auditHistoryTapeWinnerCrosscheck([{
+    match_id: 456,
+    metadata: {
+      point_source: "observed",
+      coverage: "from_start",
+      clean_points: { basis: "clean" }
+    },
+    tape: [row({ winner: null }), row({ games: [[1], [0]], winner: 2 })],
+    clean_tape: [row({ winner: null }), row({ points: ["15", "0"], winner: 1 })]
+  }]);
+  assert.equal(report.matchesAudited, 1);
+  assert.equal(report.overall.transitions, 1);
+  assert.equal(report.overall.agree, 1);
+  assert.equal(report.overall.disagree, 0);
+  assert.equal(JSON.stringify(report).includes("456"), false);
+});
+
+test("does not adapt collector data without observed from-start provenance", () => {
+  const report = auditHistoryTapeWinnerCrosscheck([{
+    match_id: 789,
+    metadata: {
+      point_source: "reconstructed",
+      coverage: "from_start",
+      clean_points: { basis: "clean" }
+    },
+    clean_tape: [row({ winner: null }), row({ points: ["15", "0"], winner: 1 })]
+  }]);
+  assert.equal(report.matchesSkipped, 1);
+  assert.equal(report.skippedReasons.basis_not_verified, 1);
+});
