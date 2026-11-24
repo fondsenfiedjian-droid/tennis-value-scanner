@@ -427,7 +427,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/players/search?search=...", "/player-history?id=123", "/player-h2h?p1=...&p2=...", "/history/coverage", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
       });
     }
 
@@ -461,7 +461,7 @@ export default {
               "Authorization": "Bearer " + env.APIFY_TOKEN,
               "Accept": "application/json"
             }
-          }
+          }, env
         );
 
         if (!upstream.ok) {
@@ -967,7 +967,7 @@ export default {
         // Live Tennis documents /usage as quota-exempt.
         const upstream = await fetch("https://api.livetennisapi.com/api/public/v1/usage", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
-        });
+        }, env);
         const body = await upstream.json();
         return response(body, upstream.status);
       } catch (error) {
@@ -1316,7 +1316,7 @@ export default {
         }
         const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
-        });
+        }, env);
         let stats;
         try { stats = await upstream.json(); }
         catch { stats = null; }
