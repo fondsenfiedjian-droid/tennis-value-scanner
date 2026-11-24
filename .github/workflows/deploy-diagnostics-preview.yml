@@ -55,7 +55,6 @@ jobs:
           fi
           printf '%s' "$LIVE_TENNIS_API_KEY" | npx --yes wrangler@4.165.0 secret put LIVE_TENNIS_API_KEY --config wrangler.diagnostics-preview.toml
 
-
       - name: Verify diagnostics Worker and Live Tennis API authentication
         run: |
           base="https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev"
@@ -63,9 +62,15 @@ jobs:
           node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
           curl --fail --silent --show-error "$base/usage" -o /dev/null
           echo "Live Tennis API authentication: HTTP 200"
-          curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
-          node -e 'JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); console.log("History coverage endpoint: valid JSON")'
-          curl --fail --silent --show-error "$base/players/search?search=Novak%20Djokovic" -o /tmp/player-search.json
-          node -e 'JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); console.log("Player search endpoint: valid JSON")'
 
+          curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); console.log("History coverage keys:",Object.keys(d).join(", ")); for(const [k,v] of Object.entries(d)){if(Array.isArray(v)) console.log("Coverage",k,"entries:",v.length);}'
+          
+          curl --fail --silent --show-error "$base/players/search?search=Novak%20Djokovic" -o /tmp/player-search.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); if(!Array.isArray(d.players)||!d.players.length||!d.players[0].id) throw new Error("Player search returned no usable player ID"); require("fs").writeFileSync("/tmp/player-id",String(d.players[0].id)); console.log("Player search: ",d.count,"players; first result has a valid ID");'
+
+          player_id="$(cat /tmp/player-id)"
+          curl --fail --silent --show-error "$base/player-history?id=$player_id&limit=50&tour=atp" -o /tmp/player-history.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-history.json","utf8")); if(!Array.isArray(d.data)) throw new Error("Player history data is not an array"); console.log("Player history: access",d.accessStatus,"; matches returned:",d.count,"; metadata keys:",Object.keys(d.meta||{}).join(", ")); if(d.data.length){const m=d.data[0]; console.log("History record fields:",Object.keys(m).join(", "));}'
+          
 # Keep the isolated diagnostics deployment and secret setup in sync.
