@@ -3270,3 +3270,57 @@ test("verified result provenance survives archive export/import normalization an
   assert.ok(imported.rows.every(row => row.resultSource === "live_tennis_api"));
   assert.ok(imported.rows.every(row => row.resultVersion === 4));
 });
+
+
+test("Live Tennis PRO diagnostic endpoints reject invalid parameters without upstream calls", async () => {
+  workerSandbox.fetch = async () => { throw new Error("invalid input must not reach Live Tennis API"); };
+  const cases = [
+    ["/players/search?search=A", 400],
+    ["/player-history?id=0", 400],
+    ["/player-history?id=123&limit=51", 400],
+    ["/player-h2h?p1=Alcaraz&p2=alcaraz", 400],
+    ["/player-h2h?p1=A&p2=B", 400],
+    ["/markets", 400],
+    ["/markets?match_id=0", 400],
+    ["/markets/123/prices?limit=201", 400],
+    ["/matches/123/prices?minutes=1441", 400]
+  ];
+  for (const [path, status] of cases) {
+    const result = await call(path);
+    assert.equal(result.status, status, path);
+  }
+});
+
+test("Live Tennis player-history diagnostic returns source metadata and uses the server API key", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  let requestedUrl = "";
+  let requestedKey = "";
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedKey = options?.headers?.["X-API-Key"] || "";
+    return new Response(JSON.stringify({
+      data: [{ id: 7001, date: "2026-11-20", winner: 1 }],
+      meta: { total: 1 }
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const result = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.playerId, "123");
+  assert.equal(payload.source, "Live Tennis API /history/matches");
+  assert.equal(payload.accessStatus, "available");
+  assert.equal(payload.count, 1);
+  assert.ok(requestedUrl.includes("/history/matches?"));
+  assert.ok(requestedUrl.includes("player=123"));
+  assert.equal(requestedKey, "test-key");
+});
+
+test("Live Tennis diagnostic routes are advertised by health without changing Elo prediction output", async () => {
+  const result = await call("/health");
+  const payload = await result.json();
+  assert.ok(payload.endpoints.includes("/player-history?id=123"));
+  assert.ok(payload.endpoints.includes("/player-h2h?p1=...&p2=..."));
+  assert.ok(payload.endpoints.includes("/markets/123/prices"));
+  assert.equal(eloProbability(1900, 1800), 1 / (1 + Math.pow(10, -100 / 400)));
+});
