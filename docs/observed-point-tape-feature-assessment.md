@@ -215,3 +215,8 @@ Verified field coverage:
 - Provider `points.complete=true`: RAW 9/14; CLEAN 3/14. Completeness is a provider flag, not an independent guarantee; the raw and clean flags differ.
 
 The paired artifact now contains identity metadata and can be joined to score/tape features without another history lookup. The sample remains selected and small; it is suitable for parser and feature-contract research, not model training claims or tour-wide performance estimates.
+
+
+### Junior tour classification clarification
+
+The provider's current reference states that the `tour=juniors` filter covers the boys' and girls' **junior Grand Slam draws**, not every junior-circuit event. Therefore zero history rows for the six selected players under `tour=juniors` was an overly narrow query, not evidence that junior data is absent. The discovery seed list now also checks five junior-age players under `tour=itf` (Demin, Samson, Klugman, Fonseca and Andreeva), where non-Grand-Slam junior event records may be classified. The next run will test this bounded adjustment. Source: https://docs.livetennisapi.com/reference.html.
