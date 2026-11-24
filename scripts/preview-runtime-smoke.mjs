@@ -108,7 +108,32 @@ for (const item of items) {
   const name = String(item?.bookmaker || "unknown").trim().toLowerCase();
   bookmakers[name] = (bookmakers[name] || 0) + 1;
 }
+const oddsEvents = new Map();
+for (const item of items) {
+  const key = [item?.bookmaker, item?.eventId || item?.eventName, item?.startTime].join("|");
+  if (!oddsEvents.has(key)) {
+    oddsEvents.set(key, {
+      event: item?.eventName || null,
+      home: item?.homeTeam || null,
+      away: item?.awayTeam || null,
+      startTime: item?.startTime || null,
+      scrapedAt: item?.scrapedAt || null,
+      outcomes: []
+    });
+  }
+  oddsEvents.get(key).outcomes.push(String(item?.outcome || "unknown"));
+}
+const notPrematchSamples = matches.filter(match => sandbox.audit.oddsMatchDiagnostic(match).code === "not_prematch")
+  .slice(0, 8)
+  .map(match => ({
+    matchId: match?.id ?? match?.matchId ?? null,
+    player1: playerName(match?.players?.p1 || match?.player1),
+    player2: playerName(match?.players?.p2 || match?.player2),
+    scheduledTime: match?.startTime || match?.scheduled_time || match?.date || match?.start_time || null,
+    status: match?.status || match?.event_status || null
+  }));
 const report = {
+  checkedAt: new Date().toISOString(),
   previewWorkerBuild: health.buildId || null,
   upcomingMatches: matches.length,
   schedulePagesLoaded: pagesLoaded,
@@ -118,6 +143,8 @@ const report = {
   recordsByBookmaker: bookmakers,
   completeFreshWinamaxPairs: completePairs,
   missingPairReasons: reasons,
+  oddsEventSamples: [...oddsEvents.values()].slice(0, 8),
+  notPrematchSamples,
   latestApifyTaskRun: odds.taskRun ? {
     status: odds.taskRun.status || null,
     finishedAt: odds.taskRun.finishedAt || null,
