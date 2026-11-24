@@ -1102,5 +1102,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Ported the read-only missing-odds diagnostic classifier from research PR #162 into the TVS 2.0 integration branch.
 - Scheduled matches remain visible even without a complete fresh quote pair; their cards now report the first detected cause (provider/market, participant or event identity, tournament, time window, freshness, invalid odds, incomplete or unsynchronised pair).
 - Only complete, fresh, correctly matched Winamax pairs continue into prediction and EV. Diagnostics do not fabricate quotes or change the Apify task.
-- The diagnostic participant check uses the same strict one-to-one player mapping as the odds matcher.
+- The diagnostic participant check uses the same strict one-to-one player mapping as the odds matcher. It inspects Winamax only, matching the active betting model; other bookmaker feeds cannot be mistaken for usable TVS quotes.
 - Added regression tests for no provider data, player mismatch, tournament mismatch, stale quotes, incomplete pair and valid complete pair. Preview-only; no Production deployment or merge.
