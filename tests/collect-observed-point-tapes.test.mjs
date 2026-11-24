@@ -61,10 +61,13 @@ test("collector is explicit-ID only, deduplicates stored IDs, and uses raw/defau
     assert.equal(requests.filter(url => url.includes("sequence=raw")).length, 2);
     assert.equal(requests.filter(url => url.includes("sequence=clean")).length, 2);
     assert.ok(requests.every(url => url.includes("points=default")));
-    assert.equal(result.records[0].raw_rows, 2);\n    assert.equal(result.records[0].metadata.player1, "Player One");\n    assert.equal(result.records[0].metadata.player2, "Player Two");
+    assert.equal(result.records[0].raw_rows, 2);
+    assert.equal(result.records[0].metadata.player1, "Player One");
+    assert.equal(result.records[0].metadata.player2, "Player Two");
     assert.equal(result.records[0].clean_rows, 2);
     assert.equal(result.totalStored, 2);
-    const lines = (await readFile(output, "utf8")).trim().split("\n");
+    const lines = (await readFile(output, "utf8")).trim().split("
+");
     assert.equal(lines.length, 2);
     assert.deepEqual(lines.map(line => JSON.parse(line).match_id), ["212252", "215017"]);
   } finally {
