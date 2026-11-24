@@ -41,4 +41,5 @@
     <path d="M 530 93 C 401 119 329 188 321 257 C 313 326 373 393 495 421"
           fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".72"/>
   </g>
+  <g aria-label="Developer edition"><rect x="328" y="22" width="164" height="72" rx="22" fill="#0b2233" stroke="#55dff2" stroke-width="8"/><text x="410" y="70" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="800" fill="#8cecff">DEV</text></g>
 </svg>
