@@ -2961,7 +2961,23 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     try{
       const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
       const payload=await response.json();
-      if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
+      if(!response.ok){
+        let detail='';
+        const diagnostic=payload?.diagnostic;
+        if(diagnostic){
+          const describe=(label,identity,keys,eloFields)=>{
+            const who=identity?.name||label;
+            const fields=Array.isArray(eloFields)&&eloFields.length
+              ?eloFields.slice(0,12).map(item=>item.path+'='+String(item.value)).join(', ')
+              :'поля Elo в профиле не найдены';
+            const profileKeys=Array.isArray(keys)?keys.slice(0,18).join(', '):'нет данных';
+            return who+': '+fields+'. Поля профиля: '+(profileKeys||'не указаны');
+          };
+          detail=' Диагностика — '+describe('Игрок A',diagnostic.profileIdentityA,diagnostic.profileKeysA,diagnostic.eloFieldsA)
+            +' | '+describe('Игрок B',diagnostic.profileIdentityB,diagnostic.profileKeysB,diagnostic.eloFieldsB);
+        }
+        throw new Error((payload.error||('API вернул ошибку '+response.status))+detail);
+      }
       const probabilityA=Number(payload.probabilityA),probabilityB=Number(payload.probabilityB);
       if(!Number.isFinite(probabilityA)||!Number.isFinite(probabilityB)||probabilityA<=0||probabilityA>=100||probabilityB<=0||probabilityB>=100||Math.abs(probabilityA+probabilityB-100)>0.05)
         throw new Error('API вернул некорректные или несогласованные вероятности для этой пары.');
