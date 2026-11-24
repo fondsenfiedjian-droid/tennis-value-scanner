@@ -4099,7 +4099,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       let validCache=false;
       try{
         const raw=localStorage.getItem(key);
-        if(raw){const item=JSON.parse(raw);validCache=isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data);}
+        if(raw){const item=JSON.parse(raw);const ttl=item.mode==='valuebetennis-fallback'?24*60*60*1000:7*24*60*60*1000;validCache=isFreshCacheTimestamp(item.savedAt,ttl)&&isValidPredictionResult(item.data);}
       }catch(error){}
       (validCache?cachedCandidates:uncachedCandidates).push(candidate);
     }
@@ -4121,19 +4121,38 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const el=document.getElementById('model-'+i);if(!el)continue;
       const idA=el.dataset.playerA,idB=el.dataset.playerB;
       const cacheKey='tvs-elo-v3-'+(el.dataset.surface||'unknown')+'-'+idA+'-'+idB;
-      let result=null,modelCalculatedAt=null;
+      let result=null,modelCalculatedAt=null,resultMode='prediction';
       try{
         const cached=localStorage.getItem(cacheKey);
-        if(cached){const item=JSON.parse(cached);if(isFreshCacheTimestamp(item.savedAt,7*24*60*60*1000)&&isValidPredictionResult(item.data)){result=item.data;modelCalculatedAt=Number(item.savedAt);}else localStorage.removeItem(cacheKey);}
+        if(cached){const item=JSON.parse(cached);const ttl=item.mode==='valuebetennis-fallback'?24*60*60*1000:7*24*60*60*1000;if(isFreshCacheTimestamp(item.savedAt,ttl)&&isValidPredictionResult(item.data)){result=item.data;modelCalculatedAt=Number(item.savedAt);resultMode=item.mode==='valuebetennis-fallback'?'valuebetennis-fallback':'prediction';}else localStorage.removeItem(cacheKey);}
         if(!result){
           const res=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:el.dataset.nameA,playerB:el.dataset.nameB,surface:el.dataset.surface||"",oddsA:el.dataset.oddsA||null,oddsB:el.dataset.oddsB||null})});
           result=await res.json();
-          if(!res.ok)throw new Error(result.error||('Ошибка '+res.status));
+          if(!res.ok){
+            const diagnostic=result?.diagnostic;
+            if(res.status===422&&result?.error==='Elo rating is unavailable for one or both players'&&diagnostic?.profileIdentityA?.name&&diagnostic?.profileIdentityB?.name){
+              const exactNameA=String(diagnostic.profileIdentityA.name),exactNameB=String(diagnostic.profileIdentityB.name);
+              const historical=await loadValuebetennisComparison(exactNameA,exactNameB,diagnostic);
+              if(!historical)throw new Error('Численный Elo API недоступен; исторический Elo для этой пары не найден или неоднозначен');
+              result=historical;
+              resultMode='valuebetennis-fallback';
+            }else throw new Error(result.error||('Ошибка '+res.status));
+          }
           if(!isValidPredictionResult(result))throw new Error('Сервер вернул некорректный прогноз');
           modelCalculatedAt=Date.now();
-          localStorage.setItem(cacheKey,JSON.stringify({savedAt:modelCalculatedAt,data:result}));
+          localStorage.setItem(cacheKey,JSON.stringify({savedAt:modelCalculatedAt,data:result,mode:resultMode}));
         }
         if(renderId!==predictionRenderId)return;
+        if(resultMode==='valuebetennis-fallback'){
+          const quick=document.getElementById('model-summary-'+i);
+          const freshnessLabel=status=>({fresh:'свежий',recent:'недавний',stale:'устаревший',unknown:'дата неизвестна'})[status]||'неизвестно';
+          if(quick)quick.innerHTML='<b>Исторический Elo K=80</b> · '+escapeHtml(result.ratingA)+' : '+escapeHtml(result.ratingB)+'<br><span>'+escapeHtml(result.playerA)+' — '+escapeHtml(result.probabilityA)+'%</span><span class="quick-separator"> · </span><span>'+escapeHtml(result.playerB)+' — '+escapeHtml(result.probabilityB)+'%</span>';
+          el.classList.remove('model-muted');
+          el.innerHTML='<strong>Сравнение игроков · исторический Elo K=80</strong><div class="compare-form-grid"><span><b>'+escapeHtml(result.playerA)+'</b><small>Рейтинг: '+escapeHtml(result.ratingA)+'</small><small>Вероятность по историческому Elo: '+escapeHtml(result.probabilityA)+'%</small><small>Справедливый коэффициент: '+escapeHtml(result.fairOddsA)+'</small><small>Дата рейтинга: '+escapeHtml(result.ratingsAsOfA||'—')+' · '+freshnessLabel(result.ratingFreshnessA?.status)+'</small></span><span><b>'+escapeHtml(result.playerB)+'</b><small>Рейтинг: '+escapeHtml(result.ratingB)+'</small><small>Вероятность по историческому Elo: '+escapeHtml(result.probabilityB)+'%</small><small>Справедливый коэффициент: '+escapeHtml(result.fairOddsB)+'</small><small>Дата рейтинга: '+escapeHtml(result.ratingsAsOfB||'—')+' · '+freshnessLabel(result.ratingFreshnessB?.status)+'</small></span></div><div class="data-freshness limited"><b>Исследовательский резервный источник</b><br>'+escapeHtml(result.source||'Valuebetennis CC BY 4.0')+' · '+escapeHtml(result.note||'Общий Elo K=80; покрытие отдельно не учитывается.')+'<br>Это сравнение не подменяет основной прогноз, не рассчитывает EV и не допускает ставку в план.</div>';
+          checked++;
+          renderBestBet(dayBets,checked,totalCandidates,failed,evDayBets,oddsFallback);
+          continue;
+        }
         result.evA=el.dataset.oddsA?((result.probabilityExactA??result.probabilityA/100)*Number(el.dataset.oddsA)-1)*100:null;
         result.evB=el.dataset.oddsB?((result.probabilityExactB??result.probabilityB/100)*Number(el.dataset.oddsB)-1)*100:null;
         const betA={matchIndex:i,side:'A',player:el.dataset.nameA,opponent:el.dataset.nameB,odds:Number(el.dataset.oddsA),bookmaker:el.dataset.bookmakerA||'Winamax',probability:Number(result.probabilityExactA===undefined?result.probabilityA:result.probabilityExactA*100),ev:result.evA,match:m};
