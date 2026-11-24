@@ -1064,3 +1064,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Draft PR #170: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/170. Netlify Deploy Preview: https://deploy-preview-170--fascinating-paprenjak-1aa9b3.netlify.app.
 - Initial CI correctly blocked the PR because implementation changes require a `PROJECT_STATE.md` update. This entry satisfies that repository rule; regression-test job is being monitored.
 - Preview-only preparation. Do not merge PR #170, deploy the Production Worker, or change Production Netlify/Cloudflare configuration without explicit user approval. Existing Production `main`, Winamax Apify task `s9Des4R3jhMfA8e3s`, and Production deployment remain untouched.
+
+
+## 2026-11-24 — Separate Production and Developer editions (isolated feature branch)
+- Created feature/tvs2-editions-lab from release/tennis-value-scanner-2-prep; no changes to main, Production deployments, Cloudflare, Netlify configuration, or Winamax/Apify ingestion.
+- Added an in-app edition/version badge. Production defaults to 2.0.0; Developer Edition is labelled 2.1.0-dev.1.
+- Added a separate installable PWA at /developer/ with its own manifest ID, start URL, scope, app name, service worker, and cache namespace. Production retains the root PWA identity.
+- Developer Edition prefixes localStorage and IndexedDB database names to keep local prediction/archive/settings data separate from Production. Its static assets are bundled under /developer/.
+- The model laboratory is hidden in Production and available only in Developer Edition. Initial milestone stores isolated experimental parameter profiles (K-factor, surface, form and H2H weights) without affecting active predictions.
+- Historical backtest execution is not yet connected; the lab explicitly avoids displaying fabricated metrics. Next work: connect a reproducible chronological runner and compare all candidates on identical samples.
+- Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
+- Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
