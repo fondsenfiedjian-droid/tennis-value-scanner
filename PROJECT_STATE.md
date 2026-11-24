@@ -1089,3 +1089,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Kept forecast-test results accessible from Statistics via a dedicated “Проверка прогнозов” link.
 - Changed the bottom navigation grid from six to five columns. The forecast-test screen and its calculations remain available; only its navigation placement changed.
 - Preview-only on the TVS 2.0 integration branch. No Production deployment or merge.
+
+
+## 2026-11-24 — Reject ambiguous Winamax player mapping in TVS 2.0
+- Ported the validated safety rule from research PR #165 into the TVS 2.0 integration branch: a scheduled player must match exactly one event participant, and the two scheduled players must map to opposite event sides.
+- The player-side mapper now returns null if an initial-only name matches both participants (for example, “J. Sinner” against two players with the same surname and initial). No arbitrary home/away selection is allowed.
+- Added tests for both outcome directions, reversed player order, unrelated players and ambiguous initials.
+- Preview-only change; Winamax ingestion, Apify task, model probabilities and EV formula are unchanged. No Production deployment or merge.
