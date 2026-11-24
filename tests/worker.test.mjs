@@ -320,7 +320,7 @@ test("odds endpoint imports fresh French Winamax tennis singles from Flashscore 
     { ...valid, market: "OVER_UNDER" },
     { ...valid, status: "live" },
     { ...valid, homeName: "Pavlasek/Rikl", awayName: "Auger-Aliassime/Chan", tournament: "ATP Doubles Davis Cup" },
-    { ...valid, homeName: "Czech Republic", awayName: "Canada", tournament: "Davis Cup" }
+    { ...valid, homeName: "Czech Republic", awayName: "Canada", tournament: "ATP Singles Davis Cup" }
   ];
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.caches.default.put = async () => {};
