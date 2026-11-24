@@ -1154,11 +1154,36 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
 
+<div class="screen-view" id="testsView">
+  <div class="screen-header"><div><div class="brand">ТЕСТЫ ПРОГНОЗОВ</div><div class="sub">Итоговое сравнение двух действующих моделей на общей проверенной выборке</div></div><button type="button" class="screen-refresh" id="forecastTestsRefresh">Обновить</button></div>
+  <section class="panel">
+    <b>Общий Elo против рыночной оценки</b>
+    <div class="muted" id="forecastTestsMeta">Расчёт по сохранённым предматчевым прогнозам и подтверждённым исходам.</div>
+    <div class="archive-list" id="forecastTestsSummary"><div class="archive-item">Подготовка выборки…</div></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Итоговая проверка · отложенная часть</b>
+    <div class="muted">Обе модели оцениваются на одних и тех же матчах. Хронологическое разделение 70/30: ранняя часть — обучение/настройка, поздняя — независимая проверка. Меньше Brier Score и LogLoss — лучше.</div>
+    <div class="research-table-wrap"><table class="research-table"><thead><tr><th>Модель</th><th>Матчей</th><th>Brier</th><th>LogLoss</th><th>Статус</th></tr></thead><tbody id="forecastTestsRows"><tr><td colspan="5">Недостаточно данных для расчёта.</td></tr></tbody></table></div>
+    <div class="archive-meta" id="forecastTestsDelta"></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Качество по сегментам</b>
+    <div class="archive-list" id="forecastTestsSegments"><div class="archive-item">Нет общей проверенной истории по сегментам.</div></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Контроль качества выборки</b>
+    <div class="archive-list" id="forecastTestsQuality"><div class="archive-item">—</div></div>
+  </section>
+  <div class="notice" style="margin-top:12px">Эта вкладка публикует результаты фактических сохранённых прогнозов. Большая историческая база матчей сама по себе не содержит прогнозов обеих моделей на момент до начала матча. Она будет включена в отдельный ретроспективный Elo-бэктест только после воспроизведения прогнозов без утечки будущих данных. Тесты не меняют рабочие вероятности автоматически.</div>
+</div>
+
 <div class="bottom"><div class="nav">
   <button id="navHome" aria-label="Главная"><b>⌂</b>Главная</button>
   <button id="navMatches" aria-label="Матчи"><b>🎾</b>Матчи</button>
   <button id="navCompare" aria-label="Сравнение"><b>⇄</b>Сравнение</button>
   <button id="navStats" aria-label="Статистика"><b>▥</b>Статистика</button>
+  <button id="navTests" aria-label="Тесты"><b>✓</b>Тесты</button>
   <button id="navSettings" aria-label="Настройки"><b>⚙</b>Настройки</button>
 </div></div>
 
@@ -2606,7 +2631,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   function hideAllScreens(){
     const app=$('.app');if(app)app.classList.add('screen-open');
-    ['#matchesView','#liveView','#compareView','#statsView','#moreView','#labView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    ['#matchesView','#liveView','#compareView','#statsView','#testsView','#moreView','#labView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
     document.querySelectorAll('.top-status-nav button').forEach(button=>button.classList.remove('active'));
   }
   function showMain(){
@@ -2669,6 +2694,45 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     archiveStorageReady.then(renderArchive);
     loadResearchTestJournal();
   }
+  function renderForecastTests(){
+    const summary=$('#forecastTestsSummary'),rowsNode=$('#forecastTestsRows'),segmentsNode=$('#forecastTestsSegments'),qualityNode=$('#forecastTestsQuality');
+    if(!summary||!rowsNode||!segmentsNode||!qualityNode)return;
+    try{
+      const archive=readPredictionArchive();
+      const elo=TVSPFE.buildModelHistoryRecords(archive);
+      const market=TVSPFE.buildMarketHistoryRecords(archive);
+      const combined=[...elo.records,...market.records];
+      const result=TVSPFE.compareModelHistory(combined,{modelIds:['general-elo-v2','market-consensus'],stabilityWindows:[10,20,30,50]});
+      const models=result.models||[];
+      const fmt=value=>Number.isFinite(value)?value.toFixed(5):'—';
+      const eloModel=models.find(item=>item.modelId==='general-elo-v2');
+      const marketModel=models.find(item=>item.modelId==='market-consensus');
+      $('#forecastTestsMeta').textContent='Архив прогнозов: '+archive.length+' записей · Elo: '+elo.records.length+' подтверждённых прогнозов · рынок: '+market.records.length+' подтверждённых рыночных оценок · общая выборка: '+result.matchedSampleSize+' матчей.';
+      summary.innerHTML='<div class="archive-item"><b>Общая выборка: '+result.matchedSampleSize+' матчей</b><div class="archive-meta">Обучающая часть: '+result.trainingSampleSize+' · отложенная проверка: '+result.validationSampleSize+' · схема: хронологические 70/30</div></div>';
+      rowsNode.innerHTML=models.map(model=>'<tr><td>'+escapeHtml(model.name)+'</td><td>'+model.validation.sampleSize+'</td><td class="research-metric">'+fmt(model.validation.brierScore)+'</td><td class="research-metric">'+fmt(model.validation.logLoss)+'</td><td>'+ (model.status==='validated'?'Проверено':'Недостаточно данных')+'</td></tr>').join('')||'<tr><td colspan="5">Нет проверенных прогнозов.</td></tr>';
+      const delta=result.comparisons?.[0];
+      $('#forecastTestsDelta').textContent=result.status==='evaluated'&&delta
+        ?'Разница рынок − Elo: Brier '+(delta.validationDeltaBrier>=0?'+':'')+fmt(delta.validationDeltaBrier)+' · LogLoss '+(delta.validationDeltaLogLoss>=0?'+':'')+fmt(delta.validationDeltaLogLoss)+'. Положительная разница означает худший результат рынка.'
+        :'Итоговое сравнение пока не опубликовано: нужно не менее 30 матчей в обучающей и 10 в отложенной части.';
+      segmentsNode.innerHTML=(result.segments||[]).map(item=>'<div class="archive-item"><b>'+(item.dimension==='surface'?'Покрытие: ':'Турнир: ')+escapeHtml(item.value)+'</b><div class="archive-meta">Обучение: '+item.trainingSampleSize+' · проверка: '+item.validationSampleSize+' · '+(item.status==='validated'?'проверено':'предварительно')+' · Δ Brier объединённой оценки: '+fmt(item.validationDeltaBrier)+'</div></div>').join('')||'<div class="archive-item">Нет матчей с известным сегментом в общей выборке.</div>';
+      qualityNode.innerHTML=[
+        'Отброшено непарных матчей: '+(result.excluded?.unpaired||0),
+        'Конфликт исходов: '+(result.excluded?.outcomeConflict||0),
+        'Расхождение времени начала: '+(result.excluded?.scheduleConflict||0),
+        'Некорректные записи: '+(result.excluded?.invalid||0),
+        'Отклонено Elo-архивом: '+elo.rejected.length,
+        'Отклонено рыночным архивом: '+market.rejected.length
+      ].map(value=>'<div class="archive-meta">'+escapeHtml(value)+'</div>').join('');
+    }catch(error){
+      summary.textContent='Не удалось рассчитать сравнение: '+String(error.message||error);
+      rowsNode.innerHTML='<tr><td colspan="5">Ошибка расчёта.</td></tr>';
+    }
+  }
+  function showTests(){
+    hideAllScreens();$('#testsView').style.display='block';setActiveNavigation('navTests');
+    archiveStorageReady.then(renderForecastTests);
+  }
+  $('#forecastTestsRefresh')?.addEventListener('click',renderForecastTests);
   const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
   function currentVirtualBankOptions(){
     const settings=readSettings(),clamp=(value,min,max,fallback)=>Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
@@ -3987,6 +4051,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#navBalance').onclick=showBalance;
   $('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
+  $('#navTests').onclick=showTests;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
