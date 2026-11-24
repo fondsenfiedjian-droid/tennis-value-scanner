@@ -1,0 +1,51 @@
+name: Flashscore Preview runtime smoke
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy Flashscore Winamax isolated Preview Worker
+    types:
+      - completed
+    branches:
+      - feature/flashscore-winamax-integration-preview
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-smoke:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Flashscore Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/flashscore-winamax-integration-preview
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify comparison, schedule and Winamax source diagnostics
+        run: |
+          node scripts/preview-runtime-smoke.mjs
+          node --input-type=module <<'NODE'
+          const base = "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev";
+          const response = await fetch(base + "/odds", { signal: AbortSignal.timeout(25000) });
+          const payload = await response.json();
+          if (!response.ok) throw new Error("/odds returned HTTP " + response.status);
+          if (payload.flashscore?.actor !== "incognito_mode~flashscore-odds-scraper") {
+            throw new Error("Flashscore actor diagnostics are missing from the Preview feed");
+          }
+          if (!Number.isFinite(Number(payload.sourceCounts?.flashscore)) ||
+              !Number.isFinite(Number(payload.sourceCounts?.vavilov))) {
+            throw new Error("Winamax source counts are missing from the Preview feed");
+          }
+          console.log(JSON.stringify({
+            flashscoreDiagnostic: payload.flashscore.diagnostic,
+            flashscoreNormalizedQuotes: payload.sourceCounts.flashscore,
+            vavilovRows: payload.sourceCounts.vavilov,
+            combinedRows: payload.count,
+            retrievedAt: payload.retrievedAt
+          }, null, 2));
+          NODE
