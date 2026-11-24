@@ -318,7 +318,9 @@ test("odds endpoint imports fresh French Winamax tennis singles from Flashscore 
     { ...valid, bookmakerName: "Betclic" },
     { ...valid, bookmakerCountry: "DE" },
     { ...valid, market: "OVER_UNDER" },
-    { ...valid, status: "live" }
+    { ...valid, status: "live" },
+    { ...valid, homeName: "Pavlasek/Rikl", awayName: "Auger-Aliassime/Chan", tournament: "ATP Doubles Davis Cup" },
+    { ...valid, homeName: "Czech Republic", awayName: "Canada", tournament: "Davis Cup" }
   ];
   workerSandbox.caches.default.match = async () => null;
   workerSandbox.caches.default.put = async () => {};
@@ -345,6 +347,8 @@ test("odds endpoint imports fresh French Winamax tennis singles from Flashscore 
   assert.equal(payload.flashscore.diagnostic, "ok");
   assert.equal(payload.flashscore.diagnostics.acceptedRows, 1);
   assert.equal(payload.flashscore.diagnostics.rejectedByReason.bookmaker, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.doubles, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.team_tie, 1);
   assert.equal(payload.count, 2);
   assert.deepEqual(payload.items.map(item => [item.outcome, item.oddsDecimal]), [
     ["home", 1.6], ["away", 2.1]
