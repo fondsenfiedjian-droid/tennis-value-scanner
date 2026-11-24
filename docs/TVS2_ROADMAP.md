@@ -62,8 +62,9 @@ Completed on the TVS 2.0 integration branch:
 - Add regression coverage for ambiguity, missing quotes and timestamp grouping.
 
 Remaining:
-- Compare current Winamax feed records with scheduled matches and classify actual missing-pair causes.
-- Check tournament/player aliases and provider event IDs.
+- Compare current Winamax feed records with scheduled matches and classify actual missing-pair causes. First Preview audit found 8 records: three Davis Cup team ties and one doubles event; no individual singles quote pair was available for the 180 upcoming singles matches.
+- The UI now reports unsupported_draw when the feed contains only team ties/doubles; no such quotes can enter singles predictions.
+- Check tournament/player aliases and provider event IDs. Repeat the read-only audit after a later Apify run; do not change the scraper without explicit approval.
 - Verify freshness, paired-side synchronization and event-time matching.
 - Preserve the existing Apify task; do not weaken matching thresholds to increase apparent coverage.
 
@@ -128,7 +129,7 @@ Before any Production release:
 
 - Diagnostics sample: 16 matches, 1,957 RAW rows, 1,840 CLEAN rows.
 - Junior-age players were found in ITF histories; zero results under tour=juniors are consistent with the provider's junior-Grand-Slam-only filter.
-- TVS 2.0 integration branch: 564 regression tests passed on commit cb089e950f4fc69fa8ab0b26d21d1dce4091fa91.
+- TVS 2.0 integration branch: 565 regression tests passed (0 failed) after the Winamax unsupported-draw diagnostic changes.
 - Netlify Deploy Preview for PR #172: ready at https://deploy-preview-172--tennis-value-scanner-developer.netlify.app/
 - Production Netlify deploy remains on main commit 655a26a8709b9fd863180c3b4f001fc262cbe193.
 - PR #172 remains open/draft. PR #173 remains open/unmerged. No Production deployment was performed.
