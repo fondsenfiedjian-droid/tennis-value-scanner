@@ -3353,7 +3353,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       ratingsAsOfA:formatDate(a.lastPlayed),ratingsAsOfB:formatDate(b.lastPlayed),
       officialProfileA:official(identityA),officialProfileB:official(identityB),
       surface:null,source:snapshot.source||'Valuebetennis CC BY 4.0',
-      note:'Общий Elo K=80; вероятности откалиброваны на отложенных матчах 2026 года. Покрытие отдельно не учитывается. Матчей в истории: '+a.matches+' / '+b.matches+'.'
+      note:'Общий Elo K=80; калибровка обучена на данных до 2025 года и проверена на отложенной выборке 2026 года. Покрытие отдельно не учитывается. Матчей в истории: '+a.matches+' / '+b.matches+'.'
     };
   }
   async function loadValuebetennisComparison(nameA,nameB,diagnostic){
