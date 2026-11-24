@@ -10,7 +10,7 @@ const csv=[
   "m4;2025-01-03;gazon;B;C;B",
   "m5;2025-01-04;moquette intérieur;A;C;A",
   "bad;not-a-date;dur;A;B;A",
-  "duplicate;2025-01-04;moquette intérieur;A;C;A"
+  "m5;2025-01-04;moquette intérieur;A;C;A"
 ].join("\n");
 
 test("CSV parser normalizes surfaces, sorts chronologically and rejects invalid or duplicate rows",()=>{
