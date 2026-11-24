@@ -116,6 +116,10 @@ for (const item of items) {
       event: item?.eventName || null,
       home: item?.homeTeam || null,
       away: item?.awayTeam || null,
+      sport: item?.sport || null,
+      marketType: item?.marketType || null,
+      competition: item?.competition || null,
+      bookmakerCountry: item?.bookmakerCountry || null,
       startTime: item?.startTime || null,
       scrapedAt: item?.scrapedAt || null,
       outcomes: []
@@ -132,6 +136,11 @@ const notPrematchSamples = matches.filter(match => sandbox.audit.oddsMatchDiagno
     scheduledTime: match?.startTime || match?.scheduled_time || match?.date || match?.start_time || null,
     status: match?.status || match?.event_status || null
   }));
+const sportMarkets = {};
+for (const item of items) {
+  const key = String(item?.sport || "unknown") + "|" + String(item?.marketType || "unknown");
+  sportMarkets[key] = (sportMarkets[key] || 0) + 1;
+}
 const report = {
   checkedAt: new Date().toISOString(),
   previewWorkerBuild: health.buildId || null,
@@ -141,6 +150,7 @@ const report = {
   scheduleTruncated: hasMore,
   oddsRecords: items.length,
   recordsByBookmaker: bookmakers,
+  recordsBySportAndMarket: sportMarkets,
   completeFreshWinamaxPairs: completePairs,
   missingPairReasons: reasons,
   oddsEventSamples: [...oddsEvents.values()].slice(0, 8),
