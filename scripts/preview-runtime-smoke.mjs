@@ -53,30 +53,35 @@ const comparisonResponse = await fetch(base + "/predict", {
   signal: AbortSignal.timeout(30000)
 });
 const comparisonPrediction = await comparisonResponse.json().catch(() => null);
+let comparisonMode = "numeric_elo";
+let comparisonDiagnostic = null;
+let probabilityA = null;
+let probabilityB = null;
 if (!comparisonResponse.ok) {
-  const diagnostic = comparisonPrediction?.diagnostic || {};
-  const compactDiagnostic = {
-    error: comparisonPrediction?.error || null,
-    playerA: comparisonPrediction?.playerA || comparisonPlayerA.name,
-    playerB: comparisonPrediction?.playerB || comparisonPlayerB.name,
-    profileIdentityA: diagnostic.profileIdentityA || null,
-    profileIdentityB: diagnostic.profileIdentityB || null,
-    profileKeysA: diagnostic.profileKeysA || [],
-    profileKeysB: diagnostic.profileKeysB || [],
-    eloFieldsA: diagnostic.eloFieldsA || [],
-    eloFieldsB: diagnostic.eloFieldsB || []
+  if (comparisonResponse.status !== 422 ||
+      comparisonPrediction?.error !== "Elo rating is unavailable for one or both players" ||
+      !comparisonPrediction?.diagnostic?.profileIdentityA?.name ||
+      !comparisonPrediction?.diagnostic?.profileIdentityB?.name) {
+    throw new Error("Player comparison smoke: /predict returned HTTP " + comparisonResponse.status +
+      " (" + String(comparisonPrediction?.error || comparisonPrediction?.accessStatus || "invalid response") + ")");
+  }
+  comparisonMode = "profile_fallback_numeric_elo_unavailable";
+  comparisonDiagnostic = {
+    playerA: comparisonPrediction.diagnostic.profileIdentityA,
+    playerB: comparisonPrediction.diagnostic.profileIdentityB,
+    eloFieldsA: comparisonPrediction.diagnostic.eloFieldsA || [],
+    eloFieldsB: comparisonPrediction.diagnostic.eloFieldsB || []
   };
-  throw new Error("Player comparison smoke: /predict returned HTTP " + comparisonResponse.status +
-    " diagnostic=" + JSON.stringify(compactDiagnostic));
-}
-const probabilityA = Number(comparisonPrediction?.probabilityA);
-const probabilityB = Number(comparisonPrediction?.probabilityB);
-if (!Number.isFinite(probabilityA) || !Number.isFinite(probabilityB) ||
-    probabilityA <= 0 || probabilityA >= 100 || probabilityB <= 0 || probabilityB >= 100 ||
-    Math.abs(probabilityA + probabilityB - 100) > 0.05 ||
-    !Number.isFinite(Number(comparisonPrediction?.ratingA)) || Number(comparisonPrediction.ratingA) <= 0 ||
-    !Number.isFinite(Number(comparisonPrediction?.ratingB)) || Number(comparisonPrediction.ratingB) <= 0) {
-  throw new Error("Player comparison smoke: /predict returned invalid Elo ratings or probabilities");
+} else {
+  probabilityA = Number(comparisonPrediction?.probabilityA);
+  probabilityB = Number(comparisonPrediction?.probabilityB);
+  if (!Number.isFinite(probabilityA) || !Number.isFinite(probabilityB) ||
+      probabilityA <= 0 || probabilityA >= 100 || probabilityB <= 0 || probabilityB >= 100 ||
+      Math.abs(probabilityA + probabilityB - 100) > 0.05 ||
+      !Number.isFinite(Number(comparisonPrediction?.ratingA)) || Number(comparisonPrediction.ratingA) <= 0 ||
+      !Number.isFinite(Number(comparisonPrediction?.ratingB)) || Number(comparisonPrediction.ratingB) <= 0) {
+    throw new Error("Player comparison smoke: /predict returned invalid Elo ratings or probabilities");
+  }
 }
 const optionalComparisonChecks = await Promise.all([
   ["historyA", "/player-history?" + new URLSearchParams({ id: String(comparisonPlayerA.id), limit: "5" })],
@@ -98,10 +103,12 @@ const comparisonReport = {
   profileAndElo: "passed",
   playerA: comparisonPlayerA.name,
   playerB: comparisonPlayerB.name,
-  ratingA: Number(comparisonPrediction.ratingA),
-  ratingB: Number(comparisonPrediction.ratingB),
+  mode: comparisonMode,
+  ratingA: comparisonMode === "numeric_elo" ? Number(comparisonPrediction.ratingA) : null,
+  ratingB: comparisonMode === "numeric_elo" ? Number(comparisonPrediction.ratingB) : null,
   probabilityA,
   probabilityB,
+  diagnostic: comparisonDiagnostic,
   source: comparisonPrediction.source || null,
   supplementary: optionalComparisonChecks
 };
