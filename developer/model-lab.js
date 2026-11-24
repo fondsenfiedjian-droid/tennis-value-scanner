@@ -34,3 +34,4 @@ export function mountModelLab(root,readModels){
 }
 
 window.TVSModelLab={mount:mountModelLab};
+window.dispatchEvent(new Event("tvs-model-lab-ready"));
