@@ -2134,7 +2134,14 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       return parts.length!==2||((playerNamesMatch(parts[0],q.home)&&playerNamesMatch(parts[1],q.away))||(playerNamesMatch(parts[0],q.away)&&playerNamesMatch(parts[1],q.home)));
     });
     if(!eventItems.length)return {code:'event_identity_conflict',label:'Название события противоречит полям игроков'};
-    const playerItems=eventItems.filter(o=>{
+    const unsupportedDrawItems=eventItems.filter(o=>{
+      const competition=normalizePlayer(o.competition||'');
+      const q=oddsEventParticipants(o);
+      return /doubles|mixed doubles|davis cup|coupe davis|billie jean king cup|united cup/.test(competition)||/\//.test(q.home+' '+q.away);
+    });
+    const singlesItems=eventItems.filter(o=>!unsupportedDrawItems.includes(o));
+    if(!singlesItems.length&&unsupportedDrawItems.length)return {code:'unsupported_draw',label:'В Winamax есть только командные или парные события; одиночных котировок нет'};
+    const playerItems=singlesItems.filter(o=>{
       const q=oddsEventParticipants(o);
       const aHome=playerNamesMatch(q.home,a),aAway=playerNamesMatch(q.away,a);
       const bHome=playerNamesMatch(q.home,b),bAway=playerNamesMatch(q.away,b);
