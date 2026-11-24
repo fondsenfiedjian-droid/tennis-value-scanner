@@ -7,12 +7,12 @@ const BASE = (process.env.DIAGNOSTICS_BASE || "https://tennis-value-api-diagnost
 const SEEDS = {
   atp: ["Novak Djokovic", "Carlos Alcaraz", "Jannik Sinner"],
   wta: ["Iga Swiatek", "Coco Gauff", "Aryna Sabalenka"],
-  challenger: ["Luca Nardi", "Arthur Cazaux", "Zizou Bergs"],
-  itf: ["Hugo Gaston", "Diane Parry", "Harriet Dart"],
-  juniors: ["Joao Fonseca", "Mirra Andreeva"]
+  challenger: ["Luca Nardi", "Arthur Cazaux", "Zizou Bergs", "Nishesh Basavareddy", "Federico Cina"],
+  itf: ["Rei Sakamoto", "Federico Cina", "Yibing Wu", "Sara Saito", "Alina Korneeva", "Brenda Fruhvirtova", "Tyra Caterina Grant"],
+  juniors: ["Yaroslav Demin", "Laura Samson", "Hannah Klugman", "Tyra Caterina Grant", "Joao Fonseca", "Mirra Andreeva"]
 };
 const PER_TOUR_TARGET = Number(process.env.PER_TOUR_TARGET || 4);
-const MAX_TAPE_CHECKS_PER_TOUR = Number(process.env.MAX_TAPE_CHECKS_PER_TOUR || 12);
+const MAX_TAPE_CHECKS_PER_TOUR = Number(process.env.MAX_TAPE_CHECKS_PER_TOUR || 24);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function get(path) {
@@ -27,68 +27,84 @@ async function get(path) {
   return body;
 }
 const enc = value => encodeURIComponent(String(value));
-const matchId = match => {
-  for (const key of ["id", "match_id", "matchId"]) {
-    const value = match?.[key];
-    if (/^\d{1,15}$/.test(String(value ?? "")) && Number(value) > 0) return String(value);
+const first = (obj, keys) => {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
   }
   return null;
 };
-const playerId = player => {
-  const value = player?.id ?? player?.player_id ?? player?.playerId;
+const matchId = match => {
+  const value = first(match, ["id", "match_id", "matchId", "matchID"]);
   return /^\d{1,15}$/.test(String(value ?? "")) && Number(value) > 0 ? String(value) : null;
 };
+const playerId = player => {
+  const value = first(player, ["id", "player_id", "playerId"]);
+  return /^\d{1,15}$/.test(String(value ?? "")) && Number(value) > 0 ? String(value) : null;
+};
+const normalized = value => String(value || "").toLowerCase().replace(/[^a-z ]/g, "").trim();
 
 async function main() {
   const selected = [];
   const report = [];
   const globalIds = new Set();
   for (const [tour, names] of Object.entries(SEEDS)) {
-    const candidates = [];
-    const seen = new Set();
+    const bySeed = [];
     for (const name of names) {
       const search = await get("/players/search?search=" + enc(name) + "&limit=8");
       const players = Array.isArray(search.players) ? search.players : [];
-      const normalized = name.toLowerCase().replace(/[^a-z ]/g, "").trim();
-      const player = players.find(p => String(p.name || "").toLowerCase().replace(/[^a-z ]/g, "").trim() === normalized)
+      const player = players.find(p => normalized(p.name) === normalized(name))
         || (players.length === 1 ? players[0] : null);
       const id = player && playerId(player);
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      const history = await get("/player-history?id=" + id + "&limit=50&offset=0&tour=" + tour);
-      for (const match of (Array.isArray(history.data) ? history.data : [])) {
-        const id = matchId(match);
-        if (!id || globalIds.has(id)) continue;
-        candidates.push({ id, tour, seed: name, player_id: playerId(player), match });
+      if (!id) {
+        bySeed.push({ seed: name, playerFound: false, candidateMatches: 0, checks: 0, accepted: 0 });
+        continue;
       }
-      await sleep(180);
+      const history = await get("/player-history?id=" + id + "&limit=50&offset=0&tour=" + tour);
+      const matches = Array.isArray(history.data) ? history.data : [];
+      const candidates = matches.map(match => ({ id: matchId(match), tour, seed: name, player_id: id, match }))
+        .filter(x => x.id && !globalIds.has(x.id));
+      bySeed.push({ seed: name, playerFound: true, playerId: id, candidates, checks: 0, accepted: 0 });
+      await sleep(150);
     }
-    candidates.sort((a,b) => String(b.match.date || b.match.start_time || "").localeCompare(String(a.match.date || a.match.start_time || "")));
+
+    // Round-robin across seeds prevents one player's recent history from consuming the whole budget.
+    const candidateQueue = [];
+    let cursor = 0;
+    while (bySeed.some(x => x.candidates?.length)) {
+      for (const seed of bySeed) {
+        if (seed.candidates?.length) candidateQueue.push(seed.candidates.shift());
+      }
+      cursor++;
+      if (cursor > 50) break;
+    }
+    const candidateCount = candidateQueue.length;
     let checks = 0, accepted = 0;
-    for (const candidate of candidates) {
+    for (const candidate of candidateQueue) {
       if (accepted >= PER_TOUR_TARGET || checks >= MAX_TAPE_CHECKS_PER_TOUR) break;
       checks++;
+      const seedReport = bySeed.find(x => x.seed === candidate.seed);
+      if (seedReport) seedReport.checks++;
       let raw;
-      try {
-        raw = await get("/match-tape?id=" + candidate.id + "&points=default&sequence=raw");
-      } catch { continue; }
+      try { raw = await get("/match-tape?id=" + candidate.id + "&points=default&sequence=raw"); }
+      catch { continue; }
       if (raw.accessStatus !== "available" || raw.meta?.point_source !== "observed" ||
           raw.meta?.coverage !== "from_start" || !Array.isArray(raw.tape) || raw.tape.length < 2) continue;
       let clean;
-      try {
-        clean = await get("/match-tape?id=" + candidate.id + "&points=default&sequence=clean");
-      } catch { continue; }
+      try { clean = await get("/match-tape?id=" + candidate.id + "&points=default&sequence=clean"); }
+      catch { continue; }
       if (clean.accessStatus !== "available" || clean.meta?.point_source !== "observed" ||
           clean.meta?.coverage !== "from_start" || !Array.isArray(clean.tape) || clean.tape.length < 2) continue;
+      const m = candidate.match;
       const record = {
         match_id: candidate.id,
         tour,
         seed_player: candidate.seed,
         seed_player_id: candidate.player_id,
-        player1: candidate.match.player1 ?? candidate.match.player_1 ?? null,
-        player2: candidate.match.player2 ?? candidate.match.player_2 ?? null,
-        date: candidate.match.date ?? candidate.match.start_time ?? null,
-        surface: candidate.match.surface ?? null,
+        player1: first(m, ["player1", "player_1", "player1_name", "player_1_name", "home_player", "playerA"]),
+        player2: first(m, ["player2", "player_2", "player2_name", "player_2_name", "away_player", "playerB"]),
+        date: first(m, ["date", "start_time", "match_date", "startDate", "datetime"]),
+        surface: first(m, ["surface", "court_surface"]),
         raw_rows: raw.tape.length,
         clean_rows: clean.tape.length,
         point_source: raw.meta.point_source,
@@ -97,15 +113,24 @@ async function main() {
       selected.push(record);
       globalIds.add(candidate.id);
       accepted++;
-      await sleep(180);
+      if (seedReport) seedReport.accepted++;
+      await sleep(150);
     }
-    report.push({ tour, seedPlayers: names.length, candidateMatches: candidates.length, tapeChecks: checks, accepted });
+    report.push({
+      tour,
+      seedPlayers: names.length,
+      candidateMatches: candidateCount,
+      tapeChecks: checks,
+      accepted,
+      seeds: bySeed.map(({ candidates, ...summary }) => ({ ...summary, candidateMatches: candidates?.length ?? 0 }))
+    });
   }
   const result = {
-    schema: "tennis-value-scanner.observed-tape-discovery.v1",
+    schema: "tennis-value-scanner.observed-tape-discovery.v2",
     discovered_at: new Date().toISOString(),
     source: "Live Tennis API PRO via diagnostics preview Worker",
     target_per_tour: PER_TOUR_TARGET,
+    max_tape_checks_per_tour: MAX_TAPE_CHECKS_PER_TOUR,
     total: selected.length,
     tours: report,
     matches: selected
