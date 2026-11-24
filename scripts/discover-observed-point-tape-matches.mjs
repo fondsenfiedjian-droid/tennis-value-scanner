@@ -57,14 +57,14 @@ async function main() {
         || (players.length === 1 ? players[0] : null);
       const id = player && playerId(player);
       if (!id) {
-        bySeed.push({ seed: name, playerFound: false, candidateMatches: 0, checks: 0, accepted: 0 });
+        bySeed.push({ seed: name, playerFound: false, candidateMatches: 0, candidates: [], checks: 0, accepted: 0 });
         continue;
       }
       const history = await get("/player-history?id=" + id + "&limit=50&offset=0&tour=" + tour);
       const matches = Array.isArray(history.data) ? history.data : [];
       const candidates = matches.map(match => ({ id: matchId(match), tour, seed: name, player_id: id, match }))
         .filter(x => x.id && !globalIds.has(x.id));
-      bySeed.push({ seed: name, playerFound: true, playerId: id, candidates, checks: 0, accepted: 0 });
+      bySeed.push({ seed: name, playerFound: true, playerId: id, candidateMatches: candidates.length, candidates, checks: 0, accepted: 0 });
       await sleep(150);
     }
 
@@ -122,7 +122,7 @@ async function main() {
       candidateMatches: candidateCount,
       tapeChecks: checks,
       accepted,
-      seeds: bySeed.map(({ candidates, ...summary }) => ({ ...summary, candidateMatches: candidates?.length ?? 0 }))
+      seeds: bySeed.map(({ candidates, ...summary }) => summary)
     });
   }
   const result = {
