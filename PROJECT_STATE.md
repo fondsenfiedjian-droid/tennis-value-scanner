@@ -1135,3 +1135,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added a specific unsupported_draw diagnostic so the UI can explain when the feed contains only team ties/doubles instead of individual singles. This does not alter the Apify task or allow doubles/team odds into player predictions.
 - The same audit also found four schedule records whose status says upcoming but whose scheduled time is already past; the prediction matcher correctly refuses to treat them as pre-match.
 - Next check: wait for the next scheduled Apify run and repeat the read-only audit. Do not change the scraper configuration without explicit approval.
+
+
+## 2026-11-24 — First live Winamax coverage audit completed
+- Preview runtime smoke succeeded against the dedicated tennis-value-api-preview Worker.
+- Current upcoming singles schedule: 180 matches (one page, no truncation). Winamax feed: 8 records, all sport=tennis and market=match_winner.
+- The 8 records form four event pairs: three Davis Cup team ties and one doubles match. There are zero individual singles pairs; the scanner correctly rejects them for singles predictions. UI diagnostic now labels this unsupported_draw rather than a generic player mismatch.
+- Four schedule records have status=upcoming but scheduled times already in the past; pre-match prediction logic correctly blocks them.
+- The last successful Apify task run in the preview feed finished at 18:13 UTC and was scheduler-originated. No new run was visible by 19:13 UTC.
+- The read-only audit did not alter the task, Worker secrets or Production. Next check after a newer scheduled task run; do not change the scraper without approval.
+- Current TVS 2.0 regression suite: 565 passed, 0 failed.
