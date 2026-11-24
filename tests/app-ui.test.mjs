@@ -606,7 +606,7 @@ test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow"
   assert.match(html,/id="liveRefreshPageBtn"/);
   assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
   assert.match(html,/id="navSettings"/);
-  assert.match(html,/\$\('#headerSettings'\)\.onclick=open/);
+  assert.match(html,/\$\('#navSettings'\)\.onclick=/);
   assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
 });
 
