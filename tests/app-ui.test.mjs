@@ -58,6 +58,15 @@ function makeWinamaxQuote(overrides = {}) {
   };
 }
 
+const valuebetennisCompareStart = html.indexOf("function normalizeValuebetennisName");
+const valuebetennisCompareEnd = html.indexOf("function renderCompareUnavailableElo", valuebetennisCompareStart);
+const valuebetennisCompareSource = html.slice(valuebetennisCompareStart, valuebetennisCompareEnd);
+function runValuebetennisComparison(snapshot, nameA, nameB, diagnostic) {
+  const sandbox = {};
+  vm.runInNewContext(valuebetennisCompareSource + "\\nglobalThis.resolveValuebetennisComparison = resolveValuebetennisComparison;", sandbox);
+  return sandbox.resolveValuebetennisComparison(snapshot, nameA, nameB, diagnostic);
+}
+
 const recommendationStart = html.indexOf("function selectBestBets(");
 const recommendationEnd = html.indexOf("function renderBestBet(", recommendationStart);
 const recommendationSource = html.slice(recommendationStart, recommendationEnd);
@@ -81,6 +90,55 @@ test("result checks retry pending matches every 30 minutes and settled matches d
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
 });
 
+
+test("Valuebetennis comparison resolves exact unique names and calibrated Elo probabilities", () => {
+  const snapshot = {
+    source: "Valuebetennis CC BY 4.0",
+    probabilityCalibration: { atp: { slope: 0.88 } },
+    tours: { atp: { players: [
+      ["1", "Carlos Alcaraz", 3000, 120, "20261122"],
+      ["2", "Jannik Sinner", 3100, 110, "20260712"]
+    ] } }
+  };
+  const diagnostic = {
+    profileIdentityA: { name: "Carlos Alcaraz", tour: "atp", ranking: 1 },
+    profileIdentityB: { name: "Jannik Sinner", tour: "atp", ranking: 2 }
+  };
+  const result = runValuebetennisComparison(snapshot, "Carlos Alcaraz", "Jannik Sinner", diagnostic);
+  assert.ok(result);
+  assert.equal(result.ratingTypeA, "общий Valuebetennis Elo K=80 · калиброванный");
+  assert.equal(result.ratingsAsOfA, "2026-11-22");
+  assert.ok(result.probabilityA < result.probabilityB);
+  assert.ok(Math.abs(result.probabilityA + result.probabilityB - 100) < 0.02);
+  assert.equal(result.surface, null);
+});
+
+test("Valuebetennis comparison refuses ambiguous, cold-start and cross-tour matches", () => {
+  const diagnostic = {
+    profileIdentityA: { name: "Alex Lee", tour: "atp" },
+    profileIdentityB: { name: "Jannik Sinner", tour: "atp" }
+  };
+  const base = {
+    probabilityCalibration: { atp: { slope: 0.9 } },
+    tours: { atp: { players: [
+      ["1", "Alex Lee", 1700, 20, "20261101"],
+      ["2", "Alex Lee", 1800, 30, "20261102"],
+      ["3", "Jannik Sinner", 2600, 100, "20261103"]
+    ] } }
+  };
+  assert.equal(runValuebetennisComparison(base, "Alex Lee", "Jannik Sinner", diagnostic), null);
+  const cold = structuredClone(base);
+  cold.tours.atp.players = [cold.tours.atp.players[0], ["3", "Jannik Sinner", 2600, 100, "20261103"]];
+  cold.tours.atp.players[0][3] = 3;
+  assert.equal(runValuebetennisComparison(cold, "Alex Lee", "Jannik Sinner", diagnostic), null);
+  const crossTour = structuredClone(cold);
+  crossTour.probabilityCalibration.wta = { slope: 0.9 };
+  const otherTourDiagnostic = {
+    profileIdentityA: { name: "Alex Lee", tour: "atp" },
+    profileIdentityB: { name: "Jannik Sinner", tour: "wta" }
+  };
+  assert.equal(runValuebetennisComparison(crossTour, "Alex Lee", "Jannik Sinner", otherTourDiagnostic), null);
+});
 
 test("daily plan shows no invented bankroll or stake amount", () => {
   assert.match(html, /class="plan-summary"/);
