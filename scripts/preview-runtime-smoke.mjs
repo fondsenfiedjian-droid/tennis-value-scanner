@@ -54,8 +54,20 @@ const comparisonResponse = await fetch(base + "/predict", {
 });
 const comparisonPrediction = await comparisonResponse.json().catch(() => null);
 if (!comparisonResponse.ok) {
+  const diagnostic = comparisonPrediction?.diagnostic || {};
+  const compactDiagnostic = {
+    error: comparisonPrediction?.error || null,
+    playerA: comparisonPrediction?.playerA || comparisonPlayerA.name,
+    playerB: comparisonPrediction?.playerB || comparisonPlayerB.name,
+    profileIdentityA: diagnostic.profileIdentityA || null,
+    profileIdentityB: diagnostic.profileIdentityB || null,
+    profileKeysA: diagnostic.profileKeysA || [],
+    profileKeysB: diagnostic.profileKeysB || [],
+    eloFieldsA: diagnostic.eloFieldsA || [],
+    eloFieldsB: diagnostic.eloFieldsB || []
+  };
   throw new Error("Player comparison smoke: /predict returned HTTP " + comparisonResponse.status +
-    " (" + String(comparisonPrediction?.error || comparisonPrediction?.accessStatus || "invalid response") + ")");
+    " diagnostic=" + JSON.stringify(compactDiagnostic));
 }
 const probabilityA = Number(comparisonPrediction?.probabilityA);
 const probabilityB = Number(comparisonPrediction?.probabilityB);
