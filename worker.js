@@ -1154,6 +1154,11 @@ export default {
         return response({ error: "limit must be an integer from 1 to 50" }, 400);
       }
       const limit = Number(rawLimit);
+      const rawOffset = url.searchParams.get("offset") || "0";
+      if (!/^\d{1,6}$/.test(rawOffset) || Number(rawOffset) > 100000) {
+        return response({ error: "offset must be an integer from 0 to 100000" }, 400);
+      }
+      const offset = Number(rawOffset);
       const tour = (url.searchParams.get("tour") || "").trim().toLowerCase();
       if (tour && !["atp", "wta", "challenger", "itf", "juniors"].includes(tour)) {
         return response({ error: "tour must be atp, wta, challenger, itf or juniors" }, 400);
@@ -1161,7 +1166,7 @@ export default {
       try {
         const cache = caches.default;
         const cacheKey = internalCacheRequest(request,
-          "/__player-history/v1/" + playerId + "/" + limit + "/" + (tour || "all"));
+          "/__player-history/v1/" + playerId + "/" + limit + "/" + offset + "/" + (tour || "all"));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
@@ -1173,7 +1178,7 @@ export default {
           player: playerId,
           draw: "singles",
           limit: String(limit),
-          offset: "0"
+          offset: String(offset)
         });
         if (tour) params.set("tour", tour);
         const upstream = await fetchLiveTennis(
