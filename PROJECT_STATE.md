@@ -1082,3 +1082,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Unconfigured money fields display an em dash; the interface explicitly says the bank is not set, stake amount is not calculated, and risk is not calculated. No default bankroll or stake is created.
 - Updated UI regression expectations to reflect the approved hierarchy (daily pick, mandatory-bets section with its nested summary, then additional opportunities) and the five-item bottom navigation where Settings lives in the bottom bar rather than a header shortcut.
 - Preview-only change on the TVS 2.0 integration branch. No Production deploy or merge.
+
+
+## 2026-11-24 — Restore the approved five-item bottom navigation
+- Removed the separate Tests tab from the bottom navigation to match the approved five destinations: Home, Matches, Compare, Statistics and Settings.
+- Kept forecast-test results accessible from Statistics via a dedicated “Проверка прогнозов” link.
+- Changed the bottom navigation grid from six to five columns. The forecast-test screen and its calculations remain available; only its navigation placement changed.
+- Preview-only on the TVS 2.0 integration branch. No Production deployment or merge.
