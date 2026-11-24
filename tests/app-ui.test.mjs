@@ -524,6 +524,10 @@ test("mandatory recommendations and additional opportunities are separate plan t
 
 test("approved bottom navigation contains Home, Matches, Compare, Statistics and Settings",()=>{
   for(const id of ["navHome","navMatches","navCompare","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.equal((html.match(/<button id="nav(?:Home|Matches|Compare|Stats|Settings)"/g)||[]).length,5);
+  assert.doesNotMatch(html,/id="navTests"/);
+  assert.match(html,/id="statsOpenTests"/);
+  assert.match(html,/\$\('#statsOpenTests'\)\.onclick=showTests/);
   for(const id of ["navBalance","navHistory"])assert.doesNotMatch(html,new RegExp('id="'+id+'"'));
   assert.match(html,/function showMatches\(\)/);
   assert.match(html,/function showCompare\(\)/);
