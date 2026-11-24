@@ -1094,3 +1094,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Provider reference clarifies that `tour=juniors` covers boys' and girls' junior Grand Slam draws, not the entire junior circuit. The earlier zero-row result for six junior-seed player queries therefore did not establish absence of junior match history.
 - Added five junior-age players to the bounded `tour=itf` seed list (Demin, Samson, Klugman, Fonseca and Andreeva) while retaining the dedicated junior-Grand-Slam query. Next diagnostics run will test whether their ITF-level histories expose junior event records and observed tapes.
 - Source: https://docs.livetennisapi.com/reference.html. This is a diagnostics-only query-scope correction.
+
+
+## 2026-11-24 — Junior-age ITF history confirmed
+- Expanded diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45465141446 completed successfully after adding junior-age seeds to the `tour=itf` query.
+- The sample now contains 16 observed-from-start matches: ATP 4, WTA 4, Challenger 4, ITF 4, junior Grand Slam filter 0.
+- Two additional accepted ITF matches involve junior-age seeds: Yaroslav Demin (M25 Qian Daohu, IDs 204244 and 203062) and Hannah Klugman (W75 Glasgow, ID 212854). This confirms that junior-age player history is discoverable under ITF for these events; `tour=juniors` remains the separate junior Grand Slam filter.
+- Totals: 1,957 RAW rows and 1,840 CLEAN rows. All timestamps present. RAW provider completeness flag true for 10/16; CLEAN for 3/16. Keep the flag and row missingness per match; do not treat this convenience sample as representative.
+- Artifact remains private and diagnostics-only. No production model features were added.
