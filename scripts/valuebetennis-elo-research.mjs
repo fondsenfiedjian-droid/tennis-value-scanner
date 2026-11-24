@@ -8,7 +8,7 @@ const EVALUATION_START = "20250101";
 const ATTRIBUTION = "Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm (CC BY 4.0)";
 
 function dateKey(value) {
-  const match = String(value ?? "").match(/^(\\d{4})[-/]?(\\d{2})[-/]?(\\d{2})/);
+  const match = String(value ?? "").match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})/);
   if (!match) return null;
   const key = match.slice(1).join("");
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
@@ -16,7 +16,7 @@ function dateKey(value) {
 }
 
 function surfaceName(value) {
-  const s = String(value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const s = String(value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (["dur", "hard", "indoor hard", "indoor_hard"].includes(s)) return "Hard";
   if (["terre battue", "clay", "terre"].includes(s)) return "Clay";
   if (["gazon", "grass"].includes(s)) return "Grass";
@@ -33,7 +33,7 @@ function toBacktestRows(rows, tour) {
     const p1 = String(row.joueur1_id ?? "").trim();
     const p2 = String(row.joueur2_id ?? "").trim();
     const winner = String(row.vainqueur_id ?? "").trim();
-    if (!date || !/^\\d+$/.test(p1) || !/^\\d+$/.test(p2) || p1 === p2 || ![p1, p2].includes(winner)) continue;
+    if (!date || !/^\d+$/.test(p1) || !/^\d+$/.test(p2) || p1 === p2 || ![p1, p2].includes(winner)) continue;
     const matchId = String(row.match_id ?? "").trim();
     const key = matchId || [date, [p1, p2].sort().join(":"), row.tournoi_id, row.tour].join("|");
     if (seen.has(key)) continue;
