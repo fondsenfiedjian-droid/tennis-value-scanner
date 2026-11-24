@@ -53,6 +53,8 @@ jobs:
             echo "Player Elo snapshot unchanged."
           else
             git commit -m "Refresh preview player Elo snapshot"
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
       - name: Upload research artifacts
