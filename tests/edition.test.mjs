@@ -8,6 +8,7 @@ const rootManifest=JSON.parse(readFileSync(new URL("../manifest.webmanifest",imp
 const devManifest=JSON.parse(readFileSync(new URL("../developer/manifest.webmanifest",import.meta.url),"utf8"));
 const rootWorker=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
 const devWorker=readFileSync(new URL("../developer/sw.js",import.meta.url),"utf8");
+const rootRuntime=readFileSync(new URL("../edition-runtime.js",import.meta.url),"utf8");
 const devRuntime=readFileSync(new URL("../developer/edition-runtime.js",import.meta.url),"utf8");
 
 test("Production and Developer have distinct install identities and scopes",()=>{
@@ -20,13 +21,14 @@ test("Production and Developer have distinct install identities and scopes",()=>
 });
 test("both editions expose an in-app version and Developer has a separate label",()=>{
   assert.match(rootHtml,/id="editionVersion"/);
-  assert.match(devHtml,/version:"2\.1\.0-dev\.1"/);
-  assert.match(rootHtml,/edition-runtime\.js/);
-  assert.match(devHtml,/edition-runtime\.js/);
+  assert.match(devHtml,/version:"2\\.1\\.0-dev\\.1"/);
+  assert.match(rootHtml,/edition-runtime\\.js/);
+  assert.match(devHtml,/edition-runtime\\.js/);
 });
-test("model laboratory is gated to Developer Edition",()=>{
-  assert.match(devHtml,/channel:"developer"/);\n  assert.match(devRuntime,/document.getElementById\\("labView"\\)\\?\\.remove\\(\\)/);
-  assert.match(devRuntime,/if\(!isDeveloper\).*quickLab/s);
+test("model laboratory is removed from Production and enabled only in Developer",()=>{
+  assert.match(rootRuntime,/if\\(!isDeveloper\\)\\{if\\(labButton\\)/);
+  assert.match(rootRuntime,/labView"\\)\\?\\.remove/);
+  assert.match(devHtml,/channel:"developer"/);
   assert.match(devRuntime,/tvs-lab-models-v1/);
   assert.match(devRuntime,/labK/);
   assert.match(devRuntime,/labSurface/);
@@ -36,8 +38,10 @@ test("model laboratory is gated to Developer Edition",()=>{
 });
 test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/tvs-developer:/);
-  assert.match(devHtml,/prefix\+String\(name\)/);
+  assert.match(devHtml,/proto\\.clear=function/);
+  assert.match(devHtml,/proto\\.key=function/);
+  assert.match(devHtml,/prefix\\+String\\(name\\)/);
   assert.match(devWorker,/tvs-developer-static-v1/);
-  assert.match(devWorker,/startsWith\("tvs-developer-static-"\)/);
-  assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);
+  assert.match(devWorker,/startsWith\\("tvs-developer-static-"\\)/);
+  assert.match(rootWorker,/startsWith\\("tennis-value-static-"\\)/);
 });
