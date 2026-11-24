@@ -54,3 +54,5 @@ jobs:
             exit 1
           fi
           printf '%s' "$LIVE_TENNIS_API_KEY" | npx --yes wrangler@4.165.0 secret put LIVE_TENNIS_API_KEY --config wrangler.diagnostics-preview.toml
+
+# Keep the isolated diagnostics deployment and secret setup in sync.
