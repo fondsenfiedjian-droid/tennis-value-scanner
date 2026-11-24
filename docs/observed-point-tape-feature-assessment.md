@@ -145,3 +145,30 @@ Clean categorical counts:
 The clean representation is the better sequence for feature calculations because it collapses repeated/corrected score states and supplies `point_winner`. However, it still has deuce-cycle ordering caveats from the provider documentation, and the `points.complete` flag returned with clean mode was false for 11 of 12 matches. Keep raw provenance and raw completeness metadata alongside clean analytical rows; do not silently substitute clean-mode completeness for raw source completeness.
 
 The raw/clean paired collector and summary changes are diagnostics-only. No model feature was added to Production.
+
+
+## Diverse observed sample: 14 matches across five tour queries (2026-11-24)
+
+Diagnostics workflow https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45460442729 completed successfully with a per-tour target of four and a maximum of 24 tape checks per tour.
+
+| Tour query | History candidates | Tape checks | Accepted observed-from-start tapes |
+|---|---:|---:|---:|
+| ATP | 150 | 14 | 4 |
+| WTA | 150 | 4 | 4 |
+| Challenger | 200 | 8 | 4 |
+| ITF | 146 | 24 | 2 |
+| Juniors | 0 | 0 | 0 |
+| **Total** | **646** | **50** | **14** |
+
+The 14 accepted matches contain 1,710 RAW rows and 1,607 CLEAN rows. These are provider tape rows, not necessarily unique played points. The discovery gate required `accessStatus=available`, `point_source=observed`, `coverage=from_start`, and at least two rows in both sequences.
+
+The private discovery artifact exposed the actual history-record contract:
+- participants: `players.p1.name/id` and `players.p2.name/id`;
+- match date/time: `scheduled_time`;
+- surface, tournament, tournament_id, round, status and winner are top-level fields.
+
+The discovery script's previous flat-field-only lookup therefore produced null player names and dates in its summary. This was a reporting defect, not missing participant/date data in the source. The follow-up implementation extracts the nested provider schema and adds fixture tests.
+
+Junior limitation: each of the six selected junior-seed players was found in player search, but their `tour=juniors` history requests returned zero records. This does not establish that no junior point tapes exist. A bounded follow-up should compare provider tour classifications for a small set of known junior-age players and inspect whether junior-level events are classified under ITF or another history tour value.
+
+No model features are approved by this sample. It is a data-discovery and provenance result only. Raw artifacts remain private and are not committed to the repository.
