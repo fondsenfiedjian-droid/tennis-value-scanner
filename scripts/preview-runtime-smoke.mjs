@@ -119,6 +119,9 @@ for (const item of items) {
       sport: item?.sport || null,
       marketType: item?.marketType || null,
       competition: item?.competition || null,
+      eventType: /doubles/i.test(String(item?.competition || "")) || /\//.test(String(item?.homeTeam || "") + String(item?.awayTeam || "")) ? "doubles"
+        : /davis cup|coupe davis|billie jean king cup|united cup/i.test(String(item?.competition || "")) ? "team_tie"
+        : "singles_or_unknown",
       bookmakerCountry: item?.bookmakerCountry || null,
       startTime: item?.startTime || null,
       scrapedAt: item?.scrapedAt || null,
@@ -141,6 +144,10 @@ for (const item of items) {
   const key = String(item?.sport || "unknown") + "|" + String(item?.marketType || "unknown");
   sportMarkets[key] = (sportMarkets[key] || 0) + 1;
 }
+const eventTypeCounts = {};
+for (const event of oddsEvents.values()) {
+  eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
+}
 const report = {
   checkedAt: new Date().toISOString(),
   previewWorkerBuild: health.buildId || null,
@@ -151,6 +158,7 @@ const report = {
   oddsRecords: items.length,
   recordsByBookmaker: bookmakers,
   recordsBySportAndMarket: sportMarkets,
+  eventTypeCounts,
   completeFreshWinamaxPairs: completePairs,
   missingPairReasons: reasons,
   oddsEventSamples: [...oddsEvents.values()].slice(0, 8),
