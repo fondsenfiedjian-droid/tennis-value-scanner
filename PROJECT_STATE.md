@@ -1104,3 +1104,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Only complete, fresh, correctly matched Winamax pairs continue into prediction and EV. Diagnostics do not fabricate quotes or change the Apify task.
 - The diagnostic participant check uses the same strict one-to-one player mapping as the odds matcher. It inspects Winamax only, matching the active betting model; other bookmaker feeds cannot be mistaken for usable TVS quotes.
 - Added regression tests for no provider data, player mismatch, tournament mismatch, stale quotes, incomplete pair and valid complete pair. Preview-only; no Production deployment or merge.
+
+
+## 2026-11-24 — Normalize fallback odds event timestamps
+- Ported the validated fallback-key correction from research PR #159 into the TVS 2.0 integration branch.
+- When a provider omits event ID, odds sides are grouped by canonical UTC ISO timestamp rather than raw timestamp text. Equivalent instants with different UTC offsets now join; invalid timestamps are rejected.
+- Added tests for offset-equivalent timestamps and invalid time values.
+- This only changes event grouping; it does not widen the 36-hour match-time window, weaken player/tournament identity checks, or change freshness, EV or probabilities. Preview-only; no Production deployment or merge.
