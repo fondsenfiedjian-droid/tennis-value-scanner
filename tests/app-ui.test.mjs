@@ -63,7 +63,7 @@ const valuebetennisCompareEnd = html.indexOf("function renderCompareUnavailableE
 const valuebetennisCompareSource = html.slice(valuebetennisCompareStart, valuebetennisCompareEnd);
 function runValuebetennisComparison(snapshot, nameA, nameB, diagnostic) {
   const sandbox = {};
-  vm.runInNewContext(valuebetennisCompareSource + "\nglobalThis.resolveValuebetennisComparison = resolveValuebetennisComparison;", sandbox);
+  vm.runInNewContext(valuebetennisCompareSource + String.fromCharCode(10) + "globalThis.resolveValuebetennisComparison = resolveValuebetennisComparison;", sandbox);
   return sandbox.resolveValuebetennisComparison(snapshot, nameA, nameB, diagnostic);
 }
 
