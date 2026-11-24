@@ -11,6 +11,12 @@ on:
       - "scripts/valuebetennis-elo-research.mjs"
       - ".github/workflows/valuebetennis-elo-preview.yml"
       - "scripts/backtest.mjs"
+      - "index.html"
+      - "tests/app-ui.test.mjs"
+
+concurrency:
+  group: valuebetennis-elo-preview
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -26,6 +32,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Run frontend regression tests
+        run: node --test tests/app-ui.test.mjs
       - name: Download licensed Valuebetennis datasets
         run: |
           mkdir -p data
