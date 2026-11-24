@@ -1135,7 +1135,14 @@ export default {
         }, env);
         let body;
         try { body = await upstream.json(); }
-        catch { body = { error: "Live Tennis API returned a non-JSON response" }; }
+        catch {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(
+            { error: "Live Tennis API returned a non-JSON response", accessStatus: "invalid_upstream_response" },
+            502,
+            retryAfter ? { "Retry-After": retryAfter } : {}
+          );
+        }
         const retryAfter = upstream.headers.get("Retry-After");
         const headers = {};
         if (retryAfter) headers["Retry-After"] = retryAfter;
