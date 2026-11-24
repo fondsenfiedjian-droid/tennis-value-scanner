@@ -1,6 +1,7 @@
 name: Deploy Diagnostics Worker Preview
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/production-data-diagnostics
