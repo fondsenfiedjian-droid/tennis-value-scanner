@@ -28,7 +28,7 @@ function parseRows(source){
 }
 function parseDate(value){
  const s=String(value||"").trim();
- if(/^\d{4}-\d{2}-\d{2}/.test(s)){const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toISOString().slice(0,10):"";}
+ if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const [year,month,day]=s.split("-").map(Number);const d=new Date(Date.UTC(year,month-1,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month-1&&d.getUTCDate()===day?s:"";}
  const m=s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
  if(m){const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));return d.getFullYear()===Number(m[3])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1])?d.toISOString().slice(0,10):"";}
  return "";
