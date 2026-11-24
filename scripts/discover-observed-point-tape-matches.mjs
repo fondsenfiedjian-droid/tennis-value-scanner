@@ -64,7 +64,7 @@ async function main() {
       const matches = Array.isArray(history.data) ? history.data : [];
       const candidates = matches.map(match => ({ id: matchId(match), tour, seed: name, player_id: id, match }))
         .filter(x => x.id && !globalIds.has(x.id));
-      bySeed.push({ seed: name, playerFound: true, playerId: id, candidateMatches: candidates.length, candidates, checks: 0, accepted: 0 });
+      bySeed.push({ seed: name, playerFound: true, playerId: id, candidateMatches: candidates.length, historyFields: matches[0] ? Object.keys(matches[0]).sort() : [], historySample: matches[0] || null, candidates, checks: 0, accepted: 0 });
       await sleep(150);
     }
 
