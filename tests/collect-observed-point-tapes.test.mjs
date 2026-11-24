@@ -26,11 +26,15 @@ test("summarizes raw event fields without inventing point_winner", () => {
 
 test("accepts only available observed from_start raw tapes and preserves source rows", () => {
   const source = payload();
-  const record = buildObservedTapeRecord(215017, source, { fetchedAt: "2026-11-24T00:00:00Z" });
+  const clean = payload();
+  const record = buildObservedTapeRecord(215017, source, { cleanPayload: clean, fetchedAt: "2026-11-24T00:00:00Z" });
   assert.equal(record.match_id, "215017");
   assert.equal(record.request.sequence, "raw");
+  assert.equal(record.request.clean_sequence, "clean");
   assert.equal(record.quality.pointsComplete, true);
+  assert.equal(record.clean_quality.rows, 2);
   assert.equal(record.tape, source.tape);
+  assert.equal(record.clean_tape, clean.tape);
   assert.equal(record.fetched_at, "2026-11-24T00:00:00Z");
 });
 
@@ -50,8 +54,12 @@ test("collector is explicit-ID only, deduplicates stored IDs, and uses raw/defau
       return new Response(JSON.stringify(payload()), { status: 200, headers: { "Content-Type": "application/json" } });
     };
     const result = await collectObservedTapes({ ids: ["215017", "212252", "215017"], output, base: "https://example.test", fetchImpl, delayMs: 0 });
-    assert.equal(requests.length, 2);
-    assert.ok(requests.every(url => url.includes("points=default") && url.includes("sequence=raw")));
+    assert.equal(requests.length, 4);
+    assert.equal(requests.filter(url => url.includes("sequence=raw")).length, 2);
+    assert.equal(requests.filter(url => url.includes("sequence=clean")).length, 2);
+    assert.ok(requests.every(url => url.includes("points=default")));
+    assert.equal(result.records[0].raw_rows, 2);
+    assert.equal(result.records[0].clean_rows, 2);
     assert.equal(result.totalStored, 2);
     const lines = (await readFile(output, "utf8")).trim().split("\n");
     assert.equal(lines.length, 2);
