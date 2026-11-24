@@ -137,7 +137,7 @@ async function main() {
       a.tourney_id.localeCompare(b.tourney_id) ||
       a.match_num.localeCompare(b.match_num)
     );
-    if (!matches.length) { const genres = [...new Set(rows.map(row => String(row.genre ?? "").trim()))].sort(); throw new Error(`No valid ${tour.toUpperCase()} matches found; source genre values: ${JSON.stringify(genres.slice(0, 40))}`); }
+    if (!matches.length) { const sample = rows.find(row => String(row.genre ?? "").trim().toLowerCase() === tour); throw new Error(`No valid ${tour.toUpperCase()} matches found; sample source row: ${JSON.stringify(sample)}`); }
     report.tours[tour] = { inputMatches: matches.length, candidates: {}, snapshots: {} };
     for (const k of K_FACTORS) {
       const backtest = runBacktest(matches, {
