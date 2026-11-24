@@ -47,6 +47,7 @@ if(model.kind==="experiment"){const remove=document.createElement("button");remo
 });}
 renderModels();
 if(window.TVSModelLab?.mount)window.TVSModelLab.mount(view,readModels);
+else window.addEventListener("tvs-model-lab-ready",()=>{if(view.style.display==="block"&&window.TVSModelLab?.mount)window.TVSModelLab.mount(view,readModels);},{once:true});
 }
 labButton.onclick=showLab;labButton.hidden=false;labButton.removeAttribute("aria-hidden");
 })();
