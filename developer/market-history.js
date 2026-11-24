@@ -44,7 +44,7 @@ async function get(path){
   response=await fetch(API+path,{headers:{Accept:"application/json"},signal:controller.signal});
  }finally{clearTimeout(timeout);}
  let body={};try{body=await response.json();}catch{}
- if(!response.ok){const error=new Error(body?.error||("HTTP "+response.status));error.status=response.status;error.accessStatus=body?.accessStatus;throw error;}
+ if(!response.ok){const error=new Error(body?.error||("HTTP "+response.status));error.status=response.status;error.accessStatus=body?.accessStatus;error.retryAfter=response.headers.get("Retry-After");throw error;}
  return body;
 }
 async function load(panel,matchId,playerNames){
@@ -69,7 +69,7 @@ async function load(panel,matchId,playerNames){
    entries+
    '<div class="archive-meta">Показаны последние '+rows.length+' наблюдений. Значения mid/bid/ask — вероятностные котировки рынка от 0 до 100%, а не десятичные коэффициенты Winamax. Они не используются для расчёта прогноза или EV.</div>';
  }catch(error){
-  status(panel,error.status===403?"История рыночных котировок требует доступа PRO Live Tennis API.":error.status===404?"Для этого матча рынок не найден или котировки отсутствуют.":error.message||"Не удалось загрузить историю рыночных котировок.");
+  status(panel,error.status===403?"История рыночных котировок требует доступа PRO Live Tennis API.":error.status===404?"Для этого матча рынок не найден или котировки отсутствуют.":error.status===410?"Провайдер объединил этот идентификатор матча; история по нему недоступна.":error.status===429?"Достигнут лимит запросов Live Tennis API. Повторите попытку"+(error.retryAfter&&/^\\d+$/.test(error.retryAfter)?" через "+error.retryAfter+" сек.":"."):error.message||"Не удалось загрузить историю рыночных котировок.");
  }
 }
 function attach(card){
