@@ -76,7 +76,8 @@ test("Developer market history also reads prices nested under data", async () =>
   assert.match(panel.innerHTML, /реальный стакан/);
 });
 
-\ntest("Developer market history explains merged match identifiers", async () => {
+
+test("Developer market history explains merged match identifiers", async () => {
   const { panel } = await renderHistory({ error: "Merged match" }, { status: 410 });
   assert.match(panel.innerHTML, /объединил этот идентификатор матча/);
 });
