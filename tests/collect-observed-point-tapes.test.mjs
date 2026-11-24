@@ -53,12 +53,15 @@ test("collector is explicit-ID only, deduplicates stored IDs, and uses raw/defau
       requests.push(String(url));
       return new Response(JSON.stringify(payload()), { status: 200, headers: { "Content-Type": "application/json" } });
     };
-    const result = await collectObservedTapes({ ids: ["215017", "212252", "215017"], output, base: "https://example.test", fetchImpl, delayMs: 0 });
+    const result = await collectObservedTapes({
+      ids: ["215017", "212252", "215017"], output, base: "https://example.test", fetchImpl, delayMs: 0,
+      matchMetadataById: { "215017": { player1: "Player One", player2: "Player Two", date: "2026-11-04T10:00:00Z" } }
+    });
     assert.equal(requests.length, 4);
     assert.equal(requests.filter(url => url.includes("sequence=raw")).length, 2);
     assert.equal(requests.filter(url => url.includes("sequence=clean")).length, 2);
     assert.ok(requests.every(url => url.includes("points=default")));
-    assert.equal(result.records[0].raw_rows, 2);
+    assert.equal(result.records[0].raw_rows, 2);\n    assert.equal(result.records[0].metadata.player1, "Player One");\n    assert.equal(result.records[0].metadata.player2, "Player Two");
     assert.equal(result.records[0].clean_rows, 2);
     assert.equal(result.totalStored, 2);
     const lines = (await readFile(output, "utf8")).trim().split("\n");
