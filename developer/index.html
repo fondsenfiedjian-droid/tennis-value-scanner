@@ -1057,14 +1057,15 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <script>
 window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"general-elo-v2"};
 (function(){
- const prefix="tvs-developer:",proto=Storage.prototype;
- const originalGet=proto.getItem,originalSet=proto.setItem,originalRemove=proto.removeItem,originalClear=proto.clear,originalKey=proto.key;
+ const prefix="tvs-developer:",proto=Storage.prototype,lengthDescriptor=Object.getOwnPropertyDescriptor(proto,"length");
+ const originalGet=proto.getItem,originalSet=proto.setItem,originalRemove=proto.removeItem,originalKey=proto.key;
+ const physicalLength=storage=>lengthDescriptor.get.call(storage);
  proto.getItem=function(key){return originalGet.call(this,prefix+String(key));};
  proto.setItem=function(key,value){return originalSet.call(this,prefix+String(key),value);};
  proto.removeItem=function(key){return originalRemove.call(this,prefix+String(key));};
- proto.key=function(index){const keys=[];for(let i=0;i<this.length;i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key.slice(prefix.length));}return keys[index]??null;};
- proto.clear=function(){const keys=[];for(let i=0;i<this.length;i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key);}keys.forEach(key=>originalRemove.call(this,key));};
- try{Object.defineProperty(proto,"length",{configurable:true,get(){let count=0;for(let i=0;i<this.length;i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))count++;}return count;}});}catch(error){console.warn("Developer Storage length isolation could not be applied",error);}
+ proto.key=function(index){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key.slice(prefix.length));}return keys[index]??null;};
+ proto.clear=function(){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key);}keys.forEach(key=>originalRemove.call(this,key));};
+ try{Object.defineProperty(proto,"length",{configurable:true,get(){let count=0;for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))count++;}return count;}});}catch(error){console.warn("Developer Storage length isolation could not be applied",error);}
  try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){return originalOpen.call(this,prefix+String(name),...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
 })();
 </script>
