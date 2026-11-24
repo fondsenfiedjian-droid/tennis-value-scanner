@@ -1,0 +1,29 @@
+name: TVS 2.0 Preview runtime smoke
+
+on:
+  push:
+    branches:
+      - integration/tvs2-pro-api
+    paths:
+      - 'scripts/preview-runtime-smoke.mjs'
+      - '.github/workflows/preview-runtime-smoke.yml'
+      - 'index.html'
+      - 'developer/index.html'
+
+permissions:
+  contents: read
+
+jobs:
+  preview-runtime-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out TVS 2.0 integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/tvs2-pro-api
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Preview Worker, schedule, Winamax feed and UI matcher
+        run: node scripts/preview-runtime-smoke.mjs

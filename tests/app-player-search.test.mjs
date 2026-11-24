@@ -4,6 +4,17 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const developerHtml = readFileSync(new URL("../developer/index.html", import.meta.url), "utf8");
+
+test("Developer Edition comparison handles profiles without numeric Elo", () => {
+  assert.match(developerHtml, /function renderCompareUnavailableElo\(/);
+  assert.match(developerHtml, /response\.status===422/);
+  assert.match(developerHtml, /Место в Elo-рейтинге не является рейтингом Elo/);
+  assert.match(developerHtml, /вероятности победы и справедливые коэффициенты не рассчитывались/);
+  assert.match(developerHtml, /loadCompareSupplementary\(requestId,idA,idB,exactNameA,exactNameB\)\.catch/);
+});
+
+
 
 test("comparison view provides independent player autocomplete fields", () => {
   assert.match(html, /id="compareNameA"[^>]*aria-controls="compareSuggestionsA"/);
@@ -39,6 +50,16 @@ test("Elo comparison renders independently of supplementary history and H2H requ
   assert.match(html, /loadCompareSupplementary\(requestId,idA,idB,exactNameA,exactNameB\)\.catch/);
   assert.match(html, /button\.disabled=false;button\.textContent='СРАВНИТЬ ИГРОКОВ'/);
   assert.match(html, /if\(requestId!==compareRequestSequence\)return/);
+});
+
+test("comparison remains useful when API supplies Elo rank but no numeric Elo rating", () => {
+  assert.match(html, /function renderCompareUnavailableElo\(/);
+  assert.match(html, /response\.status===422/);
+  assert.match(html, /payload\?\.error==='Elo rating is unavailable for one or both players'/);
+  assert.match(html, /Место в Elo-рейтинге:/);
+  assert.match(html, /Место в Elo-рейтинге не является рейтингом Elo/);
+  assert.match(html, /вероятности победы и справедливые коэффициенты не рассчитывались/);
+  assert.match(html, /loadCompareSupplementary\(requestId,idA,idB,exactNameA,exactNameB\)\.catch/);
 });
 
 test("comparison rejects invalid Elo probabilities and ratings before rendering", () => {

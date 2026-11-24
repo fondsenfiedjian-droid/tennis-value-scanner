@@ -1075,3 +1075,83 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Historical backtest runner is connected in Developer Edition. It compares all saved profiles on the same sample using Brier, LogLoss, accuracy and ECE; it excludes same-day result leakage and does not calculate ROI without a documented odds/staking pipeline.
 - Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
 - Added a branch-scoped regression workflow (Node.js 22, node --test tests/*.test.mjs) so this stacked feature branch validates without changing or deploying Production. Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
+
+
+## 2026-11-24 — TVS 2.0 daily plan summary and UI regression alignment
+- Restored the approved four-part daily-plan summary inside the mandatory-bets section: mandatory recommendation count, deployed capital, configured virtual bank, and overall risk.
+- Unconfigured money fields display an em dash; the interface explicitly says the bank is not set, stake amount is not calculated, and risk is not calculated. No default bankroll or stake is created.
+- Updated UI regression expectations to reflect the approved hierarchy (daily pick, mandatory-bets section with its nested summary, then additional opportunities) and the five-item bottom navigation where Settings lives in the bottom bar rather than a header shortcut.
+- Preview-only change on the TVS 2.0 integration branch. No Production deploy or merge.
+
+
+## 2026-11-24 — Restore the approved five-item bottom navigation
+- Removed the separate Tests tab from the bottom navigation to match the approved five destinations: Home, Matches, Compare, Statistics and Settings.
+- Kept forecast-test results accessible from Statistics via a dedicated “Проверка прогнозов” link.
+- Changed the bottom navigation grid from six to five columns. The forecast-test screen and its calculations remain available; only its navigation placement changed.
+- Preview-only on the TVS 2.0 integration branch. No Production deployment or merge.
+
+
+## 2026-11-24 — Reject ambiguous Winamax player mapping in TVS 2.0
+- Ported the validated safety rule from research PR #165 into the TVS 2.0 integration branch: a scheduled player must match exactly one event participant, and the two scheduled players must map to opposite event sides.
+- The player-side mapper now returns null if an initial-only name matches both participants (for example, “J. Sinner” against two players with the same surname and initial). No arbitrary home/away selection is allowed.
+- Added tests for both outcome directions, reversed player order, unrelated players and ambiguous initials.
+- Preview-only change; Winamax ingestion, Apify task, model probabilities and EV formula are unchanged. No Production deployment or merge.
+
+
+## 2026-11-24 — Explain missing Winamax quotes in TVS 2.0
+- Ported the read-only missing-odds diagnostic classifier from research PR #162 into the TVS 2.0 integration branch.
+- Scheduled matches remain visible even without a complete fresh quote pair; their cards now report the first detected cause (provider/market, participant or event identity, tournament, time window, freshness, invalid odds, incomplete or unsynchronised pair).
+- Only complete, fresh, correctly matched Winamax pairs continue into prediction and EV. Diagnostics do not fabricate quotes or change the Apify task.
+- The diagnostic participant check uses the same strict one-to-one player mapping as the odds matcher. It inspects Winamax only, matching the active betting model; other bookmaker feeds cannot be mistaken for usable TVS quotes.
+- Added regression tests for no provider data, player mismatch, tournament mismatch, stale quotes, incomplete pair and valid complete pair. Preview-only; no Production deployment or merge.
+
+
+## 2026-11-24 — Normalize fallback odds event timestamps
+- Ported the validated fallback-key correction from research PR #159 into the TVS 2.0 integration branch.
+- When a provider omits event ID, odds sides are grouped by canonical UTC ISO timestamp rather than raw timestamp text. Equivalent instants with different UTC offsets now join; invalid timestamps are rejected.
+- Added tests for offset-equivalent timestamps and invalid time values.
+- This only changes event grouping; it does not widen the 36-hour match-time window, weaken player/tournament identity checks, or change freshness, EV or probabilities. Preview-only; no Production deployment or merge.
+
+
+## 2026-11-24 — Execution roadmap
+- Added docs/TVS2_ROADMAP.md as the consolidated ordered plan for diagnostics, TVS 2.0 shell, Winamax validation, Developer Edition, historical data, model research, outcome feedback and release gates.
+- The immediate next priority is to verify current Winamax quote matching on the Developer Preview and report actual missing-pair causes. Point-state semantics remain research-only.
+
+
+## 2026-11-24 — Read-only Preview runtime verification
+- Added a Preview-only GitHub Actions smoke workflow that checks the isolated TVS 2.0 Worker, current upcoming schedule and Winamax Apify feed.
+- It executes the same frontend odds-matching/diagnostic functions against the live Preview responses and reports only aggregate counts and missing-pair reason totals; no player-level rows, odds payloads, credentials or personal data are printed.
+- This is read-only and calls only the isolated integration Preview Worker. It does not call or modify Production and does not alter the Apify task.
+
+
+## 2026-11-24 — Preview smoke target corrected
+- Initial smoke request used the Cloudflare branch-preview URL, which does not carry the dedicated Preview Worker secrets and correctly reported LIVE_TENNIS_API_KEY as unconfigured.
+- Corrected the smoke workflow target to the separately isolated tennis-value-api-preview Worker described in wrangler.preview.toml and the manual deploy workflow. No secrets are printed or changed.
+
+
+## 2026-11-24 — Winamax feed scope mismatch identified
+- Read-only Preview runtime audit confirms the Apify task is reachable and returns 8 fresh-enough Winamax records, all sport=tennis and market=match_winner, but none is a singles match compatible with the scanner's upcoming singles schedule.
+- The 8 records form four pairs: three Davis Cup team ties (Coupe Davis Finals) and one doubles event (Coupe Davis Finals, Doubles). The current 180-match singles schedule therefore has zero complete fresh Winamax pairs.
+- Added a specific unsupported_draw diagnostic so the UI can explain when the feed contains only team ties/doubles instead of individual singles. This does not alter the Apify task or allow doubles/team odds into player predictions.
+- The same audit also found four schedule records whose status says upcoming but whose scheduled time is already past; the prediction matcher correctly refuses to treat them as pre-match.
+- Next check: wait for the next scheduled Apify run and repeat the read-only audit. Do not change the scraper configuration without explicit approval.
+
+
+## 2026-11-24 — First live Winamax coverage audit completed
+- Preview runtime smoke succeeded against the dedicated tennis-value-api-preview Worker.
+- Current upcoming singles schedule: 180 matches (one page, no truncation). Winamax feed: 8 records, all sport=tennis and market=match_winner.
+- The 8 records form four event pairs: three Davis Cup team ties and one doubles match. There are zero individual singles pairs; the scanner correctly rejects them for singles predictions. UI diagnostic now labels this unsupported_draw rather than a generic player mismatch.
+- Four schedule records have status=upcoming but scheduled times already in the past; pre-match prediction logic correctly blocks them.
+- The last successful Apify task run in the preview feed finished at 18:13 UTC and was scheduler-originated. No new run was visible by 19:13 UTC.
+- The read-only audit did not alter the task, Worker secrets or Production. Next check after a newer scheduled task run; do not change the scraper without approval.
+- Current TVS 2.0 regression suite: 565 passed, 0 failed.
+
+
+## 2026-11-24 — Player comparison runtime failure isolated and fallback added
+- Added live Preview runtime checks for the player-comparison chain: player search, profile lookup through /predict, numeric Elo validation, player histories and H2H.
+- The live search resolves Carlos Alcaraz and Jannik Sinner correctly. Their Live Tennis profiles identify archive IDs 207989 and 206173 and expose official ranking/points.
+- The provider exposes `stats.ratings.elo.elo_rank` (2 and 1 in this sample), which is a position in the Elo ranking, not a numeric Elo rating. The /predict endpoint correctly returns HTTP 422 rather than treating ordinal ranks as Elo points or generating unsupported win probabilities.
+- The two /player-history requests and /player-h2h request succeeded in the Preview smoke: 5 history rows for each player and 18 H2H meetings. This confirms the comparison's supplementary data path is available.
+- Updated the comparison UI to remain useful when numeric Elo is absent: show official ranking/points and the separate Elo leaderboard position, explicitly suppress win probabilities/fair odds, and still load recent history and H2H. No fabricated numeric Elo or probability is introduced.
+- Extended Preview smoke to verify the live comparison path and report whether it is in numeric-Elo or profile-fallback mode. Runtime smoke passed in profile-fallback mode; regression suite passed after the fallback assertion was corrected.
+- This is Preview-only. A proper numeric Elo comparison still requires a valid numeric rating source, such as a separately validated chronological rating calculation. The Elo rank field must never be used as a substitute. No Production deploy, merge, or Apify task change.
