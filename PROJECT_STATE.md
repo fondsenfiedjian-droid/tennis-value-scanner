@@ -1111,3 +1111,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - When a provider omits event ID, odds sides are grouped by canonical UTC ISO timestamp rather than raw timestamp text. Equivalent instants with different UTC offsets now join; invalid timestamps are rejected.
 - Added tests for offset-equivalent timestamps and invalid time values.
 - This only changes event grouping; it does not widen the 36-hour match-time window, weaken player/tournament identity checks, or change freshness, EV or probabilities. Preview-only; no Production deployment or merge.
+
+
+## 2026-11-24 — Execution roadmap
+- Added docs/TVS2_ROADMAP.md as the consolidated ordered plan for diagnostics, TVS 2.0 shell, Winamax validation, Developer Edition, historical data, model research, outcome feedback and release gates.
+- The immediate next priority is to verify current Winamax quote matching on the Developer Preview and report actual missing-pair causes. Point-state semantics remain research-only.
