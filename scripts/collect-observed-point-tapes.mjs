@@ -98,7 +98,7 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--ids") args.ids = argv[++i];
-    else if (argv[i] === "--out") args.out = argv[++i];
+    else if (argv[i] === "--out") args.out = argv[++i];\n    else if (argv[i] === "--metadata") args.metadata = argv[++i];
     else if (argv[i] === "--base") args.base = argv[++i];
     else if (argv[i] === "--help") args.help = true;
     else throw new Error("Unknown argument: " + argv[i]);
@@ -106,7 +106,7 @@ function parseArgs(argv) {
   return args;
 }
 
-export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, fetchImpl = fetch, delayMs = 350 }) {
+export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, fetchImpl = fetch, delayMs = 350, matchMetadataById = {} }) {
   if (!Array.isArray(ids) || ids.length < 1 || ids.length > 20) {
     throw new Error("Provide between 1 and 20 explicit match IDs");
   }
@@ -135,7 +135,7 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
     };
     const rawPayload = await requestTape("raw");
     const cleanPayload = await requestTape("clean");
-    const record = buildObservedTapeRecord(id, rawPayload, { cleanPayload });
+    const record = buildObservedTapeRecord(id, rawPayload, { cleanPayload, matchMetadata: matchMetadataById[id] || null });
     records.set(id, record);
     results.push({
       match_id: id,
