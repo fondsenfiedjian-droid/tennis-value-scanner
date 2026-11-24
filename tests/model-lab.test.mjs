@@ -85,7 +85,7 @@ test("CSV merge keeps identical duplicates once and excludes conflicting match I
   ].join("\n"));
   const second=parseMatchCsv([
     "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
-    "same;2025-03-01;dur;A;B;A",
+    "same;2025-03-01;dur;B;A;A",
     "conflict;2025-03-02;dur;A;C;C",
     "new;2025-03-03;gazon;B;C;B"
   ].join("\n"));
@@ -93,4 +93,16 @@ test("CSV merge keeps identical duplicates once and excludes conflicting match I
   assert.deepEqual(merged.matches.map(match=>match.id),["same","new"]);
   assert.equal(merged.conflicts,1);
   assert.equal(merged.rejected,3);
+});
+
+test("parser excludes conflicting duplicate IDs within one CSV",()=>{
+  const parsed=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "collision;2025-04-01;dur;A;B;A",
+    "collision;2025-04-01;dur;A;B;B",
+    "valid;2025-04-02;dur;A;C;C"
+  ].join("\n"));
+  assert.deepEqual(parsed.matches.map(match=>match.id),["valid"]);
+  assert.equal(parsed.conflicts,1);
+  assert.equal(parsed.rejected,2);
 });
