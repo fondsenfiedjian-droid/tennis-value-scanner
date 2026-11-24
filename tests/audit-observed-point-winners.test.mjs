@@ -50,3 +50,16 @@ test("ambiguous transitions and sequence gaps are not falsely scored", () => {
   assert.equal(result.comparableTransitions, 0);
   assert.equal(result.disagreements, 0);
 });
+
+test("set-score increments classify completed-set transitions", () => {
+  const tape = [
+    { sequence: 10, sets: [0,0], games: [[6],[6]], points: ["6","5"], winner: null },
+    { sequence: 11, sets: [1,0], games: [[7,0],[6,0]], points: ["0","0"], winner: 1 },
+    { sequence: 12, sets: [1,1], games: [[7,5],[6,6]], points: ["0","0"], winner: 2 },
+    { sequence: 13, sets: [2,1], games: [[7,5,7],[6,6,6]], points: ["0","0"], winner: 1 }
+  ];
+  const result = auditObservedWinnerTransitions(tape);
+  assert.equal(result.comparableTransitions, 3);
+  assert.equal(result.agreements, 3);
+  assert.equal(result.disagreements, 0);
+});
