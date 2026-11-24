@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "title": "Журнал исследований и тестов модели",
-  "updatedAt": "2026-11-23",
+  "updatedAt": "2026-11-24",
   "source": "Live Tennis API PRO historical archive",
   "sourceCoverage": {
     "periodFrom": 1968,
@@ -328,6 +328,28 @@
       "logLossCandidate": null,
       "roi": null,
       "notes": "План. Наличие stats JSON в архиве ещё не означает достаточное покрытие и отсутствие утечки будущих данных."
+    },
+    {
+      "id": "LIVE-PAIRED-2026-11-24",
+      "date": "2026-11-24",
+      "status": "planned",
+      "tour": "ATP + WTA",
+      "category": "Prospective paired operational test",
+      "hypothesis": "При одинаковых матчах, рейтингах, времени фиксации и котировках Preview обеспечивает не худшее качество вероятностей, более полную диагностику данных и более обоснованный допуск ставок, чем Production.",
+      "baseline": "Production 2.0.0: current Elo probability pipeline + bookmaker odds/EV",
+      "candidate": "Preview integration/tvs2-pro-api: Elo probability pipeline + market-consistency gate + PRO research/history diagnostics",
+      "kFactor": 32,
+      "trainingWindow": "Текущий профиль Elo; без переобучения и изменения параметров во время теста",
+      "evaluationPeriod": "С 2026-11-24 до накопления 200 парных завершённых матчей; контрольная точка после первых 100",
+      "sourcePeriod": "Live Tennis API + одинаковые Winamax quote snapshots",
+      "selection": "Все последовательно появляющиеся ATP/WTA singles, для которых обе версии выдали прогноз до начала матча; совпадают player IDs, поверхность и исходная пара коэффициентов; фиксировать timestamp, источник и возраст рейтингов/котировок. Не исключать матчи задним числом по результату. Отдельно учитывать пропуски, ошибки, stale quotes и конфликты Elo/рынка.",
+      "sampleMatches": 0,
+      "brierBaseline": null,
+      "brierCandidate": null,
+      "logLossBaseline": null,
+      "logLossCandidate": null,
+      "roi": null,
+      "notes": "Плановый парный shadow-тест. Цель: 200 совпадающих матчей (ориентир 100 ATP + 100 WTA); промежуточный отчёт на 100. Сравнивать Brier и LogLoss на одних и тех же матчах, calibration по диапазонам вероятностей, покрытие/свежесть данных, частоту расхождений и допусков ставок. ROI и CLV считать только отдельно, при наличии заранее зафиксированных правил виртуальной ставки и доступных timestamped odds. Не считать техническую готовность доказательством преимущества модели. Не менять Production и не переносить экспериментальные веса в рабочую модель."
     }
   ]
 }
