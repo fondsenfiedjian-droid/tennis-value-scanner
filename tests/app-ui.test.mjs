@@ -1096,4 +1096,14 @@ test("odds diagnostics identify a feed containing only Davis Cup team ties or do
   });
   const doublesAway = { ...doublesHome, outcome: "away", oddsDecimal: 1.8 };
   assert.equal(getOddsMatching([doublesHome, doublesAway]).oddsMatchDiagnostic(match).code, "unsupported_draw");
+
+  const singlesHome = makeWinamaxQuote({
+    eventName: "Carlos Alcaraz - Novak Djokovic", homeTeam: "Carlos Alcaraz", awayTeam: "Novak Djokovic",
+    competition: "Coupe Davis Finals", outcome: "home"
+  });
+  const singlesAway = { ...singlesHome, outcome: "away", oddsDecimal: 1.8 };
+  const davisSinglesMatch = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: singlesHome.startTime, tournament_name: "Coupe Davis Finals" };
+  const singlesAudit = getOddsMatching([singlesHome, singlesAway]);
+  assert.equal(singlesAudit.oddsMatchDiagnostic(davisSinglesMatch).code, "available");
+  assert.equal(singlesAudit.oddsForMatch(davisSinglesMatch).length, 2);
 });
