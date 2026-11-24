@@ -5,6 +5,16 @@ import vm from "node:vm";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
+test("Developer Edition comparison handles profiles without numeric Elo", () => {
+  assert.match(developerHtml, /function renderCompareUnavailableElo\\(/);
+  assert.match(developerHtml, /response\\.status===422/);
+  assert.match(developerHtml, /Место в Elo-рейтинге не является рейтингом Elo/);
+  assert.match(developerHtml, /вероятности победы и справедливые коэффициенты не рассчитывались/);
+  assert.match(developerHtml, /loadCompareSupplementary\\(requestId,idA,idB,exactNameA,exactNameB\\)\\.catch/);
+});
+
+const developerHtml = readFileSync(new URL("../developer/index.html", import.meta.url), "utf8");
+
 test("comparison view provides independent player autocomplete fields", () => {
   assert.match(html, /id="compareNameA"[^>]*aria-controls="compareSuggestionsA"/);
   assert.match(html, /id="compareNameB"[^>]*aria-controls="compareSuggestionsB"/);
