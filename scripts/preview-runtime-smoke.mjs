@@ -100,7 +100,8 @@ const optionalComparisonChecks = await Promise.all([
 const comparisonReport = {
   checkedAt: comparisonStartedAt,
   search: "passed",
-  profileAndElo: "passed",
+  profileLookup: "passed",
+  numericElo: comparisonMode === "numeric_elo" ? "passed" : "unavailable",
   playerA: comparisonPlayerA.name,
   playerB: comparisonPlayerB.name,
   mode: comparisonMode,
