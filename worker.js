@@ -1229,6 +1229,65 @@ export default {
       }
     }
 
+    if (path === "/match-tape") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const rawMatchId = url.searchParams.get("id") || "";
+      if (!/^\\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+        return response({ error: "id must be a positive integer match identifier" }, 400);
+      }
+      const matchId = String(Number(rawMatchId));
+      const points = (url.searchParams.get("points") || "default").trim().toLowerCase();
+      const sequence = (url.searchParams.get("sequence") || "raw").trim().toLowerCase();
+      if (!["default", "complete"].includes(points)) return response({ error: "points must be default or complete" }, 400);
+      if (!["raw", "clean"].includes(sequence)) return response({ error: "sequence must be raw or clean" }, 400);
+      if (points === "complete" && sequence === "clean") return response({ error: "points=complete cannot be combined with sequence=clean" }, 400);
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__match-tape/v1/" + matchId + "/" + points + "/" + sequence);
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const params = new URLSearchParams({ points, sequence });
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1/history/matches/" + matchId + "?" + params.toString(),
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis match tape returned invalid JSON", accessStatus: "invalid_payload" }, 502);
+        }
+        if (!upstream.ok) {
+          const accessStatus = upstream.status === 403 ? "history_tape_not_entitled"
+            : upstream.status === 401 ? "unauthorized"
+            : upstream.status === 404 ? "tape_not_found"
+            : upstream.status === 410 ? "match_id_merged"
+            : upstream.status === 429 ? "rate_limited"
+            : "upstream_error";
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response({ error: "Live Tennis per-match tape request failed", matchId, accessStatus, upstreamStatus: upstream.status, detail: body },
+            upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.tape)) {
+          return response({ error: "Live Tennis match tape returned an unexpected payload", matchId, accessStatus: "invalid_payload" }, 502);
+        }
+        const payload = { ...body, matchId, accessStatus: "available", source: "Live Tennis API /history/matches/{matchId}" };
+        const headers = { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers }
+        }));
+        return response(payload, 200, headers);
+      } catch {
+        return response({ error: "Could not retrieve per-match point-by-point tape", matchId, accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/player-h2h") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) {
