@@ -1122,3 +1122,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Added a Preview-only GitHub Actions smoke workflow that checks the isolated TVS 2.0 Worker, current upcoming schedule and Winamax Apify feed.
 - It executes the same frontend odds-matching/diagnostic functions against the live Preview responses and reports only aggregate counts and missing-pair reason totals; no player-level rows, odds payloads, credentials or personal data are printed.
 - This is read-only and calls only the isolated integration Preview Worker. It does not call or modify Production and does not alter the Apify task.
+
+
+## 2026-11-24 — Preview smoke target corrected
+- Initial smoke request used the Cloudflare branch-preview URL, which does not carry the dedicated Preview Worker secrets and correctly reported LIVE_TENNIS_API_KEY as unconfigured.
+- Corrected the smoke workflow target to the separately isolated tennis-value-api-preview Worker described in wrangler.preview.toml and the manual deploy workflow. No secrets are printed or changed.
