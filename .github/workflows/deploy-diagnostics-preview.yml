@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/production-data-diagnostics
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
