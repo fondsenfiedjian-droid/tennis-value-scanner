@@ -1112,3 +1112,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - RAW winner is present in 1,915/1,957 rows (97.9%). CLEAN point_winner is present in 1,795/1,840 rows (97.6%). These are different field names/representations; do not count RAW point_winner as expected coverage.
 - Provider completeness flag: RAW true for 10/16 matches; CLEAN true for 3/16. The flag is not equivalent to full serve/outcome annotation. The sample is deliberately selected for observed-from-start coverage and is not a representative tour-wide sample.
 - Current interpretation: score progression, timestamps and winner labels are promising for point-state/probability research; serve/outcome detail is incomplete and must not be treated as exhaustive point-event ground truth. No production model features have been enabled.
+
+
+## 2026-11-24 — Observed point-winner transition audit (four raw tapes)
+- Diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45469467928 completed successfully: isolated diagnostics Worker deployment, Live Tennis API authentication, history/tape checks, four-tape collection, and artifact upload all passed.
+- Independently replayed the repository's transition-audit rules against the private four-tape artifact (match IDs 179907, 201427, 212252, 215017): 849 RAW rows; 825 score transitions were classifiable and had a winner label; all 825/825 agreed with the score-state transition (100% internal agreement); zero disagreements. There were 17 unclassified transitions, 2 classifiable transitions without a winner label, and 1 sequence gap.
+- Provider RAW points_complete flag was true for 3/4 tapes. The fourth tape (179907) still had timestamps and 314/315 server labels, but had 4 short-game indicators and several transition anomalies. Do not promote it to a complete-quality training example solely because coverage is from_start.
+- This is an internal consistency check between provider score states and provider winner labels, not independent ground-truth validation. It does not establish predictive accuracy or prove the source winner labels independently correct.
+- The audit supports using carefully filtered observed score transitions as a research dataset, with per-match quality flags and exclusions preserved. No Production data path or model feature was changed.
