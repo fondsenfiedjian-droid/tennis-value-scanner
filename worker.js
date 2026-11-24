@@ -68,6 +68,27 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
 
     const homeTeam = String(row.homeName || "").trim();
     const awayTeam = String(row.awayName || "").trim();
+    // Flashscore explicitly joins tennis doubles participants with "/".
+    if (homeTeam.includes("/") || awayTeam.includes("/")) { reject("doubles"); continue; }
+    const competition = String(row.tournament || "").trim();
+    const teamTieCompetitions = /^(?:Davis Cup|Billie Jean King Cup|United Cup|Laver Cup)$/i;
+    const countryTeamNames = new Set([
+      "argentina", "australia", "austria", "belgium", "brazil", "bulgaria", "canada",
+      "chile", "china", "chinese taipei", "colombia", "croatia", "czech republic",
+      "denmark", "ecuador", "egypt", "estonia", "finland", "france", "georgia",
+      "germany", "great britain", "greece", "hungary", "india", "indonesia", "ireland",
+      "israel", "italy", "japan", "kazakhstan", "latvia", "lithuania", "luxembourg",
+      "mexico", "monaco", "morocco", "netherlands", "new zealand", "norway", "peru",
+      "poland", "portugal", "romania", "serbia", "singapore", "slovakia", "slovenia",
+      "south africa", "south korea", "spain", "sweden", "switzerland", "thailand",
+      "tunisia", "turkey", "ukraine", "united states", "uruguay", "uzbekistan"
+    ]);
+    if (teamTieCompetitions.test(competition) &&
+        countryTeamNames.has(homeTeam.toLowerCase()) &&
+        countryTeamNames.has(awayTeam.toLowerCase())) {
+      reject("team_tie");
+      continue;
+    }
     const startTime = String(row.startTime || "").trim();
     const scrapedAt = String(row.scrapedAt || "").trim();
     const startMs = Date.parse(startTime);
@@ -84,7 +105,6 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
     const awayOdds = Number(row.awayOdds);
     if (!Number.isFinite(homeOdds) || homeOdds <= 1 || !Number.isFinite(awayOdds) || awayOdds <= 1) { reject("invalid_odds"); continue; }
     const eventId = String(row.eventId || "").trim();
-    const competition = String(row.tournament || "").trim();
     const eventName = homeTeam + " - " + awayTeam;
     const common = {
       bookmaker: "Winamax",
