@@ -30,8 +30,25 @@ function parseDate(value){
  const s=String(value||"").trim();
  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const [year,month,day]=s.split("-").map(Number);const d=new Date(Date.UTC(year,month-1,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month-1&&d.getUTCDate()===day?s:"";}
  const m=s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
- if(m){const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));return d.getFullYear()===Number(m[3])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1])?d.toISOString().slice(0,10):"";}
+ if(m){const year=Number(m[3]),month=Number(m[2]),day=Number(m[1]),d=new Date(Date.UTC(year,month-1,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month-1&&d.getUTCDate()===day?d.toISOString().slice(0,10):"";}
  return "";
+}
+export function mergeMatchDatasets(parts){
+ const unique=new Map(),conflicts=new Set();let totalRows=0,rejected=0;
+ for(const part of parts){
+  totalRows+=part.totalRows;rejected+=part.rejected;
+  for(const match of part.matches){
+   if(conflicts.has(match.id)){rejected++;continue;}
+   const existing=unique.get(match.id);
+   if(!existing){unique.set(match.id,match);continue;}
+   const same=existing.date===match.date&&existing.surface===match.surface&&existing.p1===match.p1&&existing.p2===match.p2&&existing.winner===match.winner;
+   if(same){rejected++;continue;}
+   unique.delete(match.id);conflicts.add(match.id);rejected+=2;
+  }
+ }
+ const matches=[...unique.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+ if(!matches.length)throw new Error("После объединения CSV не осталось однозначных матчей: проверьте совпадающие ID и содержимое файлов.");
+ return {matches,totalRows,rejected,firstDate:matches[0].date,lastDate:matches[matches.length-1].date,conflicts:conflicts.size};
 }
 export function parseMatchCsv(source){
  const rows=parseRows(String(source||"").replace(/^\uFEFF/,""));
