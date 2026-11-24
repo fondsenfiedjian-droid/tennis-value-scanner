@@ -7,7 +7,7 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "tvs2-pro-data-2026-11-24-1";
+const WORKER_BUILD_ID = "tvs2-pro-data-2026-11-24-2";
 
 
 const FLASHSCORE_ACTOR_PATH = "incognito_mode~flashscore-odds-scraper";
