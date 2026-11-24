@@ -1,0 +1,48 @@
+name: Deploy Flashscore Winamax isolated Preview Worker
+
+on:
+  push:
+    branches:
+      - feature/flashscore-winamax-integration-preview
+    paths:
+      - "worker.js"
+      - "wrangler.preview.toml"
+      - ".github/workflows/deploy-flashscore-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/feature/flashscore-winamax-integration-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Flashscore Preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/flashscore-winamax-integration-preview
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy isolated Cloudflare Preview Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LIVE_TENNIS_API_KEY_PREVIEW: ${{ secrets.LIVE_TENNIS_API_KEY_PREVIEW }}
+          TVS_RESEARCH_ACCESS_TOKEN_PREVIEW: ${{ secrets.TVS_RESEARCH_ACCESS_TOKEN_PREVIEW }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare Preview credentials are required"
+            exit 1
+          fi
+          if [ -z "$LIVE_TENNIS_API_KEY_PREVIEW" ]; then
+            echo "::error::LIVE_TENNIS_API_KEY_PREVIEW is required"
+            exit 1
+          fi
+          npx --yes wrangler@4.165.0 deploy --config wrangler.preview.toml
+          printf '%s' "$LIVE_TENNIS_API_KEY_PREVIEW" | npx --yes wrangler@4.165.0 secret put LIVE_TENNIS_API_KEY --config wrangler.preview.toml
+          if [ -n "$TVS_RESEARCH_ACCESS_TOKEN_PREVIEW" ]; then
+            printf '%s' "$TVS_RESEARCH_ACCESS_TOKEN_PREVIEW" | npx --yes wrangler@4.165.0 secret put TVS_RESEARCH_ACCESS_TOKEN --config wrangler.preview.toml
+          fi
