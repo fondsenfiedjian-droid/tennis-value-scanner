@@ -69,6 +69,7 @@ jobs:
 
           curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
           node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); for(const k of ["as_of","built_at","method","totals","buckets","inventory","ledger_max_computed_at"]) if(d[k]!==undefined) console.log("Coverage "+k+":",JSON.stringify(d[k]).slice(0,3500));'
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8"));const groups=d.inventory?.groups||[];const out={};for(const g of groups){const key=[g.year,g.tour,g.draw].join("/");const x=out[key]??={matches:0,rows:0,from_start:0,reconstructed:0,reconstructed_partial:0,partial:0,none:0,points_complete_matches:0};x.matches+=g.matches||0;x.rows+=g.rows||0;for(const k of ["from_start","reconstructed","reconstructed_partial","partial","none"])x[k]+=g.coverage?.[k]||0;if(g.points_complete)x.points_complete_matches+=g.points_complete;}console.log("Coverage inventory by year/tour/draw:",JSON.stringify(out));'
 
           curl --fail --silent --show-error "$base/players/search?search=Novak%20Djokovic" -o /tmp/player-search.json
           node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); if(!Array.isArray(d.players)||!d.players.length||!d.players[0].id) throw new Error("Player search returned no usable player ID"); require("fs").writeFileSync("/tmp/player-id",String(d.players[0].id)); console.log("Player search: ",d.count,"players; first result has a valid ID");'
