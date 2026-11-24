@@ -1084,6 +1084,14 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     .ev-bet-details .ev-bet-positive{color:#e6bd58}
     .ev-bet-details .ev-bet-stake{color:#d8a184}
     .mandatory-bets .ev-bet-list{gap:5px}
+    .ev-bet-card.caramel{border-color:#9b6936;border-left-color:#d49a50;background:linear-gradient(100deg,#302116 0%,#21180f 68%,#17120d 100%);box-shadow:inset 0 1px #f4c98518,0 4px 13px #0004}
+    .ev-bet-card.caramel:has(.ev-bet-row.selected){border-left-color:#e4ad62}
+    .ev-bet-card.caramel .ev-bet-row.selected .ev-bet-player{color:#f5dfbd}
+    .ev-bet-card.caramel .ev-bet-row.selected .ev-bet-odds{color:#ffc875;text-shadow:0 0 10px #d58b3b45}
+    .ev-bet-card.caramel .ev-bet-foot{color:#dca45d}
+    .ev-bet-card.caramel .ev-bet-details{border-top-color:#654729;background:#21180f;color:#e1c9a7}
+    .ev-bet-card.caramel .ev-bet-details b{color:#fff0d7}
+    .ev-bet-card.caramel .ev-bet-details .ev-bet-positive{color:#ffd080}
     .ev-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:66px;padding:10px 11px;border:1px dashed #653344;border-radius:10px;background:linear-gradient(105deg,#1b1118,#111116 72%);color:#d8c8cc}
     .ev-empty-mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid #9c304c;border-radius:9px;background:#28111b;color:#ef7185;font-size:12px;font-weight:950;letter-spacing:-.04em;text-shadow:0 0 10px #c43b5b88;box-shadow:inset 0 0 12px #a72d4a22,0 0 10px #a72d4a22}
     .ev-empty-state b{display:block;margin-bottom:4px;color:#f0dce0;font-size:11px}
@@ -3536,6 +3544,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
          const eventName=bet.match?.tournament?.name||bet.match?.tournament||bet.match?.competition||bet.match?.tournament_name||'Турнир не указан';
          return '<article class="ev-bet-card" data-ev-bet="'+index+'"><button type="button" class="ev-bet-toggle" aria-expanded="false"><span class="ev-bet-row"><span class="ev-bet-player" title="'+escapeHtml(opponentName)+'">'+escapeHtml(surname(opponentName))+'</span><span class="ev-bet-odds">'+opponentOdds+'</span>'+movementHtml(opponentTrend)+'</span><span class="ev-bet-row selected"><span class="ev-bet-player" title="'+escapeHtml(bet.player)+'">'+escapeHtml(surname(bet.player))+'</span><span class="ev-bet-odds">'+bet.odds.toFixed(2)+'</span>'+movementHtml(selectedTrend)+'</span><span class="ev-bet-foot"><svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m2 4.5 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><div class="ev-bet-details"><div><b>'+escapeHtml(eventName)+'</b> · '+escapeHtml(bet.bookmaker||'Winamax')+(date?' · '+escapeHtml(date.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'')+'</div><div class="ev-bet-details-grid"><span>EV+: <b class="ev-bet-positive">+'+bet.ev.toFixed(2)+'%</b></span><span>Вероятность: <b>'+bet.probability.toFixed(1)+'%</b></span><span>Справедливый коэффициент: <b>'+(100/Math.max(0.01,Number(bet.probability||0))).toFixed(2)+'</b></span><span>Надёжность: <b>'+bet.reliabilityScore+'/100</b></span><span>Рекомендуемый исход: <b>'+escapeHtml(bet.player)</b></span><span>Размер ставки: <b class="ev-bet-stake">не рассчитан</b></span></div><div>Первый зафиксированный коэффициент: <b>'+ (selectedTrend.first?Number(selectedTrend.first).toFixed(2):'история накапливается')+'</b> · Текущий: <b>'+bet.odds.toFixed(2)+'</b></div><div>Движение рассчитывается по сохранённым снимкам Winamax. При первом запуске история появится после нескольких обновлений.</div></div></article>';
        }).join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+       if(mandatoryList&&bestBets.length>3){const fourth=mandatoryList.querySelector('.ev-bet-card[data-ev-bet="3"]');fourth?.classList.add('caramel');}
        mandatoryList?.querySelectorAll('.ev-bet-toggle').forEach(toggle=>{
          toggle.onclick=()=>{const card=toggle.closest('.ev-bet-card');const expanded=card.classList.toggle('expanded');toggle.setAttribute('aria-expanded',String(expanded));};
        });
