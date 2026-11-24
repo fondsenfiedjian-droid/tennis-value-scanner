@@ -1084,6 +1084,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     .ev-bet-details .ev-bet-positive{color:#e6bd58}
     .ev-bet-details .ev-bet-stake{color:#d8a184}
     .mandatory-bets .ev-bet-list{gap:5px}
+    .ev-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:66px;padding:10px 11px;border:1px dashed #653344;border-radius:10px;background:linear-gradient(105deg,#1b1118,#111116 72%);color:#d8c8cc}
+    .ev-empty-mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid #9c304c;border-radius:9px;background:#28111b;color:#ef7185;font-size:12px;font-weight:950;letter-spacing:-.04em;text-shadow:0 0 10px #c43b5b88;box-shadow:inset 0 0 12px #a72d4a22,0 0 10px #a72d4a22}
+    .ev-empty-state b{display:block;margin-bottom:4px;color:#f0dce0;font-size:11px}
+    .ev-empty-state small{display:block;color:#a99ba1;font-size:9px;line-height:1.45}
+    .ev-empty-count{color:#e15b72;font-size:24px;font-weight:950;font-variant-numeric:tabular-nums}
+    body[data-edition="developer"] .edition-version{border-color:#347c98;color:#8cecff;background:#102333}
     @media(max-width:390px){.ev-bet-row{grid-template-columns:minmax(76px,1.1fr) minmax(54px,.7fr) minmax(62px,.8fr);gap:3px}.ev-bet-player{font-size:10px}.ev-bet-row.selected .ev-bet-player{font-size:11px}.ev-bet-row.selected .ev-bet-odds{font-size:19px}.ev-bet-trend{font-size:9px}}
 
   </style>
@@ -1543,7 +1549,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     scheduleAutoRefresh();
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const isPreviewBuild=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app';
+  const editionBadge=$('#editionVersion');
+  if(editionBadge){editionBadge.textContent=(isPreviewBuild?'PREVIEW':'PRODUCTION')+' · v2.0.0';if(isPreviewBuild)document.body.dataset.edition='developer';}
+  const API=isPreviewBuild?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     let timer;
@@ -3508,7 +3517,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       box.classList.add('empty-daily-pick');
       box.style.display='';
       box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div></div><div class="best-bet-empty">Сегодня нет ставок, прошедших строгий отбор. Матчи без рекомендации здесь не показываются.</div>';
-      const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+      const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="ev-empty-state"><span class="ev-empty-mark">EV+</span><div><b>Пока нет обязательных ставок</b><small>Список появится после загрузки свежих коэффициентов и проверки матчей. Система не добавляет рекомендации искусственно.</small></div><span class="ev-empty-count">0</span></div>';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
       if(featuredMatchTimer){clearInterval(featuredMatchTimer);featuredMatchTimer=null;}
