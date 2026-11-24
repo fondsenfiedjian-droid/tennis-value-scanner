@@ -120,11 +120,11 @@ jobs:
             { tour: 'atp', a: 'Novak Djokovic', b: 'Carlos Alcaraz' },
             { tour: 'wta', a: 'Aryna Sabalenka', b: 'Iga Swiatek' }
           ];
-          const normalize = value => String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
           const keys = value => {
             const n = normalize(value);
             if (!n) return [];
-            const tokens = n.split(/\\s+/).filter(Boolean);
+            const tokens = n.split(/\s+/).filter(Boolean);
             return tokens.length > 1 ? [n, [...tokens].sort().join(' ')] : [n];
           };
           (async () => {
