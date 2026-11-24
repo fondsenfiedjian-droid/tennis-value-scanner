@@ -51,3 +51,16 @@ test("same-day predictions are invariant to source row order",async()=>{
   assert.equal(a.results[0].brier,b.results[0].brier);
   assert.equal(a.results[0].logLoss,b.results[0].logLoss);
 });
+
+test("same-day outcomes do not update Elo before that day's predictions finish",async()=>{
+  const sameDay=parseMatchCsv([
+    "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
+    "m1;2025-02-01;dur;A;B;A",
+    "m2;2025-02-01;dur;A;B;B"
+  ].join("\n"));
+  const output=await runWalkForward(sameDay.matches,[
+    {id:"general-elo-v2",name:"Baseline",k:32,surfaceWeight:0,formWeight:0,h2hWeight:0}
+  ]);
+  assert.equal(output.results[0].n,2);
+  assert.equal(output.results[0].brier,0.25);
+});
