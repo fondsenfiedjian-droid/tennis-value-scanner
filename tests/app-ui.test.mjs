@@ -1079,3 +1079,21 @@ test("odds fallback grouping rejects invalid timestamps instead of creating unst
   const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
   assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
 });
+
+
+test("odds diagnostics identify a feed containing only Davis Cup team ties or doubles", () => {
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), tournament_name: "ATP Finals" };
+  const teamHome = makeWinamaxQuote({
+    eventName: "Italie - Corée du Sud", homeTeam: "Italie", awayTeam: "Corée du Sud",
+    competition: "Coupe Davis Finals", outcome: "home"
+  });
+  const teamAway = { ...teamHome, outcome: "away", oddsDecimal: 1.8 };
+  assert.equal(getOddsMatching([teamHome, teamAway]).oddsMatchDiagnostic(match).code, "unsupported_draw");
+  const doublesHome = makeWinamaxQuote({
+    eventName: "A.Pavlasek / P.Rikl - F.Auger-Aliassime / D.Chan",
+    homeTeam: "A.Pavlasek / P.Rikl", awayTeam: "F.Auger-Aliassime / D.Chan",
+    competition: "Coupe Davis Finals, Doubles", outcome: "home"
+  });
+  const doublesAway = { ...doublesHome, outcome: "away", oddsDecimal: 1.8 };
+  assert.equal(getOddsMatching([doublesHome, doublesAway]).oddsMatchDiagnostic(match).code, "unsupported_draw");
+});
