@@ -1074,3 +1074,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The discovery report previously emitted null player names and dates because it searched only legacy flat aliases. A dedicated metadata extractor and regression tests now read the provider's actual nested schema while preserving legacy fallbacks.
 - The junior result is a query-coverage finding, not proof that the provider has no junior data. Selected junior players were found in player search, but their `tour=juniors` history requests returned zero rows. A bounded check of alternate provider tour classifications remains open.
 - Diagnostics remain isolated. PR #173 is open/unmerged; no Production Worker or frontend changes are authorized.
+
+
+## 2026-11-24 — Paired tape artifacts now retain match identity
+- The metadata-aware discovery collector now accepts the discovery report as a metadata sidecar and attaches each match's participants, stable player IDs, scheduled time, surface, tournament, round and result identity to the corresponding private RAW/CLEAN tape record.
+- CLI supports `--metadata <discovery-json>`; the diverse discovery workflow passes its discovery report to the collector.
+- Regression coverage verifies that match identity survives serialization into the stored tape JSONL. The full regression suite passed on commit `3e08a850578b7fc5c09bee4a0482b664fec9dc91`; the final metadata-aware discovery run is pending.
