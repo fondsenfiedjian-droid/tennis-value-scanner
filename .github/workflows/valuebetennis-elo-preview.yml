@@ -1,0 +1,43 @@
+name: Valuebetennis Elo research (preview only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/valuebetennis-elo-preview
+    paths:
+      - "scripts/valuebetennis-elo-research.mjs"
+      - ".github/workflows/valuebetennis-elo-preview.yml"
+      - "scripts/backtest.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  build-research-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Download licensed Valuebetennis datasets
+        run: |
+          mkdir -p data
+          for year in 2021 2022 2023 2024 2025 2026; do
+            curl --fail --location --retry 3 --retry-delay 2 \
+              "https://www.valuebetennis.com/datasets/valuebetennis-matchs-${year}.csv" \
+              --output "data/valuebetennis-matchs-${year}.csv"
+          done
+      - name: Build walk-forward reports and player ratings
+        run: node scripts/valuebetennis-elo-research.mjs
+      - name: Upload research artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: valuebetennis-elo-research
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
