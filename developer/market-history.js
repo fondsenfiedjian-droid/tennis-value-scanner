@@ -26,32 +26,22 @@ async function load(panel,matchId){
   const marketPayload=await get("/markets?match_id="+encodeURIComponent(matchId));
   const markets=listFrom(marketPayload);
   if(!markets.length){status(panel,"История рынка пока не предоставлена API для этого матча.");return;}
-  const usable=markets.filter(item=>marketId(item)!==null).slice(0,4);
-  if(!usable.length){status(panel,"API вернул список рынков без идентификаторов.");return;}
-  const histories=await Promise.allSettled(usable.map(async market=>{
-   const id=String(marketId(market));
-   if(!/^\d{1,15}$/.test(id))throw new Error("Некорректный ID рынка");
-   const payload=await get("/markets/"+encodeURIComponent(id)+"/prices?limit=50");
-   return {market,rows:listFrom(payload)};
-  }));
-  const sections=[];let restricted=false;
-  for(let i=0;i<histories.length;i++){
-   const result=histories[i];
-   if(result.status!=="fulfilled"){
-    if(result.reason?.status===403)restricted=true;
-    sections.push('<section class="archive-item"><b>'+esc(label(usable[i]))+'</b><div class="archive-meta">'+esc(result.reason?.status===403?"Доступ к истории ограничен тарифом API (требуется PRO).":result.reason?.message||"История временно недоступна.")+'</div></section>');
-    continue;
-   }
-   const rows=result.value.rows.slice().sort((a,b)=>Date.parse(dateOf(a)||0)-Date.parse(dateOf(b)||0)).slice(-12);
-   const entries=rows.map(row=>{
-    const price=priceOf(row),date=dateOf(row);
-    const formattedDate=date&&Number.isFinite(Date.parse(date))?new Date(date).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Время не указано";
-    return '<div class="archive-meta">'+esc(formattedDate)+' · <b>'+esc(price===null?"—":Number.isFinite(Number(price))?Number(price).toFixed(2):price)+'</b></div>';
-   }).join("");
-   sections.push('<section class="archive-item"><b>'+esc(label(result.value.market))+'</b>'+(entries||'<div class="archive-meta">История котировок пуста.</div>')+'</section>');
+  const historyPayload=await get("/markets/"+encodeURIComponent(matchId)+"/prices?limit=100");
+  const rows=listFrom(historyPayload).slice().sort((a,b)=>Date.parse(dateOf(a)||0)-Date.parse(dateOf(b)||0)).slice(-24);
+  if(!rows.length){
+   status(panel,"Рынки найдены, но история изменения коэффициентов пока пуста.");
+   return;
   }
-  panel.innerHTML='<div class="section-head" style="margin:0 0 8px"><h2>История коэффициентов</h2><span class="muted">Live Tennis API</span></div>'+sections.join("")+
-   (restricted?'<div class="notice">Часть истории недоступна на текущем тарифе. Данные не подменяются и не используются в расчёте EV.</div>':"");
+  const entries=rows.map(row=>{
+   const price=priceOf(row),date=dateOf(row);
+   const formattedDate=date&&Number.isFinite(Date.parse(date))?new Date(date).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Время не указано";
+   const outcome=row?.outcome??row?.selection??row?.runner_name??row?.name??"";
+   return '<div class="archive-meta">'+esc(formattedDate)+(outcome?' · '+esc(outcome):'')+' · <b>'+esc(price===null?"—":Number.isFinite(Number(price))?Number(price).toFixed(2):price)+'</b></div>';
+  }).join("");
+  const marketNames=markets.map(label).filter(Boolean).slice(0,3).join(" · ");
+  panel.innerHTML='<div class="section-head" style="margin:0 0 8px"><h2>История коэффициентов</h2><span class="muted">Live Tennis API</span></div>'+
+   (marketNames?'<div class="archive-meta">'+esc(marketNames)+'</div>':"")+entries+
+   '<div class="archive-meta">Показаны последние '+rows.length+' наблюдений. История не меняет прогноз или EV автоматически.</div>';
  }catch(error){
   status(panel,error.status===403?"История коэффициентов требует доступа PRO Live Tennis API.":error.status===404?"История для этого матча или рынка не найдена.":error.message||"Не удалось загрузить историю коэффициентов.");
  }
