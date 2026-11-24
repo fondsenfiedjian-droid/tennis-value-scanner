@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { parseCsv, runBacktest } from "./backtest.mjs";
 
 const YEARS = [2021, 2022, 2023, 2024, 2025, 2026];
-const K_FACTORS = [32, 80];
+const K_FACTORS = [32, 80]; // K=80 snapshot is preview-only pending further validation.
 const EVALUATION_START = "20250101";
 const ATTRIBUTION = "Valuebetennis, Tennis results and odds since 2021, https://www.valuebetennis.com/en/donnees.htm (CC BY 4.0)";
 
