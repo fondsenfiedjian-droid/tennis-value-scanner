@@ -3312,6 +3312,60 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const totals=payload.totals||{},meetings=Array.isArray(payload.meetings)?payload.meetings:[],surfaces=payload.by_surface&&typeof payload.by_surface==='object'?Object.entries(payload.by_surface):[];
     return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><div class="compare-h2h-total">'+escapeHtml(p1)+' '+Number(totals.p1_wins||0)+' : '+Number(totals.p2_wins||0)+' '+escapeHtml(p2)+'</div><small>Встреч: '+Number(totals.meetings||meetings.length)+' · неопределённых: '+Number(totals.undecided||0)+' · период: '+escapeHtml(payload.period||'1968-present')+'</small><div class="compare-surface-records">'+surfaces.map(([k,v])=>'<span>'+escapeHtml(k)+': '+Number(v?.p1??v?.p1_wins??0)+'–'+Number(v?.p2??v?.p2_wins??0)+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние встречи</b>'+meetings.slice(0,5).map(m=>'<div class="compare-history-row"><span>'+escapeHtml(m.date||'дата не указана')+' · '+(m.winner===1?escapeHtml(p1):m.winner===2?escapeHtml(p2):'победитель не определён')+'</span><small>'+escapeHtml(m.score||m.outcome||'')+'</small></div>').join('')+'</div></section>';
   }
+  let valuebetennisEloSnapshotPromise=null;
+  function normalizeValuebetennisName(value){
+    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  function resolveValuebetennisComparison(snapshot,nameA,nameB,diagnostic){
+    const identityA=diagnostic?.profileIdentityA,identityB=diagnostic?.profileIdentityB;
+    const tourA=String(identityA?.tour||'').toLowerCase(),tourB=String(identityB?.tour||'').toLowerCase();
+    if(!['atp','wta'].includes(tourA)||tourA!==tourB)return null;
+    const tourData=snapshot?.tours?.[tourA],rows=Array.isArray(tourData?.players)?tourData.players:[];
+    const findPlayer=name=>{
+      const key=normalizeValuebetennisName(name);
+      const matches=rows.filter(row=>normalizeValuebetennisName(row?.[1])===key);
+      if(matches.length!==1)return null;
+      const row=matches[0],rating=Number(row[2]),matchesPlayed=Number(row[3]);
+      if(!Number.isFinite(rating)||rating<=0||!Number.isFinite(matchesPlayed)||matchesPlayed<10)return null;
+      return {rating,matches:matchesPlayed,lastPlayed:String(row[4]||'')};
+    };
+    const a=findPlayer(nameA),b=findPlayer(nameB);
+    const slope=Number(snapshot?.probabilityCalibration?.[tourA]?.slope);
+    if(!a||!b||!Number.isFinite(slope)||slope<=0)return null;
+    const calibratedA=1500+(a.rating-1500)*slope,calibratedB=1500+(b.rating-1500)*slope;
+    const probabilityA=1/(1+10**((calibratedB-calibratedA)/400));
+    const freshness=date=>{
+      const parsed=/^\\d{8}$/.test(date)?Date.UTC(Number(date.slice(0,4)),Number(date.slice(4,6))-1,Number(date.slice(6,8))):NaN;
+      if(!Number.isFinite(parsed))return 'unknown';
+      const ageDays=Math.max(0,(Date.now()-parsed)/86400000);
+      return ageDays<=30?'fresh':ageDays<=90?'recent':'stale';
+    };
+    const formatDate=date=>/^\\d{8}$/.test(date)?date.slice(0,4)+'-'+date.slice(4,6)+'-'+date.slice(6,8):'—';
+    const official=identity=>({tour:identity?.tour||tourA,ranking:Number(identity?.ranking)||null,country:null});
+    return {
+      playerA:nameA,playerB:nameB,
+      ratingA:Number(calibratedA.toFixed(2)),ratingB:Number(calibratedB.toFixed(2)),
+      rawRatingA:a.rating,rawRatingB:b.rating,
+      probabilityA:Number((probabilityA*100).toFixed(2)),probabilityB:Number(((1-probabilityA)*100).toFixed(2)),
+      fairOddsA:Number((1/probabilityA).toFixed(3)),fairOddsB:Number((1/(1-probabilityA)).toFixed(3)),
+      ratingTypeA:'общий Valuebetennis Elo K=80 · калиброванный',ratingTypeB:'общий Valuebetennis Elo K=80 · калиброванный',
+      ratingFreshnessA:{status:freshness(a.lastPlayed)},ratingFreshnessB:{status:freshness(b.lastPlayed)},
+      ratingsAsOfA:formatDate(a.lastPlayed),ratingsAsOfB:formatDate(b.lastPlayed),
+      officialProfileA:official(identityA),officialProfileB:official(identityB),
+      surface:null,source:snapshot.source||'Valuebetennis CC BY 4.0',
+      note:'Общий Elo K=80; вероятности откалиброваны на отложенных матчах 2026 года. Покрытие отдельно не учитывается. Матчей в истории: '+a.matches+' / '+b.matches+'.'
+    };
+  }
+  async function loadValuebetennisComparison(nameA,nameB,diagnostic){
+    if(!valuebetennisEloSnapshotPromise){
+      valuebetennisEloSnapshotPromise=fetchWithTimeout('./player-elo-snapshot.json').then(async response=>{
+        if(!response.ok)throw new Error('Снимок Elo недоступен: HTTP '+response.status);
+        return response.json();
+      }).catch(error=>{valuebetennisEloSnapshotPromise=null;throw error;});
+    }
+    const snapshot=await valuebetennisEloSnapshotPromise;
+    return resolveValuebetennisComparison(snapshot,nameA,nameB,diagnostic);
+  }
   function renderCompareUnavailableElo(diagnostic,nameA,nameB,surface){
     const node=$('#compareResult');
     const card=(label,identity,eloFields)=>{
@@ -3339,7 +3393,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     const freshnessLabel=status=>({fresh:'свежий рейтинг',recent:'недавний рейтинг',stale:'устаревший рейтинг',unknown:'дата рейтинга неизвестна',invalid:'некорректная дата'})[status]||'статус неизвестен';
     const fairOdds=(value,probability)=>{const n=Number(value);return Number.isFinite(n)&&n>1?n.toFixed(2):Number.isFinite(probability)&&probability>0?(100/probability).toFixed(2):'—';};
     const profileLine=profile=>{if(!profile)return '<small>Официальный профиль недоступен</small>';const rank=Number.isSafeInteger(profile.ranking)&&profile.ranking>0?'№'+profile.ranking:'не опубликован';const tour=profile.tour==='atp'?'ATP':profile.tour==='wta'?'WTA':'тур не указан';const country=profile.country?escapeHtml(profile.country):'страна не указана';const completeness=profile.completeness&&Number.isFinite(profile.completeness.percent)?' · заполнено '+profile.completeness.known+'/'+profile.completeness.of+' ('+profile.completeness.percent+'%)':'';return '<small>Официальный рейтинг: '+rank+'</small><small>'+tour+' · '+country+escapeHtml(completeness)+'</small>';};
-    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsA,probA)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsB,probB)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+'</div>';node.hidden=false;
+    node.innerHTML='<div class="compare-result-grid"><div class="compare-result-player"><strong>'+escapeHtml(result.playerA||nameA)+'</strong>'+profileLine(result.officialProfileA)+'<span class="compare-rating">'+(Number.isFinite(ratingA)?ratingA.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeA||'общий')+'</small><span class="compare-probability">'+probA.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsA,probA)+'</small><small>'+freshnessLabel(freshnessA)+'</small></div><div class="compare-result-player"><strong>'+escapeHtml(result.playerB||nameB)+'</strong>'+profileLine(result.officialProfileB)+'<span class="compare-rating">'+(Number.isFinite(ratingB)?ratingB.toFixed(0):'—')+'</span><small>Elo-рейтинг · '+escapeHtml(result.ratingTypeB||'общий')+'</small><span class="compare-probability">'+probB.toFixed(1)+'%</span><small>вероятность победы по Elo</small><small>Справедливый кэф '+fairOdds(result.fairOddsB,probB)+'</small><small>'+freshnessLabel(freshnessB)+'</small></div></div><div class="compare-result-summary">Метод: Elo · '+(surface?'покрытие: '+escapeHtml(surface):'общий рейтинг без выбора покрытия')+' · Дата Elo: '+escapeHtml(result.ratingsAsOfA||'—')+' / '+escapeHtml(result.ratingsAsOfB||'—')+(result.note?' · '+escapeHtml(result.note):'')+'</div>';node.hidden=false;
   }
   const compareSearchAliases={
     'алькарас':'Carlos Alcaraz','карлос алькарас':'Carlos Alcaraz',
@@ -3448,8 +3502,16 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
           diagnostic?.profileIdentityA?.name&&diagnostic?.profileIdentityB?.name){
           if(requestId!==compareRequestSequence)return;
           const exactNameA=String(diagnostic.profileIdentityA.name),exactNameB=String(diagnostic.profileIdentityB.name);
-          renderCompareUnavailableElo(diagnostic,exactNameA,exactNameB,surface);
-          status.textContent='Профили найдены. Численный Elo недоступен; история и личные встречи загружаются отдельно…';
+          let researchComparison=null;
+          try{researchComparison=await loadValuebetennisComparison(exactNameA,exactNameB,diagnostic);}catch(error){}
+          if(requestId!==compareRequestSequence)return;
+          if(researchComparison){
+            renderCompareResult(researchComparison,exactNameA,exactNameB,'');
+            status.textContent='Сравнение рассчитано по историческому Elo K=80. История матчей и H2H загружаются отдельно…';
+          }else{
+            renderCompareUnavailableElo(diagnostic,exactNameA,exactNameB,surface);
+            status.textContent='Профили найдены, но исторический численный Elo для этой пары недоступен; история и личные встречи загружаются отдельно…';
+          }
           loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB).catch(error=>{
             if(requestId===compareRequestSequence)status.textContent='Профили загружены; дополнительные данные не загрузились: '+String(error.message||error);
           });
