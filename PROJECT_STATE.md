@@ -1127,3 +1127,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 ## 2026-11-24 — Preview smoke target corrected
 - Initial smoke request used the Cloudflare branch-preview URL, which does not carry the dedicated Preview Worker secrets and correctly reported LIVE_TENNIS_API_KEY as unconfigured.
 - Corrected the smoke workflow target to the separately isolated tennis-value-api-preview Worker described in wrangler.preview.toml and the manual deploy workflow. No secrets are printed or changed.
+
+
+## 2026-11-24 — Winamax feed scope mismatch identified
+- Read-only Preview runtime audit confirms the Apify task is reachable and returns 8 fresh-enough Winamax records, all sport=tennis and market=match_winner, but none is a singles match compatible with the scanner's upcoming singles schedule.
+- The 8 records form four pairs: three Davis Cup team ties (Coupe Davis Finals) and one doubles event (Coupe Davis Finals, Doubles). The current 180-match singles schedule therefore has zero complete fresh Winamax pairs.
+- Added a specific unsupported_draw diagnostic so the UI can explain when the feed contains only team ties/doubles instead of individual singles. This does not alter the Apify task or allow doubles/team odds into player predictions.
+- The same audit also found four schedule records whose status says upcoming but whose scheduled time is already past; the prediction matcher correctly refuses to treat them as pre-match.
+- Next check: wait for the next scheduled Apify run and repeat the read-only audit. Do not change the scraper configuration without explicit approval.
