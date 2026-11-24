@@ -3468,11 +3468,15 @@ test("TVS 2.0 preview deployment is isolated from Production", () => {
   assert.doesNotMatch(workerSource, /https:\/\/tennis-value-api\.fonds-enfiedjian\.workers\.dev\/__\w+/);
   assert.match(frontendSource, /location\.hostname\.startsWith\('deploy-preview-'\)/);
   assert.match(frontendSource, /tennis-value-api-preview\.fonds-enfiedjian\.workers\.dev/);
-  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
+  assert.match(previewConfig, /TVS_RESEARCH_PREVIEW_ONLY\s*=\s*"true"/);
+  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/integration\/tvs2-pro-api'/);
+  assert.match(deployWorkflow, /ref: integration\/tvs2-pro-api/);
+  assert.match(deployWorkflow, /LIVE_TENNIS_API_KEY_PREVIEW/);
+  assert.match(deployWorkflow, /TVS_RESEARCH_ACCESS_TOKEN_PREVIEW/);
+  assert.doesNotMatch(deployWorkflow, /ui\/tennis-value-scanner-2/);
   assert.match(deployWorkflow, /wrangler\.preview\.toml/);
   assert.match(deployWorkflow, /on:\s*workflow_dispatch:/);
   assert.doesNotMatch(deployWorkflow, /(^|\n)\s*push:/);
-  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
 });
 
 test("scanner batch size adapts to refresh interval within the BASIC daily quota", () => {
@@ -3516,6 +3520,15 @@ test("Live Tennis PRO market endpoint validates IDs, calls the PRO route and kee
   const matchPrices = await call("/matches/123/prices?limit=200&minutes=60&cursor=next-page");
   assert.equal(matchPrices.status, 200);
   assert.equal(requested[2].url, "https://api.livetennisapi.com/api/public/v1/matches/123/prices?limit=200&minutes=60&cursor=next-page");
+});
+
+test("Live Tennis PRO market routes reject non-JSON upstream responses", async () => {
+  workerSandbox.fetch = async () => new Response("<html>upstream error</html>", {
+    status: 200, headers: { "Content-Type": "text/html" }
+  });
+  const result = await call("/matches/123/prices");
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).accessStatus, "invalid_upstream_response");
 });
 
 test("Live Tennis PRO market routes preserve provider 403, no-market 404 and Retry-After", async () => {
