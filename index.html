@@ -1103,6 +1103,35 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-edition="developer"] .edition-version{border-color:#347c98;color:#8cecff;background:#102333}
     @media(max-width:390px){.ev-bet-row{grid-template-columns:minmax(76px,1.1fr) minmax(54px,.7fr) minmax(62px,.8fr);gap:3px}.ev-bet-player{font-size:10px}.ev-bet-row.selected .ev-bet-player{font-size:11px}.ev-bet-row.selected .ev-bet-odds{font-size:19px}.ev-bet-trend{font-size:9px}}
 
+
+    /* EV+ outer frame mirrors the daily-pick panel in every active skin */
+    #mandatoryBets{
+      padding:14px!important;margin:0 0 13px!important;border-radius:19px!important;
+      background:linear-gradient(120deg,#230d15,#0b0b0e 60%,#121018)!important;
+      border:1px solid #a51f45!important;
+      box-shadow:0 0 16px #a51f4530,inset 0 1px #fff2!important;
+    }
+    #mandatoryBets:before{display:none!important}
+    body[data-skin="steel"] #mandatoryBets{
+      background:linear-gradient(135deg,#f4faf8,#d5e4e1 60%,#c3d8d3)!important;
+      border:1px solid #28a887!important;
+      box-shadow:0 0 12px #00a87955,0 0 27px #00a87933,inset 0 1px #fff!important;
+    }
+    body[data-skin="neon"] #mandatoryBets{
+      background:linear-gradient(135deg,#21152e,#101522 70%)!important;
+      border:1px solid #9256c5!important;
+      box-shadow:0 0 15px #8d52c533,inset 0 1px #fff2!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets{
+      background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
+      border:1px solid #d88932!important;
+      box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets{
+      background:linear-gradient(125deg,#1d170f 0%,#19140d 54%,#110e09 100%)!important;
+      border:1px solid #80572f!important;
+      box-shadow:inset 0 1px #ffd99a12,0 0 12px #d99a4320,0 8px 24px #000b!important;
+    }
   </style>
 </head>
 <body>
