@@ -118,8 +118,7 @@ export async function collectObservedTapes({ ids, output, base = DEFAULT_BASE, f
   const target = resolve(output);
   let existing = [];
   try {
-    existing = (await readFile(target, "utf8")).split(/\r?
-/).filter(Boolean).map(line => JSON.parse(line));
+    existing = (await readFile(target, "utf8")).split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
