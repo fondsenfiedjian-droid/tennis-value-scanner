@@ -111,7 +111,8 @@ test("an ID conflicted inside one file stays excluded when another file contains
   const conflicted=parseMatchCsv([
     "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
     "collision;2025-04-01;dur;A;B;A",
-    "collision;2025-04-01;dur;A;B;B"
+    "collision;2025-04-01;dur;A;B;B",
+    "local-valid;2025-04-02;dur;A;C;C"
   ].join("\n"));
   const other=parseMatchCsv([
     "match_id;date;surface;joueur1_id;joueur2_id;vainqueur_id",
