@@ -1,0 +1,28 @@
+name: Feature branch Preview runtime diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/valuebetennis-elo-preview
+    paths:
+      - "index.html"
+      - "scripts/preview-runtime-smoke.mjs"
+      - ".github/workflows/feature-preview-runtime-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  preview-runtime-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Diagnose Preview Worker schedule, Winamax feed and player profiles
+        run: node scripts/preview-runtime-smoke.mjs
