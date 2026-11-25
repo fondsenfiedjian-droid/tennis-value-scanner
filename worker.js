@@ -641,7 +641,7 @@ export default {
     ]);
     if (diagnosticPaths.has(path)) {
       const expected = env.DIAGNOSTIC_TRIGGER_TOKEN;
-      const supplied = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "");
+      const supplied = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
       if (!expected) return response({ error: "diagnostic_trigger_disabled" }, 503);
       if (!supplied || supplied !== expected) return response({ error: "unauthorized" }, 401);
       if (path.endsWith("/start")) {
