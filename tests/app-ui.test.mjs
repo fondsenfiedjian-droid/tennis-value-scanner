@@ -522,3 +522,13 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+
+test("Production uses the Developer visual identity and displays a discreet version label", () => {
+  assert.match(html, /<header class="production-header">/);
+  assert.match(html, /class="edition-version" id="editionVersion">PRODUCTION · v2\.0\.1</);
+  assert.match(html, /\.edition-version\{display:block;max-width:100%;white-space:nowrap;[^}]*font-size:8px/);
+  assert.match(html, /\.production-header-meta\{display:flex;flex-direction:column;align-items:flex-end/);
+  assert.match(html, /id="connectionStatus"/);
+  assert.match(serviceWorker, /tennis-value-static-v135/);
+});
