@@ -522,3 +522,46 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+
+test("odds side mapping follows participant identity for both outcomes and either player order", () => {
+  const home = makeWinamaxQuote({ outcome: "home", homeTeam: "Carlos Alcaraz", awayTeam: "Novak Djokovic" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const matching = getOddsMatching([home, away]);
+  assert.equal(matching.oddsSideForPlayer(home, "Carlos Alcaraz"), "1");
+  assert.equal(matching.oddsSideForPlayer(away, "Carlos Alcaraz"), "2");
+  assert.equal(matching.oddsSideForPlayer(home, "Novak Djokovic"), "2");
+  assert.equal(matching.oddsSideForPlayer(away, "Novak Djokovic"), "1");
+  assert.equal(matching.oddsSideForPlayer(home, "Jannik Sinner"), null);
+});
+
+test("odds side mapping refuses ambiguous initial-only participant identity", () => {
+  const quote = makeWinamaxQuote({
+    homeTeam: "John Sinner",
+    awayTeam: "Jannik Sinner",
+    eventName: "John Sinner - Jannik Sinner",
+    outcome: "home"
+  });
+  const matching = getOddsMatching([quote]);
+  assert.equal(matching.oddsSideForPlayer(quote, "J. Sinner"), null);
+  assert.equal(matching.oddsSideForPlayer(quote, "Jannik Sinner"), "2");
+  assert.equal(matching.oddsSideForPlayer(quote, "John Sinner"), "1");
+});
+
+
+test("odds pair matching rejects a scheduled initial that matches both event participants", () => {
+  const home = makeWinamaxQuote({
+    homeTeam: "John Sinner",
+    awayTeam: "Jannik Sinner",
+    eventName: "John Sinner - Jannik Sinner",
+    outcome: "home"
+  });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = {
+    player1: "J. Sinner",
+    player2: "John Sinner",
+    startTime: home.startTime,
+    tournament_name: "ATP Finals"
+  };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
