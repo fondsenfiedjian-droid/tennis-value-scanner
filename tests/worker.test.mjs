@@ -164,10 +164,28 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
     requestedHeaders = options.headers;
     if (url.includes("/runs/last?status=SUCCEEDED")) {
       return new Response(JSON.stringify({ data: {
+        id: "run-123",
+        actId: "actor-123",
+        defaultDatasetId: "dataset-123",
         status: "SUCCEEDED",
         startedAt: "2026-11-20T10:00:00.000Z",
         finishedAt: "2026-11-20T10:00:12.000Z",
+        exitCode: 0,
+        statusMessage: "Actor finished",
+        usageTotalUsd: 0.004,
+        stats: { durationMillis: 12000, requestsFinished: 8, requestsFailed: 1, requestsRetried: 2, computeUnits: 0.003 },
         meta: { origin: "SCHEDULER", scheduleId: "schedule-123" }
+      } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.includes("/schedules/schedule-123")) {
+      return new Response(JSON.stringify({ data: {
+        name: "Winamax Tennis France",
+        cronExpression: "0 */2 * * *",
+        timezone: "Europe/Paris",
+        isEnabled: true,
+        lastRunAt: "2026-11-20T10:00:00.000Z",
+        nextRunAt: "2026-11-20T12:00:00.000Z",
+        actions: [{ type: "RUN_ACTOR_TASK", actorTaskId: "s9Des4R3jhMfA8e3s" }]
       } }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return new Response(JSON.stringify(dataset), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -181,15 +199,33 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
   assert.ok(Number.isFinite(Date.parse(payload.retrievedAt)));
   assert.deepEqual(JSON.parse(JSON.stringify(payload.taskRun)), {
+    runId: "run-123",
+    actorId: "actor-123",
+    defaultDatasetId: "dataset-123",
     status: "SUCCEEDED",
     startedAt: "2026-11-20T10:00:00.000Z",
     finishedAt: "2026-11-20T10:00:12.000Z",
+    exitCode: 0,
+    statusMessage: "Actor finished",
+    usageTotalUsd: 0.004,
+    stats: { durationMillis: 12000, requestsFinished: 8, requestsFailed: 1, requestsRetried: 2, computeUnits: 0.003 },
     origin: "SCHEDULER",
-    scheduled: true
+    scheduled: true,
+    schedule: {
+      name: "Winamax Tennis France",
+      cronExpression: "0 */2 * * *",
+      timezone: "Europe/Paris",
+      isEnabled: true,
+      lastRunAt: "2026-11-20T10:00:00.000Z",
+      nextRunAt: "2026-11-20T12:00:00.000Z",
+      taskBound: true
+    },
+    scheduleDiagnostic: "ok"
   });
   assert.equal(payload.taskRunDiagnostic, "ok");
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000"));
   assert.ok(requestedUrls.includes("https://api.apify.com/v2/actor-tasks/s9Des4R3jhMfA8e3s/runs/last?status=SUCCEEDED"));
+  assert.ok(requestedUrls.includes("https://api.apify.com/v2/schedules/schedule-123"));
   assert.equal(requestedHeaders.Authorization, "Bearer test-token");
   assert.equal(requestedHeaders.Accept, "application/json");
   assert.equal(storedKey, "https://worker.test/odds");
@@ -220,6 +256,28 @@ test("odds feed remains available and reports metadata HTTP failures", async () 
   assert.equal(payload.count, 1);
   assert.equal(payload.taskRun, null);
   assert.equal(payload.taskRunDiagnostic, "http_403");
+});
+
+test("odds feed remains available when optional Apify schedule metadata fails", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async url => {
+    if (url.includes("/runs/last?status=SUCCEEDED")) {
+      return new Response(JSON.stringify({ data: {
+        status: "SUCCEEDED",
+        meta: { origin: "SCHEDULER", scheduleId: "schedule-403" }
+      } }), { status: 200 });
+    }
+    if (url.includes("/schedules/schedule-403")) return new Response("forbidden", { status: 403 });
+    return new Response(JSON.stringify([{ bookmaker: "Winamax", oddsDecimal: 1.91 }]), { status: 200 });
+  };
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.count, 1);
+  assert.equal(payload.taskRunDiagnostic, "ok");
+  assert.equal(payload.taskRun.schedule, null);
+  assert.equal(payload.taskRun.scheduleDiagnostic, "http_403");
 });
 
 test("odds diagnostics report schema coverage, bookmaker names, outcomes and quote freshness", async () => {
@@ -3269,4 +3327,58 @@ test("verified result provenance survives archive export/import normalization an
   assert.equal(imported.rows.length, 2);
   assert.ok(imported.rows.every(row => row.resultSource === "live_tennis_api"));
   assert.ok(imported.rows.every(row => row.resultVersion === 4));
+});
+
+
+test("Live Tennis PRO diagnostic endpoints reject invalid parameters without upstream calls", async () => {
+  workerSandbox.fetch = async () => { throw new Error("invalid input must not reach Live Tennis API"); };
+  const cases = [
+    ["/players/search?search=A", 400],
+    ["/player-history?id=0", 400],
+    ["/player-history?id=123&limit=51", 400],
+    ["/player-h2h?p1=Alcaraz&p2=alcaraz", 400],
+    ["/player-h2h?p1=A&p2=B", 400],
+    ["/markets", 400],
+    ["/markets?match_id=0", 400],
+    ["/markets/123/prices?limit=201", 400],
+    ["/matches/123/prices?minutes=1441", 400]
+  ];
+  for (const [path, status] of cases) {
+    const result = await call(path);
+    assert.equal(result.status, status, path);
+  }
+});
+
+test("Live Tennis player-history diagnostic returns source metadata and uses the server API key", async () => {
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  let requestedUrl = "";
+  let requestedKey = "";
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedKey = options?.headers?.["X-API-Key"] || "";
+    return new Response(JSON.stringify({
+      data: [{ id: 7001, date: "2026-11-20", winner: 1 }],
+      meta: { total: 1 }
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const result = await call("/player-history?id=123&limit=20&tour=atp");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.playerId, "123");
+  assert.equal(payload.source, "Live Tennis API /history/matches");
+  assert.equal(payload.accessStatus, "available");
+  assert.equal(payload.count, 1);
+  assert.ok(requestedUrl.includes("/history/matches?"));
+  assert.ok(requestedUrl.includes("player=123"));
+  assert.equal(requestedKey, "test-key");
+});
+
+test("Live Tennis diagnostic routes are advertised by health without changing Elo prediction output", async () => {
+  const result = await call("/health");
+  const payload = await result.json();
+  assert.ok(payload.endpoints.includes("/player-history?id=123"));
+  assert.ok(payload.endpoints.includes("/player-h2h?p1=...&p2=..."));
+  assert.ok(payload.endpoints.includes("/markets/123/prices"));
+  assert.equal(eloProbability(1900, 1800), 1 / (1 + Math.pow(10, -100 / 400)));
 });

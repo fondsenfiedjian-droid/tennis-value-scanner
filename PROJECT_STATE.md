@@ -1052,3 +1052,96 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Production shared-data diagnostics preparation — 2026-11-24
+
+- Draft PR: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/173
+- Branch: `feature/production-data-diagnostics` (branched from `main`).
+- Added read-only Live Tennis PRO diagnostic API routes to the proposed Production Worker: history coverage, match-winner markets and price history, player search, player match history, and head-to-head.
+- Existing player statistics endpoint remains available.
+- Added input validation, server-side API-key forwarding, response caching, and Worker-specific cache/quota namespace support.
+- Elo probability, EV calculation, Winamax/Apify integration, and recommendation gates are intentionally unchanged.
+- No frontend polling or automatic diagnostic requests have been added; new endpoints are intended for controlled diagnostics only.
+- Bulk history-package downloads remain outside the public Production diagnostic API.
+- Regression tests added for malformed parameters, player-history response handling, and health endpoint route advertisement.
+- Status: draft / awaiting automated checks and review. Not merged and not deployed to Production.
+
+
+## 2026-11-24 — Observed point-tape discovery metadata correction
+- Diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45460442729 completed successfully on `feature/production-data-diagnostics`; it discovered 14 observed-from-start tapes across ATP (4), WTA (4), Challenger (4), and ITF (2), with no junior candidates returned by the selected `tour=juniors` history queries.
+- Inspection of the private artifact identified the actual history schema: participant names/IDs are nested under `players.p1` and `players.p2`; match time is `scheduled_time`; tournament, round, status, surface and winner are top-level fields.
+- The discovery report previously emitted null player names and dates because it searched only legacy flat aliases. A dedicated metadata extractor and regression tests now read the provider's actual nested schema while preserving legacy fallbacks.
+- The junior result is a query-coverage finding, not proof that the provider has no junior data. Selected junior players were found in player search, but their `tour=juniors` history requests returned zero rows. A bounded check of alternate provider tour classifications remains open.
+- Diagnostics remain isolated. PR #173 is open/unmerged; no Production Worker or frontend changes are authorized.
+
+
+## 2026-11-24 — Paired tape artifacts now retain match identity
+- The metadata-aware discovery collector now accepts the discovery report as a metadata sidecar and attaches each match's participants, stable player IDs, scheduled time, surface, tournament, round and result identity to the corresponding private RAW/CLEAN tape record.
+- CLI supports `--metadata <discovery-json>`; the diverse discovery workflow passes its discovery report to the collector.
+- Regression coverage verifies that match identity survives serialization into the stored tape JSONL. The full regression suite passed on commit `3e08a850578b7fc5c09bee4a0482b664fec9dc91`; the final metadata-aware discovery run is pending.
+
+
+## 2026-11-24 — Verified metadata-aware diverse tape artifact
+- Discovery run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45464851599 completed successfully after the nested metadata extractor and collector sidecar integration.
+- The private artifact contains 14 paired RAW/CLEAN tape records; all 14 now retain both player names and IDs, scheduled date/time, surface and tournament metadata.
+- Totals: 1,710 RAW rows and 1,607 CLEAN rows; timestamps are complete for every row. Provider point completeness is true for 9/14 RAW records and 3/14 CLEAN records. RAW serve tags appear in 1,044/1,710 rows; RAW score-derived winner appears in 1,675/1,710. CLEAN serve tags appear in 1,002/1,607 rows; CLEAN point_winner appears in 1,571/1,607.
+- Six selected junior players were found by search but returned zero records for the `tour=juniors` history query. Treat as a provider classification/query limitation to investigate, not as proof that junior tapes do not exist.
+- Full regression suite and project-state guard passed on the code commits before the final documentation-only updates. The diagnostics Worker remains isolated from Production; PR #173 is not merged.
+
+
+## 2026-11-24 — Junior history query classification
+- Provider reference clarifies that `tour=juniors` covers boys' and girls' junior Grand Slam draws, not the entire junior circuit. The earlier zero-row result for six junior-seed player queries therefore did not establish absence of junior match history.
+- Added five junior-age players to the bounded `tour=itf` seed list (Demin, Samson, Klugman, Fonseca and Andreeva) while retaining the dedicated junior-Grand-Slam query. Next diagnostics run will test whether their ITF-level histories expose junior event records and observed tapes.
+- Source: https://docs.livetennisapi.com/reference.html. This is a diagnostics-only query-scope correction.
+
+
+## 2026-11-24 — Junior-age ITF history confirmed
+- Expanded diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45465141446 completed successfully after adding junior-age seeds to the `tour=itf` query.
+- The sample now contains 16 observed-from-start matches: ATP 4, WTA 4, Challenger 4, ITF 4, junior Grand Slam filter 0.
+- Two additional accepted ITF matches involve junior-age seeds: Yaroslav Demin (M25 Qian Daohu, IDs 204244 and 203062) and Hannah Klugman (W75 Glasgow, ID 212854). This confirms that junior-age player history is discoverable under ITF for these events; `tour=juniors` remains the separate junior Grand Slam filter.
+- Totals: 1,957 RAW rows and 1,840 CLEAN rows. All timestamps present. RAW provider completeness flag true for 10/16; CLEAN for 3/16. Keep the flag and row missingness per match; do not treat this convenience sample as representative.
+- Artifact remains private and diagnostics-only. No production model features were added.
+
+
+## 2026-11-24 — Point-tape field coverage audit (16-match sample)
+- Audited private artifact from discovery run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45465141446 (16 paired tapes; 1,957 RAW rows; 1,840 CLEAN rows).
+- Match identity is complete in all 16 records: both player names, both player IDs, scheduled date/time, surface and tournament are populated.
+- All 1,957 RAW and 1,840 CLEAN rows contain timestamps and score-state fields (points, games, sets). CLEAN rows contain a non-null server in 1,840/1,840; RAW server is present in 1,942/1,957 (99.2%).
+- RAW serve tag is present in 1,044/1,957 rows (53.3%); RAW outcome is present in 554/1,957 (28.3%). Missing values mean unknown/unavailable, not that no serve/event occurred.
+- RAW winner is present in 1,915/1,957 rows (97.9%). CLEAN point_winner is present in 1,795/1,840 rows (97.6%). These are different field names/representations; do not count RAW point_winner as expected coverage.
+- Provider completeness flag: RAW true for 10/16 matches; CLEAN true for 3/16. The flag is not equivalent to full serve/outcome annotation. The sample is deliberately selected for observed-from-start coverage and is not a representative tour-wide sample.
+- Current interpretation: score progression, timestamps and winner labels are promising for point-state/probability research; serve/outcome detail is incomplete and must not be treated as exhaustive point-event ground truth. No production model features have been enabled.
+
+
+## 2026-11-24 — Observed point-winner transition audit (four raw tapes)
+- Diagnostics run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45469467928 completed successfully: isolated diagnostics Worker deployment, Live Tennis API authentication, history/tape checks, four-tape collection, and artifact upload all passed.
+- Independently replayed the repository's transition-audit rules against the private four-tape artifact (match IDs 179907, 201427, 212252, 215017): 849 RAW rows; 825 score transitions were classifiable and had a winner label; all 825/825 agreed with the score-state transition (100% internal agreement); zero disagreements. There were 17 unclassified transitions, 2 classifiable transitions without a winner label, and 1 sequence gap.
+- Provider RAW points_complete flag was true for 3/4 tapes. The fourth tape (179907) still had timestamps and 314/315 server labels, but had 4 short-game indicators and several transition anomalies. Do not promote it to a complete-quality training example solely because coverage is from_start.
+- This is an internal consistency check between provider score states and provider winner labels, not independent ground-truth validation. It does not establish predictive accuracy or prove the source winner labels independently correct.
+- The audit supports using carefully filtered observed score transitions as a research dataset, with per-match quality flags and exclusions preserved. No Production data path or model feature was changed.
+
+
+## TVS 2.0 execution plan — status as of 2026-11-24
+1. **Data diagnostics:** substantially complete for the current point-tape sample. Identity metadata is populated for all 16 sampled matches; point-winner internal transition audit completed for four raw tapes (825/825 classifiable transitions agreed). Remaining: expand coverage and retain per-match quality flags; do not treat partial serve/outcome labels as exhaustive.
+2. **Preview integration verification:** in progress. PR #170/#171/#172 are open drafts and report clean mergeability. Their current heads have successful Worker build/tests; PR #172 also has a ready Netlify Deploy Preview (`deploy-preview-172--tennis-value-scanner-developer.netlify.app`). This confirms deployment readiness only, not full browser-level functional acceptance.
+3. **Production/Developer isolation:** pending end-to-end verification across API base URLs, storage/cache namespaces, service workers, and credentials. No production changes authorized or performed.
+4. **Core workflow acceptance:** pending. Verify upcoming match list, player matching, Winamax odds pairing/freshness, probability/fair odds/EV, recommendation tiers, and empty/no-value states using preview data.
+5. **Model research integration:** pending. Continue Elo K-factor and calibration backtests; evaluate point-tape-derived features separately with strict train/test time separation. No experimental feature enters the production model before out-of-sample evidence.
+6. **Release gate:** only after items 2–5 pass, prepare a release summary and request explicit user approval before any merge or production deployment.
+
+### Current safe boundary
+- PR #173 and the diagnostics branch remain isolated from Production.
+- PRs #170–#172 are open drafts; no merges performed.
+- Diagnostics Worker deploys only to `tennis-value-api-diagnostics-preview`.
+- Do not modify the Winamax Apify task/scraper without a separately established defect and explicit scope.
+
+
+## 2026-11-24 — Preview runtime and Winamax coverage recheck
+- Re-ran the existing TVS 2.0 Preview runtime smoke job (workflow run https://github.com/fondsenfiedjian-droid/tennis-value-scanner/actions/runs/45467849619, attempt 2); it completed successfully at 19:28 UTC against Preview Worker build `tvs2-pro-data-2026-11-24-1`.
+- Runtime snapshot: 179 upcoming schedule rows, one page, no truncation; 8 Winamax records, all `tennis|match_winner`. The 8 records represented three Davis Cup team-tie events and one doubles event. There were zero complete fresh Winamax singles pairs across the 179 scheduled matches. The 175 unmatched matches were classified as `unsupported_draw` because the captured Winamax dataset contained only team-tie/doubles events; four schedule rows had past start times despite an `upcoming` status.
+- The latest Apify task run exposed by the Preview Worker was `SUCCEEDED`, scheduler-originated, finished at 18:13:07 UTC, with metadata status `ok`. At the 19:28 UTC recheck, its captured odds were about 75 minutes old. This is a snapshot of the available dataset at that time, not proof that the scraper itself failed. Do not modify the Apify task/scraper; first establish whether a later scheduled run refreshes the feed and whether Winamax currently publishes singles markets for the target tournaments.
+- Preview app routing review found a genuine diagnostic-only host-selection mismatch: the main app selected the Preview Worker for both deploy-preview URLs and the stable Developer Edition hostname, while the secondary API health badge selected Preview only for deploy-preview hostnames. Corrected the health-badge selector and added a regression assertion on branch `integration/tvs2-pro-api`; latest code commit is `d8fdb9100e516db292e76045c5e4ce74488715e6`. This does not change Production routing.
+- The smoke job on the app-code commit `e20d14b632e168a0b29c91b016a018a61c415114` passed. Regression tests for the final two-file commit `d8fdb9100e516db292e76045c5e4ce74488715e6` passed. The latest Netlify Preview deploy `6b05e591d46d5ffc475b097d` reached `ready`; browser-level end-to-end acceptance remains pending.
+- Netlify edge logs for the Developer Preview returned only HTTP 200/304 in the inspected 100-request sample; this verifies static asset delivery, not successful browser-to-Worker API calls. The web inspection client could not open the Preview URL or Worker endpoint, so those direct requests remain unverified.
+- PR #172 remains open and draft. No PR was merged, no Production Worker/frontend was deployed or changed, and the Winamax scraper was left untouched.

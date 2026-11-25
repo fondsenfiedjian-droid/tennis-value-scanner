@@ -1,0 +1,75 @@
+name: Collect observed point-tape samples (diagnostics only)
+
+on:
+  push:
+    branches:
+      - feature/production-data-diagnostics
+    paths:
+      - "scripts/collect-observed-point-tapes.mjs"
+      - "scripts/audit-observed-point-winners.mjs"
+      - "scripts/summarize-observed-tape-features.mjs"
+      - "tests/summarize-observed-tape-features.test.mjs"
+      - "tests/audit-observed-point-winners.test.mjs"
+      - ".github/workflows/collect-observed-tape-samples.yml"
+  workflow_dispatch:
+    inputs:
+      match_ids:
+        description: "Comma-separated explicit match IDs (maximum 20)"
+        required: true
+        default: "215017,212965,212252,209804,201427,200075,199254,198840,198048,196977,179907,174554"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: observed-tape-samples-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out diagnostics branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/production-data-diagnostics
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Collect twelve explicitly selected observed samples
+        if: github.event_name == 'push'
+        run: |
+          node scripts/collect-observed-point-tapes.mjs \
+            --ids 215017,212965,212252,209804,201427,200075,199254,198840,198048,196977,179907,174554 \
+            --out artifacts/raw-observed-samples.jsonl
+
+      - name: Collect manually selected observed samples
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          MATCH_IDS: ${{ inputs.match_ids }}
+        run: |
+          node scripts/collect-observed-point-tapes.mjs \
+            --ids "$MATCH_IDS" \
+            --out artifacts/raw-observed-samples.jsonl
+
+      - name: Audit winner against score transitions
+        run: |
+          node scripts/audit-observed-point-winners.mjs --input artifacts/raw-observed-samples.jsonl
+
+      - name: Test observed tape feature summary
+        run: node --test tests/summarize-observed-tape-features.test.mjs
+
+      - name: Summarize raw observed tape feature coverage
+        run: node scripts/summarize-observed-tape-features.mjs --input artifacts/raw-observed-samples.jsonl
+
+      - name: Upload raw samples as a private workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-observed-point-tape-samples
+          path: artifacts/raw-observed-samples.jsonl
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,224 @@
+name: Deploy Diagnostics Worker Preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/production-data-diagnostics
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnostics-worker-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy-diagnostics-preview:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feature/production-data-diagnostics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out diagnostics branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/production-data-diagnostics
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test worker endpoints and Apify diagnostics
+        run: node --test tests/worker.test.mjs
+
+      - name: Test observed point-winner audit
+        run: node --test tests/audit-observed-point-winners.test.mjs
+
+      - name: Deploy isolated diagnostics Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_PREVIEW_API_TOKEN"
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          fi
+          npx --yes wrangler@4.165.0 deploy --config wrangler.diagnostics-preview.toml
+
+      - name: Configure Apify token for diagnostics Worker when available
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN_PREVIEW || secrets.APIFY_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$APIFY_TOKEN" ]; then
+            printf '%s' "$APIFY_TOKEN" | npx --yes wrangler@4.165.0 secret put APIFY_TOKEN --config wrangler.diagnostics-preview.toml
+            echo "Apify token configured on isolated diagnostics Worker."
+          else
+            echo "::warning::No APIFY_TOKEN_PREVIEW or APIFY_TOKEN GitHub secret; Apify schedule details will be skipped."
+          fi
+
+      - name: Configure Live Tennis API key
+        env:
+          LIVE_TENNIS_API_KEY: ${{ secrets.LIVE_TENNIS_API_KEY_PREVIEW }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$LIVE_TENNIS_API_KEY" ]; then
+            echo "::error::Missing repository secret LIVE_TENNIS_API_KEY_PREVIEW"
+            exit 1
+          fi
+          printf '%s' "$LIVE_TENNIS_API_KEY" | npx --yes wrangler@4.165.0 secret put LIVE_TENNIS_API_KEY --config wrangler.diagnostics-preview.toml
+
+      - name: Verify diagnostics Worker and Live Tennis API authentication
+        run: |
+          export DIAGNOSTICS_BASE="https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev"
+          base="$DIAGNOSTICS_BASE"
+          curl --fail --silent --show-error "$base/health" -o /tmp/diagnostics-health.json
+          node -e 'const d=require("/tmp/diagnostics-health.json"); if(d.status!=="ok" || d.liveTennisApiConfigured!==true) { console.error("Diagnostics Worker health check failed"); process.exit(1); } console.log("Diagnostics Worker health: OK; Live Tennis API secret: configured");'
+          curl --fail --silent --show-error "$base/usage" -o /dev/null
+          echo "Live Tennis API authentication: HTTP 200"
+
+          odds_status="$(curl --silent --show-error "$base/odds" -o /tmp/odds-diagnostics.json -w '%{http_code}')"
+          if [ "$odds_status" = "200" ]; then
+            node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/odds-diagnostics.json","utf8")); console.log("Apify odds rows:",d.count,"; task run:",JSON.stringify(d.taskRun)); if(d.taskRun?.schedule) console.log("Apify schedule:",JSON.stringify(d.taskRun.schedule)); else console.log("Apify schedule metadata:",d.taskRun?.scheduleDiagnostic||d.taskRunDiagnostic);'
+            node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("/tmp/odds-diagnostics.json","utf8"));const items=Array.isArray(d.items)?d.items:[];console.log("APIFY ODDS RAW ITEMS:",JSON.stringify(items));fs.mkdirSync("artifacts",{recursive:true});fs.writeFileSync("artifacts/apify-odds-diagnostics.json",JSON.stringify({retrievedAt:d.retrievedAt,count:d.count,taskRun:d.taskRun,diagnostics:d.diagnostics,items},null,2));'
+          elif [ "$odds_status" = "500" ] && node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/odds-diagnostics.json","utf8")); process.exit(d.error==="APIFY_TOKEN secret is not configured"?0:1)'; then
+            echo "::warning::APIFY_TOKEN is not configured on the isolated diagnostics Worker; Apify schedule details were skipped."
+          else
+            echo "Apify diagnostics endpoint returned HTTP $odds_status"
+            cat /tmp/odds-diagnostics.json
+            exit 1
+          fi
+
+          curl --fail --silent --show-error "$base/history/coverage" -o /tmp/history-coverage.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8")); for(const k of ["as_of","built_at","method","totals","buckets","inventory","ledger_max_computed_at"]) if(d[k]!==undefined) console.log("Coverage "+k+":",JSON.stringify(d[k]).slice(0,3500));'
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/history-coverage.json","utf8"));const groups=d.inventory?.groups||[];const out={};for(const g of groups){const key=[g.year,g.tour,g.draw].join("/");const x=out[key]??={matches:0,rows:0,from_start:0,reconstructed:0,reconstructed_partial:0,partial:0,none:0,points_complete_matches:0};x.matches+=g.matches||0;x.rows+=g.rows||0;for(const k of ["from_start","reconstructed","reconstructed_partial","partial","none"])x[k]+=g.coverage?.[k]||0;if(g.points_complete)x.points_complete_matches+=g.points_complete;}console.log("Coverage inventory by year/tour/draw:",JSON.stringify(out));'
+
+          curl --fail --silent --show-error "$base/players/search?search=Novak%20Djokovic" -o /tmp/player-search.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-search.json","utf8")); if(!Array.isArray(d.players)||!d.players.length||!d.players[0].id) throw new Error("Player search returned no usable player ID"); require("fs").writeFileSync("/tmp/player-id",String(d.players[0].id)); console.log("Player search: ",d.count,"players; first result has a valid ID");'
+          
+          player_id="$(cat /tmp/player-id)"
+          export PLAYER_ID="$player_id"
+          curl --fail --silent --show-error "$base/player-history?id=$player_id&limit=50&tour=atp" -o /tmp/player-history.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-history.json","utf8")); if(!Array.isArray(d.data)) throw new Error("Player history data is not an array"); console.log("Player history access:",d.accessStatus,"; page count:",d.count,"; pagination:",JSON.stringify(d.meta||{})); const dates=d.data.map(x=>x.scheduled_time||x.created_at).filter(Boolean).sort(); if(dates.length) console.log("Returned match date range:",dates[0],"to",dates[dates.length-1]); const surfaces={}; for(const m of d.data) surfaces[m.surface||"unknown"]=(surfaces[m.surface||"unknown"]||0)+1; console.log("Surface distribution:",JSON.stringify(surfaces)); if(d.data.length){console.log("History record fields:",Object.keys(d.data[0]).join(", "));}'
+
+          node -e ' (async()=>{ const base=process.env.DIAGNOSTICS_BASE; const id=process.env.PLAYER_ID; const seen=new Map(); let offset=0,hasMore=true,pages=0; const surfaces={}; const dates=[]; while(hasMore && pages<100){ const r=await fetch(base+"/player-history?id="+id+"&limit=50&offset="+offset+"&tour=atp"); if(!r.ok) throw new Error("History page "+offset+" HTTP "+r.status); const d=await r.json(); if(!Array.isArray(d.data)) throw new Error("Invalid history page at offset "+offset); pages++; for(const m of d.data){ if(m.id!=null) seen.set(String(m.id),m); const surface=m.surface||"unknown"; surfaces[surface]=(surfaces[surface]||0)+1; const date=m.scheduled_time||m.created_at; if(date) dates.push(date); } hasMore=Boolean(d.meta?.has_more); if(!d.data.length && hasMore) throw new Error("Empty page while has_more=true"); offset+=50; } dates.sort(); console.log("Full player history pagination: pages",pages,"; unique matches",seen.size,"; stopped at offset",offset,"; has_more after cap:",hasMore); if(dates.length) console.log("Full history date range:",dates[0],"to",dates[dates.length-1]); console.log("Full history surfaces:",JSON.stringify(surfaces)); })().catch(e=>{console.error(e);process.exit(1)})'
+          
+          # Keep the isolated diagnostics deployment and secret setup in sync.
+
+          # Inspect the provider's H2H payload and the actual tape field values without touching production.
+          curl --fail --silent --show-error "$base/player-h2h?p1=Novak%20Djokovic&p2=Carlos%20Alcaraz" -o /tmp/player-h2h.json
+          node -e 'const d=JSON.parse(require("fs").readFileSync("/tmp/player-h2h.json","utf8")); console.log("H2H access:",d.accessStatus,"; totals:",JSON.stringify(d.totals)); console.log("H2H meetings:",d.meetings.length,"; first meeting fields:",d.meetings[0]?Object.keys(d.meetings[0]).join(", "):"none"); console.log("H2H sample:",JSON.stringify(d.meetings.slice(0,2)).slice(0,1800));'
+
+          node -e ' (async()=>{const base=process.env.DIAGNOSTICS_BASE,id=process.env.PLAYER_ID;let offset=0,more=true,pages=0,total=0;const coverage={},flags={},rows={},analysis={},market={},scorePoints={},examples=[];const inc=(o,k)=>o[k]=(o[k]||0)+1;while(more&&pages<100){const r=await fetch(base+"/player-history?id="+id+"&limit=50&offset="+offset+"&tour=atp");if(!r.ok)throw new Error("Tape inspection HTTP "+r.status);const d=await r.json();if(!Array.isArray(d.data))throw new Error("Invalid history payload");pages++;for(const m of d.data){total++;const t=m.tape||{};inc(coverage,t.coverage??"missing");inc(flags,String(t.points_complete));inc(rows,"rows="+(t.rows??"null")+"/model="+(t.model_rows??"null")+"/recon="+(t.reconstructed_rows??"null"));inc(analysis,String(m.has_analysis));inc(market,String(m.has_market));inc(scorePoints,Array.isArray(m.score?.points)&&m.score.points.some(x=>x!==null)?"score_points_present":"score_points_empty_or_missing");if(examples.length<4)examples.push({id:m.id,tape:t,score:m.score});}more=Boolean(d.meta?.has_more);offset+=50;}console.log("Tape records inspected:",total,"pages:",pages);console.log("Tape coverage distribution:",JSON.stringify(coverage));console.log("Tape points_complete distribution:",JSON.stringify(flags));console.log("Tape row-count distribution:",JSON.stringify(rows));console.log("History has_analysis:",JSON.stringify(analysis),"; has_market:",JSON.stringify(market));console.log("Score point values:",JSON.stringify(scorePoints));console.log("Tape detailed examples:",JSON.stringify(examples).slice(0,3500));})().catch(e=>{console.error(e);process.exit(1)})'
+
+          # Inspect actual per-match tapes, including the explicit points=complete read.
+          node -e ' (async()=>{const base=process.env.DIAGNOSTICS_BASE,id=process.env.PLAYER_ID;const matches=[];let offset=0,more=true;while(more){const r=await fetch(base+"/player-history?id="+id+"&limit=50&offset="+offset+"&tour=atp");if(!r.ok)throw new Error("History for tape sample HTTP "+r.status);const d=await r.json();matches.push(...d.data);more=Boolean(d.meta?.has_more);offset+=50;if(!d.data.length)break;}const groups={complete_true:matches.filter(m=>m.tape?.points_complete===true),complete_false:matches.filter(m=>m.tape?.points_complete===false),from_start:matches.filter(m=>m.tape?.coverage==="from_start"),reconstructed:matches.filter(m=>m.tape?.coverage==="reconstructed")};const selected=new Map();for(const [group,items] of Object.entries(groups)){for(const m of items.slice(0,4))selected.set(String(m.id),{match:m,group});}const results=[];for(const [matchId,item] of selected){const r=await fetch(base+"/match-tape?id="+matchId+"&points=complete");let d;try{d=await r.json()}catch{d={}};const tape=Array.isArray(d.tape)?d.tape:[];const count=(fn)=>tape.filter(fn).length;results.push({id:matchId,group:item.group,http:r.status,accessStatus:d.accessStatus,coverage:d.meta?.coverage,point_source:d.meta?.point_source,points_meta:d.meta?.points,rows:tape.length,server_rows:count(x=>x.server!=null),point_winner_rows:count(x=>x.point_winner!=null),winner_rows:count(x=>x.winner!=null),timestamp_rows:count(x=>x.timestamp!=null),model_rows:count(x=>x.win_probability_p1!=null||x.danger!=null),first_row:tape[0]||null});await new Promise(resolve=>setTimeout(resolve,250));}console.log("Per-match complete tape sample size:",results.length);console.log("Per-match tape diagnostics:",JSON.stringify(results).slice(0,12500));})().catch(e=>{console.error(e);process.exit(1)})'
+          
+          # Expand the raw observed-tape check to eight from_start matches; summarize field availability and completeness.
+          node -e ' (async()=>{const base=process.env.DIAGNOSTICS_BASE,id=process.env.PLAYER_ID;const matches=[];let offset=0,more=true;while(more&&matches.length<400){const r=await fetch(base+"/player-history?id="+id+"&limit=50&offset="+offset+"&tour=atp");if(!r.ok)throw new Error("History HTTP "+r.status);const d=await r.json();matches.push(...d.data);more=Boolean(d.meta?.has_more);offset+=50;if(!d.data.length)break;}const candidates=matches.filter(m=>m.tape?.coverage==="from_start").slice(0,12);const out=[];for(const m of candidates){const r=await fetch(base+"/match-tape?id="+m.id+"&points=default&sequence=raw");let d={};try{d=await r.json()}catch{};const tape=Array.isArray(d.tape)?d.tape:[];const count=fn=>tape.filter(fn).length;const winners={};for(const x of tape){if(x.winner!=null){const k=String(x.winner);winners[k]=(winners[k]||0)+1;}}out.push({id:m.id,date:m.scheduled_time||m.created_at,history_coverage:m.tape.coverage,http:r.status,accessStatus:d.accessStatus,coverage:d.meta?.coverage,point_source:d.meta?.point_source,complete:d.meta?.points?.complete,transitions_legal:d.meta?.points?.transitions_legal,transitions_total:d.meta?.points?.transitions_total,rows:tape.length,timestamp_rows:count(x=>x.timestamp!=null),server_rows:count(x=>x.server!=null),serve_rows:count(x=>x.serve!=null),winner_rows:count(x=>x.winner!=null),point_winner_rows:count(x=>x.point_winner!=null),model_rows:count(x=>x.win_probability_p1!=null),winner_values:winners});await new Promise(resolve=>setTimeout(resolve,300));}console.log("Raw observed tape expanded sample:",JSON.stringify({candidate_count:candidates.length,results:out}));})().catch(e=>{console.error(e);process.exit(1)})'
+      - name: Verify ATP and WTA player comparison and Elo fallback
+        env:
+          DIAGNOSTICS_BASE: https://tennis-value-api-diagnostics-preview.fonds-enfiedjian.workers.dev
+          PLAYER_PREVIEW_URL: https://6b05f97548ebd79a56a8847d--tennis-value-scanner-developer.netlify.app/player-elo-snapshot.json
+        run: |
+          mkdir -p artifacts
+          node <<'NODE'
+          const fs = require('node:fs');
+          const base = process.env.DIAGNOSTICS_BASE;
+          const preview = process.env.PLAYER_PREVIEW_URL;
+          const pairs = [
+            { tour: 'atp', a: 'Novak Djokovic', b: 'Carlos Alcaraz' },
+            { tour: 'wta', a: 'Aryna Sabalenka', b: 'Iga Swiatek' }
+          ];
+          const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          (async () => {
+            const snapResponse = await fetch(preview, { headers: { 'cache-control': 'no-cache' } });
+            if (!snapResponse.ok) throw new Error('Preview Elo snapshot HTTP ' + snapResponse.status);
+            const snapshot = await snapResponse.json();
+            const results = [];
+            for (const pair of pairs) {
+              const selected = [];
+              for (const name of [pair.a, pair.b]) {
+                const searchResponse = await fetch(base + '/players/search?search=' + encodeURIComponent(name) + '&limit=8');
+                const search = await searchResponse.json();
+                if (!searchResponse.ok || !Array.isArray(search.players)) throw new Error(pair.tour + ' search failed for ' + name + ': HTTP ' + searchResponse.status);
+                const exact = search.players.filter(p => normalize(p.name) === normalize(name));
+                const player = exact.length === 1 ? exact[0] : search.players[0];
+                if (!player || !Number.isSafeInteger(Number(player.id)) || Number(player.id) <= 0) throw new Error('No usable player ID for ' + name);
+                selected.push({ id: Number(player.id), name: player.name, tour: String(player.tour || '').toLowerCase() });
+              }
+              const response = await fetch(base + '/predict', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ playerIdA: selected[0].id, playerIdB: selected[1].id, playerA: selected[0].name, playerB: selected[1].name, surface: 'Hard' })
+              });
+              const payload = await response.json();
+              if (response.status !== 200 && response.status !== 422) throw new Error(pair.tour + ' profile comparison failed: HTTP ' + response.status + ' ' + (payload.error || ''));
+              let fallback = null;
+              if (response.status === 422) {
+                if (payload.error !== 'Elo rating is unavailable for one or both players') throw new Error(pair.tour + ' unexpected 422 response');
+                const identities = [payload.diagnostic?.profileIdentityA, payload.diagnostic?.profileIdentityB];
+                if (identities.some(x => !x?.name || String(x.tour || '').toLowerCase() !== pair.tour)) throw new Error(pair.tour + ' profile identity/tour mismatch: ' + JSON.stringify(identities));
+                fallback = identities.map(identity => {
+                  const rows = Array.isArray(snapshot.tours?.[pair.tour]?.players) ? snapshot.tours[pair.tour].players : [];
+                  const normalized = normalize(identity.name);
+                  const tokens = normalized.split(/\s+/).filter(Boolean);
+                  const keys = tokens.length > 1 ? [normalized, [...tokens].sort().join(' ')] : [normalized];
+                  const matches = rows.filter(row => {
+                    const candidate = normalize(row?.[1]);
+                    const parts = candidate.split(/\s+/).filter(Boolean);
+                    const candidateKeys = parts.length > 1 ? [candidate, [...parts].sort().join(' ')] : [candidate];
+                    return candidateKeys.some(key => keys.includes(key));
+                  });
+                  return { profileName: identity.name, snapshotMatches: matches.length, snapshotName: matches.length === 1 ? matches[0][1] : null, ratingAvailable: matches.length === 1 && Number.isFinite(Number(matches[0][2])) && Number(matches[0][3]) >= 10 };
+                });
+                if (fallback.some(x => x.snapshotMatches !== 1 || !x.ratingAvailable)) throw new Error(pair.tour + ' fallback snapshot lookup failed: ' + JSON.stringify(fallback));
+              }
+              results.push({ tour: pair.tour, requested: [pair.a, pair.b], selected, httpStatus: response.status, result: response.status === 200 ? { playerA: payload.playerA, playerB: payload.playerB, probabilityA: payload.probabilityA, probabilityB: payload.probabilityB, ratingTypeA: payload.ratingTypeA, ratingTypeB: payload.ratingTypeB } : { error: payload.error, profileNames: [payload.diagnostic.profileIdentityA.name, payload.diagnostic.profileIdentityB.name], fallback } });
+              console.log(pair.tour.toUpperCase() + ' comparison API: HTTP ' + response.status + '; ' + (fallback ? 'historical Elo fallback matches snapshot for both players' : 'Live Tennis API returned a direct Elo result'));
+            }
+            fs.writeFileSync('artifacts/player-comparison-diagnostics.json', JSON.stringify({ checkedAt: new Date().toISOString(), snapshotSource: snapshot.source, results }, null, 2));
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE
+
+      - name: Upload player comparison diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: player-comparison-diagnostics
+          path: artifacts/player-comparison-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Apify odds diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apify-odds-diagnostics
+          path: artifacts/apify-odds-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Collect four raw observed tape samples
+        run: |
+          node scripts/collect-observed-point-tapes.mjs \
+            --ids 215017,212252,201427,179907 \
+            --out artifacts/raw-observed-samples.jsonl
+
+      - name: Upload raw observed tape samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-observed-point-tape-samples
+          path: artifacts/raw-observed-samples.jsonl
+          if-no-files-found: error
+          retention-days: 7
