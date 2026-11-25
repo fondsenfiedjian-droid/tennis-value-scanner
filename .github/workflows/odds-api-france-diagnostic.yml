@@ -1,0 +1,114 @@
+name: The Odds API one-time France tennis coverage check
+
+on:
+  push:
+    branches:
+      - diagnostic/odds-api-fr-once-20261125b
+    paths:
+      - .github/workflows/odds-api-france-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query ATP and WTA French-region match-winner odds
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          node <<'NODE'
+          import fs from 'node:fs';
+          const key = process.env.ODDS_API_KEY;
+          if (!key) throw new Error('ODDS_API_KEY repository secret is missing');
+
+          const tours = ['tennis_atp', 'tennis_wta'];
+          const target = new Set(['betclic_fr', 'netbet_fr', 'pmu_fr', 'unibet_fr', 'winamax_fr']);
+          const report = {
+            checkedAt: new Date().toISOString(),
+            source: 'The Odds API',
+            region: 'fr',
+            market: 'h2h',
+            tours: {},
+            totals: { events: 0, eventsWithOdds: 0, bookmakerQuotes: 0, targetFrenchBookmakers: {} }
+          };
+
+          for (const tour of tours) {
+            const url = new URL(`https://api.the-odds-api.com/v4/sports/${tour}/odds`);
+            url.searchParams.set('regions', 'fr');
+            url.searchParams.set('markets', 'h2h');
+            url.searchParams.set('oddsFormat', 'decimal');
+            url.searchParams.set('apiKey', key);
+            const response = await fetch(url, { headers: { accept: 'application/json' } });
+            const remaining = response.headers.get('x-requests-remaining');
+            const used = response.headers.get('x-requests-used');
+            const body = await response.json().catch(() => null);
+            if (!response.ok) {
+              const message = body && (body.message || body.error) ? (body.message || body.error) : `HTTP ${response.status}`;
+              throw new Error(`${tour}: ${message}; requests remaining=${remaining ?? 'unknown'}`);
+            }
+            if (!Array.isArray(body)) throw new Error(`${tour}: API response was not an array`);
+
+            const events = body.map(event => {
+              const bookmakers = (event.bookmakers || []).map(bookmaker => {
+                const markets = (bookmaker.markets || []).filter(m => m.key === 'h2h');
+                return {
+                  key: bookmaker.key,
+                  title: bookmaker.title,
+                  last_update: bookmaker.last_update,
+                  outcomes: markets.flatMap(m => m.outcomes || []).map(o => ({ name: o.name, price: o.price }))
+                };
+              }).filter(b => b.outcomes.length > 0);
+              return {
+                id: event.id,
+                commence_time: event.commence_time,
+                home_team: event.home_team,
+                away_team: event.away_team,
+                bookmakers
+              };
+            });
+
+            const keys = [...new Set(events.flatMap(e => e.bookmakers.map(b => b.key)))].sort();
+            const targetCounts = Object.fromEntries([...target].map(k => [k, events.reduce((n, e) => n + e.bookmakers.filter(b => b.key === k).length, 0)]));
+            report.tours[tour] = {
+              httpStatus: response.status,
+              requestCreditsRemaining: remaining,
+              requestCreditsUsed: used,
+              eventCount: events.length,
+              eventsWithOdds: events.filter(e => e.bookmakers.length > 0).length,
+              bookmakerKeys: keys,
+              targetFrenchBookmakerEventCounts: targetCounts,
+              events
+            };
+            report.totals.events += events.length;
+            report.totals.eventsWithOdds += events.filter(e => e.bookmakers.length > 0).length;
+            report.totals.bookmakerQuotes += events.reduce((n, e) => n + e.bookmakers.length, 0);
+            for (const [book, count] of Object.entries(targetCounts)) {
+              report.totals.targetFrenchBookmakers[book] = (report.totals.targetFrenchBookmakers[book] || 0) + count;
+            }
+          }
+
+          fs.writeFileSync('odds-api-france-diagnostic.json', JSON.stringify(report, null, 2));
+          console.log(JSON.stringify({
+            checkedAt: report.checkedAt,
+            tours: Object.fromEntries(Object.entries(report.tours).map(([tour, data]) => [tour, {
+              events: data.eventCount,
+              eventsWithOdds: data.eventsWithOdds,
+              bookmakerKeys: data.bookmakerKeys,
+              targetFrenchBookmakerEventCounts: data.targetFrenchBookmakerEventCounts,
+              creditsRemaining: data.requestCreditsRemaining,
+              creditsUsed: data.requestCreditsUsed
+            }])),
+            totals: report.totals
+          }, null, 2));
+          NODE
+
+      - name: Save sanitized coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: odds-api-france-diagnostic
+          path: odds-api-france-diagnostic.json
+          if-no-files-found: error
+          retention-days: 7
