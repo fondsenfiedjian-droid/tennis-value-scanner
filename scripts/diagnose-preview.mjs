@@ -4,10 +4,10 @@ const base = process.env.PREVIEW_URL || "https://deploy-preview-180--fascinating
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 const report = { url: base, pageErrors: [], failedRequests: [], api: {}, ui: {} };
-const productionApi = "https://tennis-value-api.fonds-enfiedjian.workers.dev";
-for (const [label, endpoint] of [["productionHealth", "/health"], ["tennisSports", "/odds-api/sports"]]) {
+const previewApi = "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev";
+for (const [label, endpoint] of [["previewHealth", "/health"], ["previewTennisSports", "/odds-api/sports"]]) {
   try {
-    const response = await fetch(productionApi + endpoint, { signal: AbortSignal.timeout(20000) });
+    const response = await fetch(previewApi + endpoint, { signal: AbortSignal.timeout(20000) });
     const body = await response.json();
     report.api[label] = label === "productionHealth"
       ? { status: response.status, configured: {
