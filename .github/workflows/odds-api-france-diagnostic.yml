@@ -36,7 +36,7 @@ jobs:
 
           const sportsUrl = new URL('https://api.the-odds-api.com/v4/sports/');
           sportsUrl.searchParams.set('all', 'true');
-sportsUrl.searchParams.set('apiKey', key);
+          sportsUrl.searchParams.set('apiKey', key);
           const sportsResult = await getJson(sportsUrl);
           if (!Array.isArray(sportsResult.body)) throw new Error('Sports endpoint returned an unexpected response');
           const allTennisSports = sportsResult.body
@@ -55,7 +55,6 @@ sportsUrl.searchParams.set('apiKey', key);
             region: 'fr',
             market: 'h2h',
             sportsListCreditsRemaining: sportsResult.remaining,
-            allTennisCompetitions: allTennisSports,
             allTennisCompetitions: allTennisSports,
             activeTennisCompetitions: tennisSports,
             competitions: {},
@@ -111,6 +110,7 @@ sportsUrl.searchParams.set('apiKey', key);
           fs.writeFileSync('odds-api-france-diagnostic.json', JSON.stringify(report, null, 2));
           console.log(JSON.stringify({
             checkedAt: report.checkedAt,
+            allTennisCompetitions: allTennisSports,
             activeTennisCompetitions: tennisSports,
             competitions: Object.fromEntries(Object.entries(report.competitions).map(([key, data]) => [key, {
               title: data.title,
