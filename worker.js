@@ -1331,7 +1331,9 @@ export default {
                 rankingPoints: profileB.ranking_points ?? null
               } : null,
               eloFieldsA: collectEloDiagnostics(profileA),
-              eloFieldsB: collectEloDiagnostics(profileB)
+              eloFieldsB: collectEloDiagnostics(profileB),
+              ratingContainersA: profileA?.stats?.ratings ?? null,
+              ratingContainersB: profileB?.stats?.ratings ?? null
             }
           }, 422);
         }
