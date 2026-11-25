@@ -944,18 +944,26 @@ export default {
       const isCoverage = path === "/history/coverage";
       const isMatches = path === "/history/matches";
       const isPackageList = path === "/history/packages";
-      const packagePeriod = path.startsWith("/history/packages/") ? path.slice("/history/packages/".length) : null;
       const isDigits = value => value.length > 0 && [...value].every(char => char >= "0" && char <= "9");
+      const historyMatchPath = path.startsWith("/history/matches/") ? path.slice("/history/matches/".length) : null;
+      const isHistoryPrices = historyMatchPath !== null && historyMatchPath.endsWith("/prices");
+      const historyMatchId = isHistoryPrices ? historyMatchPath.slice(0, -7) : historyMatchPath;
+      const validHistoryMatch = historyMatchId !== null && isDigits(historyMatchId) && Number(historyMatchId) > 0;
+      const packagePeriod = path.startsWith("/history/packages/") ? path.slice("/history/packages/".length) : null;
       const validPackagePeriod = packagePeriod !== null && (packagePeriod.length === 4 || packagePeriod.length === 7) && isDigits(packagePeriod.slice(0, 4)) && (packagePeriod.length === 4 || (packagePeriod[4] === "-" && isDigits(packagePeriod.slice(5))));
-      if (!isCoverage && !isMatches && !isPackageList && !validPackagePeriod) {
+      if (!isCoverage && !isMatches && !isPackageList && !validPackagePeriod && !validHistoryMatch) {
         return response({ error: "Invalid history route" }, 404);
       }
 
       const allowed = isMatches
         ? ["has_market", "is_qualifying", "gender", "limit", "offset", "from", "to", "tour", "draw", "player", "country", "tournament_id", "tier", "coverage", "points_complete"]
-        : isPackageList || validPackagePeriod
-          ? ["kind", ...(isPackageList ? ["year"] : ["format"])]
-          : [];
+        : isHistoryPrices
+          ? ["after_seq", "limit"]
+          : validHistoryMatch
+            ? ["sequence", "points"]
+            : isPackageList || validPackagePeriod
+              ? ["kind", ...(isPackageList ? ["year"] : ["format"])]
+              : [];
       const params = new URLSearchParams();
       for (const key of allowed) {
         const value = url.searchParams.get(key);
@@ -967,6 +975,18 @@ export default {
         }
         if (key === "offset" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) > 1000000)) {
           return response({ error: "offset must be a non-negative integer" }, 400);
+        }
+        if (key === "after_seq" && (!isDigits(clean) || !Number.isInteger(Number(clean)))) {
+          return response({ error: "after_seq must be a non-negative integer" }, 400);
+        }
+        if (key === "sequence" && !["raw", "clean"].includes(clean)) {
+          return response({ error: "sequence must be raw or clean" }, 400);
+        }
+        if (key === "points" && !["default", "complete"].includes(clean)) {
+          return response({ error: "points must be default or complete" }, 400);
+        }
+        if (key === "limit" && isHistoryPrices && Number(clean) > 500) {
+          return response({ error: "price history limit must not exceed 500" }, 400);
         }
         if (["has_market", "is_qualifying", "points_complete"].includes(key) && !["true", "false"].includes(clean.toLowerCase())) {
           return response({ error: key + " must be true or false" }, 400);
@@ -999,11 +1019,12 @@ export default {
       }
 
       const period = validPackagePeriod ? packagePeriod : null;
-      if (period && period.includes("-") && Number(period.slice(5)) > 12) {
+      if (period && period.includes("-") && (Number(period.slice(5)) < 1 || Number(period.slice(5)) > 12)) {
         return response({ error: "Package month must be between 01 and 12" }, 400);
       }
       const upstreamPath = isCoverage ? "/history/coverage"
         : isMatches ? "/history/matches"
+        : validHistoryMatch ? "/history/matches/" + historyMatchPath
         : isPackageList ? "/history/packages"
         : "/history/packages/" + period;
       const query = params.toString();
