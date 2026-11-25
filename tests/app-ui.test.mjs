@@ -522,3 +522,16 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+
+test("application version is shown discreetly and drives the service-worker cache", () => {
+  const versionSource = readFileSync(new URL("../app-version.js", import.meta.url), "utf8");
+  assert.match(versionSource, /TVS_APP_VERSION\\s*=\\s*"134"/);
+  assert.match(html, /<span class="app-version" id="appVersion" aria-label="Версия приложения"><\\/span>/);
+  assert.match(html, /textContent="v"\\+window\\.TVS_APP_VERSION/);
+  assert.match(html, /\\.app-version\\{font-size:9px/);
+  assert.doesNotMatch(html, /app-version[^}]*border|app-version[^}]*background/);
+  assert.match(serviceWorker, /importScripts\\("\\\.\\/app-version\\.js"\\)/);
+  assert.match(serviceWorker, /tennis-value-static-v\\$\\{self\\.TVS_APP_VERSION\\}/);
+  assert.match(serviceWorker, /"\\.\\/app-version\\.js"/);
+});
