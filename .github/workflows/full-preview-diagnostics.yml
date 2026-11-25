@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   browser-and-api-diagnostics:
-     runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,6 @@ jobs:
           let lastError = "Preview Worker did not return a valid overall Elo result";
           for (let attempt = 1; attempt <= 30; attempt++) {
             try {
-              const result = await read("/predict");
               // This is only a readiness probe; the actual comparison is tested in Chromium.
               const response = await fetch(base + "/predict", {
                 method: "POST", headers: { "Content-Type": "application/json" },
