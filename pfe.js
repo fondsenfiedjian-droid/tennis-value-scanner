@@ -344,6 +344,10 @@
     if (![3, 5].includes(bestOf)) {
       return { status: "invalid", reason: "unsupported_match_format", iterations: 0 };
     }
+    if (options.firstServer !== undefined && !["A", "B", "random"].includes(options.firstServer)) {
+      return { status: "invalid", reason: "invalid_first_server", iterations: 0 };
+    }
+    const firstServer = options.firstServer || "random";
     const iterations = Number.isInteger(options.iterations) ? clamp(options.iterations, 100, 100000) : 10000;
     const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 20261118;
     const random = createRandom(seed);
@@ -351,7 +355,7 @@
     let winsA = 0, totalGames = 0, totalSets = 0;
     const scorelines = new Map();
     for (let i = 0; i < iterations; i++) {
-      let setsA = 0, setsB = 0, firstServerA = random() < 0.5, games = 0;
+      let setsA = 0, setsB = 0, firstServerA = firstServer === "A" ? true : firstServer === "B" ? false : random() < 0.5, games = 0;
       const setScores = [];
       while (setsA < setsToWin && setsB < setsToWin) {
         const set = simulateSet(pA, pB, firstServerA, random);
@@ -378,7 +382,7 @@
       .slice(0, 8);
     return {
       status: "scenario",
-      iterations, seed, bestOf, setsToWin,
+      iterations, seed, bestOf, setsToWin, firstServer,
       probabilityA, probabilityB: 1 - probabilityA,
       confidenceInterval95A: [Math.max(0, center - margin), Math.min(1, center + margin)],
       averageTotalGames: totalGames / iterations,

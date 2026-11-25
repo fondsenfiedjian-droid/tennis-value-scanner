@@ -946,17 +946,24 @@ export default {
         return response({ error: "id must be a positive integer player identifier" }, 400);
       }
       const playerId = String(Number(rawPlayerId));
+      const requestedSurface = url.searchParams.get("surface");
+      if (requestedSurface !== null && !["hard", "clay", "grass", "indoor"].includes(requestedSurface.toLowerCase())) {
+        return response({ error: "surface must be hard, clay, grass, or indoor" }, 400);
+      }
+      const surface = requestedSurface?.toLowerCase() || null;
       try {
-        // Player statistics change more often than profile ratings; cache successful responses for one minute, matching the provider's cache window.
+        // Cache each surface-filtered aggregate separately; the provider's stats window is cached for one minute.
         const cache = caches.default;
-        const cacheKey = internalCacheRequest(request, "/__player-stats/" + encodeURIComponent(playerId));
+        const cacheKey = internalCacheRequest(request, "/__player-stats/" + encodeURIComponent(playerId) + (surface ? "/" + surface : ""));
         const cached = await cache.match(cacheKey);
         if (cached) {
           const headers = new Headers(cached.headers);
           headers.set("X-Data-Cache", "HIT");
           return new Response(cached.body, { status: cached.status, headers });
         }
-        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats", {
+        const upstreamUrl = new URL("https://api.livetennisapi.com/api/public/v1/players/" + encodeURIComponent(playerId) + "/stats");
+        if (surface) upstreamUrl.searchParams.set("surface", surface);
+        const upstream = await fetchLiveTennis(upstreamUrl.toString(), {
           headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
         });
         let stats;

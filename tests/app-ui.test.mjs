@@ -329,7 +329,7 @@ test("settings preview and immediately persist skin changes", () => {
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v\d+"/);
+  assert.match(serviceWorker, /CACHE_NAME = `tennis-value-static-v\$\{self\.TVS_APP_VERSION\}`/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {
@@ -521,4 +521,28 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+});
+
+
+test("application version is shown discreetly and drives the service-worker cache", () => {
+  const versionSource = readFileSync(new URL("../app-version.js", import.meta.url), "utf8");
+  assert.ok(versionSource.includes('TVS_APP_VERSION = "134"'));
+  assert.ok(html.includes('<span class="app-version" id="appVersion" aria-label="Версия приложения"></span>'));
+  assert.ok(html.includes('textContent="v"+window.TVS_APP_VERSION'));
+  assert.ok(html.includes(".app-version{font-size:9px"));
+  assert.doesNotMatch(html, /app-version[^}]*border|app-version[^}]*background/);
+  assert.ok(serviceWorker.includes('importScripts("./app-version.js")'));
+  assert.ok(serviceWorker.includes("tennis-value-static-v${self.TVS_APP_VERSION}"));
+  assert.ok(serviceWorker.includes('"./app-version.js"'));
+});
+
+
+test("all scanner application entry screens display the shared version label", () => {
+  for (const file of ["index.html", "index-new.html", "index (4).html"]) {
+    const source = readFileSync(new URL("../" + file, import.meta.url), "utf8");
+    assert.ok(source.includes('<span class="app-version" id="appVersion" aria-label="Версия приложения"></span>'), file + " must show the version label");
+    assert.ok(source.includes('textContent="v"+window.TVS_APP_VERSION'), file + " must use the shared version");
+    assert.ok(source.includes('<script src="./app-version.js"></script>'), file + " must load the shared version source");
+    assert.match(source, /\.app-version\{font-size:9px/);
+  }
 });

@@ -7,6 +7,7 @@
   <title>Tennis Value Scanner</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="./app-version.js"></script>
   <style>
     :root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--panel2:#1a2940;--line:#26364e;--muted:#93a4bb;--text:#f3f6fb;--green:#35d07f;--blue:#68a9ff;--amber:#f4bd58}
     *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#101b2d 0,#0b1220 45%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
@@ -43,14 +44,16 @@
     .foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:15px}
     .match-list{display:grid;gap:10px}.match-card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:15px;padding:14px}.match-top{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:10px}.match-players{font-weight:750;font-size:15px;line-height:1.45}.match-bottom{color:var(--muted);font-size:11px;margin-top:8px}.loading{text-align:center;padding:24px;color:var(--muted)}
     @media(min-width:650px){.app{padding-top:24px}.modal-back{align-items:center}}
+      .header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.app-version{font-size:9px;line-height:1;color:var(--muted);opacity:.62;letter-spacing:.04em;font-variant-numeric:tabular-nums}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
-    <div class="status">РАСПИСАНИЕ ПОДКЛЮЧЕНО</div>
+    <div class="header-meta"><span class="app-version" id="appVersion" aria-label="Версия приложения"></span><div class="status">РАСПИСАНИЕ ПОДКЛЮЧЕНО</div></div>
   </header>
+  <script>document.getElementById("appVersion").textContent="v"+window.TVS_APP_VERSION;</script>
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
   <div class="tabs" role="tablist">

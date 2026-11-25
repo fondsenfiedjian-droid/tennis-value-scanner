@@ -7,6 +7,7 @@
   <title>Tennis Value Scanner</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg?v=3" type="image/svg+xml">
+  <script src="./app-version.js"></script>
   <style>
     :root{color-scheme:dark;--bg:#080808;--panel:#11100f;--panel2:#191513;--line:#655b56;--muted:#b5aaa4;--text:#f5f1ee;--amber:#e6bd58}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#2a1711 0,#100d0b 34%,#070707 75%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
@@ -14,6 +15,7 @@
     .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom))}
     header{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 18px}
     .brand{font-size:18px;font-weight:850;letter-spacing:.07em}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.app-version{font-size:9px;line-height:1;color:var(--muted);opacity:.62;letter-spacing:.04em;font-variant-numeric:tabular-nums}
     .status{border:1px solid #8a6c32;color:#f0d58b;background:#211a0d;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700}
     .datebar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
     .datebar strong{font-size:20px}.datebar span{font-size:12px;color:var(--muted)}
@@ -192,13 +194,26 @@
     body[data-skin="amber-led"] .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
     body[data-skin="amber-led"] .bookmaker-tag{background:#17110d;border-color:#9a6337;color:#ffbd68}
     body[data-skin="amber-led"] .match-card:focus,body[data-skin="amber-led"] .stats-actions button:focus,body[data-skin="amber-led"] .actions button:focus,body[data-skin="amber-led"] .chip:focus{outline-color:#ffad55}
-\n  </style>
+\n    .pfe-simulator{margin:16px 0;background:linear-gradient(145deg,#171313,#0b0a0a);border:1px solid #87594a;border-radius:17px;padding:15px;box-shadow:inset 0 1px #ffffff12,0 7px 20px #0008}
+    .pfe-simulator h2{font-size:16px;margin:0 0 5px}.pfe-simulator .sim-sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+    .sim-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sim-field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
+    .sim-field input,.sim-field select{width:100%;min-width:0;background:#100e0d;border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--text)}
+    .sim-first-server{display:flex;gap:8px;margin-top:10px}.sim-first-server label{flex:1;display:flex;align-items:center;gap:7px;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:12px}
+    .sim-run{width:100%;margin-top:12px;border:1px solid #bd6848;border-radius:11px;padding:12px;background:linear-gradient(110deg,#713923,#b75b3c);color:#fff;font-weight:850}
+    .sim-run:disabled{opacity:.55}.sim-status{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}.sim-result{margin-top:12px;border-top:1px solid #59483f;padding-top:12px}
+    .sim-meta{font-size:11px;color:var(--muted);line-height:1.6}.sim-probs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+    .sim-prob{background:#100e0d;border:1px solid #59483f;border-radius:11px;padding:10px}.sim-prob b{display:block;font-size:24px;color:#e6bd58}.sim-prob span{font-size:11px;color:var(--muted)}
+    .sim-scorelines{font-size:12px;line-height:1.7}.sim-warning{color:#f0c28e}.sim-source{font-size:10px;color:var(--muted);margin-top:8px}
+    @media(max-width:380px){.sim-fields{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
-    <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
+    <div class="header-meta"><span class="app-version" id="appVersion" aria-label="Версия приложения"></span>
+      <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
+    </div>
   </header>
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
@@ -227,6 +242,23 @@
   <div id="bestBet" class="best-bet" role="button" tabindex="0" aria-label="Открыть подробности ставки дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
   <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">EV ДНЯ · РИСКОВЫЙ ШАНС</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
+  <section class="pfe-simulator" id="pfeMatchSimulator" aria-labelledby="pfeSimulatorTitle">
+    <h2 id="pfeSimulatorTitle">PFE · Симулятор матча</h2>
+    <div class="sim-sub">Полная симуляция от розыгрышей до результата матча. Турнир, покрытие и формат определяются только по найденному матчу в расписании.</div>
+    <div class="sim-fields">
+      <div class="sim-field"><label for="simPlayerA">Игрок 1</label><input id="simPlayerA" type="text" autocomplete="off" placeholder="Имя игрока"></div>
+      <div class="sim-field"><label for="simPlayerB">Игрок 2</label><input id="simPlayerB" type="text" autocomplete="off" placeholder="Имя игрока"></div>
+    </div>
+    <div class="sim-field" style="margin-top:10px"><label for="simMatchChoice">Найденный матч</label><select id="simMatchChoice" disabled><option value="">Сначала введи двух игроков</option></select></div>
+    <div class="sim-sub" style="margin:9px 0 5px">Кто подаёт первым?</div>
+    <div class="sim-first-server">
+      <label><input type="radio" name="simFirstServer" value="A" checked> Игрок 1</label>
+      <label><input type="radio" name="simFirstServer" value="B"> Игрок 2</label>
+    </div>
+    <button class="sim-run" id="simFindAndRun" type="button">НАЙТИ МАТЧ И СИМУЛИРОВАТЬ</button>
+    <div class="sim-status" id="simStatus" role="status" aria-live="polite">Для точного сценария нужен реальный предстоящий матч между выбранными игроками.</div>
+    <div class="sim-result" id="simResult" hidden></div>
+  </section>
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
@@ -421,7 +453,9 @@
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const IS_PFE_NETLIFY_PREVIEW=location.hostname.endsWith('--fascinating-paprenjak-1aa9b3.netlify.app');
+  document.getElementById("appVersion").textContent="v"+window.TVS_APP_VERSION;
+  const API=IS_PFE_NETLIFY_PREVIEW?'https://feature-pfe-match-simulator-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeoutMs);
@@ -2104,6 +2138,96 @@
       panel.hidden=false;
     }finally{button.disabled=false;button.textContent='Аудит нагрузки игроков';}
   });
+</script>
+<script type="module">
+  const IS_PFE_NETLIFY_PREVIEW=location.hostname.endsWith('--fascinating-paprenjak-1aa9b3.netlify.app');
+  const API=IS_PFE_NETLIFY_PREVIEW?'https://feature-pfe-match-simulator-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const $=id=>document.getElementById(id);
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const playerName=p=>typeof p==='string'?p:p?.name||p?.full_name||p?.display_name||[p?.first_name,p?.last_name].filter(Boolean).join(' ')||p?.player_name||'';
+  const playerId=p=>{const n=Number(p?.id??p?.playerId??p?.player_id??p?.playerID);return Number.isSafeInteger(n)&&n>0?n:null;};
+  const p1=m=>m?.players?.p1||m?.player1||m?.home||m?.participant1;
+  const p2=m=>m?.players?.p2||m?.player2||m?.away||m?.participant2;
+  const matchList=x=>{if(Array.isArray(x))return x;if(!x||typeof x!=='object')return [];for(const key of ['matches','data','results','events'])if(x[key]!==undefined){const found=matchList(x[key]);if(found.length)return found;}return [];};
+  const playerMatches=(query,player)=>{const q=norm(query),full=norm(playerName(player));if(!q||!full)return false;if(q===full)return true;const qt=q.split(' '),nt=full.split(' ');return qt.length===1?nt[nt.length-1]===q:nt.slice(-qt.length).join(' ')===q;};
+  const isFinishedMatch=m=>{const states=[m?.status,m?.event_status,m?.match_status,m?.state,m?.result?.status].map(norm).filter(Boolean);if(states.some(v=>['walk over','walkover','wo','finished','finish','complete','completed','ended','cancelled','canceled','retired','abandoned','defaulted'].includes(v)))return true;const raw=m?.scheduled_time||m?.scheduled_at||m?.starts_at||m?.start_time||m?.match_time||m?.date;if(raw){const d=new Date(raw);if(!Number.isNaN(d.getTime())&&d.getTime()<Date.now())return true;}return false;};
+  const surnameIsAmbiguous=(query,matches)=>{const q=norm(query);if(!q||q.includes(' '))return false;const found=new Set();for(const m of matches){for(const p of [p1(m),p2(m)]){const full=norm(playerName(p));if(full&&full.split(' ').at(-1)===q)found.add(String(playerId(p)||full));}}return found.size>1;};
+  const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
+  const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
+  const surfaceCode=m=>{const v=String(m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface??'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'hard';if(v.includes('clay')||v.includes('terre'))return 'clay';if(v.includes('grass')||v.includes('gazon'))return 'grass';if(v.includes('carpet')||v.includes('moquette'))return 'carpet';return '';};
+  const surface=m=>({hard:'Хард',clay:'Грунт',grass:'Трава',carpet:'Ковёр'}[surfaceCode(m)]||'');
+  const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\s*of\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
+  const category=m=>textValue(m?.tier)||textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
+  let candidates=[];
+  function status(message,warning=false){$('simStatus').textContent=message;$('simStatus').classList.toggle('sim-warning',warning);}
+  function selectedMatch(){return candidates[Number($('simMatchChoice').value)]||null;}
+  async function findMatches(){
+    const a=norm($('simPlayerA').value),b=norm($('simPlayerB').value);
+    if(!a||!b||a===b){status('Введи два разных имени игроков.',true);return;}
+    status('Ищу точную пару в предстоящем расписании…');
+    $('simFindAndRun').disabled=true;$('simResult').hidden=true;
+    try{
+      const response=await fetch(API+'/matches?status=upcoming&limit=200&draw=singles');
+      const payload=await response.json();
+      if(!response.ok)throw new Error(payload?.error||'Ошибка расписания HTTP '+response.status);
+      const all=matchList(payload);
+      const eligible=all.filter(m=>m?.is_doubles!==true&&!isFinishedMatch(m));
+      const choice=$('simMatchChoice');
+      choice.innerHTML='';
+      if(surnameIsAmbiguous(a,eligible)||surnameIsAmbiguous(b,eligible)){choice.disabled=true;choice.add(new Option('Уточни имена игроков',''));status('Фамилия неоднозначна в текущем расписании. Введи полные имена обоих игроков, чтобы исключить ошибочное совпадение.',true);return;}
+      candidates=eligible.filter(m=>{const x=p1(m),y=p2(m);return (playerMatches(a,x)&&playerMatches(b,y))||(playerMatches(a,y)&&playerMatches(b,x));});
+      if(!candidates.length){choice.disabled=true;choice.add(new Option('Матч не найден',''));status('В расписании не найден предстоящий матч этой пары. Турнир и покрытие не определяю наугад. Проверь написание имён или попробуй позже.',true);return;}
+      candidates.sort((x,y)=>String(x?.start_time||x?.date||'').localeCompare(String(y?.start_time||y?.date||'')));
+      if(candidates.length>1)choice.add(new Option('Выбери нужный матч',''));
+      candidates.forEach((m,i)=>{const label=[tournament(m)||'Турнир не указан',surface(m)||'покрытие не указано',String(m?.date||m?.start_time||'').slice(0,16)].join(' · ');choice.add(new Option(label,String(i)));});
+      choice.disabled=candidates.length<2;
+      if(candidates.length>1)status('Найдено несколько матчей этой пары. Выбери нужный в списке и нажми кнопку ещё раз.');
+      else await runSimulation(candidates[0]);
+    }catch(error){status('Не удалось найти матч или выполнить симуляцию: '+String(error?.message||error),true);}
+    finally{$('simFindAndRun').disabled=false;}
+  }
+  async function runSimulation(match){
+    if(!match){status('Сначала найди и выбери матч.',true);return;}
+    const inputNameA=$('simPlayerA').value.trim(),inputNameB=$('simPlayerB').value.trim();
+    const matchP1=p1(match),matchP2=p2(match);
+    const inputAIsMatchP1=playerMatches(inputNameA,matchP1);
+    const selectedA=inputAIsMatchP1?matchP1:matchP2,selectedB=inputAIsMatchP1?matchP2:matchP1;
+    const nameA=playerName(selectedA),nameB=playerName(selectedB);
+    const idA=playerId(selectedA),idB=playerId(selectedB);
+    const event=tournament(match),court=surface(match),surfaceFilter=surfaceCode(match),bo=bestOf(match);
+    if(!idA||!idB||idA===idB){status('У матча нет двух надёжных ID игроков. Симуляция остановлена.',true);return;}
+    if(!event||!court){status('В расписании не указаны точный турнир или покрытие. Не буду подставлять догадки — симуляция остановлена.',true);return;}
+    if(!['hard','clay','grass'].includes(surfaceFilter)){status('Для этого покрытия API не предоставляет подтверждённую разбивку статистики подачи/приёма. Нужна проверенная статистика именно по покрытию; агрегатную подставлять не буду.',true);return;}
+    if(!bo){status('Формат матча (Best of 3/5) не определён источником. Симуляция остановлена, чтобы не исказить результат.',true);return;}
+    const firstServer=document.querySelector('input[name="simFirstServer"]:checked')?.value||'A';
+    status('Загружаю статистику подачи и приёма обоих игроков…');
+    const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id+'&surface='+encodeURIComponent(surfaceFilter));const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');const sourceId=Number(j.stats?.player?.id);if(j.stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourceId)||sourceId!==id))throw new Error('ID игрока в статистике не совпадает с выбранным игроком');if(j.stats?.filters?.surface!==surfaceFilter)throw new Error('Провайдер не подтвердил фильтр выбранного покрытия');return j.stats;}));
+    const profileA={...window.TVSPFE.normalizeServeReturnProfile(ra),playerId:idA};
+    const profileB={...window.TVSPFE.normalizeServeReturnProfile(rb),playerId:idB};
+    const inputs=window.TVSPFE.deriveServeReturnMatchInputs(profileA,profileB);
+    if(inputs.status!=='ready_for_score_simulation')throw new Error('Недостаточно надёжной статистики подачи/приёма: '+(inputs.reason||inputs.status));
+    status('Провожу 10 000 симуляций розыгрышей, геймов, сетов и матча…');
+    const result=window.TVSPFE.runMatchMonteCarlo(inputs.playerA.servicePointWin,inputs.playerB.servicePointWin,{bestOf:bo,iterations:10000,firstServer,seed:((Number(match.id)||idA*31+idB)>>>0)});
+    if(result.status!=='scenario')throw new Error('PFE не смог выполнить сценарий: '+result.reason);
+    const pct=n=>(n*100).toFixed(1)+'%';
+    const interval=result.confidenceInterval95A.map(pct).join('–');
+    const score=result.topScorelines.map(x=>'<div>'+x.score+' <span class="muted">· '+pct(x.probability)+'</span></div>').join('');
+    const categoryLabel=category(match)||'категория не указана';
+    $('simResult').innerHTML='<div class="sim-meta"><b>'+esc(event)+'</b> · '+court+' · '+esc(categoryLabel)+' · Best of '+bo+'<br>'+esc(nameA)+' — '+esc(nameB)+'<br>Первую подачу выполняет: '+esc(firstServer==='A'?nameA:nameB)+'<br>Источник матча: расписание Live Tennis API · статистика: профили подачи/приёма Live Tennis API</div>'+
+      '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+esc(nameA)+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+esc(nameB)+'</span></div></div>'+
+      '<div class="sim-scorelines"><b>Наиболее частые итоговые счета</b>'+score+'</div>'+
+      '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Матчей в профилях с данными: '+profileA.matchesWithStats+' / '+profileB.matchesWithStats+'<br>Проверка подачи/приёма: расхождение '+pct(inputs.playerA.disagreement)+' / '+pct(inputs.playerB.disagreement)+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
+      '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Статистика подачи/приёма загружена с фильтром именно по покрытию '+court+'; если провайдер не подтвердил покрытие или данных недостаточно, симуляция не запускается. Результат не меняет автоматический прогноз, EV или план ставок. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
+    $('simResult').hidden=false;
+    status('Готово. Результат относится к выбранному турниру и покрытию, указанным источником.');
+  }
+  $('simFindAndRun').addEventListener('click',async()=>{
+    if(candidates.length>1){if($('simMatchChoice').value===''){status('Сначала выбери один из найденных матчей.',true);return;}const m=selectedMatch();$('simFindAndRun').disabled=true;try{await runSimulation(m);}catch(e){status('Симуляция остановлена: '+String(e?.message||e),true);}finally{$('simFindAndRun').disabled=false;}return;}
+    await findMatches();
+  });
+  $('simMatchChoice').addEventListener('change',()=>{if(candidates.length>1)status('Матч выбран. Нажми кнопку ещё раз для запуска симуляции.');});
+  ['simPlayerA','simPlayerB'].forEach(id=>$(id).addEventListener('input',()=>{candidates=[];$('simMatchChoice').innerHTML='<option value="">Сначала найди матч</option>';$('simMatchChoice').disabled=true;}));
 </script>
 </body>
                                                                                                                                 </html>
