@@ -1,5 +1,8 @@
 (() => {
-  const API = location.hostname.startsWith("deploy-preview-")
+  const productionHost = "fascinating-paprenjak-1aa9b3.netlify.app";
+  const isPreview = location.hostname !== productionHost &&
+    (location.hostname.endsWith(".netlify.app") || location.hostname.startsWith("deploy-preview-"));
+  const API = isPreview
     ? "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev"
     : "https://tennis-value-api.fonds-enfiedjian.workers.dev";
   const $ = id => document.getElementById(id);
