@@ -281,6 +281,7 @@ export function runBacktest(matches, options = {}) {
       };
       const year = date.slice(0, 4);
       const insideEvaluationWindow = (!evaluationStart || date >= evaluationStart) && (!evaluationEnd || date <= evaluationEnd);
+      const categoryKey = match.category ?? "Unknown";
       if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
       if (insideEvaluationWindow) {
         if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
