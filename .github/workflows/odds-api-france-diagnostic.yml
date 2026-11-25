@@ -35,11 +35,16 @@ jobs:
           }
 
           const sportsUrl = new URL('https://api.the-odds-api.com/v4/sports/');
-          sportsUrl.searchParams.set('apiKey', key);
+          sportsUrl.searchParams.set('all', 'true');
+sportsUrl.searchParams.set('apiKey', key);
           const sportsResult = await getJson(sportsUrl);
           if (!Array.isArray(sportsResult.body)) throw new Error('Sports endpoint returned an unexpected response');
-          const tennisSports = sportsResult.body
-            .filter(s => s.active === true && (s.group === 'Tennis' || String(s.key).startsWith('tennis_')))
+          const allTennisSports = sportsResult.body
+            .filter(s => s.group === 'Tennis' || String(s.key).startsWith('tennis_'))
+            .map(s => ({ key: s.key, title: s.title, group: s.group, active: s.active }))
+            .sort((a, b) => a.key.localeCompare(b.key));
+          const tennisSports = allTennisSports
+            .filter(s => s.active === true)
             .map(s => ({ key: s.key, title: s.title, group: s.group }))
             .sort((a, b) => a.key.localeCompare(b.key));
 
@@ -50,6 +55,8 @@ jobs:
             region: 'fr',
             market: 'h2h',
             sportsListCreditsRemaining: sportsResult.remaining,
+            allTennisCompetitions: allTennisSports,
+            allTennisCompetitions: allTennisSports,
             activeTennisCompetitions: tennisSports,
             competitions: {},
             totals: { competitionsQueried: 0, events: 0, likelySinglesEvents: 0, eventsWithOdds: 0, bookmakerQuotes: 0, targetFrenchBookmakers: {} }
