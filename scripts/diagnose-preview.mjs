@@ -4,6 +4,24 @@ const base = process.env.PREVIEW_URL || "https://deploy-preview-180--fascinating
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 const report = { url: base, pageErrors: [], failedRequests: [], api: {}, ui: {} };
+const productionApi = "https://tennis-value-api.fonds-enfiedjian.workers.dev";
+for (const [label, endpoint] of [["productionHealth", "/health"], ["tennisSports", "/odds-api/sports"]]) {
+  try {
+    const response = await fetch(productionApi + endpoint, { signal: AbortSignal.timeout(20000) });
+    const body = await response.json();
+    report.api[label] = label === "productionHealth"
+      ? { status: response.status, configured: {
+          liveTennisApi: body.liveTennisApiConfigured,
+          apify: body.apifyTokenConfigured,
+          oddsApi: body.oddsApiConfigured
+        } }
+      : { status: response.status, tennisSports: (body.tennisSports || []).map(s => ({
+          key: s.key, title: s.title, active: s.active
+        })) };
+  } catch (error) {
+    report.api[label] = { error: error.message };
+  }
+}
 page.on("pageerror", error => report.pageErrors.push(error.message));
 page.on("requestfailed", request => report.failedRequests.push({ url: request.url(), error: request.failure()?.errorText }));
 page.on("response", async response => {
