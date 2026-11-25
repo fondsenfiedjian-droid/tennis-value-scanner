@@ -250,6 +250,36 @@ test("odds matching rejects quotes from different event IDs or mismatched compet
   assert.equal(mismatched.oddsForMatch(match).length, 0);
 });
 
+test("odds matching enforces the 36-hour event-time boundary", () => {
+  const now = Date.now();
+  const matchStart = new Date(now + 2 * 60 * 60 * 1000).toISOString();
+  const withinWindow = makeWinamaxQuote({
+    startTime: new Date(Date.parse(matchStart) + 36 * 60 * 60 * 1000 - 1000).toISOString(),
+    outcome: "home"
+  });
+  const withinAway = { ...withinWindow, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: matchStart, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([withinWindow, withinAway]).oddsForMatch(match).length, 2);
+  const outside = { ...withinWindow, startTime: new Date(Date.parse(matchStart) + 36 * 60 * 60 * 1000 + 1000).toISOString() };
+  const outsideAway = { ...outside, outcome: "away", oddsDecimal: 1.8 };
+  assert.equal(getOddsMatching([outside, outsideAway]).oddsForMatch(match).length, 0);
+});
+
+test("odds matching recognizes major tournament aliases but rejects unrelated same-tour events", () => {
+  const home = makeWinamaxQuote({ competition: "French Open", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Roland Garros" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 2);
+  const unrelated = [
+    makeWinamaxQuote({ competition: "ATP Masters Rome", outcome: "home" }),
+    makeWinamaxQuote({ competition: "ATP Masters Rome", outcome: "away", oddsDecimal: 1.8 })
+  ];
+  assert.equal(getOddsMatching(unrelated).oddsForMatch({
+    ...match,
+    tournament_name: "ATP Finals"
+  }).length, 0);
+});
+
 test("odds matching accepts quotes up to six hours old but still rejects older quotes and pairs more than 30 minutes apart", () => {
   const freshHome = makeWinamaxQuote({ outcome: "home" });
   const staleAway = makeWinamaxQuote({
