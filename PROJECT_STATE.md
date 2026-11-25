@@ -1052,3 +1052,103 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Tournament Intent evidence module (2026-11-21)
+- Added isolated `tournament-intent.js` and unit tests in `tests/tournament-intent.test.mjs`.
+- Classifies only verified, sourced, pre-match evidence: explicit preparation statements, explicit priority for a later event, cautious return statements, verified recent return, calendar context, and contrary explicit title-focus statements.
+- Requires source and observation timestamp; rejects unverified, stale, future, post-target and unknown evidence. Empty evidence remains `unknown`.
+- Keeps preparation/priority evidence separate from physical workload in `human-factor.js`.
+- Research/triage only: no live app integration, no probability adjustment, no EV or bet-selection changes. `probabilityAdjustment` is always null pending coverage and chronological validation.
+- Module documentation: `docs/tournament-intent-module.md`.
+
+
+## Tournament Intent evidence registry (2026-11-21)
+- Added `tournament-intent-registry.js` for reviewed, sourced, point-in-time evidence records tied to an exact player, event and target match.
+- Records require a typed source category, public HTTPS source, publication and capture timestamps, target match start, explicit verification and reviewer identity.
+- Import reports accepted, rejected and duplicate rows with reasons; stale, unverified, malformed and post-match evidence is rejected.
+- Assessment filters by exact player and target match and independently rejects publication/capture after match start.
+- Added tests in `tests/tournament-intent-registry.test.mjs` and workflow documentation in `docs/tournament-intent-evidence-registry.md`.
+- Manual/reviewed evidence only. No automated crawler, live UI, probability adjustment, EV change or bet-selection change.
+
+- Added `scripts/import-tournament-intent-evidence.mjs`: local JSON/JSONL import utility with dry-run, merge, duplicate detection, rejection reporting and atomic output. It performs no network or Production writes. Added CLI integration tests.
+
+- Added `docs/tournament-intent-source-discovery.md`: official ATP/WTA source shortlist, evidence-type criteria, point-in-time review checklist and a manual pilot workflow. No scraper, API, production UI or probability adjustment enabled.
+
+
+## Tournament Intent pilot sampling protocol (2026-11-21)
+- Added `docs/tournament-intent-pilot-protocol.md` with a predeclared, consecutive-window sample design, fixed source-search budget, source-category logging and separate outcomes for no evidence, unavailable sources and incomplete searches.
+- The protocol requires pre-match-only evidence, independent review of positive records plus a random 20% of no-evidence observations, and reporting of coverage and reviewer agreement before any predictive study.
+- Any later predictive test must use chronological holdout data and compare against the unchanged baseline; no probability adjustment, EV change or bet-selection integration is authorised by this research step.
+
+
+## Tournament Intent prospective pilot window (2026-11-21)
+- Pilot protocol ranking eligibility widened from top 50 to top 150, with ranking bands 1–50, 51–100 and 101–150 kept separate. The 100-observation figure is a target, not a quota; do not widen the cutoff after reviewing evidence.
+- Added `docs/tournament-intent-pilot-window-2026-11-23.md` for 23 Nov–6 Dec 2026. It records official ATP/WTA/ITF event candidates, ranking snapshot/source requirements, and currently visible WTA player candidates.
+- ATP Davis Cup Finals are excluded from the individual-event sample because team obligations create a different context. ATP Challenger entries/draws and exact WTA/ITF target match IDs still require confirmation.
+- At reconnaissance time, checked WTA/ITF draws were not available; therefore zero match-level evidence records have been created. No-evidence classifications must not be assigned before exact matches are selected and the source-search protocol is completed.
+- No prediction, EV, bet-selection or Production behavior changes.
+
+
+## Retrospective Tournament Intent case review (2026-11-21)
+- Added `docs/tournament-intent-retrospective-cases-2026-11.md` on the Tournament Intent PR branch. It documents Holger Rune–Zizou Bergs (Stockholm, 10 Nov; official match ID `ms019`), Alexander Zverev–Arthur Fils (ATP Finals, 19 Nov), and Karolina Muchova's pre-Finals schedule/recovery statements.
+- Rune's 9 Nov official interview is a clear preparation/match-rhythm signal after Achilles rehabilitation; he still said he wanted to give a strong effort and do well. This is not evidence of low competitive intent.
+- Zverev's ankle disclosure was post-match and must not be backfilled into the Zverev–Fils pre-match record. It may only inform a later match if independently captured before that later match.
+- Muchova's comments document a deliberate recovery/schedule decision before the Finals, not low priority for the Finals themselves.
+- All cases were discovered/retrieved retrospectively. They are research-log examples only and are deliberately excluded from the pre-match evidence registry. Source publication time and actual capture time must remain distinct.
+- No classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
+
+
+## Two-month retrospective research expansion (2026-11-21)
+- Research scope widened to 21 Sep–21 Nov 2026. Expanded `docs/tournament-intent-retrospective-cases-2026-11.md` with official/public cases: Rune (Shanghai, match rhythm after Achilles return), Kartal (gradual return after back injury), Pegula (recovery then explicit late-season ambition), Potapova and Anisimova (season-ending recovery decisions), Swiatek (season ended for thigh recovery despite Finals qualification contention), Alcaraz (match-rhythm objective coexisting with strong ambition), and Svitolina (rest after Wuhan followed by explicit readiness for WTA Finals).
+- Revised taxonomy separates preparation objective, cautious return, schedule/recovery decision, explicit high priority, mixed evidence and unknown.
+- Core lesson: preparation or recovery goals do not imply low intent to win. Apply schedule decisions only to matches after the public announcement. Never backfill post-match announcements into earlier match records.
+- This is a curated discovery set, not a systematic or representative sample; no denominator or prevalence estimate. Next phase must build a complete match list and search both players symmetrically.
+- All material in this expanded document is retrospective research. It is excluded from the pre-match registry; no probability, EV, bet-selection, live UI or Production changes.
+
+
+## Two-month retrospective sampling frame (2026-11-21)
+- Added `docs/tournament-intent-retrospective-sampling-frame-2026-09-21_to_11-21.md` on the Tournament Intent research branch.
+- Predeclared the ATP/WTA event frame for 21 Sep–21 Nov 2026, including eligible singles-only observations, top-150 ranking snapshot rule, 1–50/51–100/101–150 strata, symmetric review of both players, team-event exclusions and the 21 Nov ATP Finals cutoff.
+- The document explicitly distinguishes an event frame from an extracted match sample. Official draws/results and pre-event ranking snapshots must be collected and counts published before source review; no denominator or prevalence estimate is claimed yet.
+- Retrospective publications discovered now remain separate from prospective evidence capture. No classifier weights, probability, EV, bet selection, live UI or Production behavior changed.
+
+
+## Retrospective sampling-frame correction and WTA draw manifest (2026-11-21)
+- Corrected the WTA event frame against the official WTA Asian Swing preview: Singapore is WTA 500; Seoul is WTA 250; Jiangxi/Jiujiang is not a November 2026 event in the study window; Athens replaced Jiangxi but took place in July and is outside the window; WTA Finals took place in Indian Wells, 8–15 Nov.
+- Added `docs/tournament-intent-retrospective-frame-reconciliation-2026-11.md` and corrected `docs/tournament-intent-retrospective-sampling-frame-2026-09-21_to_11-21.md`.
+- Added `docs/tournament-intent-wta-draw-extraction-manifest-2026.md` with official WTA draw URLs for ten tour-level events plus WTA Finals. The 386 event bracket slots + 15 planned Finals singles matches = 401 structural slots; this is not a played-match count and not a top-150 player-match denominator.
+- Added four more retrospective cases (Alcaraz/Paris, Svitolina/WTA Finals, Rybakina withdrawal, Sabalenka/WTA Finals) to the case log. They remain non-predictive and are not imported into the pre-match registry.
+- The WTA draw extraction and pre-event ranking joins are still incomplete. Do not report a completed denominator or prevalence estimate. ATP official draw extraction and separate Challenger/WTA125/ITF strata remain outstanding.
+- No model weights, probabilities, EV, bet selection, live UI or Production behavior changed. PR #152 remains open and unmerged.
+
+
+## WTA draw extraction audit — Seoul and Singapore (2026-11-21)
+- Added `docs/tournament-intent-wta-draw-extraction-audit-seoul-singapore-2026.md` after inspecting the official singles-draw pages for Seoul and Singapore.
+- Seoul page view exposes 24 score-bearing singles rows (16 R32 + 8 R16); the 7 later bracket slots are blank in the accessible rendering.
+- Singapore page view exposes 24 score-bearing rows (12 R32 + 7 R16 + 4 QF + 1 SF), explicitly marks two walkovers (Mertens in R16 and Gibson in SF), and leaves the final score blank. Four first-round BYEs are not matches.
+- These are page-view extraction observations only, not certified played-match counts. The pages do not expose a complete date/status/ranking join in the inspected rendering.
+- No top-150 player–match denominator is claimed. Obtain official match-level records and pre-event ranking snapshots before freezing the sample. Do not count walkovers or BYEs as played matches.
+- No model, probability, EV, bet-selection, live UI or Production changes.
+
+
+## Match-level data source discovery (2026-11-21)
+- Added `docs/tournament-intent-match-data-source-discovery-2026-11-21.md`.
+- Compared documented ESPN-based Apify actor, AcesAPI, secondary Flashscore draw snapshots and public tour pages. The Apify actor provides match IDs, UTC dates, player IDs, draw/round, statuses (including retirement and walkover) and scores; its documented ranking output is current top-150 only, not historical pre-event snapshots. Challenger/ITF are not covered.
+- AcesAPI documents match-level IDs/dates/status/results and charges 2 credits per match query; no API key connected or credits consumed.
+- Secondary TennisRaptor draw snapshots explicitly may be partial; use only for discrepancy checks, not as the denominator.
+- Seoul discrepancy: WTA official page confirms a 32-player singles draw; a secondary tracker reports 43 singles records (31 main draw + 12 qualifying), showing the earlier official draw-page rendering with 24 score-bearing rows was incomplete. Singapore official pages confirm 28-player draw and Fernandez title; draw-page rendering alone also missed final status.
+- No data actor/API was run, no credits spent, no new source connected to Production. A paid/credit-gated extraction requires explicit approval and a historical pre-event ranking source. Final denominator remains unestablished.
+- No intent labels, classifier weights, probabilities, EV, bet selection, live UI or Production behavior changed.
+
+- Classifier interpretation hardening: numeric evidence weights are now descriptive-only and no longer determine the classification. Calendar-only signals cannot produce a preparation/low-priority label; preparation statements, later-event priority statements, return/readiness context and current-event priority are reported separately. Mixed direct statements remain mixed. Added regression tests. No probability, EV, bet-selection or Production behavior changed.
+
+- CI follow-up on classifier hardening: first regression run exposed one registry-test assertion still expecting the retired broad label `possible_preparation_or_low_priority`; actual narrow output was `explicit_preparation_statement`. Updated the stale expectation. No production or model behavior changed.
+\n- Registry source-type hardening: evidence records now reject mismatched provenance categories (e.g. an official schedule cannot substantiate a direct player-preparation quote; a social post cannot stand in for official event-calendar dates). Added regression tests.\n
+- Prospective pilot recheck (2026-11-22): official WTA Buenos Aires draw remained unavailable; official ITF Playford acceptance list retained three top-150 candidate players, but its public draw page exposed no readable match pairings. Main draw starts 24 Nov. No exact player–match observations or evidence records were created. Updated `docs/tournament-intent-pilot-window-2026-11-23.md`; secondary ATP entry lists were not treated as official evidence.
+
+- Added `tournament-intent-observations.js` and tests to represent the full player–match sampling denominator, including evidence found, no evidence found, source unavailable and search incomplete. It requires exact match linkage, a pre-event top-150 ranking snapshot, per-source search statuses, reviewer and pre-match search timestamps; coverage summaries are stratified by tour and ranking band. No evidence remains a search-coverage outcome, not a negative intent label.
+
+- Added offline `scripts/import-tournament-intent-observations.mjs` with JSON/JSONL input, validation, duplicate detection, merge, coverage summary, atomic output and dry-run mode; added CLI regression tests. No network or Production writes.
+
+- Expanded the prospective pilot protocol with the exact observation-ledger source-status fields and mutually distinct outcome rules. `no_evidence_found` is permitted only after all five source categories are searched; unavailable and incomplete searches remain separate coverage outcomes.
