@@ -2,6 +2,9 @@ name: Deploy Cloudflare Worker Preview
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/player-comparison-mvp
 
 permissions:
   contents: read
@@ -34,3 +37,41 @@ jobs:
             exit 1
           fi
           npx --yes wrangler@4.165.0 deploy --config wrangler.preview.toml
+
+      - name: Smoke-check preview player search and Elo comparison
+        env:
+          PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.PREVIEW_WORKER_URL;
+          async function read(path, options) {
+            const res = await fetch(base + path, { ...options, signal: AbortSignal.timeout(15000) });
+            let data = {};
+            try { data = await res.json(); } catch {}
+            if (!res.ok) throw new Error(path + " returned HTTP " + res.status + ": " + (data.error || "no details"));
+            return data;
+          }
+          const health = await read("/health");
+          if (health.status !== "ok" || health.liveTennisApiConfigured !== true ||
+              !health.endpoints?.includes("/players/search") || !health.endpoints?.includes("/predict")) {
+            throw new Error("Preview Worker is missing the required Live Tennis comparison configuration");
+          }
+          const [a, b] = await Promise.all([
+            read("/players/search?search=Novak&limit=8"),
+            read("/players/search?search=Carlos%20Alcaraz&limit=8")
+          ]);
+          const playerA = a.players?.find(p => p.name === "Novak Djokovic");
+          const playerB = b.players?.find(p => p.name === "Carlos Alcaraz");
+          if (!playerA || !playerB) throw new Error("Player search did not return the two smoke-test players");
+          const result = await read("/predict", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playerIdA: playerA.id, playerIdB: playerB.id,
+              playerA: playerA.name, playerB: playerB.name, surface: "Hard" })
+          });
+          const values = [result.ratingA, result.ratingB, result.probabilityA, result.probabilityB].map(Number);
+          if (!values.every(Number.isFinite) || Math.abs(values[2] + values[3] - 100) > 0.05) {
+            throw new Error("Preview /predict returned invalid Elo ratings or probabilities");
+          }
+          console.log("Preview OK: player search found Novak Djokovic and Carlos Alcaraz; Elo=" +
+            values[0] + "/" + values[1] + "; win probabilities=" + values[2] + "%/" + values[3] + "%.");
+          NODE
