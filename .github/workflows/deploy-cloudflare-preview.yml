@@ -4,21 +4,21 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - fix/player-comparison-mvp
+      - test/matches-and-comparison
 
 permissions:
   contents: read
 
 jobs:
   deploy-preview:
-    if: github.ref == 'refs/heads/fix/player-comparison-mvp'
+    if: github.ref == 'refs/heads/test/matches-and-comparison'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out preview branch
         uses: actions/checkout@v4
         with:
-          ref: fix/player-comparison-mvp
+          ref: test/matches-and-comparison
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
