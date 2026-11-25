@@ -1052,3 +1052,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+## 2026-11-25 — Production visual refresh from Developer design (preview only)
+- User approved transferring the Developer edition's visual identity to Production without replacing Production with the Developer application.
+- Created isolated branch `feature/production-developer-visual-refresh` from `main`; no changes were made to `main`, the live Netlify deployment, Cloudflare Worker, model logic, Winamax/Apify ingestion, or experimental Developer laboratory.
+- Production keeps its existing markup, application flow, API integration, prediction logic, and screens. This change applies the restrained black/copper/ruby visual treatment to the existing Production header and adds a discreet upper-right version label above API status: `PRODUCTION · v2.0.1`.
+- The version label uses 8px muted text, right alignment, and a small-screen adjustment. It does not replace or obscure API status.
+- Advanced the Production service-worker cache from `tennis-value-static-v134` to `tennis-value-static-v135` so installed clients can receive the updated shell.
+- Added a regression test for the Production label, alignment, API status, and cache version.
+- Preview only. Validate the Netlify deploy preview and regression suite before considering merge. Do not merge or deploy Production without explicit user approval.
