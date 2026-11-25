@@ -90,4 +90,46 @@ try {
   console.log(JSON.stringify(report, null, 2));
   await browser.close();
 }
-if (report.ui.fatal || report.ui.compareViewOpened !== true || !report.ui.compareStatus?.includes("успешно")) process.exit(1);
+
+const swBrowser = await chromium.launch({ headless: true });
+try {
+  const swPage = await swBrowser.newPage({ viewport: { width: 390, height: 844 } });
+  const swErrors = [];
+  swPage.on("pageerror", error => swErrors.push(error.message));
+  const swResponse = await swPage.goto(base, { waitUntil: "networkidle", timeout: 60000 });
+  await swPage.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) throw new Error("Service Worker API unavailable");
+    await navigator.serviceWorker.ready;
+  });
+  await swPage.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await swPage.waitForFunction(() => !!navigator.serviceWorker.controller, { timeout: 20000 });
+  const swState = await swPage.evaluate(async () => {
+    const keys = await caches.keys();
+    const expectedCache = "tennis-value-static-v135";
+    const cache = await caches.open(expectedCache);
+    const comparisonUrl = new URL("./compare.js", location.href).href;
+    return {
+      controller: !!navigator.serviceWorker.controller,
+      cacheNames: keys,
+      expectedCachePresent: keys.includes(expectedCache),
+      compareModuleCached: !!(await cache.match(comparisonUrl)),
+      controllerScript: navigator.serviceWorker.controller?.scriptURL || null
+    };
+  });
+  await swPage.locator("#navCompare").click({ timeout: 10000 });
+  await swPage.waitForFunction(() => {
+    const node = document.querySelector("#compareView");
+    return node && getComputedStyle(node).display !== "none" && node.getBoundingClientRect().height > 0;
+  }, { timeout: 10000 });
+  report.ui.serviceWorker = {
+    pageStatus: swResponse?.status(),
+    ...swState,
+    compareViewOpened: true,
+    pageErrors: swErrors
+  };
+} catch (error) {
+  report.ui.serviceWorker = { fatal: error.message };
+} finally {
+  await swBrowser.close();
+}
+if (report.ui.fatal || report.ui.compareViewOpened !== true || !report.ui.compareStatus?.includes("успешно") || report.ui.serviceWorker?.fatal || report.ui.serviceWorker?.expectedCachePresent !== true || report.ui.serviceWorker?.compareModuleCached !== true || report.ui.serviceWorker?.compareViewOpened !== true || report.ui.serviceWorker?.pageErrors?.length) process.exit(1);
