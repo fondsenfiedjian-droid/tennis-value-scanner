@@ -735,7 +735,8 @@ export default {
       }
     }
 
-    // Keep Davis Cup team-tie odds isolated from the singles odds pipeline.\n    if (path === "/davis-cup") {
+    // Keep Davis Cup team-tie odds isolated from the singles odds pipeline.
+    if (path === "/davis-cup") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.APIFY_TOKEN) return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
       try {
