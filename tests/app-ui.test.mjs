@@ -476,12 +476,13 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
+test("match list keeps the schedule visible when bookmaker odds are missing", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
+  assert.match(html, /const filtered=winnerEnabled\?dateFiltered:\[\]/);
+  assert.match(html, /const quotedMatches=filtered\.filter\(m=>oddsForMatch\(m\)\.length>=2\)\.length/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · пар с коэффициентами:/);
+  assert.match(html, /Расписание отображается независимо от наличия коэффициентов/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
@@ -521,4 +522,34 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/document\.documentElement\.dataset\.skin=selected/);
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
+});
+
+
+test("Production uses the Developer visual identity and displays a discreet version label", () => {
+  assert.match(html, /<header class="production-header">/);
+  assert.match(html, /class="edition-version" id="editionVersion">PRODUCTION · v2\.0\.1</);
+  assert.match(html, /\.edition-version\{display:block;max-width:100%;white-space:nowrap;[^}]*font-size:8px/);
+  assert.match(html, /\.production-header-meta\{display:flex;flex-direction:column;align-items:flex-end/);
+  assert.match(html, /id="connectionStatus"/);
+  assert.match(serviceWorker, /tennis-value-static-v136/);
+});
+
+
+test("Production v2.0.1 adopts the Developer graphite, ruby, cold-blue and amber visual system without Developer app features", () => {
+  assert.match(html, /Production v2\.0\.1 — transferred Developer visual language/);
+  assert.match(html, /--cold-blue:#68c7ee/);
+  assert.match(html, /--ruby:#a51f45/);
+  assert.match(html, /--amber:#f0bd62/);
+  assert.match(html, /\.production-header \.status\{background:#102131;border-color:#35617e;color:#8edcf6/);
+  assert.match(html, /\.data-freshness\.good\{background:#102131;color:#8edcf6/);
+  assert.match(html, /\.best-bet-odds\{color:#f0bd62/);
+  assert.match(html, /\.nav button\.active\{color:#83d7f4;background:#13283a/);
+  assert.doesNotMatch(html, /id="quickLab"/);
+  assert.match(serviceWorker, /tennis-value-static-v136/);
+});
+
+
+test("automatic archive result checks do not show a blocking alert when no matches are due", () => {
+  assert.match(html, /if\(!ids\.length\)\{if\(!archiveAutoCheckRunning\)alert\(/);
+  assert.match(html, /if\(archiveAutoCheckRunning\|\|document\.visibilityState!==['"]visible['"]\|\|Date\.now\(\)-archiveAutoCheckLastAt<2\*60\*60\*1000\)return/);
 });

@@ -1,0 +1,73 @@
+name: Build Production APK
+
+on:
+  push:
+    branches:
+      - feature/production-developer-visual-refresh
+    paths:
+      - "android-app/**"
+      - "index.html"
+      - "pfe.js"
+      - "human-factor.js"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "icon.svg"
+      - ".github/workflows/build-production-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build installable Production APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Production candidate
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Package Production web application
+        shell: bash
+        run: |
+          mkdir -p android-app/app/src/main/assets
+          cp index.html pfe.js human-factor.js manifest.webmanifest sw.js icon.svg android-app/app/src/main/assets/
+          node -e 'const fs=require("fs"); const p="android-app/app/src/main/assets/sw.js"; let s=fs.readFileSync(p,"utf8"); s=s.replace("const APP_SHELL = [\"./\", ", "const APP_SHELL = ["); fs.writeFileSync(p,s);'
+
+      - name: Build APK
+        run: gradle --no-daemon -p android-app assembleDebug
+
+      - name: Prepare named APK
+        run: |
+          mkdir -p dist
+          cp android-app/app/build/outputs/apk/debug/app-debug.apk dist/TVS-Production-v2.0.1.apk
+          sha256sum dist/TVS-Production-v2.0.1.apk | tee dist/SHA256SUMS.txt
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVS-Production-v2.0.1-APK
+          path: |
+            dist/TVS-Production-v2.0.1.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30

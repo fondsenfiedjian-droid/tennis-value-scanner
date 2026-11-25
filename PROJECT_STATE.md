@@ -1052,3 +1052,31 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+## 2026-11-25 — Production visual refresh from Developer design (preview only)
+- User approved transferring the Developer edition's visual identity to Production without replacing Production with the Developer application.
+- Created isolated branch `feature/production-developer-visual-refresh` from `main`; no changes were made to `main`, the live Netlify deployment, Cloudflare Worker, model logic, Winamax/Apify ingestion, or experimental Developer laboratory.
+- Production keeps its existing markup, application flow, API integration, prediction logic, and screens. This change applies the restrained black/copper/ruby visual treatment to the existing Production header and adds a discreet upper-right version label above API status: `PRODUCTION · v2.0.1`.
+- The version label uses 8px muted text, right alignment, and a small-screen adjustment. It does not replace or obscure API status.
+- Advanced the Production service-worker cache from `tennis-value-static-v134` to `tennis-value-static-v135` so installed clients can receive the updated shell.
+- Added a regression test for the Production label, alignment, API status, and cache version.
+- Preview only. Validate the Netlify deploy preview and regression suite before considering merge. Do not merge or deploy Production without explicit user approval.
+
+- Follow-up approved visual-system transfer: Production's existing screens and DOM remain intact; only its presentation layer now adopts the Developer edition's graphite/navy surfaces, ruby recommendation accents, cold-blue system/status elements, amber odds and matching card/button/navigation treatments.
+- The Developer edition's new screens, laboratory controls, storage namespace and experimental model features were deliberately not copied. Production's existing API, Winamax/Apify ingestion, prediction calculations, settings, archive and navigation behavior remain the source of truth.
+- Advanced the Production service-worker cache to `tennis-value-static-v136` and added regression coverage for the visual tokens, status/odds/nav styling, and absence of Developer-only navigation.
+- Preview only; this is not merged or deployed to the live Production site. APK packaging follows only after preview and regression validation.
+
+- Added an isolated Android wrapper under `android-app/` for the Production edition only. It bundles the Production web shell and its existing local assets; the app uses the existing Cloudflare Worker for live data and odds, so live data requires an internet connection.
+- Added `.github/workflows/build-production-apk.yml` to build `TVS-Production-v2.0.1.apk` and publish it as a GitHub Actions artifact. The current APK is debug-key signed for direct Android installation/testing, not Play Store publication. No Developer app files or laboratory modules are packaged.
+- APK build is tied to this unmerged Production candidate branch. The live Production site remains unchanged; the APK build is a preview candidate until the user approves final release.
+
+- Production v2.0.1 APK build succeeded on 2026-11-25. GitHub Actions run: `45604402587`; artifact: `TVS-Production-v2.0.1-APK` (artifact ID `15016963021`). The APK was downloaded and checked as an Android package; its SHA-256 is `aba6d59181b3f3d573804adad29d5f00b4f129b4eef814796fe8a067b5d7acc0`.
+- Regression tests and project-state guard both passed for the APK source commit `7c0627bc1f4784e5283847e48657f6d6963157ab`. APK contains the Production v2.0.1 UI assets and service-worker cache v136. It is debug-key signed for direct installation and is not a Play Store signing release.
+
+
+## 2026-11-25 — Fix startup popup from automatic archive result checks
+- Fixed a blocking startup alert in the automatic archive-result check. When no archived matches are due for a result check, the app now stays silent during the automatic background check; the explanatory alert remains available when the user manually presses “Проверить результаты”.
+- Added a regression assertion to `tests/app-ui.test.mjs` to prevent the automatic-check popup from returning.
+- Scope is limited to the Production frontend archive-check UX and its test. Prediction calculations, Cloudflare Worker, odds ingestion, Winamax/Apify, and production deployment were not changed.
+- Change is on `feature/production-developer-visual-refresh`; PR #184 remains open/unmerged and the live Production site remains unchanged.
