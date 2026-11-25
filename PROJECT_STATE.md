@@ -1052,3 +1052,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Elo / PFE / EV label audit (2026-11-22)
+- Audited the current main production path: Worker `/predict` returns Elo probability from the selected Live Tennis API overall/surface Elo ratings. Frontend EV is computed from that Elo probability and the selected bookmaker quote.
+- Frontend separately fuses the Elo probability with a same-bookmaker no-vig market probability through PFE. The fused PFE probability is displayed as a diagnostic and is used to determine provisional/consensus/conflict eligibility; it does not replace the Elo probability used for EV or stake selection.
+- This distinction was not explicit enough in the visible labels. Branch `fix-elo-pfe-ev-labels` labels the Best Bet / highest-EV probability as Elo and labels the fused PFE estimate as diagnostic. No probability, EV, threshold, model weight, odds source, or production recommendation logic was changed.
+- Added UI regression coverage for the distinction. GitHub Actions Regression tests passed (run `44963628371`); Project state documentation guard passed (run `44963628411`). Netlify Deploy Preview is still a preview only; no production deployment.
+- Next: continue the production odds-integrity audit, then compare the live EV path against the quote-selection and bookmaker pairing rules. Do not merge/deploy without review.
