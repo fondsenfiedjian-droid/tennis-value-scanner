@@ -6,6 +6,3 @@ workers_dev = true
 [vars]
 CACHE_NAMESPACE = "tennis-value-api-flashscore-preview"
 TVS_RESEARCH_PREVIEW_ONLY = "true"
-
-[triggers]
-crons = ["0 */6 * * *"]
