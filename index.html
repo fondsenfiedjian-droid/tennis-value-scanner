@@ -201,6 +201,77 @@
     .production-header .status{max-width:100%;white-space:nowrap}
     @media(max-width:360px){.production-header{gap:7px}.production-brand .brand{font-size:16px}.production-header .status{font-size:10px;padding:5px 7px}.edition-version{font-size:7px}}
 
+  
+    /* Production v2.0.1 — transferred Developer visual language, without Developer screens or logic */
+    :root{
+      --bg:#080b12;--panel:#101722;--panel2:#151e2b;--line:#2b3b50;
+      --muted:#91a3b8;--text:#edf3fa;--amber:#f0bd62;
+      --cold-blue:#68c7ee;--ruby:#a51f45;--copper-pink:#d58a9e;
+    }
+    body{
+      background:
+        radial-gradient(ellipse at 12% -12%,#182b40 0,transparent 34%),
+        radial-gradient(ellipse at 100% 2%,#321322 0,transparent 28%),
+        linear-gradient(180deg,#0b1019,#080b12 58%,#080a10);
+      color:var(--text)
+    }
+    .production-header{padding:18px 2px 16px;border-bottom:1px solid #26384d;margin-bottom:10px}
+    .production-brand .brand{color:#eef5fc;letter-spacing:.085em}
+    .production-brand .sub{color:#91a3b8}
+    .production-header .status{background:#102131;border-color:#35617e;color:#8edcf6;box-shadow:0 0 12px #2d9dc51a}
+    .datebar{padding:9px 11px;border:1px solid #26384d;border-radius:12px;background:linear-gradient(100deg,#101a28,#10131d);margin:8px 0 14px}
+    .datebar strong{color:#edf3fa}
+    .datebar span{color:#91a3b8}
+    .tabs{background:#0c1420;border-color:#2b4059}
+    .tab{color:#9aacc0}
+    .tab.active{background:linear-gradient(135deg,#5d1b35,#9f2448 58%,#541a35);color:#fff4f6;box-shadow:inset 0 1px #ffdce455,0 0 13px #a51f4530}
+    .panel,.match-card,.archive-item{background:linear-gradient(145deg,#151f2d,#0e141f 78%);border-color:#30445b;box-shadow:inset 0 1px #d9edff0c,0 7px 20px #0008}
+    .stat-num{color:#f0bd62;text-shadow:0 0 12px #f0bd6218}
+    .muted,.archive-meta{color:#91a3b8}
+    .refresh,.actions .primary{background:linear-gradient(110deg,#651b37,#a5264b 55%,#681b39);border:1px solid #c35b78;color:#fff5f6;box-shadow:0 7px 22px #a51f4530,inset 0 1px #ffdce455}
+    .section-head h2{color:#edf3fa}
+    .linkbtn{color:#79c9ed}
+    .chip{background:#111b29;border-color:#344a62;color:#c3d2e1}
+    .chip.on{background:#321827;border-color:#a33a59;color:#f0b2c1}
+    .best-bet{background:linear-gradient(145deg,#25111d,#11121b 70%);border-color:#8e2949;box-shadow:inset 0 1px #fff2,0 0 18px #a51f4525,0 8px 24px #0009}
+    .best-bet:before{background:linear-gradient(120deg,#d9e6ef,#52687d 18%,#a51f45 48%,#34465c 76%,#e0cbd2)}
+    .best-bet-title,.best-bet-value{color:#e18ca5}
+    .best-bet-main,.best-bet-pair{color:#f3f5fa}
+    .best-bet-empty,.best-bet-meta{color:#bac8d7}
+    .best-bet-odds{color:#f0bd62;text-shadow:0 0 10px #f0bd6244,0 0 22px #f0bd6222;animation:none}
+    .match-card{border-color:#30445b}
+    .match-card.expanded{border-color:#8e3655;background:linear-gradient(145deg,#261723,#111722)}
+    .match-card:focus{outline-color:#68c7ee}
+    .bookmaker-tag{background:#171b24;border-color:#a97842;color:#f0bd62}
+    .match-card .odds-visible{color:#d7c2c8}
+    .model-result{background:#101925;border-color:#344b63}
+    .model-result strong,.model-positive{color:#f0bd62}
+    .model-negative{color:#e18ca5}
+    .model-muted{color:#91a3b8}
+    .data-freshness.good{background:#102131;color:#8edcf6;border-color:#35617e}
+    .data-freshness.medium{background:#2b2115;color:#f1cf91;border-color:#8b6838}
+    .data-freshness.limited{background:#2b1420;color:#f0b4c5;border-color:#87405c}
+    .notice{background:#101d2b;border-color:#355a74;color:#b9d7e8}
+    .bottom{background:#080c13ed;border-top:1px solid #2b3e54}
+    .nav button{color:#91a3b8}
+    .nav button.active{color:#83d7f4;background:#13283a}
+    .modal{background:linear-gradient(145deg,#172130,#0d131d);border-color:#3a5068}
+    input[type=number],select,.check{background:#0d1520;border-color:#344b63;color:#edf3fa}
+    .actions button,.stats-actions button{background:#152131;border-color:#3b5068;color:#eaf2fa}
+    .actions button:focus,.stats-actions button:focus,.chip:focus{outline-color:#68c7ee}
+    @media(max-width:360px){
+      .production-header{gap:7px}
+      .production-brand .brand{font-size:16px}
+      .production-header .status{font-size:10px;padding:5px 7px}
+      .edition-version{font-size:7px}
+      .datebar{padding:8px}
+      .stat-num{font-size:24px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .best-bet-odds,.best-bet.has-pick{animation:none!important}
+      *,*:before,*:after{scroll-behavior:auto!important;transition:none!important}
+    }
+
   </style>
 </head>
 <body>
