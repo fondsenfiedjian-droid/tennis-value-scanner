@@ -1052,3 +1052,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Production probability / odds provenance audit (2026-11-22)
+- Completed a code-only audit of the current `main` baseline `d66260cce60294c1b6a48451a9ef96cd1f2b6c38`. Full findings and limitations are in `docs/PRODUCTION_ODDS_PROVENANCE_AUDIT.md`.
+- Confirmed: Worker `/predict` returns surface Elo when available, otherwise overall Elo; frontend EV is `(Elo probability × selected decimal odds − 1) × 100`.
+- PFE combines Elo and a same-bookmaker no-vig market estimate for diagnostics/eligibility; its fused probability does not replace Elo in EV.
+- Odds matching enforces provider/country, tennis match-winner market, player/tournament identity, future start within 36h, `scrapedAt` freshness up to six hours, and maximum 30-minute two-sided scrape skew. Best side prices are selected across enabled bookmakers; provider identity is retained.
+- Key remaining issue: a highest-EV quote can come from Betclic or NetBet rather than Winamax. Add a preferred-bookmaker setting or explicit source mode before treating every recommendation as actionable for a Winamax-only user.
+- This is a repository-code audit, not a live endpoint or deployment check. No production code, secrets, paid services, Worker, Apify task or deployment changed.
+- Next independent task tracked as issue #156: implement a persistent preferred-bookmaker mode (Winamax default, Betclic, NetBet or best available), with no silent cross-book fallback and explicit alternative-price labels. Then validate against real feed samples. Tighten quote-pair timing only if observed coverage supports it.
