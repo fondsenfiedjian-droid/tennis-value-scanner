@@ -37,6 +37,7 @@ page.on("response", async response => {
     keys: body && typeof body === "object" ? Object.keys(body) : null,
     error: body?.error || body?.providerMessage || null,
     diagnostics: body?.diagnostics || null,
+    oddsSources: path === "/odds" ? { sourceCounts: body?.sourceCounts || null, flashscore: body?.flashscore || null } : null,
     sampleItems: Array.isArray(body?.items) ? body.items.slice(0, 3) : null,
     predictDiagnostic: path === "/predict" ? body?.diagnostic || null : undefined,
     configured: path === "/health" ? {
