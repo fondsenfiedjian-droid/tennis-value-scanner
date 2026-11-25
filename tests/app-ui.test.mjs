@@ -535,3 +535,14 @@ test("application version is shown discreetly and drives the service-worker cach
   assert.ok(serviceWorker.includes("tennis-value-static-v${self.TVS_APP_VERSION}"));
   assert.ok(serviceWorker.includes('"./app-version.js"'));
 });
+
+
+test("all scanner application entry screens display the shared version label", () => {
+  for (const file of ["index.html", "index-new.html", "index (4).html"]) {
+    const source = readFileSync(new URL("../" + file, import.meta.url), "utf8");
+    assert.ok(source.includes('<span class="app-version" id="appVersion" aria-label="Версия приложения"></span>'), file + " must show the version label");
+    assert.ok(source.includes('textContent="v"+window.TVS_APP_VERSION'), file + " must use the shared version");
+    assert.ok(source.includes('<script src="./app-version.js"></script>'), file + " must load the shared version source");
+    assert.match(source, /\.app-version\{font-size:9px/);
+  }
+});
