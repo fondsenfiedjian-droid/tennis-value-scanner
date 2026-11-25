@@ -599,7 +599,7 @@ export default {
         maxItems: 500
       };
       const upstream = await fetch(
-        "https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs?waitForFinish=0",
+        "https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs?waitForFinish=0&maxTotalChargeUsd=0.10",
         {
           method: "POST",
           headers: {
