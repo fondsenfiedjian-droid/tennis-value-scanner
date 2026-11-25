@@ -6,7 +6,7 @@ import vm from "node:vm";
 const source = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
 const instrumented = source.replace(
   "export default {",
-  "globalThis.__flashscoreTest = { normalizeFlashscoreWinamaxRows, mergeWinamaxOdds };\nexport default {"
+  "globalThis.__flashscoreTest = { normalizeFlashscoreWinamaxRows, mergeWinamaxOdds };\nglobalThis.worker = {"
 );
 const sandbox = { Date, Set, Map, Number, String, Math, Object, Array, JSON, RegExp };
 vm.runInNewContext(instrumented, sandbox);
