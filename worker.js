@@ -970,7 +970,7 @@ export default {
         if (value === null) continue;
         const clean = value.trim();
         if (!clean || clean.length > 200) return response({ error: "Invalid " + key + " parameter" }, 400);
-        if (key === "limit" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) < 1 || Number(clean) > 200)) {
+        if (key === "limit" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) < 1 || Number(clean) > (isHistoryPrices ? 500 : 200))) {
           return response({ error: "limit must be an integer from 1 to 200" }, 400);
         }
         if (key === "offset" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) > 1000000)) {
@@ -984,9 +984,6 @@ export default {
         }
         if (key === "points" && !["default", "complete"].includes(clean)) {
           return response({ error: "points must be default or complete" }, 400);
-        }
-        if (key === "limit" && isHistoryPrices && Number(clean) > 500) {
-          return response({ error: "price history limit must not exceed 500" }, 400);
         }
         if (["has_market", "is_qualifying", "points_complete"].includes(key) && !["true", "false"].includes(clean.toLowerCase())) {
           return response({ error: key + " must be true or false" }, 400);
