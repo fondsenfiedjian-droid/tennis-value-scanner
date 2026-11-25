@@ -526,12 +526,12 @@ test("skin selection applies and persists immediately",()=>{
 
 test("application version is shown discreetly and drives the service-worker cache", () => {
   const versionSource = readFileSync(new URL("../app-version.js", import.meta.url), "utf8");
-  assert.match(versionSource, /TVS_APP_VERSION\\s*=\\s*"134"/);
-  assert.match(html, /<span class="app-version" id="appVersion" aria-label="Версия приложения"><\\/span>/);
-  assert.match(html, /textContent="v"\\+window\\.TVS_APP_VERSION/);
-  assert.match(html, /\\.app-version\\{font-size:9px/);
+  assert.ok(versionSource.includes('TVS_APP_VERSION = "134"'));
+  assert.ok(html.includes('<span class="app-version" id="appVersion" aria-label="Версия приложения"></span>'));
+  assert.ok(html.includes('textContent="v"+window.TVS_APP_VERSION'));
+  assert.ok(html.includes(".app-version{font-size:9px"));
   assert.doesNotMatch(html, /app-version[^}]*border|app-version[^}]*background/);
-  assert.match(serviceWorker, /importScripts\\("\\\.\\/app-version\\.js"\\)/);
-  assert.match(serviceWorker, /tennis-value-static-v\\$\\{self\\.TVS_APP_VERSION\\}/);
-  assert.match(serviceWorker, /"\\.\\/app-version\\.js"/);
+  assert.ok(serviceWorker.includes('importScripts("./app-version.js")'));
+  assert.ok(serviceWorker.includes("tennis-value-static-v${self.TVS_APP_VERSION}"));
+  assert.ok(serviceWorker.includes('"./app-version.js"'));
 });
