@@ -635,6 +635,88 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
 
+    const diagnosticPaths = new Set([
+      "/__diagnostic/flashscore-singles/start",
+      "/__diagnostic/flashscore-singles/status"
+    ]);
+    if (diagnosticPaths.has(path)) {
+      const expected = env.DIAGNOSTIC_TRIGGER_TOKEN;
+      const supplied = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "");
+      if (!expected) return response({ error: "diagnostic_trigger_disabled" }, 503);
+      if (!supplied || supplied !== expected) return response({ error: "unauthorized" }, 401);
+      if (path.endsWith("/start")) {
+        if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
+        if (!env.APIFY_TOKEN) return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
+        const actor = "incognito_mode~flashscore-tennis-scraper";
+        const input = {
+          mode: "matches",
+          days: ["0", "1"],
+          categories: [
+            "atp-singles", "wta-singles",
+            "challenger-men-singles", "challenger-women-singles",
+            "itf-men-singles", "itf-women-singles"
+          ],
+          status: "scheduled",
+          includeOdds: true,
+          oddsCountry: "FR",
+          maxMatches: 200,
+          maxItems: 500
+        };
+        const upstream = await fetch(
+          "https://api.apify.com/v2/acts/" + actor + "/runs?waitForFinish=0&maxTotalChargeUsd=0.10",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + env.APIFY_TOKEN,
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify(input)
+          }
+        );
+        let payload;
+        try { payload = await upstream.json(); } catch { payload = null; }
+        if (!upstream.ok) {
+          return response({ error: "Apify actor start failed", upstreamStatus: upstream.status, detail: payload }, 502);
+        }
+        const run = payload && typeof payload === "object" ? payload.data : null;
+        if (!run || !run.id) return response({ error: "Apify did not return a run ID", detail: payload }, 502);
+        return response({
+          actor,
+          runId: run.id,
+          status: run.status || "UNKNOWN",
+          maxTotalChargeUsd: 0.10,
+          input
+        });
+      }
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      const runId = url.searchParams.get("runId") || "";
+      if (!/^[A-Za-z0-9_-]{5,80}$/.test(runId)) return response({ error: "Invalid runId" }, 400);
+      const metaResponse = await fetch(
+        "https://api.apify.com/v2/actor-runs/" + encodeURIComponent(runId),
+        { headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Accept": "application/json" } }
+      );
+      let metaPayload;
+      try { metaPayload = await metaResponse.json(); } catch { metaPayload = null; }
+      if (!metaResponse.ok) return response({ error: "Apify run lookup failed", upstreamStatus: metaResponse.status }, 502);
+      const run = metaPayload && typeof metaPayload === "object" ? (metaPayload.data || metaPayload) : null;
+      if (!run || typeof run !== "object") return response({ error: "Invalid Apify run response" }, 502);
+      if (run.status !== "SUCCEEDED" || !run.defaultDatasetId) {
+        return response({ status: run.status || "UNKNOWN", runId, run });
+      }
+      const datasetResponse = await fetch(
+        "https://api.apify.com/v2/datasets/" + encodeURIComponent(run.defaultDatasetId) +
+          "/items?clean=true&format=json&limit=500",
+        { headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Accept": "application/json" } }
+      );
+      let items;
+      try { items = await datasetResponse.json(); } catch { items = null; }
+      if (!datasetResponse.ok || !Array.isArray(items)) {
+        return response({ error: "Apify dataset retrieval failed", upstreamStatus: datasetResponse.status }, 502);
+      }
+      return response({ status: run.status, runId, run, itemCount: items.length, items });
+    }
+
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: cors });
     }
