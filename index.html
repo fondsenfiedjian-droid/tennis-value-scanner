@@ -1756,7 +1756,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   const isPreviewBuild=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app';
   const editionBadge=$('#editionVersion');
   if(editionBadge){editionBadge.textContent=(isPreviewBuild?'PREVIEW':'PRODUCTION')+' · v2.0.0';if(isPreviewBuild)document.body.dataset.edition='developer';}
-  const API=isPreviewBuild?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const API=isPreviewBuild?'https://tennis-value-api-flashscore-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     let timer;
@@ -4638,7 +4638,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 (function(){
   const isPreviewHost=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app';
   const worker=isPreviewHost
-    ?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev'
+    ?'https://tennis-value-api-flashscore-preview.fonds-enfiedjian.workers.dev'
     :'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   const status=document.getElementById('connectionStatus');
   const odds=document.getElementById('oddsStatus');
