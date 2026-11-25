@@ -648,7 +648,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search", "/predict", "/davis-cup"]
       });
     }
 
@@ -732,6 +732,62 @@ export default {
         });
       } catch {
         return response({ error: "Could not retrieve historical tennis data from Apify" }, 502);
+      }
+    }
+
+    // Keep Davis Cup team-tie odds isolated from the singles odds pipeline.
+    if (path === "/davis-cup") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.APIFY_TOKEN) return response({ error: "APIFY_TOKEN secret is not configured" }, 500);
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(new URL("/davis-cup", url.origin).toString(), { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetch(
+          `https://api.apify.com/v2/actor-tasks/${APIFY_TASK_ID}/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=1000`,
+          { headers: { "Authorization": `Bearer ${env.APIFY_TOKEN}`, "Accept": "application/json" } }
+        );
+        if (!upstream.ok) return response({ error: "Apify task dataset request failed", upstreamStatus: upstream.status }, upstream.status);
+        const raw = await upstream.json();
+        if (!Array.isArray(raw)) return response({ error: "Apify task dataset response was not an array" }, 502);
+        const rows = raw.filter(row => {
+          if (!row || typeof row !== "object") return false;
+          const competition = String(row.tournament || row.competition || "").trim();
+          const home = String(row.homeName || row.homeTeam || "").trim();
+          const away = String(row.awayName || row.awayTeam || "").trim();
+          const isDavisCup = /(?:Davis Cup|Coupe Davis)/i.test(competition);
+          const isTeamTie = !home.includes("/") && !away.includes("/") && home && away;
+          const isWinamaxFrance = String(row.bookmakerName || "").trim().toLowerCase() === "winamax" &&
+            String(row.bookmakerCountry || "").trim().toUpperCase() === "FR";
+          const isWinnerMarket = String(row.market || "").toUpperCase() === "HOME_AWAY" &&
+            String(row.period || "").toUpperCase() === "FULL_TIME";
+          const a = Number(row.homeOdds), b = Number(row.awayOdds);
+          return isDavisCup && isTeamTie && isWinamaxFrance && isWinnerMarket &&
+            Number.isFinite(a) && a > 1 && Number.isFinite(b) && b > 1;
+        }).map(row => ({
+          bookmaker: "Winamax",
+          bookmakerCountry: "FR",
+          competition: String(row.tournament || row.competition || "Davis Cup"),
+          eventId: String(row.eventId || ""),
+          homeTeam: String(row.homeName || row.homeTeam || ""),
+          awayTeam: String(row.awayName || row.awayTeam || ""),
+          homeOdds: Number(row.homeOdds),
+          awayOdds: Number(row.awayOdds),
+          startTime: row.startTime || null,
+          scrapedAt: row.scrapedAt || null,
+          status: row.status || null
+        }));
+        const payload = { source: "Apify Winamax task", retrievedAt: new Date().toISOString(), count: rows.length, items: rows };
+        const result = response(payload, 200, { "Cache-Control": "public, max-age=120", "X-Worker-Build": WORKER_BUILD_ID });
+        await cache.put(cacheKey, result.clone());
+        return result;
+      } catch {
+        return response({ error: "Could not retrieve Davis Cup odds from Apify" }, 502);
       }
     }
 
