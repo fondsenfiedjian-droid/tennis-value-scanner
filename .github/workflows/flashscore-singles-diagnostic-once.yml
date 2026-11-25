@@ -47,6 +47,7 @@ jobs:
           echo "::add-mask::$token"
           echo "DIAGNOSTIC_TOKEN=$token" >> "$GITHUB_ENV"
           printf '%s' "$token" | npx --yes wrangler@4.165.0 secret put DIAGNOSTIC_TRIGGER_TOKEN --config wrangler.preview.toml
+          sleep 10
 
       - name: Start the capped singles-only Apify test
         id: start
