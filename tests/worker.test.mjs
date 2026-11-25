@@ -103,6 +103,41 @@ vm.runInNewContext(
 const worker = workerSandbox.worker;
 const env = { LIVE_TENNIS_API_KEY: "test-key", APIFY_TOKEN: "test-token" };
 
+test("Flashscore scheduled runs enforce a $0.10 maximum charge", async () => {
+  const originalFetch = workerSandbox.fetch;
+  let requestedUrl = "";
+  let requestedBody = null;
+  let requestedHeaders = null;
+  let scheduledTask = null;
+  try {
+    workerSandbox.fetch = async (url, options) => {
+      requestedUrl = String(url);
+      requestedBody = JSON.parse(options.body);
+      requestedHeaders = options.headers;
+      return new Response(JSON.stringify({ data: { id: "preview-run", status: "READY" } }), {
+        status: 201, headers: { "Content-Type": "application/json" }
+      });
+    };
+    await worker.scheduled({}, { APIFY_TOKEN: "test-token" }, {
+      waitUntil(promise) { scheduledTask = promise; }
+    });
+    assert.ok(scheduledTask, "scheduled actor start must be registered with waitUntil");
+    await scheduledTask;
+    const runUrl = new URL(requestedUrl);
+    assert.equal(runUrl.pathname, "/v2/acts/incognito_mode~flashscore-odds-scraper/runs");
+    assert.equal(runUrl.searchParams.get("waitForFinish"), "0");
+    assert.equal(runUrl.searchParams.get("maxTotalChargeUsd"), "0.10");
+    assert.equal(requestedHeaders.Authorization, "Bearer test-token");
+    assert.deepEqual(requestedBody, {
+      mode: "matches", sports: ["tennis"], days: ["0", "1"], status: "all",
+      bookmakerCountries: ["FR"], bookmakers: ["Winamax"], markets: ["HOME_AWAY"],
+      periods: ["FULL_TIME"], maxMatches: 30, maxItems: 500
+    });
+  } finally {
+    workerSandbox.fetch = originalFetch;
+  }
+});
+
 async function call(path, method = "GET", body = undefined) {
   const request = new Request("https://worker.test" + path, {
     method,
