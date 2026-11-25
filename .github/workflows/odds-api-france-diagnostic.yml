@@ -13,9 +13,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Query ATP and WTA French-region match-winner odds
+      - name: Query active tennis competitions in the French region
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: |
@@ -24,65 +24,76 @@ jobs:
           const key = process.env.ODDS_API_KEY;
           if (!key) throw new Error('ODDS_API_KEY repository secret is missing');
 
-          const tours = ['tennis_atp', 'tennis_wta'];
+          async function getJson(url) {
+            const response = await fetch(url, { headers: { accept: 'application/json' } });
+            const body = await response.json().catch(() => null);
+            if (!response.ok) {
+              const message = body && (body.message || body.error) ? (body.message || body.error) : `HTTP ${response.status}`;
+              throw new Error(`${message}; credits remaining=${response.headers.get('x-requests-remaining') ?? 'unknown'}`);
+            }
+            return { body, remaining: response.headers.get('x-requests-remaining'), used: response.headers.get('x-requests-used') };
+          }
+
+          const sportsUrl = new URL('https://api.the-odds-api.com/v4/sports/');
+          sportsUrl.searchParams.set('apiKey', key);
+          const sportsResult = await getJson(sportsUrl);
+          if (!Array.isArray(sportsResult.body)) throw new Error('Sports endpoint returned an unexpected response');
+          const tennisSports = sportsResult.body
+            .filter(s => s.active === true && (s.group === 'Tennis' || String(s.key).startsWith('tennis_')))
+            .map(s => ({ key: s.key, title: s.title, group: s.group }))
+            .sort((a, b) => a.key.localeCompare(b.key));
+
           const target = new Set(['betclic_fr', 'netbet_fr', 'pmu_fr', 'unibet_fr', 'winamax_fr']);
           const report = {
             checkedAt: new Date().toISOString(),
             source: 'The Odds API',
             region: 'fr',
             market: 'h2h',
-            tours: {},
-            totals: { events: 0, eventsWithOdds: 0, bookmakerQuotes: 0, targetFrenchBookmakers: {} }
+            sportsListCreditsRemaining: sportsResult.remaining,
+            activeTennisCompetitions: tennisSports,
+            competitions: {},
+            totals: { competitionsQueried: 0, events: 0, likelySinglesEvents: 0, eventsWithOdds: 0, bookmakerQuotes: 0, targetFrenchBookmakers: {} }
           };
 
-          for (const tour of tours) {
-            const url = new URL(`https://api.the-odds-api.com/v4/sports/${tour}/odds`);
+          for (const sport of tennisSports) {
+            const url = new URL(`https://api.the-odds-api.com/v4/sports/${sport.key}/odds`);
             url.searchParams.set('regions', 'fr');
             url.searchParams.set('markets', 'h2h');
             url.searchParams.set('oddsFormat', 'decimal');
             url.searchParams.set('apiKey', key);
-            const response = await fetch(url, { headers: { accept: 'application/json' } });
-            const remaining = response.headers.get('x-requests-remaining');
-            const used = response.headers.get('x-requests-used');
-            const body = await response.json().catch(() => null);
-            if (!response.ok) {
-              const message = body && (body.message || body.error) ? (body.message || body.error) : `HTTP ${response.status}`;
-              throw new Error(`${tour}: ${message}; requests remaining=${remaining ?? 'unknown'}`);
-            }
-            if (!Array.isArray(body)) throw new Error(`${tour}: API response was not an array`);
+            const result = await getJson(url);
+            if (!Array.isArray(result.body)) throw new Error(`${sport.key}: odds response was not an array`);
 
-            const events = body.map(event => {
-              const bookmakers = (event.bookmakers || []).map(bookmaker => {
-                const markets = (bookmaker.markets || []).filter(m => m.key === 'h2h');
-                return {
-                  key: bookmaker.key,
-                  title: bookmaker.title,
-                  last_update: bookmaker.last_update,
-                  outcomes: markets.flatMap(m => m.outcomes || []).map(o => ({ name: o.name, price: o.price }))
-                };
-              }).filter(b => b.outcomes.length > 0);
-              return {
-                id: event.id,
-                commence_time: event.commence_time,
-                home_team: event.home_team,
-                away_team: event.away_team,
-                bookmakers
-              };
+            const events = result.body.map(event => {
+              const bookmakers = (event.bookmakers || []).map(bookmaker => ({
+                key: bookmaker.key,
+                title: bookmaker.title,
+                last_update: bookmaker.last_update,
+                outcomes: (bookmaker.markets || []).filter(m => m.key === 'h2h').flatMap(m => m.outcomes || []).map(o => ({ name: o.name, price: o.price }))
+              })).filter(b => b.outcomes.length > 0);
+              const home = String(event.home_team || '');
+              const away = String(event.away_team || '');
+              const likelySingles = !/[&/]|\\s+and\\s+/i.test(home) && !/[&/]|\\s+and\\s+/i.test(away);
+              return { id: event.id, commence_time: event.commence_time, home_team: home, away_team: away, likelySingles, bookmakers };
             });
 
             const keys = [...new Set(events.flatMap(e => e.bookmakers.map(b => b.key)))].sort();
-            const targetCounts = Object.fromEntries([...target].map(k => [k, events.reduce((n, e) => n + e.bookmakers.filter(b => b.key === k).length, 0)]));
-            report.tours[tour] = {
-              httpStatus: response.status,
-              requestCreditsRemaining: remaining,
-              requestCreditsUsed: used,
+            const targetCounts = Object.fromEntries([...target].map(k => [k, events.filter(e => e.likelySingles).reduce((n, e) => n + e.bookmakers.filter(b => b.key === k).length, 0)]));
+            report.competitions[sport.key] = {
+              title: sport.title,
+              httpStatus: 200,
+              requestCreditsRemaining: result.remaining,
+              requestCreditsUsed: result.used,
               eventCount: events.length,
+              likelySinglesEventCount: events.filter(e => e.likelySingles).length,
               eventsWithOdds: events.filter(e => e.bookmakers.length > 0).length,
               bookmakerKeys: keys,
-              targetFrenchBookmakerEventCounts: targetCounts,
+              targetFrenchBookmakerSinglesEventCounts: targetCounts,
               events
             };
+            report.totals.competitionsQueried++;
             report.totals.events += events.length;
+            report.totals.likelySinglesEvents += events.filter(e => e.likelySingles).length;
             report.totals.eventsWithOdds += events.filter(e => e.bookmakers.length > 0).length;
             report.totals.bookmakerQuotes += events.reduce((n, e) => n + e.bookmakers.length, 0);
             for (const [book, count] of Object.entries(targetCounts)) {
@@ -93,11 +104,14 @@ jobs:
           fs.writeFileSync('odds-api-france-diagnostic.json', JSON.stringify(report, null, 2));
           console.log(JSON.stringify({
             checkedAt: report.checkedAt,
-            tours: Object.fromEntries(Object.entries(report.tours).map(([tour, data]) => [tour, {
+            activeTennisCompetitions: tennisSports,
+            competitions: Object.fromEntries(Object.entries(report.competitions).map(([key, data]) => [key, {
+              title: data.title,
               events: data.eventCount,
+              likelySinglesEvents: data.likelySinglesEventCount,
               eventsWithOdds: data.eventsWithOdds,
               bookmakerKeys: data.bookmakerKeys,
-              targetFrenchBookmakerEventCounts: data.targetFrenchBookmakerEventCounts,
+              targetFrenchBookmakerSinglesEventCounts: data.targetFrenchBookmakerSinglesEventCounts,
               creditsRemaining: data.requestCreditsRemaining,
               creditsUsed: data.requestCreditsUsed
             }])),
