@@ -449,7 +449,7 @@
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const IS_PFE_NETLIFY_PREVIEW=location.hostname==='deploy-preview-183--fascinating-paprenjak-1aa9b3.netlify.app';
+  const IS_PFE_NETLIFY_PREVIEW=location.hostname.endsWith('--fascinating-paprenjak-1aa9b3.netlify.app');
   const API=IS_PFE_NETLIFY_PREVIEW?'https://feature-pfe-match-simulator-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
@@ -2135,7 +2135,7 @@
   });
 </script>
 <script type="module">
-  const IS_PFE_NETLIFY_PREVIEW=location.hostname==='deploy-preview-183--fascinating-paprenjak-1aa9b3.netlify.app';
+  const IS_PFE_NETLIFY_PREVIEW=location.hostname.endsWith('--fascinating-paprenjak-1aa9b3.netlify.app');
   const API=IS_PFE_NETLIFY_PREVIEW?'https://feature-pfe-match-simulator-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   const $=id=>document.getElementById(id);
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
