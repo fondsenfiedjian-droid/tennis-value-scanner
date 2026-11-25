@@ -1052,3 +1052,13 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-25 — PFE dependency regression coverage
+
+- Added `tests/pfe.test.mjs` on branch `test/pfe-dependency-regression` (PR #182, draft).
+- Coverage includes same-family Elo/Surface Elo grouping, transitive dependency overlap, provisional/consensus/conflict states, zero-quality exclusion, invalid and duplicate inputs, weight handling, and uncertainty aggregation.
+- This is test-only work. No production forecast logic, PFE weights, deployment settings, Apify configuration, or existing pull requests were changed.
+- Architectural rule: General Elo and Surface Elo share the `elo-ratings` dependency family; they must not count as independent sources.
+- Form remains research-only with no PFE forecast weight after the 2025-train / 2026-holdout comparison did not show an out-of-sample improvement.
+- Validation is pending GitHub Actions on PR #182. Do not merge until all checks pass and the diff is reviewed.
