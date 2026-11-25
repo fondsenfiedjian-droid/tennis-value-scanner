@@ -3,6 +3,27 @@
     ? "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev"
     : "https://tennis-value-api.fonds-enfiedjian.workers.dev";
   const $ = id => document.getElementById(id);
+  const openCompare = event => {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const app = document.querySelector(".app"), stats = $("statsView"), view = $("compareView");
+    if (!app || !stats || !view) return;
+    app.style.display = "none";
+    stats.style.display = "none";
+    view.style.display = "block";
+    document.querySelectorAll(".nav button").forEach(button => button.classList.remove("active"));
+    $("navCompare")?.classList.add("active");
+  };
+  const openMain = event => {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const app = document.querySelector(".app"), stats = $("statsView"), view = $("compareView");
+    if (app) app.style.display = "block";
+    if (stats) stats.style.display = "none";
+    if (view) view.style.display = "none";
+    $("navCompare")?.classList.remove("active");
+    $("navHome")?.classList.add("active");
+  };
+  $("navCompare")?.addEventListener("click", openCompare, true);
+  $("compareBack")?.addEventListener("click", openMain, true);
   if (!$("compareRun")) return;
   for (const side of ["A", "B"]) {
     const input = $("compareName" + side), idInput = $("compareId" + side), list = $("compareSuggestions" + side);
