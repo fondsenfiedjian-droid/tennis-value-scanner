@@ -354,6 +354,19 @@ test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
 });
 
+test("Live Tennis nested Elo schema supports overall and surface ratings", () => {
+  const profile = { stats: { ratings: { elo: {
+    overall: 2046.7, hard: 1997.5, clay: 1952.9, grass: 1931.8,
+    elo_rank: 4, hard_rank: 4
+  } } } };
+  assert.equal(findElo(profile), 2046.7);
+  assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, ""))),
+    { rating: 2046.7, type: "overall", surface: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, "Hard"))),
+    { rating: 1997.5, type: "surface", surface: "hard" });
+  assert.equal(findElo({ stats: { ratings: { elo: { elo_rank: 4 } } } }), null);
+});
+
 test("surface Elo is selected when a matching court rating exists", () => {
   const profile = { overall_elo: 1800, stats: { clay_elo: 1940, hard_elo: 1830, grass_elo: 1710 } };
   assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, "Clay"))), { rating: 1940, type: "surface", surface: "clay" });
