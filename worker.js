@@ -589,7 +589,7 @@ export default {
       const input = {
         mode: "matches",
         sports: ["tennis"],
-        days: ["0"],
+        days: ["0", "1"],
         status: "all",
         bookmakerCountries: ["FR"],
         bookmakers: ["Winamax"],
