@@ -174,7 +174,15 @@ function findElo(profile) {
     const rating = Number(value);
     return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
   }
-  // Prefer an overall rating anywhere in the profile before surface-specific data.
+  // Live Tennis API nests its current ratings under stats.ratings.elo.
+  // In that provider schema, "overall" and surface names are numeric Elo values;
+  // elo_rank is only a rank and must never be treated as a rating.
+  const providerElo = profile?.stats?.ratings?.elo;
+  if (providerElo && typeof providerElo === "object" && !Array.isArray(providerElo)) {
+    const providerOverall = valid(providerElo.overall);
+    if (providerOverall !== null) return providerOverall;
+  }
+  // Prefer an overall rating anywhere in the profile before generic fields.
   const overallKeys = ["overall_elo", "overallElo", "overall_elo_rating"];
   for (const obj of nodes) for (const key of overallKeys) {
     if (obj[key] !== undefined && obj[key] !== null) {
