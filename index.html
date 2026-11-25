@@ -2188,7 +2188,8 @@
     const firstServer=document.querySelector('input[name="simFirstServer"]:checked')?.value||'A';
     status('Загружаю статистику подачи и приёма обоих игроков…');
     const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id);const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');return j.stats;}));
-    const profileA=window.TVSPFE.normalizeServeReturnProfile(ra),profileB=window.TVSPFE.normalizeServeReturnProfile(rb);
+    const profileA={...window.TVSPFE.normalizeServeReturnProfile(ra),playerId:idA};
+    const profileB={...window.TVSPFE.normalizeServeReturnProfile(rb),playerId:idB};
     const inputs=window.TVSPFE.deriveServeReturnMatchInputs(profileA,profileB);
     if(inputs.status!=='ready_for_score_simulation')throw new Error('Недостаточно надёжной статистики подачи/приёма: '+(inputs.reason||inputs.status));
     status('Провожу 10 000 симуляций розыгрышей, геймов, сетов и матча…');
