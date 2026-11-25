@@ -120,8 +120,10 @@ test("Flashscore normalizer accepts future Winamax singles and rejects doubles a
   assert.equal(result.diagnostics.rejectedByReason.doubles, 1);
   assert.equal(result.diagnostics.rejectedByReason.team_tie, 1);
   assert.equal(result.items.length, 2);
-  assert.deepEqual(result.items.map(item => item.outcome), ["home", "away"]);
-  assert.deepEqual(result.items.map(item => item.oddsDecimal), [1.85, 2.05]);
+  assert.equal(result.items[0].outcome, "home");
+  assert.equal(result.items[1].outcome, "away");
+  assert.equal(result.items[0].oddsDecimal, 1.85);
+  assert.equal(result.items[1].oddsDecimal, 2.05);
 });
 
 test("Flashscore scheduled runs enforce a $0.10 maximum charge", async () => {
