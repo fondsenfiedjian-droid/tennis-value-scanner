@@ -753,14 +753,15 @@
     const byTour=all.filter(m=>{const tour=normalizeTour(m.tour);return tour!==null&&tours.includes(tour);});
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
-    // Show only matches with a complete, fresh match-winner quote pair from an enabled bookmaker.
-    const filtered=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length>=2):[];
-    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · пар с коэффициентами: '+filtered.length;
+    // The schedule is independent from bookmaker coverage: never hide a match because odds are missing.
+    const filtered=dateFiltered;
+    const quotedMatches=winnerEnabled?filtered.filter(m=>oddsForMatch(m).length>=2).length:0;
+    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · матчей: '+filtered.length+' · с полными коэффициентами: '+quotedMatches;
     $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){
-      const message=!winnerEnabled?'Включи рынок «Победитель матча», чтобы увидеть пары с коэффициентами.':dateFiltered.length?'На выбранную дату нет матчей с полной актуальной парой коэффициентов букмекеров.':'Матчей на выбранную дату не найдено.';
-      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Показываются только матчи, для которых найдены оба актуальных коэффициента хотя бы у одного подключённого букмекера.</div></div>';return;
+      const message='Матчей на выбранную дату не найдено.';
+      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Проверь дату и выбранные туры. Расписание загружается независимо от наличия коэффициентов букмекеров.</div></div>';return;
     }
     list.innerHTML=filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
@@ -770,7 +771,7 @@
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const minOdds=Math.max(1.9,Number($('#minOdds').value||1.5));
       const maxOdds=Number($('#maxOdds').value||5);
-      const allMatched=oddsForMatch(m);
+      const allMatched=winnerEnabled?oddsForMatch(m):[];
       const matched=allMatched.filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
@@ -787,7 +788,7 @@
       const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
         displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
         displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты букмекеров не найдены';
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):winnerEnabled?'Коэффициенты букмекеров не найдены':'Рынок победителя матча выключен';
       const oddsObservedAt=Date.now();
       const selectedQuotes=[displayQuoteA,displayQuoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
@@ -2057,8 +2058,8 @@
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · кэш браузера';
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
-        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
       const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
@@ -2072,13 +2073,13 @@
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
-      $('#filterSummary').textContent='Live Tennis API · '+scheduleCacheLabel+' · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
+      $('#filterSummary').textContent+=' · Live Tennis API: '+scheduleCacheLabel;
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · сохранённые данные';
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
-        $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';

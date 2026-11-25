@@ -147,7 +147,15 @@ test("schedule status reports whether Worker served a cache hit or fresh upstrea
   assert.match(html, /'источник обновлён'/);
   assert.match(html, /'кэш Worker'/);
   assert.match(html, /'режим кэша неизвестен'/);
-  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel/);
+  assert.match(html, /Live Tennis API: '\+scheduleCacheLabel/);
+});
+
+test("scheduled matches remain visible when bookmaker odds are missing or the winner market is off", () => {
+  assert.match(html, /const filtered=dateFiltered/);
+  assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · с полными коэффициентами: '\+quotedMatches/);
+  assert.match(html, /Коэффициенты букмекеров не найдены/);
+  assert.match(html, /eligibleOdds=\[Number\(el\?\.dataset\.oddsA\),Number\(el\?\.dataset\.oddsB\)\]/);
 });
 
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
@@ -476,13 +484,14 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
+test("match list keeps the full selected schedule independent of bookmaker odds", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
-  assert.match(html, /const allMatched=oddsForMatch\(m\)/);
+  assert.match(html, /const filtered=dateFiltered/);
+  assert.match(html, /с полными коэффициентами:/);
+  assert.match(html, /Матчей на выбранную дату не найдено/);
+  assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
+  assert.match(html, /Коэффициенты букмекеров не найдены/);
 });
 
 test("optional player statistics are not fetched during automatic prediction scans", () => {
