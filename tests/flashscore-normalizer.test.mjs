@@ -49,7 +49,7 @@ test("Flashscore normalizer accepts only fresh French Winamax singles match-winn
   assert.equal(result.diagnostics.rejectedByReason.bookmaker, 1);
   assert.equal(result.diagnostics.rejectedByReason.stale_quote, 1);
   assert.equal(result.diagnostics.rejectedByReason.event_not_future, 1);
-  assert.deepEqual(result.items.map(item => item.outcome).sort(), ["away", "home"]);
+  assert.equal(result.items.map(item => item.outcome).sort().join(","), "away,home");
   assert.ok(result.items.every(item => item.bookmaker === "Winamax" && item.source === "Flashscore"));
 });
 
