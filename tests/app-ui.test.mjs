@@ -522,3 +522,20 @@ test("skin selection applies and persists immediately",()=>{
   assert.match(html,/settings\.skin=selected/);
   assert.match(html,/localStorage\.setItem\('tvs-settings',JSON\.stringify\(settings\)\)/);
 });
+
+
+test("Winamax player-name matching handles initials, reversed order, diacritics and compound surnames", () => {
+  const start = html.indexOf("function normalizePlayer(s)");
+  const end = html.indexOf("function tournamentCompatible(", start);
+  assert.ok(start >= 0 && end > start, "player-name matching helpers must remain extractable");
+  const sandbox = {};
+  vm.runInNewContext(html.slice(start, end) + ";globalThis.playerMatch = { normalizePlayer, playerNamesMatch };", sandbox);
+  const match = sandbox.playerMatch.playerNamesMatch;
+  assert.equal(match("João Fonseca", "Joao Fonseca"), true);
+  assert.equal(match("A. de Minaur", "Alex de Minaur"), true);
+  assert.equal(match("Sinner Jannik", "Jannik Sinner"), true);
+  assert.equal(match("Jean-Julien Rojer", "Jean Julien Rojer"), true);
+  assert.equal(match("M. Andreeva", "Mirra Andreeva"), true);
+  assert.equal(match("Alex de Minaur", "Alex de Minaur Jr"), false);
+  assert.equal(match("", "Alex de Minaur"), false);
+});
