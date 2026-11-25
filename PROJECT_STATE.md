@@ -1061,3 +1061,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Advanced the Production service-worker cache from `tennis-value-static-v134` to `tennis-value-static-v135` so installed clients can receive the updated shell.
 - Added a regression test for the Production label, alignment, API status, and cache version.
 - Preview only. Validate the Netlify deploy preview and regression suite before considering merge. Do not merge or deploy Production without explicit user approval.
+
+- Follow-up approved visual-system transfer: Production's existing screens and DOM remain intact; only its presentation layer now adopts the Developer edition's graphite/navy surfaces, ruby recommendation accents, cold-blue system/status elements, amber odds and matching card/button/navigation treatments.
+- The Developer edition's new screens, laboratory controls, storage namespace and experimental model features were deliberately not copied. Production's existing API, Winamax/Apify ingestion, prediction calculations, settings, archive and navigation behavior remain the source of truth.
+- Advanced the Production service-worker cache to `tennis-value-static-v136` and added regression coverage for the visual tokens, status/odds/nav styling, and absence of Developer-only navigation.
+- Preview only; this is not merged or deployed to the live Production site. APK packaging follows only after preview and regression validation.
