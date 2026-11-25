@@ -476,12 +476,13 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
   assert.equal(calibration.postStart, 1);
 });
 
-test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
+test("match list keeps the schedule visible when bookmaker odds are missing", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
+  assert.match(html, /const filtered=winnerEnabled\?dateFiltered:\[\]/);
+  assert.match(html, /const quotedMatches=filtered\.filter\(m=>oddsForMatch\(m\)\.length>=2\)\.length/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · пар с коэффициентами:/);
+  assert.match(html, /Расписание отображается независимо от наличия коэффициентов/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
