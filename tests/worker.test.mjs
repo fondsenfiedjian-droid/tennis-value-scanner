@@ -321,6 +321,26 @@ test("player stats endpoint validates IDs and returns read-only API data with ac
   assert.equal(result.headers.get("X-Data-Cache"), "MISS");
 });
 
+test("player stats endpoint forwards surface filters and isolates cache by surface", async () => {
+  let requestedUrl = "";
+  let cachedStatsKey = "";
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async (key) => { cachedStatsKey = key.url; };
+  workerSandbox.fetch = async (url) => {
+    requestedUrl = url;
+    return new Response(JSON.stringify({ player: { id: 123 }, serve_return: {} }), { status: 200 });
+  };
+  const result = await call("/player-stats?id=123&surface=clay");
+  assert.equal(result.status, 200);
+  assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/players/123/stats?surface=clay");
+  assert.equal(cachedStatsKey, "https://worker.test/__player-stats/123/clay");
+
+  for (const invalidSurface of ["carpet", "indoor-hard", "unknown"]) {
+    const invalid = await call("/player-stats?id=123&surface=" + encodeURIComponent(invalidSurface));
+    assert.equal(invalid.status, 400);
+  }
+});
+
 test("player stats endpoint reports forbidden access without inventing ULTRA entitlement", async () => {
   workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   const result = await call("/player-stats?id=123");
