@@ -60,6 +60,15 @@ jobs:
               !health.endpoints?.includes("/players/search") || !health.endpoints?.includes("/predict")) {
             throw new Error("Preview Worker is missing the required Live Tennis comparison configuration");
           }
+          const odds = await read("/odds");
+          if (odds.flashscore?.actor !== "incognito_mode~flashscore-odds-scraper" ||
+              !Number.isFinite(Number(odds.sourceCounts?.vavilov)) ||
+              !Number.isFinite(Number(odds.sourceCounts?.flashscore))) {
+            throw new Error("Preview Worker is missing the combined Vavilov/Flashscore odds diagnostics");
+          }
+          console.log("Preview odds sources: Vavilov=" + odds.sourceCounts.vavilov +
+            ", Flashscore=" + odds.sourceCounts.flashscore +
+            ", Flashscore status=" + odds.flashscore.diagnostic);
           const [a, b] = await Promise.all([
             read("/players/search?search=Novak&limit=8"),
             read("/players/search?search=Carlos%20Alcaraz&limit=8")
