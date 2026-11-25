@@ -49,18 +49,10 @@ jobs:
           printf '%s' "$token" | npx --yes wrangler@4.165.0 secret put DIAGNOSTIC_TRIGGER_TOKEN --config wrangler.preview.toml
           sleep 10
 
-      - name: Start the capped singles-only Apify test
+      - name: Reuse the already-started capped Apify run
         id: start
         run: |
-          set -euo pipefail
-          response="$(curl --fail --silent --show-error -X POST \
-            -H "Authorization: Bearer $DIAGNOSTIC_TOKEN" \
-            "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev/__diagnostic/flashscore-singles/start")"
-          echo "$response" | jq .
-          run_id="$(echo "$response" | jq -r '.runId')"
-          test -n "$run_id"
-          test "$run_id" != "null"
-          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "run_id=RAepKxiiEHsEkY8Qg" >> "$GITHUB_OUTPUT"
 
       - name: Wait for run and retrieve dataset
         env:
@@ -76,26 +68,6 @@ jobs:
             if [ "$status" = "SUCCEEDED" ]; then
               printf '%s\n' "$response" > flashscore-singles-diagnostic.json
               echo "$response" | jq '{status,runId,itemCount,run:{startedAt:.run.startedAt,finishedAt:.run.finishedAt,stats:.run.stats},sample:(.items[:8])}'
-              node --input-type=module <<'NODE'
-              import fs from 'node:fs';
-              const report = JSON.parse(fs.readFileSync('flashscore-singles-diagnostic.json', 'utf8'));
-              const rows = Array.isArray(report.items) ? report.items : [];
-              const matches = rows.filter(r => r && r.isDoubles !== true && !/doubles|team|cup tie/i.test(String(r.category || '')));
-              const findWinamax = value => {
-                if (!value || typeof value !== 'object') return false;
-                if (Array.isArray(value)) return value.some(findWinamax);
-                return Object.entries(value).some(([k,v]) => /winamax/i.test(String(k)) || (typeof v === 'string' && /winamax/i.test(v)) || findWinamax(v));
-              };
-              const winamax = matches.filter(findWinamax);
-              console.log(JSON.stringify({
-                totalRows: rows.length,
-                singlesLikeRows: matches.length,
-                rowsWithWinamaxMention: winamax.length,
-                categories: [...new Set(matches.map(r => r.category).filter(Boolean))],
-                sampleWinamaxRows: winamax.slice(0, 5),
-                sampleSingles: matches.slice(0, 5)
-              }, null, 2));
-              NODE
               exit 0
             fi
             case "$status" in
