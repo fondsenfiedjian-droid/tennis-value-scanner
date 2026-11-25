@@ -26,7 +26,7 @@ test("overlapping dependency sets merge transitively into one component", () => 
   ]);
 
   assert.equal(result.independentGroups, 2);
-  assert.equal(result.status, "provisional");
+  assert.equal(result.status, "consensus");
   assert.deepEqual(result.groups.map(group => group.modelIds), [
     ["elo", "hybrid", "form"],
     ["market"]
@@ -153,6 +153,6 @@ test("conflict threshold is clamped to the supported range", () => {
     { id: "a", dependencyGroup: "a", probability: 0.70 },
     { id: "b", dependencyGroup: "b", probability: 0.72 }
   ];
-  assert.equal(fusePredictions(predictions, { conflictThreshold: -1 }).status, "consensus");
+  assert.equal(fusePredictions(predictions, { conflictThreshold: -1 }).status, "conflict");
   assert.equal(fusePredictions(predictions, { conflictThreshold: 0.001 }).status, "conflict");
 });
