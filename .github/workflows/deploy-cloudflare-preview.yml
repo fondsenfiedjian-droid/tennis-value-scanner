@@ -8,14 +8,14 @@ permissions:
 
 jobs:
   deploy-preview:
-    if: github.ref == 'refs/heads/ui/tennis-value-scanner-2'
+    if: github.ref == 'refs/heads/fix/player-comparison-mvp'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Check out preview branch
         uses: actions/checkout@v4
         with:
-          ref: ui/tennis-value-scanner-2
+          ref: fix/player-comparison-mvp
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
