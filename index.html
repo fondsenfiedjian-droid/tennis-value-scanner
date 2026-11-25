@@ -2136,7 +2136,7 @@
 <script type="module">
   const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
   const $=id=>document.getElementById(id);
-  const norm=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const playerName=p=>typeof p==='string'?p:p?.name||p?.full_name||p?.display_name||[p?.first_name,p?.last_name].filter(Boolean).join(' ')||p?.player_name||'';
   const playerId=p=>{const n=Number(p?.id??p?.playerId??p?.player_id??p?.playerID);return Number.isSafeInteger(n)&&n>0?n:null;};
@@ -2146,7 +2146,7 @@
   const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
   const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
   const surface=m=>{const raw=m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface;const v=String(raw||'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'Хард';if(v.includes('clay')||v.includes('terre'))return 'Грунт';if(v.includes('grass')||v.includes('gazon'))return 'Трава';if(v.includes('carpet')||v.includes('moquette'))return 'Ковёр';return '';};
-  const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\\s*of\\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
+  const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\s*of\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
   const category=m=>textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
   let candidates=[];
   function status(message,warning=false){$('simStatus').textContent=message;$('simStatus').classList.toggle('sim-warning',warning);}
@@ -2201,7 +2201,7 @@
     const score=result.topScorelines.map(x=>'<div>'+x.score+' <span class="muted">· '+pct(x.probability)+'</span></div>').join('');
     const categoryLabel=category(match)||'категория не указана';
     $('simResult').innerHTML='<div class="sim-meta"><b>'+esc(event)+'</b> · '+court+' · '+esc(categoryLabel)+' · Best of '+bo+'<br>'+esc(nameA)+' — '+esc(nameB)+'<br>Первую подачу выполняет: '+esc(firstServer==='A'?nameA:nameB)+'<br>Источник матча: расписание Live Tennis API · статистика: профили подачи/приёма Live Tennis API</div>'+
-      '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+nameA+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+nameB+'</span></div></div>'+
+      '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+esc(nameA)+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+esc(nameB)+'</span></div></div>'+
       '<div class="sim-scorelines"><b>Наиболее частые итоговые счета</b>'+score+'</div>'+
       '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
       '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Он не меняет автоматический прогноз, EV или план ставок. Важно: источник даёт агрегированные показатели подачи/приёма без разбивки по покрытию; покрытие матча точно указано, но отдельная поправка по покрытию не применяется. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
