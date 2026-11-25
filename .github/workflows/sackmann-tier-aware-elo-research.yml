@@ -1,0 +1,105 @@
+name: Tier-aware Elo research
+
+on:
+  push:
+    branches: [research/tier-aware-elo]
+    paths:
+      - "scripts/sackmann-tier-aware-elo-research.mjs"
+      - "tests/sackmann-tier-aware-elo-research.test.mjs"
+      - ".github/workflows/sackmann-tier-aware-elo-research.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/sackmann-tier-aware-elo-research.mjs"
+      - "tests/sackmann-tier-aware-elo-research.test.mjs"
+      - ".github/workflows/sackmann-tier-aware-elo-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test tier-aware Elo research
+        run: node --test tests/sackmann-tier-aware-elo-research.test.mjs
+      - name: Download pinned main-tour and lower-tier datasets
+        run: |
+          set -euo pipefail
+          commit="83733587353df8a41f2fd4f516147d5aa83f5a8d"
+          export commit
+          mkdir -p research-data
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://api.github.com/repos/Aneeshers/tennis-sackmann-archive/git/trees/$commit?recursive=1" \
+            --output "$RUNNER_TEMP/archive-tree.json"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          const tree = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/archive-tree.json", "utf8"));
+          const main = tree.tree.filter(item => /^(atp|wta)\/(atp|wta)_matches_\d{4}\.csv$/i.test(item.path)).map(item => item.path);
+          const lower = tree.tree.filter(item => /^(atp|wta)\/(atp|wta)_matches_(futures|qual_chall|qual_itf)_\d{4}\.csv$/i.test(item.path)).map(item => item.path);
+          if (main.length !== 118) throw new Error("Expected 118 main-tour files, found " + main.length);
+          if (lower.length !== 144) throw new Error("Expected 144 lower-tier files, found " + lower.length);
+          const files = [...main, ...lower].sort();
+          await writeFile(process.env.RUNNER_TEMP + "/sackmann-files.txt", files.join("\n") + "\n");
+          console.log("Pinned source files: " + files.length + " (main " + main.length + ", lower tier " + lower.length + ")");
+          NODE
+          cat "$RUNNER_TEMP/sackmann-files.txt" | xargs -r -n 1 -P 8 sh -c '
+            set -eu
+            path="$1"
+            name="${path##*/}"
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/$commit/$path" \
+              --output "research-data/$name"
+            test -s "research-data/$name"
+          ' _
+          test "$(find research-data -type f | wc -l)" -eq 262
+      - name: Sweep main-tour K and lower-tier K under conservative timing lags
+        run: |
+          set -euo pipefail
+          for main_k in 32 48 64 80; do
+            for lag in 7 14; do
+              node --max-old-space-size=6144 scripts/sackmann-tier-aware-elo-research.mjs \
+                --input-dir research-data \
+                --from 20000101 --to 20260525 \
+                --main-k "$main_k" --lower-k 16,24,32,40,48 \
+                --history-lag-days "$lag" \
+                --out "$RUNNER_TEMP/sackmann-tier-aware-elo-mainK$main_k-lag$lag.json"
+            done
+          done
+      - name: Publish aggregate comparison
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+          const rows = [
+            "| Main K | Lag days | Tour | Lower-tier K | Main matches | Baseline Brier | Tier-aware Brier | Δ Brier | Baseline LogLoss | Tier-aware LogLoss | Δ LogLoss |",
+            "|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+          ];
+          for (const mainK of [32, 48, 64, 80]) {
+            for (const lag of [7, 14]) {
+              const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/sackmann-tier-aware-elo-mainK" + mainK + "-lag" + lag + ".json", "utf8"));
+              for (const tour of ["ATP", "WTA"]) {
+                const data = report.results[tour];
+                for (const [k, value] of Object.entries(data.lowerTierK)) {
+                  const b = value.overall.baseline, t = value.overall.tierAware;
+                  rows.push("| " + mainK + " | " + lag + " | " + tour + " | " + k + " | " + b.matches + " | " + b.brier + " | " + t.brier + " | " + (t.brier - b.brier).toFixed(6) + " | " + b.logLoss + " | " + t.logLoss + " | " + (t.logLoss - b.logLoss).toFixed(6) + " |");
+                }
+              }
+            }
+          }
+          await import("node:fs/promises").then(fs => fs.appendFile(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n"));
+          NODE
+      - name: Upload aggregate-only research reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sackmann-tier-aware-elo-main-k-sweep
+          path: ${{ runner.temp }}/sackmann-tier-aware-elo-mainK*-lag*.json
+          if-no-files-found: error
+          retention-days: 30
