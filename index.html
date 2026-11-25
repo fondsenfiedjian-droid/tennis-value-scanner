@@ -1503,7 +1503,7 @@
     if(button.disabled)return;
     const rows=readPredictionArchive(),now=Date.now();
     const ids=selectArchiveResultCheckIds(rows,now,archiveAutoCheckRunning?5:10);
-    if(!ids.length){alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
+    if(!ids.length){if(!archiveAutoCheckRunning)alert('Нет матчей, которым уже пора проверять результат. Проверка доступна для матчей старше трёх часов; повторная проверка — через 30 минут.');return;}
     button.disabled=true;button.textContent='ПРОВЕРКА…';
     let checked=0,errors=0,statusesUpdated=0;
     try{
