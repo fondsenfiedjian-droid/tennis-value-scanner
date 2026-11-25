@@ -217,3 +217,28 @@ test("paired comparison reorients canonical model probabilities to source player
   assert.ok(comparison.models.elo.brier < 0.25);
   assert.ok(comparison.market.brier < 0.25);
 });
+
+test("Valuebetennis category is retained in predictions and paired market comparison", () => {
+  const categoryHeader = header.replace("match_id,date", "match_id,categorie,date");
+  const csv = [
+    categoryHeader,
+    "9901,ITF,2025-01-01,990,atp,Hard,1,2,1,6-4 6-4,1.7,2.2,1.65,2.3",
+    "9902,Main tour,2025-01-02,991,atp,Hard,1,3,3,4-6 4-6,2.0,1.8,2.1,1.7",
+    "9903,,2025-01-03,992,wta,Clay,4,5,4,6-3 6-4,1.7,2.2,1.65,2.3"
+  ].join("\n");
+  const parsed = parseValuebetennisCsv(csv);
+  assert.deepEqual(parsed.rows.map(row => row.category), ["ITF", "Main tour", "Junior"]);
+  const report = runValuebetennisBacktest(csv);
+  const atp = report.reportsByTour.atp;
+  assert.equal(atp.breakdowns.byCategory.ITF.matches, 1);
+  assert.equal(atp.breakdowns.byCategory["Main tour"].matches, 1);
+  assert.equal(atp.predictions[0].category, "ITF");
+  assert.equal(report.pairedMarketComparison.atp.opening.byCategory.ITF.matches, 1);
+  assert.equal(report.pairedMarketComparison.atp.opening.byCategory["Main tour"].matches, 1);
+  assert.equal(report.pairedMarketComparison.wta.opening.byCategory.Junior.matches, 1);
+});
+
+test("Valuebetennis files without category column remain classified as Unknown", () => {
+  const parsed = parseValuebetennisCsv(sample);
+  assert.ok(parsed.rows.every(row => row.category === "Unknown"));
+});
