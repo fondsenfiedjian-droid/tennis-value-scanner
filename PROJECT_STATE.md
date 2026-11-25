@@ -1082,3 +1082,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Regression coverage was added for singles filtering, stale/invalid prices, and newest-quote deduplication.
 - PR #175's experimental Worker was moved to a distinct Worker name to prevent it overwriting PR #180's Preview Worker. The combined implementation is being validated on PR #180.
 - Production `main`, Production Worker, active Elo model, and Vavilov task remain unchanged. No merge or Production deployment was performed.
+
+
+## 2026-11-25 — PR #180 Preview actor spend guard
+
+- The Preview-only Flashscore actor remains scheduled every six hours; this is separate from the existing Vavilov Winamax task, which is unchanged.
+- Each scheduled Flashscore actor run now passes Apify's `maxTotalChargeUsd=0.10` API option as a hard per-run charge ceiling. At four scheduled runs per day, the configured ceiling is at most $0.40/day if every run reaches its cap; actual charges may be lower.
+- A Worker regression test verifies the actor endpoint, schedule input, authentication header, and per-run charge cap. Production is unchanged.
