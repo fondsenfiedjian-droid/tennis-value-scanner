@@ -147,7 +147,15 @@ test("schedule status reports whether Worker served a cache hit or fresh upstrea
   assert.match(html, /'источник обновлён'/);
   assert.match(html, /'кэш Worker'/);
   assert.match(html, /'режим кэша неизвестен'/);
-  assert.match(html, /Live Tennis API · '\+scheduleCacheLabel/);
+  assert.match(html, /Live Tennis API: '\+scheduleCacheLabel/);
+});
+
+test("scheduled matches remain visible when bookmaker odds are missing or the winner market is off", () => {
+  assert.match(html, /const filtered=dateFiltered/);
+  assert.match(html, /const allMatched=winnerEnabled\?oddsForMatch\(m\):\[\]/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · с полными коэффициентами: '\+quotedMatches/);
+  assert.match(html, /Коэффициенты букмекеров не найдены/);
+  assert.match(html, /eligibleOdds=\[Number\(el\?\.dataset\.oddsA\),Number\(el\?\.dataset\.oddsB\)\]/);
 });
 
 test("saved match fallback cache validates timestamp age and rejects future timestamps", () => {
