@@ -2023,6 +2023,7 @@
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · кэш браузера';
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
         return;
       }
@@ -2037,10 +2038,12 @@
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
+      $('#filterSummary').textContent+=' · Live Tennis API: '+scheduleCacheLabel;
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · сохранённые данные';
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
