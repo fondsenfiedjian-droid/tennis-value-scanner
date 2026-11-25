@@ -87,7 +87,6 @@ try {
 } catch (error) {
   report.ui.fatal = error.message;
 } finally {
-  console.log(JSON.stringify(report, null, 2));
   await browser.close();
 }
 
@@ -133,3 +132,5 @@ try {
   await swBrowser.close();
 }
 if (report.ui.fatal || report.ui.compareViewOpened !== true || !report.ui.compareStatus?.includes("успешно") || report.ui.serviceWorker?.fatal || report.ui.serviceWorker?.expectedCachePresent !== true || report.ui.serviceWorker?.compareModuleCached !== true || report.ui.serviceWorker?.compareViewOpened !== true || report.ui.serviceWorker?.pageErrors?.length) process.exit(1);
+
+console.log(JSON.stringify(report, null, 2));
