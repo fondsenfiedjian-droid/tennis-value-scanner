@@ -103,6 +103,27 @@ vm.runInNewContext(
 const worker = workerSandbox.worker;
 const env = { LIVE_TENNIS_API_KEY: "test-key", APIFY_TOKEN: "test-token" };
 
+test("Flashscore normalizer accepts future Winamax singles and rejects doubles and team ties", () => {
+  const now = Date.parse("2026-11-25T05:00:00.000Z");
+  const base = {
+    recordType: "odds", sport: "tennis", bookmakerName: "Winamax", bookmakerCountry: "FR",
+    market: "HOME_AWAY", period: "FULL_TIME", status: "scheduled", active: true,
+    startTime: "2026-11-25T17:00:00.000Z", scrapedAt: "2026-11-25T04:59:00.000Z",
+    homeOdds: 1.85, awayOdds: 2.05
+  };
+  const result = workerSandbox.normalizeFlashscoreWinamaxRows([
+    { ...base, eventId: "singles-1", homeName: "Player One", awayName: "Player Two", tournament: "ATP 250" },
+    { ...base, eventId: "doubles-1", homeName: "Player One / Player Three", awayName: "Player Two / Player Four", tournament: "ATP 250" },
+    { ...base, eventId: "team-tie-1", homeName: "Italy", awayName: "South Korea", tournament: "Davis Cup" }
+  ], now);
+  assert.equal(result.diagnostics.acceptedRows, 1);
+  assert.equal(result.diagnostics.rejectedByReason.doubles, 1);
+  assert.equal(result.diagnostics.rejectedByReason.team_tie, 1);
+  assert.equal(result.items.length, 2);
+  assert.deepEqual(result.items.map(item => item.outcome), ["home", "away"]);
+  assert.deepEqual(result.items.map(item => item.oddsDecimal), [1.85, 2.05]);
+});
+
 test("Flashscore scheduled runs enforce a $0.10 maximum charge", async () => {
   const originalFetch = workerSandbox.fetch;
   let requestedUrl = "";
