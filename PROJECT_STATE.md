@@ -1073,3 +1073,10 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 
 - Production v2.0.1 APK build succeeded on 2026-11-25. GitHub Actions run: `45604402587`; artifact: `TVS-Production-v2.0.1-APK` (artifact ID `15016963021`). The APK was downloaded and checked as an Android package; its SHA-256 is `aba6d59181b3f3d573804adad29d5f00b4f129b4eef814796fe8a067b5d7acc0`.
 - Regression tests and project-state guard both passed for the APK source commit `7c0627bc1f4784e5283847e48657f6d6963157ab`. APK contains the Production v2.0.1 UI assets and service-worker cache v136. It is debug-key signed for direct installation and is not a Play Store signing release.
+
+
+## 2026-11-25 — Fix startup popup from automatic archive result checks
+- Fixed a blocking startup alert in the automatic archive-result check. When no archived matches are due for a result check, the app now stays silent during the automatic background check; the explanatory alert remains available when the user manually presses “Проверить результаты”.
+- Added a regression assertion to `tests/app-ui.test.mjs` to prevent the automatic-check popup from returning.
+- Scope is limited to the Production frontend archive-check UX and its test. Prediction calculations, Cloudflare Worker, odds ingestion, Winamax/Apify, and production deployment were not changed.
+- Change is on `feature/production-developer-visual-refresh`; PR #184 remains open/unmerged and the live Production site remains unchanged.
