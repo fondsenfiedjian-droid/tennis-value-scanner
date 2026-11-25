@@ -261,7 +261,7 @@ test("odds endpoint rejects malformed non-array Apify responses instead of cachi
   workerSandbox.fetch = async () => new Response(JSON.stringify({ items: [] }), { status: 200 });
   const result = await call("/odds");
   assert.equal(result.status, 502);
-  assert.equal((await result.json()).error, "Apify task dataset response was not an array");
+  assert.equal((await result.json()).error, "Apify odds sources returned invalid data");
   assert.equal(cacheWrites, 0);
 });
 
@@ -276,7 +276,7 @@ test("odds endpoint forwards Apify rate-limit retry timing without exposing upst
   assert.equal(result.headers.get("Retry-After"), "120");
   const payload = await result.json();
   assert.equal(payload.upstreamStatus, 429);
-  assert.equal(payload.error, "Apify task dataset request failed");
+  assert.equal(payload.error, "Apify odds sources are rate limited");
   assert.equal(JSON.stringify(payload).includes("private upstream detail"), false);
 });
 
@@ -287,10 +287,122 @@ test("odds endpoint reports malformed JSON and never caches it", async () => {
   workerSandbox.fetch = async () => new Response("{not-json", { status: 200 });
   const result = await call("/odds");
   assert.equal(result.status, 502);
-  assert.equal((await result.json()).error, "Apify task dataset response was not valid JSON");
+  assert.equal((await result.json()).error, "Apify odds sources returned invalid data");
   assert.equal(cacheWrites, 0);
 });
 
+
+test("odds endpoint imports fresh French Winamax tennis singles from Flashscore when legacy task is unavailable", async () => {
+  const now = Date.now();
+  const valid = {
+    recordType: "odds",
+    eventId: "0he28PTg",
+    eventUrl: "https://www.flashscore.com/match/0he28PTg/",
+    sport: "tennis",
+    tournament: "ATP Singles Davis Cup",
+    startTime: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+    status: "scheduled",
+    homeName: "Lehecka J.",
+    awayName: "Auger-Aliassime F.",
+    bookmakerName: "Winamax",
+    bookmakerCountry: "FR",
+    market: "HOME_AWAY",
+    period: "FULL_TIME",
+    homeOdds: 1.60,
+    awayOdds: 2.10,
+    active: true,
+    scrapedAt: new Date(now - 60 * 1000).toISOString()
+  };
+  const rows = [
+    valid,
+    { ...valid, bookmakerName: "Betclic" },
+    { ...valid, bookmakerCountry: "DE" },
+    { ...valid, market: "OVER_UNDER" },
+    { ...valid, status: "live" },
+    { ...valid, homeName: "Pavlasek/Rikl", awayName: "Auger-Aliassime/Chan", tournament: "ATP Doubles Davis Cup" },
+    { ...valid, homeName: "Czech Republic", awayName: "Canada", tournament: "ATP Singles Davis Cup" }
+  ];
+  workerSandbox.caches.default.match = async () => null;
+  workerSandbox.caches.default.put = async () => {};
+  workerSandbox.fetch = async url => {
+    if (url.includes("/actor-tasks/")) return new Response("legacy source unavailable", { status: 403 });
+    if (url.includes("/acts/incognito_mode~flashscore-odds-scraper/runs/last")) {
+      return new Response(JSON.stringify({ data: {
+        id: "flash-run-1",
+        status: "SUCCEEDED",
+        defaultDatasetId: "flash-dataset-1",
+        finishedAt: new Date(now).toISOString()
+      } }), { status: 200 });
+    }
+    if (url.includes("/datasets/flash-dataset-1/items")) {
+      return new Response(JSON.stringify(rows), { status: 200 });
+    }
+    throw new Error("Unexpected Apify URL: " + url);
+  };
+  const result = await call("/odds");
+  assert.equal(result.status, 200);
+  const payload = await result.json();
+  assert.equal(payload.sourceCounts.vavilov, 0);
+  assert.equal(payload.sourceCounts.flashscore, 2);
+  assert.equal(payload.flashscore.diagnostic, "ok");
+  assert.equal(payload.flashscore.diagnostics.acceptedRows, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.bookmaker, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.doubles, 1);
+  assert.equal(payload.flashscore.diagnostics.rejectedByReason.team_tie, 1);
+  assert.equal(payload.count, 2);
+  assert.deepEqual(payload.items.map(item => [item.outcome, item.oddsDecimal]), [
+    ["home", 1.6], ["away", 2.1]
+  ]);
+  assert.ok(payload.items.every(item =>
+    item.bookmaker === "Winamax" &&
+    item.bookmakerCountry === "FR" &&
+    item.sport === "tennis" &&
+    item.marketType === "match_winner" &&
+    item.eventId === "0he28PTg"
+  ));
+});
+
+test("Preview scheduled handler starts Flashscore French Winamax tennis odds every six hours", async () => {
+  let requestUrl = "";
+  let requestOptions = null;
+  const sandbox = {
+    Response, Request, Headers, URL, URLSearchParams, Set, Object, Number, Math, JSON, Date,
+    Promise, TextEncoder, TextDecoder, Uint8Array, encodeURIComponent,
+    console: { log() {}, error(message) { throw new Error(message); } },
+    fetch: async (url, options) => {
+      requestUrl = String(url);
+      requestOptions = options;
+      return new Response(JSON.stringify({ data: { id: "scheduled-run-1", status: "READY" } }), { status: 201 });
+    }
+  };
+  vm.runInNewContext(workerSource.replace("export default {", "globalThis.worker = {"), sandbox);
+  let pending;
+  sandbox.worker.scheduled(
+    { cron: "0 */6 * * *" },
+    { APIFY_TOKEN: "test-apify-token" },
+    { waitUntil(promise) { pending = promise; } }
+  );
+  assert.ok(pending, "scheduled handler should register its work with waitUntil");
+  await pending;
+  assert.equal(requestUrl, "https://api.apify.com/v2/acts/incognito_mode~flashscore-odds-scraper/runs?waitForFinish=0");
+  assert.equal(requestOptions.method, "POST");
+  assert.equal(requestOptions.headers.Authorization, "Bearer test-apify-token");
+  const input = JSON.parse(requestOptions.body);
+  assert.deepEqual(input, {
+    mode: "matches",
+    sports: ["tennis"],
+    days: ["0"],
+    status: "all",
+    bookmakerCountries: ["FR"],
+    bookmakers: ["Winamax"],
+    markets: ["HOME_AWAY"],
+    periods: ["FULL_TIME"],
+    maxMatches: 30,
+    maxItems: 500
+  });
+  const previewConfig = readFileSync(new URL("../wrangler.preview.toml", import.meta.url), "utf8");
+  assert.match(previewConfig, /crons\s*=\s*\["0 \*\/6 \* \* \*"\]/);
+});
 
 test("player history endpoint validates player ID, limit and tour without upstream calls", async () => {
   let calls = 0;

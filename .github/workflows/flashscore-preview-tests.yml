@@ -1,0 +1,28 @@
+name: Flashscore Winamax Preview regression tests
+
+on:
+  push:
+    branches:
+      - feature/flashscore-winamax-integration-preview
+    paths:
+      - "worker.js"
+      - "tests/**"
+      - ".github/workflows/flashscore-preview-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated Preview branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run complete regression suite
+        run: node --test tests/*.test.mjs
