@@ -2145,6 +2145,8 @@
   const p1=m=>m?.players?.p1||m?.player1||m?.home||m?.participant1;
   const p2=m=>m?.players?.p2||m?.player2||m?.away||m?.participant2;
   const matchList=x=>{if(Array.isArray(x))return x;if(!x||typeof x!=='object')return [];for(const key of ['matches','data','results','events'])if(x[key]!==undefined){const found=matchList(x[key]);if(found.length)return found;}return [];};
+  const playerMatches=(query,player)=>{const q=norm(query),full=norm(playerName(player));if(!q||!full)return false;if(q===full)return true;const qt=q.split(' '),nt=full.split(' ');return qt.length===1?nt[nt.length-1]===q:nt.slice(-qt.length).join(' ')===q;};
+  const isFinishedMatch=m=>{const states=[m?.status,m?.event_status,m?.match_status,m?.state,m?.result?.status].map(norm).filter(Boolean);if(states.some(v=>['walk over','walkover','wo','finished','finish','complete','completed','ended','cancelled','canceled','retired','abandoned','defaulted'].includes(v)))return true;const raw=m?.scheduled_time||m?.scheduled_at||m?.starts_at||m?.start_time||m?.match_time||m?.date;if(raw){const d=new Date(raw);if(!Number.isNaN(d.getTime())&&d.getTime()<Date.now())return true;}return false;};
   const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
   const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
   const surfaceCode=m=>{const v=String(m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface??'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'hard';if(v.includes('clay')||v.includes('terre'))return 'clay';if(v.includes('grass')||v.includes('gazon'))return 'grass';if(v.includes('carpet')||v.includes('moquette'))return 'carpet';return '';};
@@ -2164,7 +2166,7 @@
       const payload=await response.json();
       if(!response.ok)throw new Error(payload?.error||'Ошибка расписания HTTP '+response.status);
       const all=matchList(payload);
-      candidates=all.filter(m=>{if(m?.is_doubles===true)return false;const x=norm(playerName(p1(m))),y=norm(playerName(p2(m)));return (x===a&&y===b)||(x===b&&y===a);});
+      candidates=all.filter(m=>{if(m?.is_doubles===true||isFinishedMatch(m))return false;const x=p1(m),y=p2(m);return (playerMatches(a,x)&&playerMatches(b,y))||(playerMatches(a,y)&&playerMatches(b,x));});
       const choice=$('simMatchChoice');
       choice.innerHTML='';
       if(!candidates.length){choice.disabled=true;choice.add(new Option('Матч не найден',''));status('В расписании не найден предстоящий матч этой пары. Турнир и покрытие не определяю наугад. Проверь написание имён или попробуй позже.',true);return;}
@@ -2181,7 +2183,7 @@
     if(!match){status('Сначала найди и выбери матч.',true);return;}
     const inputNameA=$('simPlayerA').value.trim(),inputNameB=$('simPlayerB').value.trim();
     const matchP1=p1(match),matchP2=p2(match);
-    const inputAIsMatchP1=norm(playerName(matchP1))===norm(inputNameA);
+    const inputAIsMatchP1=playerMatches(inputNameA,matchP1);
     const selectedA=inputAIsMatchP1?matchP1:matchP2,selectedB=inputAIsMatchP1?matchP2:matchP1;
     const nameA=playerName(selectedA),nameB=playerName(selectedB);
     const idA=playerId(selectedA),idB=playerId(selectedB);
