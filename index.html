@@ -2142,7 +2142,7 @@
   const playerId=p=>{const n=Number(p?.id??p?.playerId??p?.player_id??p?.playerID);return Number.isSafeInteger(n)&&n>0?n:null;};
   const p1=m=>m?.players?.p1||m?.player1||m?.home||m?.participant1;
   const p2=m=>m?.players?.p2||m?.player2||m?.away||m?.participant2;
-  const matchList=x=>Array.isArray(x)?x:Array.isArray(x?.matches)?x.matches:Array.isArray(x?.data)?x.data:Array.isArray(x?.results)?x.results:[];
+  const matchList=x=>{if(Array.isArray(x))return x;if(!x||typeof x!=='object')return [];for(const key of ['matches','data','results','events'])if(x[key]!==undefined){const found=matchList(x[key]);if(found.length)return found;}return [];};
   const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
   const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
   const surface=m=>{const raw=m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface;const v=String(raw||'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'Хард';if(v.includes('clay')||v.includes('terre'))return 'Грунт';if(v.includes('grass')||v.includes('gazon'))return 'Трава';if(v.includes('carpet')||v.includes('moquette'))return 'Ковёр';return '';};
@@ -2171,7 +2171,7 @@
       choice.disabled=candidates.length<2;
       if(candidates.length>1)status('Найдено несколько матчей этой пары. Выбери нужный в списке и нажми кнопку ещё раз.');
       else await runSimulation(candidates[0]);
-    }catch(error){status('Не удалось получить расписание: '+String(error?.message||error),true);}
+    }catch(error){status('Не удалось найти матч или выполнить симуляцию: '+String(error?.message||error),true);}
     finally{$('simFindAndRun').disabled=false;}
   }
   async function runSimulation(match){
@@ -2203,7 +2203,7 @@
     $('simResult').innerHTML='<div class="sim-meta"><b>'+esc(event)+'</b> · '+court+' · '+esc(categoryLabel)+' · Best of '+bo+'<br>'+esc(nameA)+' — '+esc(nameB)+'<br>Первую подачу выполняет: '+esc(firstServer==='A'?nameA:nameB)+'<br>Источник матча: расписание Live Tennis API · статистика: профили подачи/приёма Live Tennis API</div>'+
       '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+esc(nameA)+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+esc(nameB)+'</span></div></div>'+
       '<div class="sim-scorelines"><b>Наиболее частые итоговые счета</b>'+score+'</div>'+
-      '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
+      '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Матчей в профилях с данными: '+profileA.matchesWithStats+' / '+profileB.matchesWithStats+'<br>Проверка подачи/приёма: расхождение '+pct(inputs.playerA.disagreement)+' / '+pct(inputs.playerB.disagreement)+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
       '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Он не меняет автоматический прогноз, EV или план ставок. Важно: источник даёт агрегированные показатели подачи/приёма без разбивки по покрытию; покрытие матча точно указано, но отдельная поправка по покрытию не применяется. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
     $('simResult').hidden=false;
     status('Готово. Результат относится к выбранному турниру и покрытию, указанным источником.');
