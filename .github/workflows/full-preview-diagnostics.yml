@@ -1,0 +1,36 @@
+name: Full preview diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/matches-and-comparison
+
+permissions:
+  contents: read
+
+jobs:
+  browser-and-api-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/matches-and-comparison
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Wait for Netlify preview and test full app
+        env:
+          PREVIEW_URL: https://deploy-preview-180--fascinating-paprenjak-1aa9b3.netlify.app
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$PREVIEW_URL" >/dev/null; then break; fi
+            if [ "$attempt" -eq 30 ]; then echo "::error::Netlify preview did not become available"; exit 1; fi
+            sleep 10
+          done
+          node scripts/diagnose-preview.mjs
