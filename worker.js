@@ -649,7 +649,7 @@ export default {
           includeLive: false,
           maxItems: 100
         };
-        const upstream = await fetch("https://api.apify.com/v2/acts/oddsfrance~netbet-odds-scraper/runs?waitForFinish=0&maxTotalChargeUsd=0.02", {
+        const upstream = await fetch("https://api.apify.com/v2/acts/oddsfrance~netbet-odds-scraper/runs?waitForFinish=0&maxTotalChargeUsd=0.05", {
           method: "POST",
           headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(input)
