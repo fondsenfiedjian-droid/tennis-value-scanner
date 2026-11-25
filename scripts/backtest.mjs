@@ -138,7 +138,7 @@ export function runBacktest(matches, options = {}) {
   if (evaluationStart && evaluationEnd && evaluationStart > evaluationEnd) throw new RangeError("evaluationStart must not be after evaluationEnd");
   const overall = new Map(), bySurface = new Map(), form = new Map(), h2h = new Map();
   const totals = Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { n: 0, brier: 0, logLoss: 0, correct: 0, calibration: Array.from({ length: 10 }, () => ({ n: 0, predicted: 0, wins: 0, winsSquared: 0, fractionalVariance: 0 })) }]));
-  const byYear = new Map(), bySurfaceMetrics = new Map(), byYearAndSurface = new Map();
+  const byYear = new Map(), bySurfaceMetrics = new Map(), byYearAndSurface = new Map(), byCategoryMetrics = new Map();
   const yearlyObservations = new Map();
   const yearlyEvaluationObservations = new Map();
   const predictions = [];
@@ -206,7 +206,7 @@ export function runBacktest(matches, options = {}) {
     const player2 = player1 === winner ? loser : winner;
     const duration = Number(row.durationMinutes);
     const durationMinutes = Number.isFinite(duration) && duration >= 1 && duration <= 600 ? duration : null;
-    return { date, winner, loser, player1, player2, surface, round: String(row.round ?? ""), durationMinutes, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
+    return { date, winner, loser, player1, player2, surface, category: String(row.category ?? "Unknown").trim() || "Unknown", round: String(row.round ?? ""), durationMinutes, tourneyId: String(row.tourney_id ?? ""), matchNum: String(row.match_num ?? ""), sourceOdds: row.sourceOdds ?? null };
   }).filter(Boolean).sort((a, b) =>
     a.date.localeCompare(b.date) ||
     a.tourneyId.localeCompare(b.tourneyId) ||
@@ -234,7 +234,7 @@ export function runBacktest(matches, options = {}) {
   let duplicateRows = 0, conflictingDuplicateMatches = 0, conflictingDuplicateRows = 0;
   for (const group of matchGroups.values()) {
     const signature = match => JSON.stringify([
-      match.date, match.winner, match.loser, match.surface, stableOddsKey(match.sourceOdds)
+      match.date, match.winner, match.loser, match.surface, match.category, stableOddsKey(match.sourceOdds)
     ]);
     if (new Set(group.map(signature)).size > 1) {
       conflictingDuplicateMatches++;
@@ -281,12 +281,18 @@ export function runBacktest(matches, options = {}) {
       };
       const year = date.slice(0, 4);
       const insideEvaluationWindow = (!evaluationStart || date >= evaluationStart) && (!evaluationEnd || date <= evaluationEnd);
+      const categoryKey = match.category ?? "Unknown";
       if (!yearlyObservations.has(year)) yearlyObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
       if (insideEvaluationWindow) {
         if (!byYear.has(year)) byYear.set(year, makeMetricBucket());
         if (!yearlyEvaluationObservations.has(year)) yearlyEvaluationObservations.set(year, Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, []])));
         const surfaceKey = match.surface ?? "Unknown";
         if (!bySurfaceMetrics.has(surfaceKey)) bySurfaceMetrics.set(surfaceKey, makeMetricBucket());
+        const categoryKey = match.category ?? "Unknown";
+        if (!byCategoryMetrics.has(categoryKey)) byCategoryMetrics.set(categoryKey, {
+          metrics: makeMetricBucket(),
+          favourite: Object.fromEntries(["elo", "surface", "form", "h2h", "combined"].map(name => [name, { decisive: 0, losses: 0 }]))
+        });
         const yearSurfaceKey = year + "|" + surfaceKey;
         if (!byYearAndSurface.has(yearSurfaceKey)) byYearAndSurface.set(yearSurfaceKey, { matches: 0, metrics: makeMetricBucket() });
         const yearSurfaceBucket = byYearAndSurface.get(yearSurfaceKey);
@@ -307,16 +313,23 @@ export function runBacktest(matches, options = {}) {
           addMetric(byYear.get(year)[name], probability, player1Won);
           addMetric(bySurfaceMetrics.get(surfaceKey)[name], probability, player1Won);
           addMetric(yearSurfaceBucket.metrics[name], probability, player1Won);
+          const categoryBucket = byCategoryMetrics.get(categoryKey);
+          addMetric(categoryBucket.metrics[name], probability, player1Won);
           addCalibration(totals[name], favouriteProbability, favouriteWon);
           addCalibration(byYear.get(year)[name], favouriteProbability, favouriteWon);
           addCalibration(bySurfaceMetrics.get(surfaceKey)[name], favouriteProbability, favouriteWon);
           addCalibration(yearSurfaceBucket.metrics[name], favouriteProbability, favouriteWon);
+          addCalibration(categoryBucket.metrics[name], favouriteProbability, favouriteWon);
+          if (favouriteProbability > 0.5) {
+            categoryBucket.favourite[name].decisive++;
+            if (favouriteWon === 0) categoryBucket.favourite[name].losses++;
+          }
           yearlyEvaluationObservations.get(year)[name].push({ probability: favouriteProbability, outcome: favouriteWon, surface: surfaceKey });
         }
       }
       if (insideEvaluationWindow && options.includePredictions === true) predictions.push({
         date, winnerId: match.winner, loserId: match.loser,
-        player1Id: match.player1, player2Id: match.player2, surface: match.surface,
+        player1Id: match.player1, player2Id: match.player2, surface: match.surface, category: match.category,
         h2hMeetings: h.a + h.b,
         durationMinutes: match.durationMinutes,
         sourceOdds: match.sourceOdds, probabilities: modelProbabilities
@@ -476,7 +489,18 @@ export function runBacktest(matches, options = {}) {
     breakdowns: {
       byYear: Object.fromEntries([...byYear.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
       bySurface: Object.fromEntries([...bySurfaceMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => [key, formatMetrics(bucket)])),
-      byYearAndSurface: byYearAndSurfaceReport
+      byYearAndSurface: byYearAndSurfaceReport,
+      byCategory: Object.fromEntries([...byCategoryMetrics.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([category, bucket]) => [category, {
+        matches: bucket.metrics.elo.n,
+        sampleQuality: bucket.metrics.elo.n < 30 ? "low" : bucket.metrics.elo.n < 100 ? "limited" : "larger_sample",
+        metrics: formatMetrics(bucket.metrics),
+        calibration: Object.fromEntries(Object.entries(bucket.metrics).map(([name, metric]) => [name, formatCalibration(metric)])),
+        favouriteOutcomes: Object.fromEntries(Object.entries(bucket.favourite).map(([name, value]) => [name, {
+          decisiveFavouriteMatches: value.decisive,
+          favouriteLosses: value.losses,
+          favouriteLossRatePct: value.decisive ? Number((100 * value.losses / value.decisive).toFixed(2)) : null
+        }]))
+      }]))
     }
   };
 }

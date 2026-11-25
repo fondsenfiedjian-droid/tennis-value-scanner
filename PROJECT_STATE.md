@@ -1,6 +1,6 @@
 # Tennis Value Scanner — Project State
 
-Last updated: 2026-11-20
+Last updated: 2026-11-25
 Repository: https://github.com/fondsenfiedjian-droid/tennis-value-scanner  
 Default branch: `main`
 
@@ -1052,3 +1052,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 8. Tournament-category backtest research (2026-11-25)
+- Draft research PR: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/186
+- Branch: `research/tournament-category-metrics`.
+- The research change carries Valuebetennis `categorie` through normalized rows, cleaned chronological matches and prediction records. ATP and WTA Elo histories remain independent and are not split by tournament category.
+- Backtest output adds category-level Brier score, log loss, calibration bins and favourite-loss counts/rates for each candidate model. Paired Pinnacle opening/closing comparisons also gain category breakdowns.
+- When the source contains a `categorie` column, blank values map to `Junior` (the inspected 2026 source has blank category only for junior Grand Slams). If the column is absent, category is `Unknown`.
+- Research only: no Elo weights, production Worker, frontend, deployment, or historical source CSVs changed. Do not merge until regression tests pass and the resulting category report has been reviewed.

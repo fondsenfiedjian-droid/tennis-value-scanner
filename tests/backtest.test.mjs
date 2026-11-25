@@ -488,3 +488,20 @@ test("walk-forward calibration excludes earlier matches from the evaluation cale
   assert.equal(report.warmupMatches, 505);
   assert.equal(report.evaluatedMatches, 12);
 });
+
+test("backtest preserves tournament category and reports category-specific metrics without splitting Elo history", () => {
+  const rows = [
+    { tourney_date: "20240101", tourney_id: "A", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard", category: "ITF" },
+    { tourney_date: "20240102", tourney_id: "B", match_num: "1", winner_id: "1", loser_id: "2", score: "6-4 6-4", surface: "Hard", category: "Main tour" },
+    { tourney_date: "20240103", tourney_id: "C", match_num: "1", winner_id: "2", loser_id: "1", score: "6-4 6-4", surface: "Clay", category: "ITF" }
+  ];
+  const report = runBacktest(rows, { includePredictions: true });
+  assert.equal(report.metrics.elo.matches, 3);
+  assert.equal(report.breakdowns.byCategory.ITF.matches, 2);
+  assert.equal(report.breakdowns.byCategory["Main tour"].matches, 1);
+  assert.equal(report.breakdowns.byCategory.ITF.metrics.elo.matches, 2);
+  assert.equal(report.breakdowns.byCategory.ITF.calibration.elo.bins.reduce((sum, bin) => sum + bin.matches, 0), 2);
+  assert.equal(report.predictions[0].category, "ITF");
+  assert.equal(report.breakdowns.byCategory.ITF.favouriteOutcomes.elo.decisiveFavouriteMatches, 1);
+  assert.equal(report.breakdowns.byCategory.ITF.favouriteOutcomes.elo.favouriteLosses, 1);
+});
