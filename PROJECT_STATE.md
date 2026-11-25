@@ -1075,3 +1075,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Historical backtest runner is connected in Developer Edition. It compares all saved profiles on the same sample using Brier, LogLoss, accuracy and ECE; it excludes same-day result leakage and does not calculate ROI without a documented odds/staking pipeline.
 - Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
 - Added a branch-scoped regression workflow (Node.js 22, node --test tests/*.test.mjs) so this stacked feature branch validates without changing or deploying Production. Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
+
+
+## 2026-11-25 — Compact version label in both app editions
+- Updated the existing version marker in both Production (`/`) and Developer (`/developer/`) app shells: it now shows only the actual version string (for example `v2.0.0` or `v2.1.0-dev.1`) in the upper-right header area.
+- Reduced the marker to 8px muted text with no border, pill, background, or extra padding; Developer keeps a subtle cool tint. The version value remains driven by the edition runtime, not hard-coded into the shared label.
+- Bumped the Production PWA cache to `tennis-value-static-v145` and the Developer PWA cache to `tvs-developer-static-v2` so installed clients refresh the changed header. Cache namespaces remain isolated.
+- Extended `tests/edition.test.mjs` to assert both editions use the compact text-only label and dynamically display their edition version; updated the Developer cache-version assertion.
+- Preview branch only (`feature/tvs2-editions-lab`, PR #171). No merge, Production deployment, model change, Worker change, or Apify configuration change.
