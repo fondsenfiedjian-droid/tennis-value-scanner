@@ -1083,3 +1083,5 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Bumped the Production PWA cache to `tennis-value-static-v145` and the Developer PWA cache to `tvs-developer-static-v2` so installed clients refresh the changed header. Cache namespaces remain isolated.
 - Extended `tests/edition.test.mjs` to assert both editions use the compact text-only label and dynamically display their edition version; updated the Developer cache-version assertion.
 - Preview branch only (`feature/tvs2-editions-lab`, PR #171). No merge, Production deployment, model change, Worker change, or Apify configuration change.
+
+- First CI run for this UI refinement found three stale test assertions still expecting Production cache v144; the actual PWA cache was correctly advanced to v145. Updated the corresponding expectations in `tests/app-ui.test.mjs` and `tests/worker.test.mjs`; no application-code defect was reported. Re-run required before considering validation complete.
