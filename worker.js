@@ -2,7 +2,7 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache"
+  "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache, Content-Disposition, Content-Length"
 };
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
@@ -423,7 +423,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/history/coverage", "/history/matches", "/history/packages", "/history/packages/2026-11", "/predict"]
       });
     }
 
@@ -933,6 +933,132 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    // Read-only Live Tennis historical data proxy. The API key stays server-side.
+    if (path === "/history/coverage" || path === "/history/matches" || path.startsWith("/history/matches/") || path === "/history/packages" || path.startsWith("/history/packages/")) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+
+      const isCoverage = path === "/history/coverage";
+      const isMatches = path === "/history/matches";
+      const isPackageList = path === "/history/packages";
+      const isDigits = value => value.length > 0 && [...value].every(char => char >= "0" && char <= "9");
+      const historyMatchPath = path.startsWith("/history/matches/") ? path.slice("/history/matches/".length) : null;
+      const isHistoryPrices = historyMatchPath !== null && historyMatchPath.endsWith("/prices");
+      const historyMatchId = isHistoryPrices ? historyMatchPath.slice(0, -7) : historyMatchPath;
+      const validHistoryMatch = historyMatchId !== null && isDigits(historyMatchId) && Number(historyMatchId) > 0;
+      const packagePeriod = path.startsWith("/history/packages/") ? path.slice("/history/packages/".length) : null;
+      const validPackagePeriod = packagePeriod !== null && (packagePeriod.length === 4 || packagePeriod.length === 7) && isDigits(packagePeriod.slice(0, 4)) && (packagePeriod.length === 4 || (packagePeriod[4] === "-" && isDigits(packagePeriod.slice(5))));
+      if (!isCoverage && !isMatches && !isPackageList && !validPackagePeriod && !validHistoryMatch) {
+        return response({ error: "Invalid history route" }, 404);
+      }
+
+      const allowed = isMatches
+        ? ["has_market", "is_qualifying", "gender", "limit", "offset", "from", "to", "tour", "draw", "player", "country", "tournament_id", "tier", "coverage", "points_complete"]
+        : isHistoryPrices
+          ? ["after_seq", "limit"]
+          : validHistoryMatch
+            ? ["sequence", "points"]
+            : isPackageList || validPackagePeriod
+              ? ["kind", ...(isPackageList ? ["year"] : ["format"])]
+              : [];
+      const params = new URLSearchParams();
+      for (const key of allowed) {
+        const value = url.searchParams.get(key);
+        if (value === null) continue;
+        const clean = value.trim();
+        if (!clean || clean.length > 200) return response({ error: "Invalid " + key + " parameter" }, 400);
+        if (key === "limit" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) < 1 || Number(clean) > (isHistoryPrices ? 500 : 200))) {
+          return response({ error: "limit must be an integer from 1 to 200" }, 400);
+        }
+        if (key === "offset" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) > 1000000)) {
+          return response({ error: "offset must be a non-negative integer" }, 400);
+        }
+        if (key === "after_seq" && (!isDigits(clean) || !Number.isInteger(Number(clean)))) {
+          return response({ error: "after_seq must be a non-negative integer" }, 400);
+        }
+        if (key === "sequence" && !["raw", "clean"].includes(clean)) {
+          return response({ error: "sequence must be raw or clean" }, 400);
+        }
+        if (key === "points" && !["default", "complete"].includes(clean)) {
+          return response({ error: "points must be default or complete" }, 400);
+        }
+        if (["has_market", "is_qualifying", "points_complete"].includes(key) && !["true", "false"].includes(clean.toLowerCase())) {
+          return response({ error: key + " must be true or false" }, 400);
+        }
+        if (key === "gender" && !["men", "women"].includes(clean.toLowerCase())) {
+          return response({ error: "gender must be men or women" }, 400);
+        }
+        if (key === "draw" && !["singles", "doubles"].includes(clean.toLowerCase())) {
+          return response({ error: "draw must be singles or doubles" }, 400);
+        }
+        if (key === "tour" && !["atp", "wta", "challenger", "itf", "juniors"].includes(clean.toLowerCase())) {
+          return response({ error: "Invalid tour" }, 400);
+        }
+        if (key === "kind" && !["tape", "rankings", "rally", "archive", "elo", "archive_tape"].includes(clean)) {
+          return response({ error: "Invalid package kind" }, 400);
+        }
+        if (key === "format" && !["jsonl", "csv", "corrections"].includes(clean)) {
+          return response({ error: "format must be jsonl, csv, or corrections" }, 400);
+        }
+        if (key === "year" && !(clean.length === 4 && isDigits(clean))) {
+          return response({ error: "year must use YYYY format" }, 400);
+        }
+        if (key === "from" || key === "to") {
+          if (Number.isNaN(Date.parse(clean))) return response({ error: key + " must be a valid date" }, 400);
+        }
+        if (key === "tournament_id" && !isDigits(clean)) {
+          return response({ error: "tournament_id must be numeric" }, 400);
+        }
+        params.set(key, clean);
+      }
+
+      const period = validPackagePeriod ? packagePeriod : null;
+      if (period && period.includes("-") && (Number(period.slice(5)) < 1 || Number(period.slice(5)) > 12)) {
+        return response({ error: "Package month must be between 01 and 12" }, 400);
+      }
+      const upstreamPath = isCoverage ? "/history/coverage"
+        : isMatches ? "/history/matches"
+        : validHistoryMatch ? "/history/matches/" + historyMatchPath
+        : isPackageList ? "/history/packages"
+        : "/history/packages/" + period;
+      const query = params.toString();
+      const upstreamUrl = "https://api.livetennisapi.com/api/public/v1" + upstreamPath + (query ? "?" + query : "");
+
+      try {
+        const cacheable = isCoverage || isPackageList || (validPackagePeriod && !params.has("format"));
+        const cache = caches.default;
+        const cacheKey = new Request(url.origin + "/__live-history/" + encodeURIComponent(upstreamPath + (query ? "?" + query : "")), { method: "GET" });
+        const cached = cacheable ? await cache.match(cacheKey) : null;
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+
+        const upstream = await fetchLiveTennis(upstreamUrl, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": params.has("format") ? "*/*" : "application/json" }
+        });
+        const headers = new Headers(cors);
+        const contentType = upstream.headers.get("Content-Type");
+        const disposition = upstream.headers.get("Content-Disposition");
+        const retryAfter = upstream.headers.get("Retry-After");
+        if (contentType) headers.set("Content-Type", contentType);
+        if (disposition) headers.set("Content-Disposition", disposition);
+        if (retryAfter) headers.set("Retry-After", retryAfter);
+        if (cacheable && upstream.ok) {
+          const bytes = await upstream.arrayBuffer();
+          headers.set("Cache-Control", "public, max-age=3600");
+          headers.set("X-Data-Cache", "MISS");
+          const stored = new Response(bytes, { status: upstream.status, headers });
+          await cache.put(cacheKey, stored.clone());
+          return new Response(bytes, { status: upstream.status, headers });
+        }
+        return new Response(upstream.body, { status: upstream.status, headers });
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis historical data" }, 502);
       }
     }
 

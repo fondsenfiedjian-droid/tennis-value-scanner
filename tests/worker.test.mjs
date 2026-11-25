@@ -138,6 +138,58 @@ test("Live Tennis daily quota guard blocks repeated upstream calls after a 429",
   assert.equal(upstreamCalls, 1, "second request must be blocked by the shared quota guard");
 });
 
+test("Live Tennis history coverage route keeps the API key server-side", async () => {
+  let requestedUrl = "";
+  let requestedHeaders = null;
+  workerSandbox.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedHeaders = options.headers;
+    return new Response(JSON.stringify({ totals: { matches: 100 } }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  const result = await call("/history/coverage");
+  assert.equal(result.status, 200);
+  assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/history/coverage");
+  assert.equal(requestedHeaders["X-API-Key"], "test-key");
+  assert.equal((await result.json()).totals.matches, 100);
+});
+
+test("Live Tennis history package downloads stream CSV and expose attachment headers", async () => {
+  let requestedUrl = "";
+  workerSandbox.fetch = async url => {
+    requestedUrl = String(url);
+    return new Response("match_id,seq,score\\n224226,1,0-0", {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": 'attachment; filename="2026-11.csv"'
+      }
+    });
+  };
+  const result = await call("/history/packages/2026-11?format=csv");
+  assert.equal(result.status, 200);
+  assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/history/packages/2026-11?format=csv");
+  assert.match(result.headers.get("Content-Disposition"), /2026-11.csv/);
+  assert.match(result.headers.get("Access-Control-Expose-Headers"), /Content-Disposition/);
+  assert.match(await result.text(), /224226/);
+});
+
+test("Live Tennis per-point price history accepts documented page size and rejects invalid IDs", async () => {
+  let requestedUrl = "";
+  workerSandbox.fetch = async url => {
+    requestedUrl = String(url);
+    return new Response(JSON.stringify({ data: [], meta: { match_id: 224226, count: 0 } }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  const result = await call("/history/matches/224226/prices?limit=500&after_seq=0");
+  assert.equal(result.status, 200);
+  assert.equal(requestedUrl, "https://api.livetennisapi.com/api/public/v1/history/matches/224226/prices?after_seq=0&limit=500");
+  const invalid = await call("/history/matches/not-an-id/prices");
+  assert.equal(invalid.status, 404);
+});
+
 test("odds endpoint validates method and requires the Apify secret", async () => {
   const methodResponse = await call("/odds", "POST");
   assert.equal(methodResponse.status, 405);
@@ -337,7 +389,7 @@ test("player stats endpoint preserves rate-limit retry guidance and identifies m
   const limited = await call("/player-stats?id=123");
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get("Retry-After"), "30");
-  assert.equal(limited.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
+  assert.equal(limited.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache, Content-Disposition, Content-Length");
   const limitedPayload = await limited.json();
   assert.equal(limitedPayload.accessStatus, "rate_limited");
   assert.deepEqual(JSON.parse(JSON.stringify(limitedPayload.rateLimit)), {
@@ -552,7 +604,7 @@ test("matches forwards upstream rate-limit guidance and exposes cache status", a
   const result = await call("/matches?status=upcoming");
   assert.equal(result.status, 429);
   assert.equal(result.headers.get("Retry-After"), "30");
-  assert.equal(result.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache");
+  assert.equal(result.headers.get("Access-Control-Expose-Headers"), "Retry-After, X-Data-Cache, Content-Disposition, Content-Length");
   assert.equal(result.headers.get("X-Data-Cache"), null);
   workerSandbox.fetch = async () => { throw new Error("Unexpected upstream network call in validation test"); };
 });
