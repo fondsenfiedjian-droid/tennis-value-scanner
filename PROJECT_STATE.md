@@ -1052,3 +1052,14 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## Odds-pair integrity diagnostics (2026-11-22)
+- Added isolated research branch `research/odds-pair-integrity-diagnostics`; no production deployment or model change.
+- Worker `GET /odds` diagnostics now additionally group valid tennis match-winner quotes by bookmaker and provider event identity (or player pair + start time + competition when the provider event ID is absent).
+- Reports event groups, complete two-outcome pairs, complete pairs whose two quote timestamps are both within the six-hour freshness window and within 30 minutes of each other, incomplete pairs, duplicate-outcome groups, and stale/unsynchronised pairs, split by bookmaker. It never combines one bookmaker's home quote with another bookmaker's away quote.
+- Added dedicated regression tests for provider isolation, incomplete pairs, duplicate outcomes, stale/unsynchronised timestamps and fallback event identity.
+- This is diagnostic only: it does not alter quote selection, EV, PFE, model probabilities, Apify task configuration, or Production. The existing frontend still has separate provider-selection work in draft PR #157; this branch does not replace or merge that work.
+- Validation pending GitHub Actions on the branch head.
+
+- Follow-up on the same PR: the frontend odds-source status now displays the new bookmaker-specific pair coverage counts (complete, fresh, incomplete, stale/unsynchronised) when supplied by the Worker; older cached payloads remain compatible and simply omit this segment.

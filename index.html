@@ -522,11 +522,20 @@
     const runTimestamp=Date.parse(oddsTaskRun?.finishedAt||oddsTaskRun?.startedAt||'');
     const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
     const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
+    const pairStats=oddsDiagnostics?.marketPairDiagnostics?.byBookmaker||{};
+    const pairSummary=['winamax','betclic','netbet'].filter(provider=>pairStats[provider]).map(provider=>{
+      const stats=pairStats[provider];
+      return (labels[provider]||provider)+': полных пар '+(Number(stats.completePairs)||0)+
+        ', свежих '+(Number(stats.freshCompletePairs)||0)+
+        ', неполных '+(Number(stats.incompletePairs)||0)+
+        ', устаревших/несинхронных '+(Number(stats.staleOrUnsynchronisedPairs)||0);
+    }).join(' · ');
+    const pairNotice=pairSummary?' · пары 1X2: '+pairSummary:'';
     if(oddsLoadError){
-      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · '+oddsLoadError+taskRunSeen+sourceSeen+freshnessNotice+oddsDiagnosticsText();
+      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · '+oddsLoadError+taskRunSeen+sourceSeen+freshnessNotice+pairNotice+oddsDiagnosticsText();
       return;
     }
-    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · последняя котировка '+latest+taskRunSeen+sourceSeen+freshnessNotice+oddsDiagnosticsText();
+    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · последняя котировка '+latest+taskRunSeen+sourceSeen+freshnessNotice+pairNotice+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
