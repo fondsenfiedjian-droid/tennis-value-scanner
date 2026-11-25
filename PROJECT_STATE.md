@@ -1052,3 +1052,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-22 — Tournament generic-token matching audit (research PR)
+- Found a deterministic false-positive path in the existing tournament compatibility rule: two unrelated same-tour events can be treated as compatible solely because both contain generic suffixes such as "Open" or "Masters".
+- Updated the ignored-token set so generic event labels do not establish tournament identity by themselves; distinctive location/name tokens remain usable.
+- Added regression tests for China Open vs Japan Open, Paris Masters vs Rome Masters, and a valid Rome Masters / Rome Masters alias.
+- Research-only; no odds selection, player identity, 36-hour window, EV, probabilities, provider config, Apify task, or Production deployment changes.
+- Do not merge without explicit approval.
