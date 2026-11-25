@@ -245,6 +245,10 @@
   <div id="bestBet" class="best-bet" role="button" tabindex="0" aria-label="Открыть подробности ставки дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></div>
   <div id="highestEv" class="best-bet highest-ev" aria-live="polite"><div class="best-bet-title">EV ДНЯ · РИСКОВЫЙ ШАНС</div><div id="highestEvContent" class="best-bet-empty">Ожидаю расчёта вероятностей…</div><button id="highestEvOpen" class="highest-ev-open" type="button" hidden>Открыть матч</button></div>
   <div id="matchList" class="match-list"><div class="panel loading">Нажми «Обновить данные», чтобы загрузить расписание.</div></div>
+  <section class="panel" id="davisCupPanel" style="margin-top:14px">
+    <div class="section-head"><h2>Кубок Дэвиса · Winamax</h2><span class="muted" id="davisCupStatus">Проверка источника…</span></div>
+    <div id="davisCupList" class="match-list"><div class="loading">Загрузка командных коэффициентов…</div></div>
+  </section>
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
@@ -746,6 +750,30 @@
     if(playerNamesMatch(a,home))return outcome==='home'?'1':outcome==='away'?'2':null;
     if(playerNamesMatch(a,away))return outcome==='away'?'1':outcome==='home'?'2':null;
     return null;
+  }
+  async function loadDavisCup(){
+    const status=$('#davisCupStatus'),list=$('#davisCupList');
+    if(!status||!list)return;
+    status.textContent='Запрос к API…';
+    try{
+      const res=await fetchWithTimeout(API+'/davis-cup');
+      const payload=await res.json();
+      if(!res.ok)throw new Error(payload.error||('API: '+res.status));
+      const rows=Array.isArray(payload.items)?payload.items:[];
+      status.textContent='API работает · строк: '+rows.length;
+      if(!rows.length){
+        list.innerHTML='<div class="loading">API ответил успешно, но в последней выгрузке нет коэффициентов Кубка Дэвиса.</div>';
+        return;
+      }
+      list.innerHTML=rows.map(row=>{
+        const start=row.startTime?new Date(row.startTime).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Время не указано';
+        const scraped=row.scrapedAt&&Number.isFinite(Date.parse(row.scrapedAt))?new Date(row.scrapedAt).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'время получения неизвестно';
+        return '<article class="match-card"><div class="match-top"><span>'+escapeHtml(row.competition||'Davis Cup')+'</span><span>Winamax · '+escapeHtml(start)+'</span></div><div class="match-players">'+escapeHtml(row.homeTeam)+' <span class="muted">—</span> '+escapeHtml(row.awayTeam)+'</div><div class="odds-visible">Победа '+escapeHtml(row.homeTeam)+': <b>'+Number(row.homeOdds).toFixed(2)+'</b> · Победа '+escapeHtml(row.awayTeam)+': <b>'+Number(row.awayOdds).toFixed(2)+'</b></div><div class="match-bottom">Обновлено источником: '+escapeHtml(scraped)+'</div></article>';
+      }).join('');
+    }catch(error){
+      status.textContent='Ошибка API';
+      list.innerHTML='<div class="loading">'+escapeHtml(String(error?.message||error))+'</div>';
+    }
   }
   function normalizeTour(value){
     const tour=String(value??'').trim().toLowerCase();
@@ -2060,6 +2088,7 @@
     let saved=null;
     try{const raw=localStorage.getItem('tvs-match-cache');if(raw)saved=JSON.parse(raw);}catch(e){}
     const oddsUpdated=await loadOdds();
+    await loadDavisCup();
     try{
       // Reuse recent match data for fifteen minutes; Winamax is refreshed independently.
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
