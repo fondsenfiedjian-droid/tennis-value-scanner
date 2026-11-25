@@ -51,6 +51,19 @@ External services:
 
 Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Never expose secret values in code, logs, documentation, or chat.
 
+## Proposed player-comparison restoration (2026-11-25; PR #178)
+
+This is a draft proposal on branch `fix/player-comparison-mvp`; it is not merged or deployed to Production.
+
+- Restores a standalone comparison screen in `index.html`, with client behavior in `compare.js`.
+- Adds `GET /players/search` to `worker.js`, using the existing Live Tennis API credential, quota guard, and a 15-minute response cache.
+- Reuses the existing `POST /predict` Elo endpoint; no model formula or production configuration is changed.
+- Adds `wrangler.preview.toml` for the isolated Worker `tennis-value-api-preview`.
+- The MVP intentionally excludes player-history and H2H panels because those routes are not part of the current `main` Worker.
+- Netlify PR preview is available at https://deploy-preview-178--fascinating-paprenjak-1aa9b3.netlify.app.
+- Cloudflare Preview deployment and its API smoke test are pending; do not describe the comparison as runtime-verified until the workflow completes successfully.
+- Production main, Production Worker, and the Apify Winamax task remain untouched. Production publication requires separate user approval.
+
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
