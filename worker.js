@@ -937,7 +937,7 @@ export default {
     }
 
     // Read-only Live Tennis historical data proxy. The API key stays server-side.
-    if (path === "/history/coverage" || path === "/history/matches" || path === "/history/packages" || path.startsWith("/history/packages/")) {
+    if (path === "/history/coverage" || path === "/history/matches" || path.startsWith("/history/matches/") || path === "/history/packages" || path.startsWith("/history/packages/")) {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
 
