@@ -1,0 +1,10 @@
+name = "tennis-value-api-preview"
+main = "worker.js"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+[vars]
+CACHE_NAMESPACE = "tennis-value-api-preview"
+
+[triggers]
+crons = ["0 */6 * * *"]

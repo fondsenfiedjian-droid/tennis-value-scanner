@@ -1,0 +1,136 @@
+import { chromium } from "playwright";
+
+const base = process.env.PREVIEW_URL || "https://deploy-preview-180--fascinating-paprenjak-1aa9b3.netlify.app";
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+const report = { url: base, pageErrors: [], failedRequests: [], api: {}, ui: {} };
+const previewApi = "https://tennis-value-api-preview.fonds-enfiedjian.workers.dev";
+for (const [label, endpoint] of [["previewHealth", "/health"], ["previewTennisSports", "/odds-api/sports"]]) {
+  try {
+    const response = await fetch(previewApi + endpoint, { signal: AbortSignal.timeout(20000) });
+    const body = await response.json();
+    report.api[label] = label === "productionHealth"
+      ? { status: response.status, configured: {
+          liveTennisApi: body.liveTennisApiConfigured,
+          apify: body.apifyTokenConfigured,
+          oddsApi: body.oddsApiConfigured
+        } }
+      : { status: response.status, tennisSports: (body.tennisSports || []).map(s => ({
+          key: s.key, title: s.title, active: s.active
+        })) };
+  } catch (error) {
+    report.api[label] = { error: error.message };
+  }
+}
+page.on("pageerror", error => report.pageErrors.push(error.message));
+page.on("requestfailed", request => report.failedRequests.push({ url: request.url(), error: request.failure()?.errorText }));
+page.on("response", async response => {
+  const url = response.url();
+  if (!url.includes("tennis-value-api")) return;
+  const path = new URL(url).pathname;
+  if (!["/health", "/matches", "/odds", "/odds-api/quotes", "/players/search", "/predict"].includes(path)) return;
+  let body = null;
+  try { body = await response.json(); } catch {}
+  report.api[path] = {
+    status: response.status(),
+    count: body?.count ?? body?.items?.length ?? body?.matches?.length ?? body?.players?.length ?? null,
+    keys: body && typeof body === "object" ? Object.keys(body) : null,
+    error: body?.error || body?.providerMessage || null,
+    diagnostics: body?.diagnostics || null,
+    oddsSources: path === "/odds" ? { sourceCounts: body?.sourceCounts || null, flashscore: body?.flashscore || null } : null,
+    sampleItems: Array.isArray(body?.items) ? body.items.slice(0, 3) : null,
+    predictDiagnostic: path === "/predict" ? body?.diagnostic || null : undefined,
+    configured: path === "/health" ? {
+      liveTennisApi: body?.liveTennisApiConfigured,
+      apify: body?.apifyTokenConfigured,
+      oddsApi: body?.oddsApiConfigured
+    } : undefined
+  };
+});
+try {
+  const response = await page.goto(base, { waitUntil: "networkidle", timeout: 60000 });
+  report.ui.pageStatus = response?.status();
+  report.ui.title = await page.title();
+  report.ui.matchesText = await page.locator("#matchList").innerText({ timeout: 15000 }).catch(e => "UNAVAILABLE: " + e.message);
+  report.ui.matchCards = await page.locator("#matchList .match-card").count();
+  report.ui.oddsStatus = await page.locator("#oddsStatus").innerText().catch(() => "missing");
+  report.ui.firstMatches = (report.ui.matchesText || "").split("\\n").slice(0, 24).join("\\n");
+
+  await page.locator("#navCompare").click({ timeout: 10000 });
+  await page.waitForFunction(() => {
+    const node = document.querySelector("#compareView");
+    return node && getComputedStyle(node).display !== "none" && node.getBoundingClientRect().height > 0;
+  }, { timeout: 10000 });
+  report.ui.compareViewOpened = true;
+
+  for (const [side, query, expected] of [["A", "Novak", "Novak Djokovic"], ["B", "Carlos Alcaraz", "Carlos Alcaraz"]]) {
+    const input = page.locator("#compareName" + side);
+    await input.fill(query);
+    await page.waitForFunction(s => {
+      const node = document.querySelector("#compareSuggestions" + s);
+      return node && !node.hidden && node.textContent.trim().length > 0 && node.textContent !== "Поиск…";
+    }, side, { timeout: 20000 });
+    const suggestion = page.locator("#compareSuggestions" + side + " button").filter({ hasText: expected }).first();
+    await suggestion.click({ timeout: 10000 });
+  }
+  await page.locator("#compareRun").click();
+  await page.waitForFunction(() => {
+    const status = document.querySelector("#compareStatus")?.textContent || "";
+    return status.includes("успешно") || status.includes("не выполнено");
+  }, { timeout: 30000 });
+  report.ui.selectedPlayers = {
+    a: { name: await page.locator("#compareNameA").inputValue(), id: await page.locator("#compareIdA").inputValue() },
+    b: { name: await page.locator("#compareNameB").inputValue(), id: await page.locator("#compareIdB").inputValue() }
+  };
+  report.ui.compareStatus = await page.locator("#compareStatus").innerText();
+  report.ui.compareResultVisible = await page.locator("#compareResult").isVisible();
+} catch (error) {
+  report.ui.fatal = error.message;
+} finally {
+  await browser.close();
+}
+
+const swBrowser = await chromium.launch({ headless: true });
+try {
+  const swPage = await swBrowser.newPage({ viewport: { width: 390, height: 844 } });
+  const swErrors = [];
+  swPage.on("pageerror", error => swErrors.push(error.message));
+  const swResponse = await swPage.goto(base, { waitUntil: "networkidle", timeout: 60000 });
+  await swPage.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) throw new Error("Service Worker API unavailable");
+    await navigator.serviceWorker.ready;
+  });
+  await swPage.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await swPage.waitForFunction(() => !!navigator.serviceWorker.controller, { timeout: 20000 });
+  const swState = await swPage.evaluate(async () => {
+    const keys = await caches.keys();
+    const expectedCache = "tennis-value-static-v135";
+    const cache = await caches.open(expectedCache);
+    const comparisonUrl = new URL("./compare.js", location.href).href;
+    return {
+      controller: !!navigator.serviceWorker.controller,
+      cacheNames: keys,
+      expectedCachePresent: keys.includes(expectedCache),
+      compareModuleCached: !!(await cache.match(comparisonUrl)),
+      controllerScript: navigator.serviceWorker.controller?.scriptURL || null
+    };
+  });
+  await swPage.locator("#navCompare").click({ timeout: 10000 });
+  await swPage.waitForFunction(() => {
+    const node = document.querySelector("#compareView");
+    return node && getComputedStyle(node).display !== "none" && node.getBoundingClientRect().height > 0;
+  }, { timeout: 10000 });
+  report.ui.serviceWorker = {
+    pageStatus: swResponse?.status(),
+    ...swState,
+    compareViewOpened: true,
+    pageErrors: swErrors
+  };
+} catch (error) {
+  report.ui.serviceWorker = { fatal: error.message };
+} finally {
+  await swBrowser.close();
+}
+if (report.ui.fatal || report.ui.compareViewOpened !== true || !report.ui.compareStatus?.includes("успешно") || report.ui.serviceWorker?.fatal || report.ui.serviceWorker?.expectedCachePresent !== true || report.ui.serviceWorker?.compareModuleCached !== true || report.ui.serviceWorker?.compareViewOpened !== true || report.ui.serviceWorker?.pageErrors?.length) process.exit(1);
+
+console.log(JSON.stringify(report, null, 2));

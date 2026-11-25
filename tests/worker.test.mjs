@@ -103,6 +103,64 @@ vm.runInNewContext(
 const worker = workerSandbox.worker;
 const env = { LIVE_TENNIS_API_KEY: "test-key", APIFY_TOKEN: "test-token" };
 
+test("Flashscore normalizer accepts future Winamax singles and rejects doubles and team ties", () => {
+  const now = Date.parse("2026-11-25T05:00:00.000Z");
+  const base = {
+    recordType: "odds", sport: "tennis", bookmakerName: "Winamax", bookmakerCountry: "FR",
+    market: "HOME_AWAY", period: "FULL_TIME", status: "scheduled", active: true,
+    startTime: "2026-11-25T17:00:00.000Z", scrapedAt: "2026-11-25T04:59:00.000Z",
+    homeOdds: 1.85, awayOdds: 2.05
+  };
+  const result = workerSandbox.normalizeFlashscoreWinamaxRows([
+    { ...base, eventId: "singles-1", homeName: "Player One", awayName: "Player Two", tournament: "ATP 250" },
+    { ...base, eventId: "doubles-1", homeName: "Player One / Player Three", awayName: "Player Two / Player Four", tournament: "ATP 250" },
+    { ...base, eventId: "team-tie-1", homeName: "Italy", awayName: "South Korea", tournament: "Davis Cup" }
+  ], now);
+  assert.equal(result.diagnostics.acceptedRows, 1);
+  assert.equal(result.diagnostics.rejectedByReason.doubles, 1);
+  assert.equal(result.diagnostics.rejectedByReason.team_tie, 1);
+  assert.equal(result.items.length, 2);
+  assert.equal(result.items[0].outcome, "home");
+  assert.equal(result.items[1].outcome, "away");
+  assert.equal(result.items[0].oddsDecimal, 1.85);
+  assert.equal(result.items[1].oddsDecimal, 2.05);
+});
+
+test("Flashscore scheduled runs enforce a $0.10 maximum charge", async () => {
+  const originalFetch = workerSandbox.fetch;
+  let requestedUrl = "";
+  let requestedBody = null;
+  let requestedHeaders = null;
+  let scheduledTask = null;
+  try {
+    workerSandbox.fetch = async (url, options) => {
+      requestedUrl = String(url);
+      requestedBody = JSON.parse(options.body);
+      requestedHeaders = options.headers;
+      return new Response(JSON.stringify({ data: { id: "preview-run", status: "READY" } }), {
+        status: 201, headers: { "Content-Type": "application/json" }
+      });
+    };
+    await worker.scheduled({}, { APIFY_TOKEN: "test-token" }, {
+      waitUntil(promise) { scheduledTask = promise; }
+    });
+    assert.ok(scheduledTask, "scheduled actor start must be registered with waitUntil");
+    await scheduledTask;
+    const runUrl = new URL(requestedUrl);
+    assert.equal(runUrl.pathname, "/v2/acts/incognito_mode~flashscore-odds-scraper/runs");
+    assert.equal(runUrl.searchParams.get("waitForFinish"), "0");
+    assert.equal(runUrl.searchParams.get("maxTotalChargeUsd"), "0.10");
+    assert.equal(requestedHeaders.Authorization, "Bearer test-token");
+    assert.deepEqual(requestedBody, {
+      mode: "matches", sports: ["tennis"], days: ["0", "1"], status: "all",
+      bookmakerCountries: ["FR"], bookmakers: ["Winamax"], markets: ["HOME_AWAY"],
+      periods: ["FULL_TIME"], maxMatches: 30, maxItems: 500
+    });
+  } finally {
+    workerSandbox.fetch = originalFetch;
+  }
+});
+
 async function call(path, method = "GET", body = undefined) {
   const request = new Request("https://worker.test" + path, {
     method,
@@ -175,7 +233,10 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   const result = await call("/odds");
   assert.equal(result.status, 200);
   const payload = await result.json();
-  assert.equal(payload.source, "Apify Winamax task");
+  assert.equal(payload.source, "Apify Winamax sources");
+  assert.equal(payload.flashscore.actor, "incognito_mode~flashscore-odds-scraper");
+  assert.equal(payload.sourceCounts.vavilov, 1);
+  assert.equal(payload.sourceCounts.flashscore, 0);
   assert.equal(payload.taskId, "s9Des4R3jhMfA8e3s");
   assert.equal(payload.count, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
@@ -352,6 +413,19 @@ test("player stats endpoint preserves rate-limit retry guidance and identifies m
 
 test("overall Elo takes precedence over surface Elo", () => {
   assert.equal(findElo({ clay_elo: 2100, stats: { overall_elo: 1850 } }), 1850);
+});
+
+test("Live Tennis nested Elo schema supports overall and surface ratings", () => {
+  const profile = { stats: { ratings: { elo: {
+    overall: 2046.7, hard: 1997.5, clay: 1952.9, grass: 1931.8,
+    elo_rank: 4, hard_rank: 4
+  } } } };
+  assert.equal(findElo(profile), 2046.7);
+  assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, ""))),
+    { rating: 2046.7, type: "overall", surface: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(findEloForSurface(profile, "Hard"))),
+    { rating: 1997.5, type: "surface", surface: "hard" });
+  assert.equal(findElo({ stats: { ratings: { elo: { elo_rank: 4 } } } }), null);
 });
 
 test("surface Elo is selected when a matching court rating exists", () => {

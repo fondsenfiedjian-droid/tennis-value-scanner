@@ -51,6 +51,19 @@ External services:
 
 Historically configured Worker secrets: `LIVE_TENNIS_API_KEY`, `APIFY_TOKEN`. Never expose secret values in code, logs, documentation, or chat.
 
+## Proposed player-comparison restoration (2026-11-25; PR #178)
+
+This is a draft proposal on branch `fix/player-comparison-mvp`; it is not merged or deployed to Production.
+
+- Restores a standalone comparison screen in `index.html`, with client behavior in `compare.js`.
+- Adds `GET /players/search` to `worker.js`, using the existing Live Tennis API credential, quota guard, and a 15-minute response cache.
+- Reuses the existing `POST /predict` Elo endpoint; no model formula or production configuration is changed.
+- Adds `wrangler.preview.toml` for the isolated Worker `tennis-value-api-preview`.
+- The MVP intentionally excludes player-history and H2H panels because those routes are not part of the current `main` Worker.
+- Netlify PR preview is available at https://deploy-preview-178--fascinating-paprenjak-1aa9b3.netlify.app.
+- Cloudflare Preview deployment and its API smoke test are pending; do not describe the comparison as runtime-verified until the workflow completes successfully.
+- Production main, Production Worker, and the Apify Winamax task remain untouched. Production publication requires separate user approval.
+
 ## 3. Current repository state (2026-11-19)
 
 Latest known main commit (2026-11-19):
@@ -1052,3 +1065,27 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+## 2026-11-25 — Schedule visibility fix (PR #179)
+
+- Root cause of the empty match list: `renderMatches()` filtered the schedule down to matches with a complete fresh bookmaker winner-odds pair. When odds were missing or the winner market toggle was off, the UI displayed no matches even when the schedule had loaded successfully.
+- Fix on branch `fix/show-matches-without-odds`: render all matches remaining after the selected date and tour filters; show bookmaker odds or an explicit missing/disabled-market label on each card; count scheduled matches separately from matches with complete odds.
+- Prediction/EV eligibility remains restricted to matches with valid odds, so displaying a match does not create a bet recommendation without bookmaker prices.
+- Regression coverage added in `tests/app-ui.test.mjs`.
+- PR #179 is preview-only. Netlify deploy preview is ready; no changes to Production, Cloudflare Worker, or Apify scraper.
+
+## 2026-11-25 — Unified comparison and Winamax Preview line
+- PR #180 now includes the verified visible-schedule and player-comparison restoration, with nested Live Tennis numeric Elo support.
+- The same Preview Worker now reads the existing Vavilov task and the independent Flashscore Winamax France actor feed, normalizes only fresh scheduled singles match-winner pairs, rejects doubles/team ties/stale quotes, and merges duplicate event-side quotes by newest capture time.
+- A six-hour Preview Worker Cron starts the Flashscore actor. It does not modify, run, or reschedule the user's Vavilov task.
+- Preview odds responses expose per-source counts and Flashscore normalization diagnostics. Only complete eligible quote pairs enter prediction/EV; the schedule remains visible without odds.
+- Regression coverage was added for singles filtering, stale/invalid prices, and newest-quote deduplication.
+- PR #175's experimental Worker was moved to a distinct Worker name to prevent it overwriting PR #180's Preview Worker. The combined implementation is being validated on PR #180.
+- Production `main`, Production Worker, active Elo model, and Vavilov task remain unchanged. No merge or Production deployment was performed.
+
+
+## 2026-11-25 — PR #180 Preview actor spend guard
+
+- The Preview-only Flashscore actor remains scheduled every six hours; this is separate from the existing Vavilov Winamax task, which is unchanged.
+- Each scheduled Flashscore actor run now passes Apify's `maxTotalChargeUsd=0.10` API option as a hard per-run charge ceiling. At four scheduled runs per day, the configured ceiling is at most $0.40/day if every run reaches its cap; actual charges may be lower.
+- A Worker regression test verifies the actor endpoint, schedule input, authentication header, and per-run charge cap. Production is unchanged.

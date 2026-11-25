@@ -1,5 +1,5 @@
-const CACHE_NAME = "tennis-value-static-v134";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg?v=3", "./pfe.js", "./human-factor.js"];
+const CACHE_NAME = "tennis-value-static-v135";
+const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg?v=3", "./pfe.js", "./human-factor.js", "./compare.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil(

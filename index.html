@@ -192,7 +192,25 @@
     body[data-skin="amber-led"] .data-freshness.limited{background:#2a1517;color:#efb7bd;border-color:#75404b}
     body[data-skin="amber-led"] .bookmaker-tag{background:#17110d;border-color:#9a6337;color:#ffbd68}
     body[data-skin="amber-led"] .match-card:focus,body[data-skin="amber-led"] .stats-actions button:focus,body[data-skin="amber-led"] .actions button:focus,body[data-skin="amber-led"] .chip:focus{outline-color:#ffad55}
-\n  </style>
+\n
+    .compare-view{display:none;max-width:760px;margin:0 auto;padding:22px 16px 110px;min-height:100vh}
+    .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .compare-player{min-width:0;background:#171311;border:1px solid #755348;border-radius:13px;padding:12px}
+    .compare-player label{display:block;color:var(--muted);font-size:12px;margin:7px 0}
+    .compare-player input,.compare-view select{width:100%;min-width:0;background:#100e0d;border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--text)}
+    .compare-suggestions{margin-top:5px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#100e0d}
+    .compare-suggestions button{display:block;width:100%;text-align:left;padding:9px;border:0;border-bottom:1px solid #443833;background:transparent;color:var(--text)}
+    .compare-suggestions small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+    .compare-output{margin-top:14px;padding:13px;border:1px solid #755348;border-radius:13px;background:#171311}
+    .compare-output[hidden],.compare-suggestions[hidden]{display:none}
+    .compare-results{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .compare-result{background:#100e0d;border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;overflow-wrap:anywhere}
+    .compare-result strong{display:block;font-size:13px}
+    .compare-rating{display:block;color:var(--amber);font-size:22px;font-weight:900;margin:8px 0}
+    .compare-prob{display:block;color:#d58a8e;font-size:25px;font-weight:900}
+    @media(max-width:440px){.compare-grid{grid-template-columns:1fr}.nav{grid-template-columns:repeat(5,1fr)}}
+
+  </style>
 </head>
 <body>
 <div class="app">
@@ -230,6 +248,20 @@
   <div class="notice"><b>Модель:</b> вероятности рассчитываются по Elo из профилей Live Tennis API; EV — по коэффициентам Winamax. Проверяются матчи с коэффициентом от 1.90 и доступными ID игроков. Свежие расчёты Elo берутся из кэша; для новых матчей за один запуск запрашиваются профили не более чем для трёх пар игроков. Лучшая ставка выбирается только среди проверенных матчей. Это базовая модель: она пока не учитывает покрытие, травмы и текущую форму.</div>
 </div>
 
+
+<div class="compare-view" id="compareView">
+  <header><div><div class="brand">СРАВНЕНИЕ ИГРОКОВ</div><div class="sub">Независимый расчёт по Elo</div></div><button class="linkbtn" id="compareBack">← Главная</button></header>
+  <div class="compare-grid">
+    <section class="compare-player"><b>ИГРОК A</b><label for="compareNameA">Поиск игрока</label><input id="compareNameA" autocomplete="off" placeholder="Например, Novak Djokovic"><div class="compare-suggestions" id="compareSuggestionsA" hidden></div><label for="compareIdA">ID (подставится из поиска)</label><input id="compareIdA" inputmode="numeric" type="number" placeholder="ID"></section>
+    <section class="compare-player"><b>ИГРОК B</b><label for="compareNameB">Поиск игрока</label><input id="compareNameB" autocomplete="off" placeholder="Например, Carlos Alcaraz"><div class="compare-suggestions" id="compareSuggestionsB" hidden></div><label for="compareIdB">ID (подставится из поиска)</label><input id="compareIdB" inputmode="numeric" type="number" placeholder="ID"></section>
+  </div>
+  <div class="field"><label for="compareSurface">Покрытие</label><select id="compareSurface"><option value="">Общий Elo</option><option value="Hard">Хард</option><option value="Clay">Грунт</option><option value="Grass">Трава</option><option value="Carpet">Ковёр</option></select></div>
+  <button class="refresh" id="compareRun">СРАВНИТЬ ИГРОКОВ</button>
+  <div class="muted" id="compareStatus" role="status">Выбери двух игроков из списка.</div>
+  <section class="compare-output" id="compareResult" hidden></section>
+  <div class="notice">Расчёт основан на Elo из профилей Live Tennis API. Форма, травмы и личные встречи пока не учитываются.</div>
+</div>
+
 <div class="stats-view" id="statsView">
   <h1>Архив прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
@@ -260,6 +292,7 @@
 <div class="bottom"><div class="nav">
   <button id="navHome" class="active"><b>⌂</b>Главная</button>
   <button id="navMatches"><b>🎾</b>Матчи</button>
+  <button id="navCompare"><b>⇄</b>Сравнение</button>
   <button id="navStats"><b>▥</b>Статистика</button>
   <button id="navSettings"><b>⚙</b>Настройки</button>
 </div></div>
@@ -421,7 +454,8 @@
     $('#filterSummary').textContent='EV ≥ '+data.minEv+'% · кэф. '+data.minOdds+'–'+data.maxOdds;
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const API='https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const IS_NETLIFY_PREVIEW=/^deploy-preview-\d+--/.test(location.hostname);
+  const API=IS_NETLIFY_PREVIEW?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeoutMs);
@@ -519,14 +553,20 @@
     const sourceSeen=oddsRetrievedAt?' · источник получен '+new Date(oddsRetrievedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):' · время ответа источника неизвестно';
     const labels={winamax:'Winamax',betclic:'Betclic',netbet:'NetBet'};
     const providerSummary=providers.map(provider=>labels[provider]+': '+counts[provider].fresh+'/'+counts[provider].total).join(' · ');
+    const winamaxRows=cachedOdds.filter(item=>String(item?.bookmaker||'').trim().toLowerCase()==='winamax');
+    const davisCupRows=winamaxRows.filter(item=>/davis cup|coupe davis/i.test(String(item?.competition||'')+' '+String(item?.eventName||'')));
+    const davisCupEvents=new Set(davisCupRows.map(item=>String(item?.eventId||item?.eventName||'').trim()).filter(Boolean));
+    const marketCoverageNotice=winamaxRows.length>0&&davisCupRows.length===winamaxRows.length
+      ?' · В Winamax сейчас только командные матчи Davis Cup ('+davisCupEvents.size+' события); одиночных котировок в выгрузке нет'
+      :'';
     const runTimestamp=Date.parse(oddsTaskRun?.finishedAt||oddsTaskRun?.startedAt||'');
     const runOrigin=oddsTaskRun?.scheduled?'по расписанию':oddsTaskRun?.origin==='WEB'?'вручную':oddsTaskRun?.origin==='API'?'через API':oddsTaskRun?.origin||'способ неизвестен';
     const taskRunSeen=Number.isFinite(runTimestamp)?' · запуск Apify '+new Date(runTimestamp).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+' ('+runOrigin+')':'';
     if(oddsLoadError){
-      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · '+oddsLoadError+taskRunSeen+sourceSeen+freshnessNotice+oddsDiagnosticsText();
+      node.textContent='Ошибка обновления Winamax · '+providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · '+oddsLoadError+taskRunSeen+sourceSeen+freshnessNotice+marketCoverageNotice+oddsDiagnosticsText();
       return;
     }
-    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · последняя котировка '+latest+taskRunSeen+sourceSeen+freshnessNotice+oddsDiagnosticsText();
+    node.textContent=providerSummary+' · котировок не старше 6 ч из '+cachedOdds.length+' ('+summary.fresh+' свежих)'+' · последняя котировка '+latest+taskRunSeen+sourceSeen+freshnessNotice+marketCoverageNotice+oddsDiagnosticsText();
   }
   try{
     const raw=localStorage.getItem('tvs-odds-cache');
@@ -720,14 +760,15 @@
     const byTour=all.filter(m=>{const tour=normalizeTour(m.tour);return tour!==null&&tours.includes(tour);});
     const dateFiltered=selectedDay==='all'?byTour:byTour.filter(m=>{const d=matchDate(m);if(!d)return false;const day=new Date(d);day.setHours(0,0,0,0);return day.getTime()===target.getTime();});
     const winnerEnabled=$('[data-market="winner"]').classList.contains('on');
-    // Show only matches with a complete, fresh match-winner quote pair from an enabled bookmaker.
-    const filtered=winnerEnabled?dateFiltered.filter(m=>oddsForMatch(m).length>=2):[];
-    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · пар с коэффициентами: '+filtered.length;
+    // The schedule is independent from bookmaker coverage: never hide a match because odds are missing.
+    const filtered=dateFiltered;
+    const quotedMatches=winnerEnabled?filtered.filter(m=>oddsForMatch(m).length>=2).length:0;
+    $('#filterSummary').textContent='Туры: '+(tours.length?tours.map(t=>t.toUpperCase()).join(', '):'не выбраны')+' · матчей: '+filtered.length+' · с полными коэффициентами: '+quotedMatches;
     $('#matchCount').textContent=filtered.length;
     $('#valueCount').textContent='—';
     if(!filtered.length){
-      const message=!winnerEnabled?'Включи рынок «Победитель матча», чтобы увидеть пары с коэффициентами.':dateFiltered.length?'На выбранную дату нет матчей с полной актуальной парой коэффициентов букмекеров.':'Матчей на выбранную дату не найдено.';
-      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Показываются только матчи, для которых найдены оба актуальных коэффициента хотя бы у одного подключённого букмекера.</div></div>';return;
+      const message='Матчей на выбранную дату не найдено.';
+      list.innerHTML='<div class="panel empty"><div class="empty-icon">🎾</div><strong>'+message+'</strong><div class="muted">Проверь дату и выбранные туры. Расписание загружается независимо от наличия коэффициентов букмекеров.</div></div>';return;
     }
     list.innerHTML=filtered.map((m,i)=>{
       const p=m.players||{};const p1=p.p1||m.player1;const p2=p.p2||m.player2;
@@ -737,7 +778,7 @@
       const court=m.court||m.court_name||'';const status=m.status||m.event_status||'';
       const minOdds=Math.max(1.9,Number($('#minOdds').value||1.5));
       const maxOdds=Number($('#maxOdds').value||5);
-      const allMatched=oddsForMatch(m);
+      const allMatched=winnerEnabled?oddsForMatch(m):[];
       const matched=allMatched.filter(o=>{
         const value=Number(o.oddsDecimal);
         return Number.isFinite(value)&&value>=minOdds&&value<=maxOdds;
@@ -754,7 +795,7 @@
       const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
         displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
         displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты букмекеров не найдены';
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):winnerEnabled?'Коэффициенты букмекеров не найдены':'Рынок победителя матча выключен';
       const oddsObservedAt=Date.now();
       const selectedQuotes=[displayQuoteA,displayQuoteB].filter(Boolean);
       const oddsAgeMinutes=selectedQuotes.length?Math.max(...selectedQuotes.map(o=>(oddsObservedAt-Date.parse(o.scrapedAt))/60000)):null;
@@ -1403,12 +1444,14 @@
       return '<div class="archive-item"><b>'+escapeHtml(row.player)+'</b> — '+escapeHtml(row.opponent)+'<div>'+escapeHtml(row.bookmaker||'Букмекер не указан')+' · '+escapeHtml(row.odds)+' · '+escapeHtml(row.probability)+'% · <span class="'+(ev>0?'model-positive':'model-negative')+'">'+(ev>0?'+':'')+escapeHtml(ev.toFixed(2))+'% EV</span></div>'+(resultLabel?'<div class="archive-meta">Результат: '+escapeHtml(resultLabel)+'</div>':'')+'<div class="archive-meta">Дата Elo: '+escapeHtml(validRatingDate(row.ratingAsOf)||'не указана')+' · '+escapeHtml(row.tournament||'Турнир не указан')+' · '+when.toLocaleString('ru-RU')+'</div></div>';
     }).join('');
   }
+  function hideCompare(){ $('#compareView').style.display='none'; $('#navCompare').classList.remove('active'); }
+  function showCompare(){ $('.app').style.display='none'; $('#statsView').style.display='none'; $('#compareView').style.display='block'; document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); $('#navCompare').classList.add('active'); }
   function showMain(){
-    $('.app').style.display='block';$('#statsView').style.display='none';
+    $('.app').style.display='block';$('#statsView').style.display='none';hideCompare();
     $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
   }
   function showStats(){
-    $('.app').style.display='none';$('#statsView').style.display='block';
+    hideCompare();$('.app').style.display='none';$('#statsView').style.display='block';
     $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     archiveStorageReady.then(renderArchive);
   }
@@ -2022,8 +2065,8 @@
       if(!force&&saved&&Array.isArray(saved.matches)&&isFreshCacheTimestamp(saved.savedAt,15*60*1000)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · кэш браузера';
         setConnectionStatus('РАСПИСАНИЕ ИЗ КЭША');
-        $('#filterSummary').textContent='Кэш расписания · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
         return;
       }
       const res=await fetchWithTimeout(API+'/matches?status=upcoming&draw=singles&limit=200'+(force?'&fresh=true':''));
@@ -2037,13 +2080,13 @@
       setConnectionStatus('API: ОНЛАЙН');
       localStorage.setItem('tvs-match-cache',JSON.stringify({savedAt:Date.now(),matches,odds:cachedOdds}));
       renderMatches(matches);
-      $('#filterSummary').textContent='Live Tennis API · '+scheduleCacheLabel+' · Winamax: '+cachedOdds.length+' исходов'+(oddsUpdated?' · обновлены':' · сохранены');
+      $('#filterSummary').textContent+=' · Live Tennis API: '+scheduleCacheLabel;
     }catch(err){
       if(saved&&Array.isArray(saved.matches)){
         if(!oddsUpdated&&!cachedOdds.length&&Array.isArray(saved.odds)&&isFreshCacheTimestamp(saved.savedAt,ODDS_CACHE_TTL)){cachedOdds=saved.odds;cachedOddsSavedAt=saved.savedAt;}
         window.cachedMatches=saved.matches;renderMatches(saved.matches);
+        $('#filterSummary').textContent+=' · сохранённые данные';
         setConnectionStatus('ОФЛАЙН · СОХРАНЁННЫЕ МАТЧИ');
-        $('#filterSummary').textContent='Сохранённые матчи · API: '+err.message+' · Winamax: '+cachedOdds.length+' исходов';
       }else{
         setConnectionStatus('API НЕДОСТУПЕН');
         $('#matchList').innerHTML='<div class="panel empty"><strong>Не удалось загрузить матчи</strong><div class="muted">'+escapeHtml(err.message)+'</div></div>';
@@ -2055,6 +2098,8 @@
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('#navMatches').onclick=loadMatches;
   $('#navHome').onclick=showMain;
+  if($('#navCompare'))$('#navCompare').onclick=showCompare;
+  if($('#compareBack'))$('#compareBack').onclick=showMain;
   $('#navMatches').onclick=()=>{showMain();loadMatches(true);};
   $('#navStats').onclick=showStats;
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
@@ -2105,5 +2150,6 @@
     }finally{button.disabled=false;button.textContent='Аудит нагрузки игроков';}
   });
 </script>
+<script src="./compare.js"></script>
 </body>
                                                                                                                                 </html>

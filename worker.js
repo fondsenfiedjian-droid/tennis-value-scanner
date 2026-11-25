@@ -7,7 +7,173 @@ const cors = {
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "betclic-netbet-live-quotes-2026-11-21-1";
+const WORKER_BUILD_ID = "tvs2-comparison-flashscore-preview-2026-11-25-1";
+
+const FLASHSCORE_ACTOR_PATH = "incognito_mode~flashscore-odds-scraper";
+
+async function apifyJson(url, token) {
+  const upstream = await fetch(url, {
+    headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }
+  });
+  if (!upstream.ok) return { ok: false, status: upstream.status, retryAfter: upstream.headers.get("Retry-After") };
+  try {
+    return { ok: true, data: await upstream.json() };
+  } catch {
+    return { ok: false, status: 502, diagnostic: "invalid_json" };
+  }
+}
+
+function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
+  const output = [];
+  const diagnostics = {
+    totalRows: Array.isArray(rows) ? rows.length : 0,
+    acceptedRows: 0,
+    rejectedByReason: {},
+    sample: []
+  };
+  const reject = reason => {
+    diagnostics.rejectedByReason[reason] = (diagnostics.rejectedByReason[reason] || 0) + 1;
+  };
+  if (!Array.isArray(rows)) {
+    reject("dataset_not_array");
+    return { items: output, diagnostics };
+  }
+  diagnostics.sample = rows.slice(0, 5).filter(row => row && typeof row === "object").map(row => ({
+    recordType: row.recordType ?? null,
+    sport: row.sport ?? null,
+    bookmakerName: row.bookmakerName ?? null,
+    bookmakerCountry: row.bookmakerCountry ?? null,
+    market: row.market ?? null,
+    period: row.period ?? null,
+    status: row.status ?? null,
+    active: row.active ?? null,
+    homeName: row.homeName ?? null,
+    awayName: row.awayName ?? null,
+    startTime: row.startTime ?? null,
+    scrapedAt: row.scrapedAt ?? null,
+    homeOdds: row.homeOdds ?? null,
+    awayOdds: row.awayOdds ?? null
+  }));
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) { reject("invalid_row"); continue; }
+    if (row.recordType && row.recordType !== "odds") { reject("record_type"); continue; }
+    if (String(row.sport || "").toLowerCase() !== "tennis") { reject("sport"); continue; }
+    if (String(row.bookmakerName || "").trim().toLowerCase() !== "winamax") { reject("bookmaker"); continue; }
+    if (String(row.bookmakerCountry || "").trim().toUpperCase() !== "FR") { reject("bookmaker_country"); continue; }
+    if (String(row.market || "").toUpperCase() !== "HOME_AWAY") { reject("market"); continue; }
+    if (String(row.period || "").toUpperCase() !== "FULL_TIME") { reject("period"); continue; }
+    if (row.status && String(row.status).toLowerCase() !== "scheduled") { reject("status"); continue; }
+    if (row.active === false) { reject("inactive"); continue; }
+
+    const homeTeam = String(row.homeName || "").trim();
+    const awayTeam = String(row.awayName || "").trim();
+    // Flashscore explicitly joins tennis doubles participants with "/".
+    if (homeTeam.includes("/") || awayTeam.includes("/")) { reject("doubles"); continue; }
+    const competition = String(row.tournament || "").trim();
+    const teamTieCompetitions = /(?:Davis Cup|Coupe Davis|Billie Jean King Cup|Coupe Billie Jean King|United Cup|Laver Cup)/i;
+    const countryTeamNames = new Set([
+      "argentina", "australia", "austria", "belgium", "brazil", "bulgaria", "canada",
+      "chile", "china", "chinese taipei", "colombia", "croatia", "czech republic", "czechia",
+      "denmark", "ecuador", "egypt", "estonia", "finland", "france", "georgia",
+      "germany", "great britain", "greece", "hungary", "india", "indonesia", "ireland",
+      "israel", "italy", "japan", "kazakhstan", "latvia", "lithuania", "luxembourg",
+      "mexico", "monaco", "morocco", "netherlands", "new zealand", "norway", "peru",
+      "poland", "portugal", "romania", "serbia", "singapore", "slovakia", "slovenia",
+      "south africa", "south korea", "spain", "sweden", "switzerland", "thailand",
+      "tunisia", "turkey", "ukraine", "united states", "uruguay", "uzbekistan"
+    ]);
+    if (teamTieCompetitions.test(competition) &&
+        countryTeamNames.has(homeTeam.toLowerCase()) &&
+        countryTeamNames.has(awayTeam.toLowerCase())) {
+      reject("team_tie");
+      continue;
+    }
+    const startTime = String(row.startTime || "").trim();
+    const scrapedAt = String(row.scrapedAt || "").trim();
+    const startMs = Date.parse(startTime);
+    const scrapedMs = Date.parse(scrapedAt);
+    if (!homeTeam || !awayTeam || homeTeam.toLowerCase() === awayTeam.toLowerCase()) { reject("participants"); continue; }
+    if (!Number.isFinite(startMs)) { reject("invalid_start_time"); continue; }
+    if (startMs <= now) { reject("event_not_future"); continue; }
+    if (startMs > now + 14 * 86400000) { reject("event_too_far"); continue; }
+    if (!Number.isFinite(scrapedMs)) { reject("invalid_scraped_at"); continue; }
+    if (scrapedMs > now + 5 * 60000) { reject("scrape_time_in_future"); continue; }
+    if (now - scrapedMs > ODDS_FRESHNESS_MAX_AGE_MS) { reject("stale_quote"); continue; }
+
+    const homeOdds = Number(row.homeOdds);
+    const awayOdds = Number(row.awayOdds);
+    if (!Number.isFinite(homeOdds) || homeOdds <= 1 || !Number.isFinite(awayOdds) || awayOdds <= 1) { reject("invalid_odds"); continue; }
+    const eventId = String(row.eventId || "").trim();
+    const eventName = homeTeam + " - " + awayTeam;
+    const common = {
+      bookmaker: "Winamax",
+      bookmakerCountry: "FR",
+      sport: "tennis",
+      marketType: "match_winner",
+      line: null,
+      eventId,
+      homeTeam,
+      awayTeam,
+      eventName,
+      competition,
+      startTime,
+      scrapedAt,
+      source: "Flashscore"
+    };
+    output.push({ ...common, outcome: "home", oddsDecimal: homeOdds });
+    output.push({ ...common, outcome: "away", oddsDecimal: awayOdds });
+    diagnostics.acceptedRows++;
+  }
+  return { items: output, diagnostics };
+}
+function mergeWinamaxOdds(taskItems, flashscoreItems) {
+  const rows = [...(Array.isArray(taskItems) ? taskItems : []), ...(Array.isArray(flashscoreItems) ? flashscoreItems : [])];
+  const selected = new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const home = String(row.homeTeam || row.homeName || "").trim().toLowerCase();
+    const away = String(row.awayTeam || row.awayName || "").trim().toLowerCase();
+    const start = Date.parse(row.startTime || "");
+    const outcome = String(row.outcome || "").toLowerCase();
+    const provider = String(row.bookmaker || row.bookmakerName || "").toLowerCase();
+    const identity = home && away && Number.isFinite(start) && ["home", "away"].includes(outcome)
+      ? [provider, [home, away].sort().join("|"), Math.round(start / 60000), outcome].join("|")
+      : String(row.eventId || "") + "|" + outcome + "|" + String(row.scrapedAt || "");
+    if (!identity) continue;
+    const previous = selected.get(identity);
+    if (!previous || (Date.parse(row.scrapedAt || "") || 0) > (Date.parse(previous.scrapedAt || "") || 0)) {
+      selected.set(identity, row);
+    }
+  }
+  return [...selected.values()];
+}
+
+
+async function loadFlashscoreWinamaxFeed(token) {
+  try {
+    const meta = await apifyJson("https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs/last?status=SUCCEEDED", token);
+    if (!meta.ok) return { items: [], run: null, diagnostic: meta.diagnostic || "http_" + meta.status, retryAfter: meta.retryAfter };
+    const run = meta.data?.data || meta.data;
+    if (!run || typeof run !== "object" || Array.isArray(run) || run.status !== "SUCCEEDED" || !run.defaultDatasetId) {
+      return { items: [], run: null, diagnostic: "no_successful_run" };
+    }
+    const dataset = await apifyJson("https://api.apify.com/v2/datasets/" + encodeURIComponent(run.defaultDatasetId) +
+      "/items?clean=true&format=json&limit=1000", token);
+    if (!dataset.ok) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: dataset.diagnostic || "http_" + dataset.status };
+    if (!Array.isArray(dataset.data)) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: "invalid_payload" };
+    const normalized = normalizeFlashscoreWinamaxRows(dataset.data);
+    const items = normalized.items;
+    return {
+      items,
+      diagnostics: normalized.diagnostics,
+      run: { id: run.id || null, finishedAt: run.finishedAt || null, datasetId: run.defaultDatasetId },
+      diagnostic: items.length ? "ok" : "no_fresh_fr_winamax_singles"
+    };
+  } catch {
+    return { items: [], run: null, diagnostic: "request_failed" };
+  }
+}
+
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -174,7 +340,15 @@ function findElo(profile) {
     const rating = Number(value);
     return Number.isFinite(rating) && rating > 0 && rating <= 5000 ? rating : null;
   }
-  // Prefer an overall rating anywhere in the profile before surface-specific data.
+  // Live Tennis API nests its current ratings under stats.ratings.elo.
+  // In that provider schema, "overall" and surface names are numeric Elo values;
+  // elo_rank is only a rank and must never be treated as a rating.
+  const providerElo = profile?.stats?.ratings?.elo;
+  if (providerElo && typeof providerElo === "object" && !Array.isArray(providerElo)) {
+    const providerOverall = valid(providerElo.overall);
+    if (providerOverall !== null) return providerOverall;
+  }
+  // Prefer an overall rating anywhere in the profile before generic fields.
   const overallKeys = ["overall_elo", "overallElo", "overall_elo_rating"];
   for (const obj of nodes) for (const key of overallKeys) {
     if (obj[key] !== undefined && obj[key] !== null) {
@@ -406,6 +580,57 @@ async function getPlayerProfile(playerId, apiKey) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    if (!env.APIFY_TOKEN) {
+      console.error("Flashscore scheduled run skipped: APIFY_TOKEN is not configured");
+      return;
+    }
+    const run = async () => {
+      const input = {
+        mode: "matches",
+        sports: ["tennis"],
+        days: ["0", "1"],
+        status: "all",
+        bookmakerCountries: ["FR"],
+        bookmakers: ["Winamax"],
+        markets: ["HOME_AWAY"],
+        periods: ["FULL_TIME"],
+        maxMatches: 30,
+        maxItems: 500
+      };
+      const upstream = await fetch(
+        "https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs?waitForFinish=0&maxTotalChargeUsd=0.10",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + env.APIFY_TOKEN,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(input)
+        }
+      );
+      if (!upstream.ok) {
+        const detail = await upstream.text().catch(() => "");
+        console.error("Flashscore scheduled run failed", upstream.status, detail.slice(0, 300));
+        return;
+      }
+      let payload;
+      try { payload = await upstream.json(); }
+      catch {
+        console.error("Flashscore scheduled run returned invalid JSON");
+        return;
+      }
+      const data = payload && typeof payload === "object" ? payload.data : null;
+      console.log("Flashscore scheduled run started", {
+        runId: data?.id || null,
+        status: data?.status || null,
+        actor: FLASHSCORE_ACTOR_PATH
+      });
+    };
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(run());
+    else await run();
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
@@ -423,7 +648,7 @@ export default {
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search", "/predict"]
       });
     }
 
@@ -605,15 +830,28 @@ export default {
           taskRunDiagnostic = "request_failed";
           // Keep feed availability independent from optional run metadata.
         }
+        const flashscoreFeed = await loadFlashscoreWinamaxFeed(env.APIFY_TOKEN);
+        const combinedItems = mergeWinamaxOdds(items, flashscoreFeed.items);
         const payload = {
-          source: "Apify Winamax task",
+          source: "Apify Winamax sources",
           taskId: APIFY_TASK_ID,
           retrievedAt: new Date().toISOString(),
-          count: items.length,
+          count: combinedItems.length,
           taskRun,
           taskRunDiagnostic,
-          diagnostics: diagnoseOddsItems(items),
-          items
+          flashscore: {
+            actor: FLASHSCORE_ACTOR_PATH,
+            run: flashscoreFeed.run,
+            diagnostic: flashscoreFeed.diagnostic,
+            normalizedCount: flashscoreFeed.items.length,
+            diagnostics: flashscoreFeed.diagnostics || null
+          },
+          sourceCounts: {
+            vavilov: items.length,
+            flashscore: flashscoreFeed.items.length
+          },
+          diagnostics: diagnoseOddsItems(combinedItems),
+          items: combinedItems
         };
         const cacheResponse = new Response(JSON.stringify(payload), {
           status: 200,
@@ -1148,6 +1386,35 @@ export default {
       }
     }
 
+    if (path === "/players/search") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
+      const query = (url.searchParams.get("search") || "").trim();
+      if (query.length < 2 || query.length > 80) return response({ error: "search must contain between 2 and 80 characters" }, 400);
+      const rawLimit = url.searchParams.get("limit") || "10";
+      if (!/^\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 20) return response({ error: "limit must be an integer from 1 to 20" }, 400);
+      const limit = Number(rawLimit);
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__player-search/v1/" + encodeURIComponent(query.toLocaleLowerCase()) + "/" + limit);
+        const cached = await cache.match(cacheKey);
+        if (cached) { const headers = new Headers(cached.headers); headers.set("X-Data-Cache", "HIT"); return new Response(cached.body, { status: cached.status, headers }); }
+        const params = new URLSearchParams({ search: query, limit: String(limit) });
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/players?" + params.toString(), {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        });
+        let body;
+        try { body = await upstream.json(); } catch { return response({ error: "Live Tennis player search returned invalid JSON" }, 502); }
+        if (!upstream.ok) return response({ error: "Live Tennis player search failed", accessStatus: upstream.status === 429 ? "rate_limited" : upstream.status === 401 ? "unauthorized" : "upstream_error", upstreamStatus: upstream.status }, upstream.status);
+        if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.data)) return response({ error: "Live Tennis player search returned an unexpected payload" }, 502);
+        const players = body.data.filter(player => player && typeof player === "object" && !Array.isArray(player) && Number.isSafeInteger(Number(player.id)) && Number(player.id) > 0 && typeof player.name === "string" && player.name.trim()).slice(0, limit);
+        const payload = { source: "Live Tennis API /players", query, retrievedAt: new Date().toISOString(), count: players.length, players };
+        const headers = { "Cache-Control": "public, max-age=900", "X-Data-Cache": "MISS" };
+        await cache.put(cacheKey, new Response(JSON.stringify(payload), { status: 200, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ...headers } }));
+        return response(payload, 200, headers);
+      } catch { return response({ error: "Could not search Live Tennis players", accessStatus: "unavailable" }, 502); }
+    }
+
     if (path === "/predict") {
       if (!["GET", "POST"].includes(request.method)) {
         return response({ error: "Method not allowed" }, 405);
@@ -1302,7 +1569,9 @@ export default {
                 rankingPoints: profileB.ranking_points ?? null
               } : null,
               eloFieldsA: collectEloDiagnostics(profileA),
-              eloFieldsB: collectEloDiagnostics(profileB)
+              eloFieldsB: collectEloDiagnostics(profileB),
+              ratingContainersA: profileA?.stats?.ratings ?? null,
+              ratingContainersB: profileB?.stats?.ratings ?? null
             }
           }, 422);
         }

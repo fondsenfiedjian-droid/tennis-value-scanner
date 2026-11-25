@@ -1,0 +1,77 @@
+name: Full preview diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/matches-and-comparison
+
+permissions:
+  contents: read
+
+jobs:
+  browser-and-api-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/matches-and-comparison
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wait for preview Worker to calculate overall Elo
+        env:
+          PREVIEW_WORKER_URL: https://tennis-value-api-preview.fonds-enfiedjian.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.PREVIEW_WORKER_URL;
+          async function read(path) {
+            const response = await fetch(base + path, { signal: AbortSignal.timeout(15000) });
+            const body = await response.json();
+            if (!response.ok) throw new Error(path + " HTTP " + response.status + ": " + (body.error || "unknown"));
+            return body;
+          }
+          const [a, b] = await Promise.all([
+            read("/players/search?search=Novak&limit=8"),
+            read("/players/search?search=Carlos%20Alcaraz&limit=8")
+          ]);
+          const playerA = a.players?.find(p => p.name === "Novak Djokovic");
+          const playerB = b.players?.find(p => p.name === "Carlos Alcaraz");
+          if (!playerA || !playerB) throw new Error("Smoke-test players not found");
+          let lastError = "Preview Worker did not return a valid overall Elo result";
+          for (let attempt = 1; attempt <= 30; attempt++) {
+            try {
+              // This is only a readiness probe; the actual comparison is tested in Chromium.
+              const response = await fetch(base + "/predict", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ playerIdA: playerA.id, playerIdB: playerB.id,
+                  playerA: playerA.name, playerB: playerB.name, surface: "" }),
+                signal: AbortSignal.timeout(15000)
+              });
+              const data = await response.json();
+              if (response.ok && [data.ratingA, data.ratingB, data.probabilityA, data.probabilityB].every(v => Number.isFinite(Number(v)))) {
+                console.log("Preview Worker overall Elo ready: " + data.ratingA + " / " + data.ratingB);
+                process.exit(0);
+              }
+              lastError = data.error || "HTTP " + response.status;
+            } catch (error) { lastError = error.message; }
+            console.log("Waiting for preview Worker deployment (" + attempt + "/30): " + lastError);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+          throw new Error("Preview Worker overall Elo did not become ready: " + lastError);
+          NODE
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Wait for Netlify preview and test full app
+        env:
+          PREVIEW_URL: https://deploy-preview-180--fascinating-paprenjak-1aa9b3.netlify.app
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$PREVIEW_URL" >/dev/null; then break; fi
+            if [ "$attempt" -eq 30 ]; then echo "::error::Netlify preview did not become available"; exit 1; fi
+            sleep 10
+          done
+          node scripts/diagnose-preview.mjs
