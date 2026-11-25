@@ -2142,10 +2142,11 @@
   const p1=m=>m?.players?.p1||m?.player1||m?.home||m?.participant1;
   const p2=m=>m?.players?.p2||m?.player2||m?.away||m?.participant2;
   const matchList=x=>Array.isArray(x)?x:Array.isArray(x?.matches)?x.matches:Array.isArray(x?.data)?x.data:Array.isArray(x?.results)?x.results:[];
-  const tournament=m=>m?.tournament?.name||m?.tournament_name||m?.tournamentName||m?.tournament||m?.event?.name||m?.event_name||m?.competition?.name||'';
+  const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
+  const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
   const surface=m=>{const raw=m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface;const v=String(raw||'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'Хард';if(v.includes('clay')||v.includes('terre'))return 'Грунт';if(v.includes('grass')||v.includes('gazon'))return 'Трава';if(v.includes('carpet')||v.includes('moquette'))return 'Ковёр';return '';};
   const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\\s*of\\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
-  const category=m=>m?.category?.name||m?.category||m?.tour||m?.tour_name||m?.tournament?.category||'';
+  const category=m=>textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
   let candidates=[];
   function status(message,warning=false){$('simStatus').textContent=message;$('simStatus').classList.toggle('sim-warning',warning);}
   function selectedMatch(){return candidates[Number($('simMatchChoice').value)]||null;}
@@ -2164,6 +2165,7 @@
       choice.innerHTML='';
       if(!candidates.length){choice.disabled=true;choice.add(new Option('Матч не найден',''));status('В расписании не найден предстоящий матч этой пары. Турнир и покрытие не определяю наугад. Проверь написание имён или попробуй позже.',true);return;}
       candidates.sort((x,y)=>String(x?.start_time||x?.date||'').localeCompare(String(y?.start_time||y?.date||'')));
+      if(candidates.length>1)choice.add(new Option('Выбери нужный матч',''));
       candidates.forEach((m,i)=>{const label=[tournament(m)||'Турнир не указан',surface(m)||'покрытие не указано',String(m?.date||m?.start_time||'').slice(0,16)].join(' · ');choice.add(new Option(label,String(i)));});
       choice.disabled=candidates.length<2;
       if(candidates.length>1)status('Найдено несколько матчей этой пары. Выбери нужный в списке и нажми кнопку ещё раз.');
@@ -2173,8 +2175,12 @@
   }
   async function runSimulation(match){
     if(!match){status('Сначала найди и выбери матч.',true);return;}
-    const nameA=playerName(p1(match)),nameB=playerName(p2(match));
-    const idA=playerId(p1(match)),idB=playerId(p2(match));
+    const inputNameA=$('simPlayerA').value.trim(),inputNameB=$('simPlayerB').value.trim();
+    const matchP1=p1(match),matchP2=p2(match);
+    const inputAIsMatchP1=norm(playerName(matchP1))===norm(inputNameA);
+    const selectedA=inputAIsMatchP1?matchP1:matchP2,selectedB=inputAIsMatchP1?matchP2:matchP1;
+    const nameA=playerName(selectedA),nameB=playerName(selectedB);
+    const idA=playerId(selectedA),idB=playerId(selectedB);
     const event=tournament(match),court=surface(match),bo=bestOf(match);
     if(!idA||!idB||idA===idB){status('У матча нет двух надёжных ID игроков. Симуляция остановлена.',true);return;}
     if(!event||!court){status('В расписании не указаны точный турнир или покрытие. Не буду подставлять догадки — симуляция остановлена.',true);return;}
@@ -2196,12 +2202,12 @@
       '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+nameA+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+nameB+'</span></div></div>'+
       '<div class="sim-scorelines"><b>Наиболее частые итоговые счета</b>'+score+'</div>'+
       '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
-      '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Он не меняет автоматический прогноз, EV или план ставок. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
+      '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Он не меняет автоматический прогноз, EV или план ставок. Важно: источник даёт агрегированные показатели подачи/приёма без разбивки по покрытию; покрытие матча точно указано, но отдельная поправка по покрытию не применяется. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
     $('simResult').hidden=false;
     status('Готово. Результат относится к выбранному турниру и покрытию, указанным источником.');
   }
   $('simFindAndRun').addEventListener('click',async()=>{
-    if(candidates.length>1&&$('simMatchChoice').value!==''){const m=selectedMatch();$('simFindAndRun').disabled=true;try{await runSimulation(m);}catch(e){status('Симуляция остановлена: '+String(e?.message||e),true);}finally{$('simFindAndRun').disabled=false;}return;}
+    if(candidates.length>1){if($('simMatchChoice').value===''){status('Сначала выбери один из найденных матчей.',true);return;}const m=selectedMatch();$('simFindAndRun').disabled=true;try{await runSimulation(m);}catch(e){status('Симуляция остановлена: '+String(e?.message||e),true);}finally{$('simFindAndRun').disabled=false;}return;}
     await findMatches();
   });
   $('simMatchChoice').addEventListener('change',()=>{if(candidates.length>1)status('Матч выбран. Нажми кнопку ещё раз для запуска симуляции.');});
