@@ -2148,7 +2148,7 @@
   const surfaceCode=m=>{const v=String(m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface??'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'hard';if(v.includes('clay')||v.includes('terre'))return 'clay';if(v.includes('grass')||v.includes('gazon'))return 'grass';if(v.includes('carpet')||v.includes('moquette'))return 'carpet';return '';};
   const surface=m=>({hard:'Хард',clay:'Грунт',grass:'Трава',carpet:'Ковёр'}[surfaceCode(m)]||'');
   const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\s*of\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
-  const category=m=>textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
+  const category=m=>textValue(m?.tier)||textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
   let candidates=[];
   function status(message,warning=false){$('simStatus').textContent=message;$('simStatus').classList.toggle('sim-warning',warning);}
   function selectedMatch(){return candidates[Number($('simMatchChoice').value)]||null;}
@@ -2190,7 +2190,7 @@
     if(!bo){status('Формат матча (Best of 3/5) не определён источником. Симуляция остановлена, чтобы не исказить результат.',true);return;}
     const firstServer=document.querySelector('input[name="simFirstServer"]:checked')?.value||'A';
     status('Загружаю статистику подачи и приёма обоих игроков…');
-    const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id+'&surface='+encodeURIComponent(surfaceFilter));const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');const sourceId=Number(j.stats?.player?.id);if(j.stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourceId)||sourceId!==id))throw new Error('ID игрока в статистике не совпадает с выбранным игроком');if(j.stats?.filters?.surface&&j.stats.filters.surface!==surfaceFilter)throw new Error('Провайдер вернул статистику не для выбранного покрытия');return j.stats;}));
+    const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id+'&surface='+encodeURIComponent(surfaceFilter));const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');const sourceId=Number(j.stats?.player?.id);if(j.stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourceId)||sourceId!==id))throw new Error('ID игрока в статистике не совпадает с выбранным игроком');if(j.stats?.filters?.surface!==surfaceFilter)throw new Error('Провайдер не подтвердил фильтр выбранного покрытия');return j.stats;}));
     const profileA={...window.TVSPFE.normalizeServeReturnProfile(ra),playerId:idA};
     const profileB={...window.TVSPFE.normalizeServeReturnProfile(rb),playerId:idB};
     const inputs=window.TVSPFE.deriveServeReturnMatchInputs(profileA,profileB);
