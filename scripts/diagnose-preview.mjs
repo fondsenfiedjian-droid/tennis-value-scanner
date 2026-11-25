@@ -12,7 +12,7 @@ page.on("response", async response => {
   const path = new URL(url).pathname;
   if (!["/health", "/matches", "/odds", "/odds-api/quotes", "/players/search", "/predict"].includes(path)) return;
   let body = null;
-  try { body = await response.clone().json(); } catch {}
+  try { body = await response.json(); } catch {}
   report.api[path] = {
     status: response.status(),
     count: body?.count ?? body?.items?.length ?? body?.matches?.length ?? body?.players?.length ?? null,
