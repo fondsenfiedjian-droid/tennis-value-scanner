@@ -23,7 +23,7 @@ async function apifyJson(url, token) {
   }
 }
 
-function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
+function normalizeFlashscoreNetBetRows(rows, now = Date.now()) {
   const output = [];
   const diagnostics = {
     totalRows: Array.isArray(rows) ? rows.length : 0,
@@ -106,7 +106,7 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
     const eventId = String(row.eventId || "").trim();
     const eventName = homeTeam + " - " + awayTeam;
     const common = {
-      bookmaker: "Winamax",
+      bookmaker: "NetBet",
       bookmakerCountry: "FR",
       sport: "tennis",
       marketType: "match_winner",
@@ -126,7 +126,7 @@ function normalizeFlashscoreWinamaxRows(rows, now = Date.now()) {
   }
   return { items: output, diagnostics };
 }
-function mergeWinamaxOdds(taskItems, flashscoreItems) {
+function mergeNetBetOdds(taskItems, flashscoreItems) {
   const rows = [...(Array.isArray(taskItems) ? taskItems : []), ...(Array.isArray(flashscoreItems) ? flashscoreItems : [])];
   const selected = new Map();
   for (const row of rows) {
@@ -149,7 +149,7 @@ function mergeWinamaxOdds(taskItems, flashscoreItems) {
 }
 
 
-async function loadFlashscoreWinamaxFeed(token) {
+async function loadFlashscoreNetBetFeed(token) {
   try {
     const meta = await apifyJson("https://api.apify.com/v2/acts/" + FLASHSCORE_ACTOR_PATH + "/runs/last?status=SUCCEEDED", token);
     if (!meta.ok) return { items: [], run: null, diagnostic: meta.diagnostic || "http_" + meta.status, retryAfter: meta.retryAfter };
@@ -161,7 +161,7 @@ async function loadFlashscoreWinamaxFeed(token) {
       "/items?clean=true&format=json&limit=1000", token);
     if (!dataset.ok) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: dataset.diagnostic || "http_" + dataset.status };
     if (!Array.isArray(dataset.data)) return { items: [], run: { id: run.id || null, finishedAt: run.finishedAt || null }, diagnostic: "invalid_payload" };
-    const normalized = normalizeFlashscoreWinamaxRows(dataset.data);
+    const normalized = normalizeFlashscoreNetBetRows(dataset.data);
     const items = normalized.items;
     return {
       items,
@@ -592,7 +592,7 @@ export default {
         days: ["0", "1"],
         status: "all",
         bookmakerCountries: ["FR"],
-        bookmakers: ["Winamax"],
+        bookmakers: ["NetBet"],
         markets: ["HOME_AWAY"],
         periods: ["FULL_TIME"],
         maxMatches: 30,
@@ -635,7 +635,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
 
-    if (path === "/__diagnostic/winamax-direct/start" || path === "/__diagnostic/winamax-direct/status") {
+    if (path === "/__diagnostic/netbet-direct/start" || path === "/__diagnostic/netbet-direct/status") {
       const supplied = request.headers.get("Authorization") || "";
       if (!env.DIAGNOSTIC_TRIGGER_TOKEN || supplied !== "Bearer " + env.DIAGNOSTIC_TRIGGER_TOKEN) {
         return response({ error: "Unauthorized" }, 401);
@@ -644,13 +644,12 @@ export default {
       if (path.endsWith("/start")) {
         if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
         const input = {
-          country: "FR",
           sports: ["tennis"],
           markets: ["match_winner"],
           includeLive: false,
-          maxItems: 200
+          maxItems: 100
         };
-        const upstream = await fetch("https://api.apify.com/v2/acts/oddsfrance~winamax-odds-scraper/runs?waitForFinish=0&maxTotalChargeUsd=0.02", {
+        const upstream = await fetch("https://api.apify.com/v2/acts/oddsfrance~netbet-odds-scraper/runs?waitForFinish=0&maxTotalChargeUsd=0.02", {
           method: "POST",
           headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(input)
@@ -658,7 +657,7 @@ export default {
         const payload = await upstream.json().catch(() => null);
         if (!upstream.ok) return response({ error: "Apify start failed", upstreamStatus: upstream.status, detail: payload }, upstream.status);
         const run = payload?.data || null;
-        return response({ status: run?.status || "UNKNOWN", runId: run?.id || null, actor: "oddsfrance~winamax-odds-scraper", input, costCapUsd: 0.02 });
+        return response({ status: run?.status || "UNKNOWN", runId: run?.id || null, actor: "oddsfrance~netbet-odds-scraper", input, costCapUsd: 0.02 });
       }
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       const runId = url.searchParams.get("runId") || "";
@@ -712,7 +711,7 @@ export default {
       }
 
       try {
-        // This is a separate, fixed historical dataset; it does not affect the live Winamax /odds feed.
+        // This is a separate, fixed historical dataset; it does not affect the live NetBet /odds feed.
         const datasetId = url.searchParams.get("datasetId") || "1UFINeSkMhdbaTfPa";
         if (!/^[a-zA-Z0-9]{10,30}$/.test(datasetId)) {
           return response({ error: "Invalid Apify datasetId" }, 400);
@@ -796,7 +795,7 @@ export default {
       }
 
       try {
-        // Cache Winamax odds for five minutes to avoid repeated Apify dataset reads.
+        // Cache NetBet odds for five minutes to avoid repeated Apify dataset reads.
         const cache = caches.default;
         const cacheKey = new Request(request.url, { method: "GET" });
         const cached = await cache.match(cacheKey);
@@ -881,10 +880,10 @@ export default {
           taskRunDiagnostic = "request_failed";
           // Keep feed availability independent from optional run metadata.
         }
-        const flashscoreFeed = await loadFlashscoreWinamaxFeed(env.APIFY_TOKEN);
-        const combinedItems = mergeWinamaxOdds(items, flashscoreFeed.items);
+        const flashscoreFeed = await loadFlashscoreNetBetFeed(env.APIFY_TOKEN);
+        const combinedItems = mergeNetBetOdds(items, flashscoreFeed.items);
         const payload = {
-          source: "Apify Winamax sources",
+          source: "Apify NetBet sources",
           taskId: APIFY_TASK_ID,
           retrievedAt: new Date().toISOString(),
           count: combinedItems.length,
