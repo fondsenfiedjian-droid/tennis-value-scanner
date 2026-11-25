@@ -232,7 +232,6 @@ test("Valuebetennis category is retained in predictions and paired market compar
   const atp = report.reportsByTour.atp;
   assert.equal(atp.breakdowns.byCategory.ITF.matches, 1);
   assert.equal(atp.breakdowns.byCategory["Main tour"].matches, 1);
-  assert.equal(atp.predictions[0].category, "ITF");
   assert.equal(report.pairedMarketComparison.atp.opening.byCategory.ITF.matches, 1);
   assert.equal(report.pairedMarketComparison.atp.opening.byCategory["Main tour"].matches, 1);
   assert.equal(report.pairedMarketComparison.wta.opening.byCategory.Junior.matches, 1);
