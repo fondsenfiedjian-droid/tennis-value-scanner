@@ -1443,7 +1443,7 @@
     $('#navHome').classList.add('active');$('#navStats').classList.remove('active');
   }
   function showStats(){
-    $('.app').style.display='none';$('#statsView').style.display='block';
+    hideCompare();$('.app').style.display='none';$('#statsView').style.display='block';
     $('#navHome').classList.remove('active');$('#navStats').classList.add('active');
     archiveStorageReady.then(renderArchive);
   }
@@ -2142,5 +2142,6 @@
     }finally{button.disabled=false;button.textContent='Аудит нагрузки игроков';}
   });
 </script>
+<script src="./compare.js"></script>
 </body>
                                                                                                                                 </html>
