@@ -16,7 +16,11 @@ page.on("response", async response => {
   report.api[path] = {
     status: response.status(),
     count: body?.count ?? body?.items?.length ?? body?.matches?.length ?? body?.players?.length ?? null,
+    keys: body && typeof body === "object" ? Object.keys(body) : null,
     error: body?.error || body?.providerMessage || null,
+    diagnostics: body?.diagnostics || null,
+    sampleItems: Array.isArray(body?.items) ? body.items.slice(0, 3) : null,
+    predictDiagnostic: path === "/predict" ? body?.diagnostic || null : undefined,
     configured: path === "/health" ? {
       liveTennisApi: body?.liveTennisApiConfigured,
       apify: body?.apifyTokenConfigured,
@@ -30,6 +34,8 @@ try {
   report.ui.title = await page.title();
   report.ui.matchesText = await page.locator("#matchList").innerText({ timeout: 15000 }).catch(e => "UNAVAILABLE: " + e.message);
   report.ui.matchCards = await page.locator("#matchList .match-card").count();
+  report.ui.oddsStatus = await page.locator("#oddsStatus").innerText().catch(() => "missing");
+  report.ui.firstMatches = (report.ui.matchesText || "").split("\\n").slice(0, 24).join("\\n");
 
   await page.locator("#navCompare").click({ timeout: 10000 });
   await page.waitForFunction(() => {
@@ -53,6 +59,10 @@ try {
     const status = document.querySelector("#compareStatus")?.textContent || "";
     return status.includes("успешно") || status.includes("не выполнено");
   }, { timeout: 30000 });
+  report.ui.selectedPlayers = {
+    a: { name: await page.locator("#compareNameA").inputValue(), id: await page.locator("#compareIdA").inputValue() },
+    b: { name: await page.locator("#compareNameB").inputValue(), id: await page.locator("#compareIdB").inputValue() }
+  };
   report.ui.compareStatus = await page.locator("#compareStatus").innerText();
   report.ui.compareResultVisible = await page.locator("#compareResult").isVisible();
 } catch (error) {
