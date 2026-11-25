@@ -1066,3 +1066,7 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - The Developer edition's new screens, laboratory controls, storage namespace and experimental model features were deliberately not copied. Production's existing API, Winamax/Apify ingestion, prediction calculations, settings, archive and navigation behavior remain the source of truth.
 - Advanced the Production service-worker cache to `tennis-value-static-v136` and added regression coverage for the visual tokens, status/odds/nav styling, and absence of Developer-only navigation.
 - Preview only; this is not merged or deployed to the live Production site. APK packaging follows only after preview and regression validation.
+
+- Added an isolated Android wrapper under `android-app/` for the Production edition only. It bundles the Production web shell and its existing local assets; the app uses the existing Cloudflare Worker for live data and odds, so live data requires an internet connection.
+- Added `.github/workflows/build-production-apk.yml` to build `TVS-Production-v2.0.1.apk` and publish it as a GitHub Actions artifact. The current APK is debug-key signed for direct Android installation/testing, not Play Store publication. No Developer app files or laboratory modules are packaged.
+- APK build is tied to this unmerged Production candidate branch. The live Production site remains unchanged; the APK build is a preview candidate until the user approves final release.
