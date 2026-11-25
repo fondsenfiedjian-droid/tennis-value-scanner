@@ -1,5 +1,7 @@
-const CACHE_NAME = "tennis-value-static-v134";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg?v=3", "./pfe.js", "./human-factor.js"];
+importScripts("./app-version.js");
+
+const CACHE_NAME = `tennis-value-static-v${self.TVS_APP_VERSION}`;
+const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app-version.js", "./icon.svg?v=3", "./pfe.js", "./human-factor.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
