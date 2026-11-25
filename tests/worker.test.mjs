@@ -175,7 +175,10 @@ test("odds endpoint returns and caches only an array from the Apify dataset", as
   const result = await call("/odds");
   assert.equal(result.status, 200);
   const payload = await result.json();
-  assert.equal(payload.source, "Apify Winamax task");
+  assert.equal(payload.source, "Apify Winamax sources");
+  assert.equal(payload.flashscore.actor, "incognito_mode~flashscore-odds-scraper");
+  assert.equal(payload.sourceCounts.vavilov, 1);
+  assert.equal(payload.sourceCounts.flashscore, 0);
   assert.equal(payload.taskId, "s9Des4R3jhMfA8e3s");
   assert.equal(payload.count, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.items)), dataset);
