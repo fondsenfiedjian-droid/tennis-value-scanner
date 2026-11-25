@@ -546,3 +546,9 @@ test("Production v2.0.1 adopts the Developer graphite, ruby, cold-blue and amber
   assert.doesNotMatch(html, /id="quickLab"/);
   assert.match(serviceWorker, /tennis-value-static-v136/);
 });
+
+
+test("automatic archive result checks do not show a blocking alert when no matches are due", () => {
+  assert.match(html, /if\(!ids\.length\)\{if\(!archiveAutoCheckRunning\)alert\(/);
+  assert.match(html, /if\(archiveAutoCheckRunning\|\|document\.visibilityState!==['"]visible['"]\|\|Date\.now\(\)-archiveAutoCheckLastAt<2\*60\*60\*1000\)return/);
+});
