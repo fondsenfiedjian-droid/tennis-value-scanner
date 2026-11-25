@@ -1073,3 +1073,12 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Prediction/EV eligibility remains restricted to matches with valid odds, so displaying a match does not create a bet recommendation without bookmaker prices.
 - Regression coverage added in `tests/app-ui.test.mjs`.
 - PR #179 is preview-only. Netlify deploy preview is ready; no changes to Production, Cloudflare Worker, or Apify scraper.
+
+## 2026-11-25 — Unified comparison and Winamax Preview line
+- PR #180 now includes the verified visible-schedule and player-comparison restoration, with nested Live Tennis numeric Elo support.
+- The same Preview Worker now reads the existing Vavilov task and the independent Flashscore Winamax France actor feed, normalizes only fresh scheduled singles match-winner pairs, rejects doubles/team ties/stale quotes, and merges duplicate event-side quotes by newest capture time.
+- A six-hour Preview Worker Cron starts the Flashscore actor. It does not modify, run, or reschedule the user's Vavilov task.
+- Preview odds responses expose per-source counts and Flashscore normalization diagnostics. Only complete eligible quote pairs enter prediction/EV; the schedule remains visible without odds.
+- Regression coverage was added for singles filtering, stale/invalid prices, and newest-quote deduplication.
+- PR #175's experimental Worker was moved to a distinct Worker name to prevent it overwriting PR #180's Preview Worker. The combined implementation is being validated on PR #180.
+- Production `main`, Production Worker, active Elo model, and Vavilov task remain unchanged. No merge or Production deployment was performed.
