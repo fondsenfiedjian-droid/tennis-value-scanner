@@ -2145,7 +2145,8 @@
   const matchList=x=>{if(Array.isArray(x))return x;if(!x||typeof x!=='object')return [];for(const key of ['matches','data','results','events'])if(x[key]!==undefined){const found=matchList(x[key]);if(found.length)return found;}return [];};
   const textValue=v=>typeof v==='string'?v:typeof v==='number'?String(v):'';
   const tournament=m=>textValue(m?.tournament?.name)||textValue(m?.tournament_name)||textValue(m?.tournamentName)||textValue(m?.tournament)||textValue(m?.event?.name)||textValue(m?.event_name)||textValue(m?.competition?.name)||'';
-  const surface=m=>{const raw=m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface;const v=String(raw||'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'Хард';if(v.includes('clay')||v.includes('terre'))return 'Грунт';if(v.includes('grass')||v.includes('gazon'))return 'Трава';if(v.includes('carpet')||v.includes('moquette'))return 'Ковёр';return '';};
+  const surfaceCode=m=>{const v=String(m?.surface??m?.court_surface??m?.courtSurface??m?.tournament?.surface??m?.event?.surface??'').toLowerCase();if(v.includes('hard')||v.includes('dur'))return 'hard';if(v.includes('clay')||v.includes('terre'))return 'clay';if(v.includes('grass')||v.includes('gazon'))return 'grass';if(v.includes('carpet')||v.includes('moquette'))return 'carpet';return '';};
+  const surface=m=>({hard:'Хард',clay:'Грунт',grass:'Трава',carpet:'Ковёр'}[surfaceCode(m)]||'');
   const bestOf=m=>{const raw=m?.best_of??m?.bestOf??m?.format?.best_of??m?.match_format??m?.format; if(raw===3||raw===5)return raw;if(typeof raw==='string'){const t=raw.toLowerCase();const hit=t.match(/best\s*of\s*[- ]?([35])/);if(hit)return Number(hit[1]);if(t==='bo3')return 3;if(t==='bo5')return 5;}return null;};
   const category=m=>textValue(m?.category?.name)||textValue(m?.category)||textValue(m?.tour)||textValue(m?.tour_name)||textValue(m?.tournament?.category)||'';
   let candidates=[];
@@ -2161,7 +2162,7 @@
       const payload=await response.json();
       if(!response.ok)throw new Error(payload?.error||'Ошибка расписания HTTP '+response.status);
       const all=matchList(payload);
-      candidates=all.filter(m=>{const x=norm(playerName(p1(m))),y=norm(playerName(p2(m)));return (x===a&&y===b)||(x===b&&y===a);});
+      candidates=all.filter(m=>{if(m?.is_doubles===true)return false;const x=norm(playerName(p1(m))),y=norm(playerName(p2(m)));return (x===a&&y===b)||(x===b&&y===a);});
       const choice=$('simMatchChoice');
       choice.innerHTML='';
       if(!candidates.length){choice.disabled=true;choice.add(new Option('Матч не найден',''));status('В расписании не найден предстоящий матч этой пары. Турнир и покрытие не определяю наугад. Проверь написание имён или попробуй позже.',true);return;}
@@ -2182,13 +2183,14 @@
     const selectedA=inputAIsMatchP1?matchP1:matchP2,selectedB=inputAIsMatchP1?matchP2:matchP1;
     const nameA=playerName(selectedA),nameB=playerName(selectedB);
     const idA=playerId(selectedA),idB=playerId(selectedB);
-    const event=tournament(match),court=surface(match),bo=bestOf(match);
+    const event=tournament(match),court=surface(match),surfaceFilter=surfaceCode(match),bo=bestOf(match);
     if(!idA||!idB||idA===idB){status('У матча нет двух надёжных ID игроков. Симуляция остановлена.',true);return;}
     if(!event||!court){status('В расписании не указаны точный турнир или покрытие. Не буду подставлять догадки — симуляция остановлена.',true);return;}
+    if(!['hard','clay','grass'].includes(surfaceFilter)){status('Для этого покрытия API не предоставляет подтверждённую разбивку статистики подачи/приёма. Нужна проверенная статистика именно по покрытию; агрегатную подставлять не буду.',true);return;}
     if(!bo){status('Формат матча (Best of 3/5) не определён источником. Симуляция остановлена, чтобы не исказить результат.',true);return;}
     const firstServer=document.querySelector('input[name="simFirstServer"]:checked')?.value||'A';
     status('Загружаю статистику подачи и приёма обоих игроков…');
-    const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id);const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');const sourceId=Number(j.stats?.player?.id);if(j.stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourceId)||sourceId!==id))throw new Error('ID игрока в статистике не совпадает с выбранным игроком');return j.stats;}));
+    const [ra,rb]=await Promise.all([idA,idB].map(async id=>{const r=await fetch(API+'/player-stats?id='+id+'&surface='+encodeURIComponent(surfaceFilter));const j=await r.json();if(!r.ok||j?.accessStatus!=='available'||!j?.stats)throw new Error(j?.error||j?.accessStatus||'Статистика игрока недоступна');const sourceId=Number(j.stats?.player?.id);if(j.stats?.player?.id!==undefined&&(!Number.isSafeInteger(sourceId)||sourceId!==id))throw new Error('ID игрока в статистике не совпадает с выбранным игроком');if(j.stats?.filters?.surface&&j.stats.filters.surface!==surfaceFilter)throw new Error('Провайдер вернул статистику не для выбранного покрытия');return j.stats;}));
     const profileA={...window.TVSPFE.normalizeServeReturnProfile(ra),playerId:idA};
     const profileB={...window.TVSPFE.normalizeServeReturnProfile(rb),playerId:idB};
     const inputs=window.TVSPFE.deriveServeReturnMatchInputs(profileA,profileB);
@@ -2204,7 +2206,7 @@
       '<div class="sim-probs"><div class="sim-prob"><b>'+pct(result.probabilityA)+'</b><span>'+esc(nameA)+'</span></div><div class="sim-prob"><b>'+pct(result.probabilityB)+'</b><span>'+esc(nameB)+'</span></div></div>'+
       '<div class="sim-scorelines"><b>Наиболее частые итоговые счета</b>'+score+'</div>'+
       '<div class="sim-meta">Симуляций: '+result.iterations.toLocaleString('ru-RU')+' · 95% интервал Монте-Карло для игрока 1: '+interval+'<br>Матчей в профилях с данными: '+profileA.matchesWithStats+' / '+profileB.matchesWithStats+'<br>Проверка подачи/приёма: расхождение '+pct(inputs.playerA.disagreement)+' / '+pct(inputs.playerB.disagreement)+'<br>Вероятность очка на подаче: '+pct(inputs.playerA.servicePointWin)+' / '+pct(inputs.playerB.servicePointWin)+'</div>'+
-      '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Он не меняет автоматический прогноз, EV или план ставок. Важно: источник даёт агрегированные показатели подачи/приёма без разбивки по покрытию; покрытие матча точно указано, но отдельная поправка по покрытию не применяется. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
+      '<div class="sim-source">Это отдельный исследовательский сценарий PFE. Статистика подачи/приёма загружена с фильтром именно по покрытию '+court+'; если провайдер не подтвердил покрытие или данных недостаточно, симуляция не запускается. Результат не меняет автоматический прогноз, EV или план ставок. Модель использует постоянные вероятности очка на подаче и не учитывает усталость, травмы и изменение формы по ходу матча.</div>';
     $('simResult').hidden=false;
     status('Готово. Результат относится к выбранному турниру и покрытию, указанным источником.');
   }
