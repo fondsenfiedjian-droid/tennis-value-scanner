@@ -651,8 +651,12 @@
   function oddsEventGroupKey(o){
     const eventId=String(o?.eventId||'').trim();
     if(eventId)return String(o?.bookmaker||'').trim().toLowerCase()+'|'+eventId;
-    const {home,away}=oddsEventParticipants(o),start=String(o?.startTime||'').trim();
-    if(!start||!home||!away)return null;
+    const {home,away}=oddsEventParticipants(o),rawStart=String(o?.startTime||'').trim();
+    if(!rawStart||!home||!away)return null;
+    const parsedStart=Date.parse(rawStart);
+    if(!Number.isFinite(parsedStart))return null;
+    // Equivalent ISO timestamps with different offsets must identify the same event.
+    const start=new Date(parsedStart).toISOString();
     return [String(o?.bookmaker||'').trim().toLowerCase(),start,[home,away].sort().join('|'),String(o?.competition||'').trim().toLowerCase()].join('|');
   }
   function oddsForMatch(m){

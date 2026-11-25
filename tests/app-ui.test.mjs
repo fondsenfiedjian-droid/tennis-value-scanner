@@ -155,6 +155,22 @@ test("saved match fallback cache validates timestamp age and rejects future time
   assert.doesNotMatch(html, /Date\.now\(\)-saved\.savedAt<=ODDS_CACHE_TTL/);
 });
 
+test("odds fallback grouping normalizes equivalent timestamps with different UTC offsets", () => {
+  const startA = "2026-11-23T12:00:00.000Z";
+  const startB = "2026-11-23T13:00:00.000+01:00";
+  const home = makeWinamaxQuote({ eventId: "", startTime: startA, outcome: "home" });
+  const away = { ...makeWinamaxQuote({ eventId: "", startTime: startB, outcome: "away", oddsDecimal: 1.8 }) };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: startA, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 2);
+});
+
+test("odds fallback grouping rejects invalid timestamps instead of creating unstable keys", () => {
+  const home = makeWinamaxQuote({ eventId: "", startTime: "not-a-date", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
+
 test("odds matching pairs both sides of the same Winamax event and maps reversed player order", () => {
   const home = makeWinamaxQuote({ outcome: "home", oddsDecimal: 2.1 });
   const away = makeWinamaxQuote({ outcome: "away", oddsDecimal: 1.8 });
