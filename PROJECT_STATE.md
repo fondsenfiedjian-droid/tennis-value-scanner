@@ -1052,3 +1052,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+## 2026-11-25 — Schedule visibility fix (PR #179)
+
+- Root cause of the empty match list: `renderMatches()` filtered the schedule down to matches with a complete fresh bookmaker winner-odds pair. When odds were missing or the winner market toggle was off, the UI displayed no matches even when the schedule had loaded successfully.
+- Fix on branch `fix/show-matches-without-odds`: render all matches remaining after the selected date and tour filters; show bookmaker odds or an explicit missing/disabled-market label on each card; count scheduled matches separately from matches with complete odds.
+- Prediction/EV eligibility remains restricted to matches with valid odds, so displaying a match does not create a bet recommendation without bookmaker prices.
+- Regression coverage added in `tests/app-ui.test.mjs`.
+- PR #179 is preview-only. Netlify deploy preview is ready; no changes to Production, Cloudflare Worker, or Apify scraper.
