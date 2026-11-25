@@ -635,6 +635,57 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
 
+    if (path === "/__diagnostic/winamax-direct/start" || path === "/__diagnostic/winamax-direct/status") {
+      const supplied = request.headers.get("Authorization") || "";
+      if (!env.DIAGNOSTIC_TRIGGER_TOKEN || supplied !== "Bearer " + env.DIAGNOSTIC_TRIGGER_TOKEN) {
+        return response({ error: "Unauthorized" }, 401);
+      }
+      if (!env.APIFY_TOKEN) return response({ error: "APIFY_TOKEN is not configured" }, 500);
+      if (path.endsWith("/start")) {
+        if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
+        const input = {
+          country: "FR",
+          sports: ["tennis"],
+          markets: ["match_winner"],
+          includeLive: false,
+          maxItems: 200
+        };
+        const upstream = await fetch("https://api.apify.com/v2/acts/oddsfrance~winamax-odds-scraper/runs?waitForFinish=0&maxTotalChargeUsd=0.02", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(input)
+        });
+        const payload = await upstream.json().catch(() => null);
+        if (!upstream.ok) return response({ error: "Apify start failed", upstreamStatus: upstream.status, detail: payload }, upstream.status);
+        const run = payload?.data || null;
+        return response({ status: run?.status || "UNKNOWN", runId: run?.id || null, actor: "oddsfrance~winamax-odds-scraper", input, costCapUsd: 0.02 });
+      }
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      const runId = url.searchParams.get("runId") || "";
+      if (!/^[A-Za-z0-9]{8,32}$/.test(runId)) return response({ error: "Invalid runId" }, 400);
+      const upstream = await fetch("https://api.apify.com/v2/actor-runs/" + encodeURIComponent(runId), {
+        headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Accept": "application/json" }
+      });
+      const payload = await upstream.json().catch(() => null);
+      if (!upstream.ok) return response({ error: "Apify status failed", upstreamStatus: upstream.status, detail: payload }, upstream.status);
+      const run = payload?.data || null;
+      if (!run) return response({ error: "Invalid Apify run response" }, 502);
+      let items = [];
+      if (run.status === "SUCCEEDED" && run.defaultDatasetId) {
+        const dataResponse = await fetch("https://api.apify.com/v2/datasets/" + encodeURIComponent(run.defaultDatasetId) + "/items?clean=true&format=json&limit=250", {
+          headers: { "Authorization": "Bearer " + env.APIFY_TOKEN, "Accept": "application/json" }
+        });
+        const data = await dataResponse.json().catch(() => null);
+        if (!dataResponse.ok) return response({ error: "Apify dataset retrieval failed", upstreamStatus: dataResponse.status });
+        if (Array.isArray(data)) items = data;
+      }
+      return response({
+        status: run.status, runId: run.id, startedAt: run.startedAt || null, finishedAt: run.finishedAt || null,
+        stats: run.stats || null, usageTotalUsd: run.usageTotalUsd ?? null,
+        datasetId: run.defaultDatasetId || null, itemCount: items.length, items
+      });
+    }
+
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: cors });
     }
