@@ -1052,3 +1052,11 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-22 — Explain missing match-winner odds (research PR)
+- Added a read-only diagnostic classifier for why a scheduled match has no complete fresh quote pair: no provider data, unsupported market, missing participants, event-name conflict, player mismatch, tournament mismatch, invalid/out-of-window event time, stale quotes, invalid odds, incomplete pair, or unsynchronised pair.
+- Schedule now retains scheduled matches when the match-winner market is enabled; cards without odds show the diagnostic reason rather than disappearing from the list.
+- Prediction loading remains restricted to matches with complete pairs; no quote is fabricated and no incomplete pair is used for EV.
+- Diagnostic tests cover no data, player mismatch, tournament mismatch, stale quote, incomplete pair, and complete pair.
+- Research-only branch. No production deploy, no provider task changes, and no merge without explicit approval.

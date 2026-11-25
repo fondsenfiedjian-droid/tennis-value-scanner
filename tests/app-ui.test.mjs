@@ -35,7 +35,7 @@ function getOddsMatching(quotes) {
     playerName: value => String(value ?? ""),
     matchDate: match => new Date(match.startTime)
   };
-  vm.runInNewContext(oddsMatchingSource + "\nglobalThis.oddsMatching = { oddsForMatch, oddsSideForPlayer };", sandbox);
+  vm.runInNewContext(oddsMatchingSource + "\nglobalThis.oddsMatching = { oddsForMatch, oddsSideForPlayer, oddsMatchDiagnostic };", sandbox);
   return sandbox.oddsMatching;
 }
 function makeWinamaxQuote(overrides = {}) {
@@ -79,6 +79,24 @@ test("result checks retry pending matches every 30 minutes and settled matches d
     { matchId: "105", matchDate: new Date(hoursAgo(30)).toISOString(), resultCheckedAt: hoursAgo(25), resultOutcome: "unresolved" }
   ];
   assert.deepEqual(runSelectArchiveResultCheckIds(rows, now), [103, 104, 105, 101]);
+});
+
+
+test("odds diagnostics identify player, tournament, stale quote and incomplete-pair failures", () => {
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), tournament_name: "ATP Finals" };
+  const diagnostic = quotes => getOddsMatching(quotes).oddsMatchDiagnostic(match).code;
+  assert.equal(diagnostic([]), "no_provider_data");
+  assert.equal(diagnostic([makeWinamaxQuote({ homeTeam: "Jannik Sinner", awayTeam: "Daniil Medvedev", eventName: "Jannik Sinner - Daniil Medvedev" })]), "players_mismatch");
+  assert.equal(diagnostic([makeWinamaxQuote({ competition: "WTA Finals" })]), "tournament_mismatch");
+  assert.equal(diagnostic([makeWinamaxQuote({ scrapedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() })]), "stale_quotes");
+  assert.equal(diagnostic([makeWinamaxQuote({ outcome: "home" })]), "incomplete_pair");
+});
+
+test("odds diagnostics report a complete fresh pair as available", () => {
+  const home = makeWinamaxQuote({ outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsMatchDiagnostic(match).code, "available");
 });
 
 test("match cards expose current bookmaker odds without opening the details", () => {
@@ -479,9 +497,9 @@ test("calibration rejects a snapshot captured after an earlier scheduled start d
 test("match list shows matches with a complete fresh pair from any enabled bookmaker", () => {
   assert.match(html, /const dateFiltered=selectedDay==='all'\?byTour:byTour\.filter/);
   assert.match(html, /const winnerEnabled=\$\('\[data-market="winner"\]'\)\.classList\.contains\('on'\)/);
-  assert.match(html, /const filtered=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
-  assert.match(html, /пар с коэффициентами:/);
-  assert.match(html, /нет матчей с полной актуальной парой коэффициентов букмекеров/);
+  assert.match(html, /const matchedMatches=winnerEnabled\?dateFiltered\.filter\(m=>oddsForMatch\(m\)\.length>=2\):\[\]/);
+  assert.match(html, /матчей: '\+filtered\.length\+' · с полной парой: '\+matchedMatches\.length/);
+  assert.match(html, /oddsMatchDiagnostic\(m\)\.label/);
   assert.match(html, /const allMatched=oddsForMatch\(m\)/);
 });
 
