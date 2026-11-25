@@ -532,3 +532,17 @@ test("Production uses the Developer visual identity and displays a discreet vers
   assert.match(html, /id="connectionStatus"/);
   assert.match(serviceWorker, /tennis-value-static-v135/);
 });
+
+
+test("Production v2.0.1 adopts the Developer graphite, ruby, cold-blue and amber visual system without Developer app features", () => {
+  assert.match(html, /Production v2\.0\.1 — transferred Developer visual language/);
+  assert.match(html, /--cold-blue:#68c7ee/);
+  assert.match(html, /--ruby:#a51f45/);
+  assert.match(html, /--amber:#f0bd62/);
+  assert.match(html, /\.production-header \.status\{background:#102131;border-color:#35617e;color:#8edcf6/);
+  assert.match(html, /\.data-freshness\.good\{background:#102131;color:#8edcf6/);
+  assert.match(html, /\.best-bet-odds\{color:#f0bd62/);
+  assert.match(html, /\.nav button\.active\{color:#83d7f4;background:#13283a/);
+  assert.doesNotMatch(html, /id="quickLab"/);
+  assert.match(serviceWorker, /tennis-value-static-v136/);
+});
