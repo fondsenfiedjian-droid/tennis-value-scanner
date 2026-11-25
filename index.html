@@ -7,6 +7,7 @@
   <title>Tennis Value Scanner</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg?v=3" type="image/svg+xml">
+  <script src="./app-version.js"></script>
   <style>
     :root{color-scheme:dark;--bg:#080808;--panel:#11100f;--panel2:#191513;--line:#655b56;--muted:#b5aaa4;--text:#f5f1ee;--amber:#e6bd58}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#2a1711 0,#100d0b 34%,#070707 75%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
@@ -14,6 +15,7 @@
     .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom))}
     header{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 18px}
     .brand{font-size:18px;font-weight:850;letter-spacing:.07em}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.app-version{font-size:9px;line-height:1;color:var(--muted);opacity:.62;letter-spacing:.04em;font-variant-numeric:tabular-nums}
     .status{border:1px solid #8a6c32;color:#f0d58b;background:#211a0d;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700}
     .datebar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
     .datebar strong{font-size:20px}.datebar span{font-size:12px;color:var(--muted)}
@@ -209,7 +211,9 @@
 <div class="app">
   <header>
     <div><div class="brand">TENNIS VALUE SCANNER</div><div class="sub">Поиск ставок с положительным ожиданием</div></div>
-    <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
+    <div class="header-meta"><span class="app-version" id="appVersion" aria-label="Версия приложения"></span>
+      <div class="status" id="connectionStatus" role="status" aria-live="polite">ПРОВЕРКА API</div>
+    </div>
   </header>
 
   <div class="datebar"><strong id="dayTitle">Сегодня</strong><span id="dateText"></span></div>
@@ -450,6 +454,7 @@
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
   const IS_PFE_NETLIFY_PREVIEW=location.hostname.endsWith('--fascinating-paprenjak-1aa9b3.netlify.app');
+  document.getElementById("appVersion").textContent="v"+window.TVS_APP_VERSION;
   const API=IS_PFE_NETLIFY_PREVIEW?'https://feature-pfe-match-simulator-tennis-value-api.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
