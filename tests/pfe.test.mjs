@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fusePredictions } from "../pfe.js";
+import PFE from "../pfe.js";
+const { fusePredictions } = PFE;
 
 test("General Elo and Surface Elo in the same family are one independent group", () => {
   const result = fusePredictions([
