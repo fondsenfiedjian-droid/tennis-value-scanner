@@ -530,7 +530,7 @@ test("Production uses the Developer visual identity and displays a discreet vers
   assert.match(html, /\.edition-version\{display:block;max-width:100%;white-space:nowrap;[^}]*font-size:8px/);
   assert.match(html, /\.production-header-meta\{display:flex;flex-direction:column;align-items:flex-end/);
   assert.match(html, /id="connectionStatus"/);
-  assert.match(serviceWorker, /tennis-value-static-v135/);
+  assert.match(serviceWorker, /tennis-value-static-v136/);
 });
 
 
