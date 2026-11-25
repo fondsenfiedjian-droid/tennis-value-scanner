@@ -944,14 +944,16 @@ export default {
       const isCoverage = path === "/history/coverage";
       const isMatches = path === "/history/matches";
       const isPackageList = path === "/history/packages";
-      const packageMatch = path.match(/^\\/history\\/packages\\/(\\d{4}(?:-\\d{2})?)$/);
-      if (!isCoverage && !isMatches && !isPackageList && !packageMatch) {
+      const packagePeriod = path.startsWith("/history/packages/") ? path.slice("/history/packages/".length) : null;
+      const isDigits = value => value.length > 0 && [...value].every(char => char >= "0" && char <= "9");
+      const validPackagePeriod = packagePeriod !== null && (packagePeriod.length === 4 || packagePeriod.length === 7) && isDigits(packagePeriod.slice(0, 4)) && (packagePeriod.length === 4 || (packagePeriod[4] === "-" && isDigits(packagePeriod.slice(5))));
+      if (!isCoverage && !isMatches && !isPackageList && !validPackagePeriod) {
         return response({ error: "Invalid history route" }, 404);
       }
 
       const allowed = isMatches
         ? ["has_market", "is_qualifying", "gender", "limit", "offset", "from", "to", "tour", "draw", "player", "country", "tournament_id", "tier", "coverage", "points_complete"]
-        : isPackageList || packageMatch
+        : isPackageList || validPackagePeriod
           ? ["kind", ...(isPackageList ? ["year"] : ["format"])]
           : [];
       const params = new URLSearchParams();
@@ -960,10 +962,10 @@ export default {
         if (value === null) continue;
         const clean = value.trim();
         if (!clean || clean.length > 200) return response({ error: "Invalid " + key + " parameter" }, 400);
-        if (key === "limit" && (!/^\\d+$/.test(clean) || Number(clean) < 1 || Number(clean) > 200)) {
+        if (key === "limit" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) < 1 || Number(clean) > 200)) {
           return response({ error: "limit must be an integer from 1 to 200" }, 400);
         }
-        if (key === "offset" && (!/^\\d+$/.test(clean) || Number(clean) > 1000000)) {
+        if (key === "offset" && (!isDigits(clean) || !Number.isInteger(Number(clean)) || Number(clean) > 1000000)) {
           return response({ error: "offset must be a non-negative integer" }, 400);
         }
         if (["has_market", "is_qualifying", "points_complete"].includes(key) && !["true", "false"].includes(clean.toLowerCase())) {
@@ -984,19 +986,19 @@ export default {
         if (key === "format" && !["jsonl", "csv", "corrections"].includes(clean)) {
           return response({ error: "format must be jsonl, csv, or corrections" }, 400);
         }
-        if (key === "year" && !/^\\d{4}$/.test(clean)) {
+        if (key === "year" && !(clean.length === 4 && isDigits(clean))) {
           return response({ error: "year must use YYYY format" }, 400);
         }
         if (key === "from" || key === "to") {
           if (Number.isNaN(Date.parse(clean))) return response({ error: key + " must be a valid date" }, 400);
         }
-        if (key === "tournament_id" && !/^\\d+$/.test(clean)) {
+        if (key === "tournament_id" && !isDigits(clean)) {
           return response({ error: "tournament_id must be numeric" }, 400);
         }
         params.set(key, clean);
       }
 
-      const period = packageMatch?.[1] || null;
+      const period = validPackagePeriod ? packagePeriod : null;
       if (period && period.includes("-") && Number(period.slice(5)) > 12) {
         return response({ error: "Package month must be between 01 and 12" }, 400);
       }
@@ -1008,7 +1010,7 @@ export default {
       const upstreamUrl = "https://api.livetennisapi.com/api/public/v1" + upstreamPath + (query ? "?" + query : "");
 
       try {
-        const cacheable = isCoverage || isPackageList || (packageMatch && !params.has("format"));
+        const cacheable = isCoverage || isPackageList || (validPackagePeriod && !params.has("format"));
         const cache = caches.default;
         const cacheKey = new Request(url.origin + "/__live-history/" + encodeURIComponent(upstreamPath + (query ? "?" + query : "")), { method: "GET" });
         const cached = cacheable ? await cache.match(cacheKey) : null;
