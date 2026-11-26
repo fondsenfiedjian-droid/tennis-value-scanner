@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 const DB_NAME="tvs-developer-historical-archives";
-const DB_VERSION=1;
+const DB_VERSION=2;
 const MAX_BYTES=100*1024*1024;
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -15,6 +15,7 @@ function openDB(){
    if(!db.objectStoreNames.contains("archives")){const s=db.createObjectStore("archives",{keyPath:"id"});s.createIndex("sha256","sha256",{unique:true});s.createIndex("importedAt","importedAt");}
    if(!db.objectStoreNames.contains("operations")){const s=db.createObjectStore("operations",{keyPath:"id"});s.createIndex("createdAt","createdAt");}
    if(!db.objectStoreNames.contains("normalizedMatches")){const s=db.createObjectStore("normalizedMatches",{keyPath:"id"});s.createIndex("archiveId","archiveId");s.createIndex("reviewStatus","reviewStatus");}
+   if(!db.objectStoreNames.contains("duplicateRegistry")){const s=db.createObjectStore("duplicateRegistry",{keyPath:"id"});s.createIndex("archiveId","archiveId");s.createIndex("reviewStatus","reviewStatus");}
   };
   req.onsuccess=()=>{req.result.onversionchange=()=>req.result.close();resolve(req.result);};
   req.onerror=()=>reject(req.error||new Error("Не удалось открыть IndexedDB."));
@@ -51,6 +52,20 @@ function parseCSV(input){
   if(invalid>=0)throw Error("Некорректные игроки, дата или ID победителя в строке "+(invalid+2)+". Оригинал не сохранён.");
  }
  return {headers,rows,rowCount:rows.length,schema:frenchSchema?"tennismylife-fr":"standard"};
+}
+async function saveDuplicateRegistry(db,archiveId,candidates){
+ const tx=db.transaction("duplicateRegistry","readwrite"),done=txDone(tx),store=tx.objectStore("duplicateRegistry"),req=store.getAll();
+ let statuses=new Map();
+ req.onsuccess=()=>{
+  const existing=new Map(req.result.filter(x=>x.archiveId===archiveId).map(x=>[x.id,x]));
+  for(const d of candidates){
+   const id=archiveId+":"+d.first.matchId+":"+d.duplicate.matchId,old=existing.get(id);
+   const reviewStatus=old?.reviewStatus||"ожидает ручной проверки";
+   statuses.set(id,reviewStatus);
+   store.put({id,archiveId,first:d.first,duplicate:d.duplicate,playerIdsMatch:d.playerIdsMatch,winnerIdMatch:d.winnerIdMatch,confidence:d.confidence,reviewStatus,createdAt:old?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
+  }
+ };
+ await done;return statuses;
 }
 async function log(db,action,status,details){
  const tx=db.transaction("operations","readwrite"),done=txDone(tx);
@@ -137,10 +152,11 @@ async function analyzeArchive(archiveId){
  const sampleRows=preview.map(p=>"<tr><td>"+p.row+"</td><td>"+esc(p.date)+"</td><td>"+esc(p.players)+"</td><td>"+esc(p.winner)+"</td><td>"+esc(p.surface)+"</td><td>"+esc(p.score)+"</td></tr>").join("");
  const invalidScoreTable=invalidScoreRows.length?"<table><thead><tr><th>Строка</th><th>Дата</th><th>Турнир</th><th>Игроки</th><th>Счёт</th><th>match_id</th></tr></thead><tbody>"+invalidScoreRows.map(d=>"<tr><td>"+d.row+"</td><td>"+esc(d.date)+"</td><td>"+esc(d.tournament)+"</td><td>"+esc(d.players)+"</td><td>"+esc(d.score)+"</td><td>"+esc(d.matchId)+"</td></tr>").join("")+"</tbody></table>":"<p>Подозрительных значений не обнаружено.</p>";
  const highConfidenceDuplicates=possibleDuplicateRows.filter(d=>d.confidence.startsWith("высокая")).length;
- const duplicateTable=possibleDuplicateRows.length?"<p>Высокая вероятность: "+highConfidenceDuplicates+" из "+possibleDuplicateRows.length+". Это классификация для проверки, не команда на удаление или объединение.</p><table><thead><tr><th>Статус</th><th>Первая строка</th><th>Повторная строка</th><th>Дата</th><th>Турнир</th><th>Игроки</th><th>ID игроков</th><th>Победитель первой / повторной</th><th>Счёт первой / повторной</th><th>match_id</th></tr></thead><tbody>"+possibleDuplicateRows.map(d=>"<tr><td>"+esc(d.confidence)+"</td><td>"+d.first.row+"</td><td>"+d.duplicate.row+"</td><td>"+esc(d.duplicate.date)+"</td><td>"+esc(d.duplicate.tournament)+"</td><td>"+esc(d.duplicate.players)+"</td><td>"+(d.playerIdsMatch?"совпадают":"НЕ СОВПАДАЮТ")+" ("+esc(d.first.player1Id)+"/"+esc(d.first.player2Id)+"; "+esc(d.duplicate.player1Id)+"/"+esc(d.duplicate.player2Id)+")</td><td>"+esc(d.first.winnerName)+" ("+esc(d.first.winnerId)+") / "+esc(d.duplicate.winnerName)+" ("+esc(d.duplicate.winnerId)+") · "+(d.winnerIdMatch?"совпадает":"НЕ СОВПАДАЕТ")+"</td><td>"+esc(d.first.score)+" / "+esc(d.duplicate.score)+"</td><td>"+esc(d.first.matchId)+" / "+esc(d.duplicate.matchId)+"</td></tr>").join("")+"</tbody></table>":"<p>Кандидатов на повторы не обнаружено.</p>";
+ const duplicateReviewStatuses=await saveDuplicateRegistry(db,archiveId,possibleDuplicateRows);
+ const duplicateTable=possibleDuplicateRows.length?"<p>Высокая вероятность: "+highConfidenceDuplicates+" из "+possibleDuplicateRows.length+". Это классификация для проверки, не команда на удаление или объединение.</p><table><thead><tr><th>Классификация</th><th>Проверка</th><th>Первая строка</th><th>Повторная строка</th><th>Дата</th><th>Турнир</th><th>Игроки</th><th>ID игроков</th><th>Победитель первой / повторной</th><th>Счёт первой / повторной</th><th>match_id</th></tr></thead><tbody>"+possibleDuplicateRows.map(d=>"<tr><td>"+esc(d.confidence)+"</td><td>"+esc(duplicateReviewStatuses.get(archiveId+":"+d.first.matchId+":"+d.duplicate.matchId)||"ожидает ручной проверки")+"</td><td>"+d.first.row+"</td><td>"+d.duplicate.row+"</td><td>"+esc(d.duplicate.date)+"</td><td>"+esc(d.duplicate.tournament)+"</td><td>"+esc(d.duplicate.players)+"</td><td>"+(d.playerIdsMatch?"совпадают":"НЕ СОВПАДАЮТ")+" ("+esc(d.first.player1Id)+"/"+esc(d.first.player2Id)+"; "+esc(d.duplicate.player1Id)+"/"+esc(d.duplicate.player2Id)+")</td><td>"+esc(d.first.winnerName)+" ("+esc(d.first.winnerId)+") / "+esc(d.duplicate.winnerName)+" ("+esc(d.duplicate.winnerId)+") · "+(d.winnerIdMatch?"совпадает":"НЕ СОВПАДАЕТ")+"</td><td>"+esc(d.first.score)+" / "+esc(d.duplicate.score)+"</td><td>"+esc(d.first.matchId)+" / "+esc(d.duplicate.matchId)+"</td></tr>").join("")+"</tbody></table>":"<p>Кандидатов на повторы не обнаружено.</p>";
   let panel=$("historicalArchiveAnalysis");
  if(!panel){panel=document.createElement("section");panel.id="historicalArchiveAnalysis";panel.className="archive-item";$("historicalArchiveList").insertAdjacentElement("afterend",panel);}
- panel.innerHTML="<b>Предварительный разбор: "+esc(archive.name)+"</b><p>Строк: "+parsed.rowCount+" · победитель по ID определён: "+validWinner+" · спорный ID победителя: "+invalidWinner+" · неполные данные игроков: "+missingPlayers+" · пустая дата: "+missingDate+" · повторные match_id: "+duplicateMatchId+" · возможные повторы по дате/турниру/паре: "+duplicateNaturalKey+"</p><b>Форматы дат</b><ul>"+list(dateCounts)+"</ul><b>Поверхности</b><ul>"+list(surfaceCounts)+"</ul><b>Пропуски по полям</b><ul>"+Object.entries(missing).map(([k,v])=>"<li>"+esc(({score:"Без счёта",tournament:"Без названия турнира",tournamentId:"Без ID турнира",category:"Без категории",gender:"Без пола/тура",round:"Без раунда",openOdds:"Без полной пары стартовых коэффициентов",closeOdds:"Без полной пары закрывающих коэффициентов"})[k])+": "+v+"</li>").join("")+"</ul><b>Классификация счёта</b><ul>"+list(scoreStatusCounts)+"</ul><b>Проверка формата</b><ul><li>Подозрительный формат счёта: "+invalidScoreFormat+"</li><li>Неправдоподобные стартовые коэффициенты: "+invalidOpenOdds+"</li><li>Неправдоподобные закрывающие коэффициенты: "+invalidCloseOdds+"</li></ul><b>Строки с подозрительным форматом счёта</b><div style='overflow-x:auto'>"+invalidScoreTable+"</div><b>Кандидаты на повторы (не удалять автоматически)</b><div style='overflow-x:auto'>"+duplicateTable+"</div><b>Первые пять строк</b><div style='overflow-x:auto'><table><thead><tr><th>Строка</th><th>Дата</th><th>Игроки</th><th>Победитель</th><th>Покрытие</th><th>Счёт</th></tr></thead><tbody>"+sampleRows+"</tbody></table></div><p>Только чтение. Нормализованные записи не сохранены; сопоставление источников и допуск в модель не выполнялись.</p>";
+ panel.innerHTML="<b>Предварительный разбор: "+esc(archive.name)+"</b><p>Строк: "+parsed.rowCount+" · победитель по ID определён: "+validWinner+" · спорный ID победителя: "+invalidWinner+" · неполные данные игроков: "+missingPlayers+" · пустая дата: "+missingDate+" · повторные match_id: "+duplicateMatchId+" · возможные повторы по дате/турниру/паре: "+duplicateNaturalKey+"</p><b>Форматы дат</b><ul>"+list(dateCounts)+"</ul><b>Поверхности</b><ul>"+list(surfaceCounts)+"</ul><b>Пропуски по полям</b><ul>"+Object.entries(missing).map(([k,v])=>"<li>"+esc(({score:"Без счёта",tournament:"Без названия турнира",tournamentId:"Без ID турнира",category:"Без категории",gender:"Без пола/тура",round:"Без раунда",openOdds:"Без полной пары стартовых коэффициентов",closeOdds:"Без полной пары закрывающих коэффициентов"})[k])+": "+v+"</li>").join("")+"</ul><b>Классификация счёта</b><ul>"+list(scoreStatusCounts)+"</ul><b>Проверка формата</b><ul><li>Подозрительный формат счёта: "+invalidScoreFormat+"</li><li>Неправдоподобные стартовые коэффициенты: "+invalidOpenOdds+"</li><li>Неправдоподобные закрывающие коэффициенты: "+invalidCloseOdds+"</li></ul><b>Строки с подозрительным форматом счёта</b><div style='overflow-x:auto'>"+invalidScoreTable+"</div><b>Реестр кандидатов на повторы — сохранён локально</b><p>Записей в реестре: "+possibleDuplicateRows.length+". Все кандидаты ожидают ручной проверки. Статус хранится отдельно от оригинального CSV.</p><div style='overflow-x:auto'>"+duplicateTable+"</div><b>Первые пять строк</b><div style='overflow-x:auto'><table><thead><tr><th>Строка</th><th>Дата</th><th>Игроки</th><th>Победитель</th><th>Покрытие</th><th>Счёт</th></tr></thead><tbody>"+sampleRows+"</tbody></table></div><p>Только чтение. Нормализованные записи не сохранены; сопоставление источников и допуск в модель не выполнялись.</p>";
  await log(db,"archive.analyze","preview_only",{archiveId,rows:parsed.rowCount,validWinner,invalidWinner,missingPlayers,missingDate,duplicateMatchId,duplicateNaturalKey,invalidScoreFormat,invalidOpenOdds,invalidCloseOdds,missing,dateCounts,surfaceCounts,scoreStatusCounts,possibleDuplicateRows,invalidScoreRows});
  status.textContent="Предварительный разбор завершён. Оригинал не изменён; данные в модель не передавались.";
 }
