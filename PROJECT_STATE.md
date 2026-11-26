@@ -1,6 +1,6 @@
 # Tennis Value Scanner — Project State
 
-Last updated: 2026-11-20
+Last updated: 2026-11-26
 Repository: https://github.com/fondsenfiedjian-droid/tennis-value-scanner  
 Default branch: `main`
 
@@ -1052,3 +1052,8 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - PR #150: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/150. The feature branch includes Worker and frontend changes. Cloudflare Worker Preview build succeeded; Netlify Deploy Preview was generated. Production has not been changed by PR #150.
 - Validation initially found a regression-test expectation still checking the previous Winamax-only status wording, plus the required project-state file had not been updated in the PR. The UI status wording and this project-state record are being corrected before rerunning CI.
 - Keep PR #150 unmerged and do not deploy its Worker/frontend changes to Production until the user explicitly approves after validation. Existing Winamax Apify task `s9Des4R3jhMfA8e3s`, production `GET /odds`, and model are unchanged.
+
+
+## 2026-11-26 — Ambiguous odds matching (draft PR #192)
+
+The proposed branch rejects multiple complete event groups from the same bookmaker for an individual match, retaining unambiguous independent providers. Nine new synthetic regression scenarios are included in `tests/ambiguous-odds-matching.test.mjs`; the native Node regression workflow run 45775824996 passed. Netlify preview succeeded. This is a proposed change, not a production deployment. Review and CI on the updated head remain required. Related registry: #190. No changes to scraper, Worker, model or production settings.
