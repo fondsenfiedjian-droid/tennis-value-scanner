@@ -1,0 +1,21 @@
+{
+  "id": "/developer/",
+  "name": "Tennis Value Scanner Developer",
+  "short_name": "TVS DEV",
+  "description": "Developer Edition — экспериментальные модели и лаборатория",
+  "lang": "ru",
+  "start_url": "/developer/",
+  "scope": "/developer/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080b14",
+  "theme_color": "#080b14",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

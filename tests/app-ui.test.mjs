@@ -426,7 +426,7 @@ test("settings preview changes are committed only by Save and Cancel restores sa
 });
 
 test("service worker cache version advances when settings behavior changes", () => {
-  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v143"/);
+  assert.match(serviceWorker, /CACHE_NAME = "tennis-value-static-v145"/);
 });
 
 test("settings form reloads persisted values whenever opened and verifies every saved threshold", () => {

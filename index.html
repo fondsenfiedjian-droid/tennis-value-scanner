@@ -1048,13 +1048,16 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   .research-status.completed{color:#b6d8c7;border-color:#416653}
   .research-status.running{color:#f0d58b;border-color:#8a6c32}
   .research-status.planned{color:var(--muted)}
+  .edition-version{display:inline-block;white-space:nowrap;color:#b5a8a1;font-size:8px;font-weight:600;letter-spacing:.03em;line-height:1;opacity:.78}
+    body[data-edition="developer"] .edition-version{color:#8bb4c5}
+    #quickLab[hidden]{display:none!important}
   </style>
 </head>
 <body>
 <div class="app">
   <header class="main-header">
     <div class="brand-lockup"><div class="brand-ball">🎾</div><div><div class="brand">TENNIS<br>VALUE <em>SCANNER</em></div></div></div>
-    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><button type="button" id="headerSettings" aria-label="Открыть настройки">⚙</button></div>
+    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><span class="edition-version" id="editionVersion">PRODUCTION · v2.0.0</span><button type="button" id="headerSettings" aria-label="Открыть настройки">⚙</button></div>
   </header>
   <nav class="top-status-nav" aria-label="Матчи по статусу"><button type="button" id="topLive">● LIVE</button><button type="button" id="topUpcoming">СКОРО</button><button type="button" id="topTomorrow">ЗАВТРА</button></nav>
 
@@ -4163,5 +4166,6 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 })();
 </script>
 
+<script src="./edition-runtime.js"></script>
 </body>
                                                                                                                                 </html>

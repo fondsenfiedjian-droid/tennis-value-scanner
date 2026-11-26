@@ -1064,3 +1064,30 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Draft PR #170: https://github.com/fondsenfiedjian-droid/tennis-value-scanner/pull/170. Netlify Deploy Preview: https://deploy-preview-170--fascinating-paprenjak-1aa9b3.netlify.app.
 - Initial CI correctly blocked the PR because implementation changes require a `PROJECT_STATE.md` update. This entry satisfies that repository rule; regression-test job is being monitored.
 - Preview-only preparation. Do not merge PR #170, deploy the Production Worker, or change Production Netlify/Cloudflare configuration without explicit user approval. Existing Production `main`, Winamax Apify task `s9Des4R3jhMfA8e3s`, and Production deployment remain untouched.
+
+
+## 2026-11-24 — Separate Production and Developer editions (isolated feature branch)
+- Created feature/tvs2-editions-lab from release/tennis-value-scanner-2-prep; no changes to main, Production deployments, Cloudflare, Netlify configuration, or Winamax/Apify ingestion.
+- Added an in-app edition/version badge. Production defaults to 2.0.0; Developer Edition is labelled 2.1.0-dev.1.
+- Added a separate installable PWA at /developer/ with its own manifest ID, start URL, scope, app name, service worker, and cache namespace. Production retains the root PWA identity.
+- Developer Edition prefixes localStorage and IndexedDB database names to keep local prediction/archive/settings data separate from Production. Its static assets are bundled under /developer/.
+- The model laboratory is hidden in Production and available only in Developer Edition. Stores isolated experimental parameter profiles (K-factor, surface, form and H2H weights) and runs a local chronological Elo walk-forward comparison against an uploaded CSV. The research runner is separate from live predictions and cannot activate a model.
+- Historical backtest runner is connected in Developer Edition. It compares all saved profiles on the same sample using Brier, LogLoss, accuracy and ECE; it excludes same-day result leakage and does not calculate ROI without a documented odds/staking pipeline.
+- Cache cleanup is restricted to each edition's own cache prefix so installing/updating one edition cannot delete the other edition's cache.
+- Added a branch-scoped regression workflow (Node.js 22, node --test tests/*.test.mjs) so this stacked feature branch validates without changing or deploying Production. Validation and preview deployment are pending. Do not merge or deploy either edition to Production without explicit user approval.
+
+
+## 2026-11-25 — Compact version label in both app editions
+- Updated the existing version marker in both Production (`/`) and Developer (`/developer/`) app shells: it now shows only the actual version string (for example `v2.0.0` or `v2.1.0-dev.1`) in the upper-right header area.
+- Reduced the marker to 8px muted text with no border, pill, background, or extra padding; Developer keeps a subtle cool tint. The version value remains driven by the edition runtime, not hard-coded into the shared label.
+- Bumped the Production PWA cache to `tennis-value-static-v145` and the Developer PWA cache to `tvs-developer-static-v2` so installed clients refresh the changed header. Cache namespaces remain isolated.
+- Extended `tests/edition.test.mjs` to assert both editions use the compact text-only label and dynamically display their edition version; updated the Developer cache-version assertion.
+- Preview branch only (`feature/tvs2-editions-lab`, PR #171). No merge, Production deployment, model change, Worker change, or Apify configuration change.
+
+- First CI run for this UI refinement found three stale test assertions still expecting Production cache v144; the actual PWA cache was correctly advanced to v145. Updated the corresponding expectations in `tests/app-ui.test.mjs` and `tests/worker.test.mjs`; no application-code defect was reported. Re-run required before considering validation complete.
+
+## 2026-11-26 — Developer Edition historical archive pipeline
+
+- Based on the Developer Edition branch from PR #171 and linked to registry #190 and archive review issue #189.
+- The historical archive center queues CSV/ZIP imports and existing originals for local worker processing. IndexedDB v3 persists normalized research records, quality findings, duplicate candidates and the resume cursor atomically by batch.
+- See [Developer archive audit and operating notes](docs/DEVELOPER_ARCHIVE.md) for the reviewed branch inventory, supported formats, PWA behavior and the remaining review of the real ValueBetennis 2025 archive.

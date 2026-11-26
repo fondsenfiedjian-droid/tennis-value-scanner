@@ -1,5 +1,5 @@
-const CACHE_NAME = "tennis-value-static-v143";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg?v=5", "./pfe.js", "./human-factor.js"];
+const CACHE_NAME = "tennis-value-static-v145";
+const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg?v=5", "./pfe.js", "./human-factor.js", "./edition-runtime.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -12,7 +12,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith("tennis-value-static-") && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -20,6 +20,9 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
+
+  // Never intercept Developer Edition paths from the root Production worker.
+  if (url.pathname.startsWith("/developer/")) return;
 
   // Never cache API requests or non-GET requests.
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
