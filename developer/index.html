@@ -1339,6 +1339,8 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     if(labButton)labMount.appendChild(labButton);
     if(labPanel){labPanel.hidden=false;labMount.appendChild(labPanel);}
     const archiveMount=$('#moreArchiveMount');
+    const historicalArchivePanel=$('#historicalArchivePanel');
+    if(historicalArchivePanel)archiveMount.prepend(historicalArchivePanel);
     const archiveQuality=$('#archiveOddsQuality')?.parentElement;
     const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
     [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
