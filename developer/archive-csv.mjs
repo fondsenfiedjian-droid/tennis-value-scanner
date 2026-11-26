@@ -134,6 +134,8 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
   };
   const french = schema.french;
   const td = schema.tennisData;
+  const hf = ["winner_close_fair_odds", "winner_best_close_odds", "start_time_utc"].every(k => schema.ix.has(k));
+  const probability = v => v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 1 ? Number(v) : null;
   const player1Name = french ? get("joueur1") : td ? get("home_name") : get("winner_name", "winner");
   const player2Name = french ? get("joueur2") : td ? get("away_name") : get("loser_name", "loser");
   const player1Id = french ? get("joueur1_id") : td ? get("home_id") : get("winner_id");
@@ -143,7 +145,7 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
     player1Name.toLowerCase() !== player2Name.toLowerCase();
   const winnerSide = distinct && (!(french || td) || (winnerId && winnerId === player1Id)) ? 1 :
     distinct && (french || td) && winnerId && winnerId === player2Id ? 2 : null;
-  const rawDate = td ? get("date_timestamp") : get("date", "match_date", "tourney_date");
+  const rawDate = td ? get("date_timestamp") : hf && get("start_time_utc") ? get("start_time_utc") : get("date", "match_date", "tourney_date");
   const instant = td && /^\d{10}$/.test(rawDate) ? new Date(Number(rawDate) * 1000) : null;
   const date = td ? (instant && Number.isFinite(+instant) ? instant.toISOString().slice(0, 10) : null) : normalizeDate(rawDate);
   const tournament = get("tournoi", "tourney_name", "tournament");
@@ -170,7 +172,7 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
   if (openOdds.some(v => v && decimalOdds(v) === null) || closeOdds.some(v => v && decimalOdds(v) === null)) issues.push("odds_format");
   const source = archive.sourceHint && archive.sourceHint !== "unknown" ? archive.sourceHint : archive.id;
   const tourScope = /(?:^|[\\/_-])wta(?:[\\/_-]|$)/i.test(member) ? "WTA" : /(?:^|[\\/_-])atp(?:[\\/_-]|$)/i.test(member) ? "ATP" : get("genre", "gender") || "unknown";
-  const identityScope = [td ? "tennisdataapp" : source, td ? "home_away" : french ? "fr" : "standard", td ? get("tour_type") : tourScope];
+  const identityScope = [td ? "tennisdataapp" : hf ? "huggingfaceodds" : source, td ? "home_away" : french ? "fr" : "standard", td ? get("tour_type") : tourScope];
   const row = {
     id: archive.id + ":" + fileIndex + ":" + record, archiveId: archive.id, member, fileIndex, row: record,
     matchId, date, rawDate, tournament, tournamentId, category, round, surface, rawSurface,
@@ -180,7 +182,12 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
     score, rawStatus, scoreClass, openOdds: openOdds.map(decimalOdds), closeOdds: closeOdds.map(decimalOdds),
     matchWinnerOdds: td ? [get("home_odds_match_winner"), get("away_odds_match_winner")].map(decimalOdds) : null,
     firstSetWinnerOdds: td ? [get("home_odds_first_set_winner"), get("away_odds_first_set_winner")].map(decimalOdds) : null,
-    dateKind: td ? "source_timestamp_utc" : schema.ix.has("date") || schema.ix.has("match_date") ? "source_match_date" : "tournament_date",
+    marketProbabilities: hf ? {winnerOpen: probability(get("winner_open_prob")), winnerClose: probability(get("winner_close_prob"))} : null,
+    fairCloseOdds: hf ? [get("winner_close_fair_odds"), get("loser_close_fair_odds")].map(decimalOdds) : null,
+    bestCloseOdds: hf ? [get("winner_best_close_odds"), get("loser_best_close_odds")].map(decimalOdds) : null,
+    startTimeUtc: hf ? get("start_time_utc") || null : null,
+    tournamentDate: hf ? normalizeDate(get("tourney_date")) : null,
+    dateKind: td || (hf && get("start_time_utc")) ? "source_timestamp_utc" : schema.ix.has("date") || schema.ix.has("match_date") ? "source_match_date" : "tournament_date",
     sourceRecord: Object.fromEntries(schema.headers.map((key, i) => [key, fields[i] ?? null])),
     sourceExtraFields: fields.slice(schema.width),
     issues, reviewStatus: "local_research_only"
