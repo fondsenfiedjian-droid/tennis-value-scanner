@@ -55,8 +55,8 @@ test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/tvs-developer:/);
   assert.match(devHtml,/proto\.clear=function/);
   assert.match(devHtml,/proto\.key=function/);
-  assert.match(devHtml,/prefix\+String\(name\)/);
-  assert.match(devWorker,/tvs-developer-static-v2/);
+  assert.match(devHtml,/key==="tvs-developer:tvs-developer-historical-archives"\?key:prefix\+key/);
+  assert.match(devWorker,/tvs-developer-static-v[0-9]+/);
   assert.match(devWorker,/model-lab-core\.mjs/);
   assert.match(devWorker,/startsWith\("tvs-developer-static-"\)/);
   assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);

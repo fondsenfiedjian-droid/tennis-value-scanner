@@ -1066,7 +1066,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
  proto.key=function(index){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key.slice(prefix.length));}return keys[index]??null;};
  proto.clear=function(){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key);}keys.forEach(key=>originalRemove.call(this,key));};
  try{Object.defineProperty(proto,"length",{configurable:true,get(){let count=0;for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))count++;}return count;}});}catch(error){console.warn("Developer Storage length isolation could not be applied",error);}
- try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){return originalOpen.call(this,prefix+String(name),...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
+ try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){const key=String(name);return originalOpen.call(this,key==="tvs-developer:tvs-developer-historical-archives"?key:prefix+key,...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
 })();
 </script>
 <div class="app">
@@ -1135,15 +1135,16 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 
 <div class="stats-view" id="statsView">
 <section class="panel" id="historicalArchivePanel" style="margin:16px 0">
-  <div class="section-head" style="margin-top:0"><h2>Исторические данные · отдельный архив</h2><button type="button" class="linkbtn" id="historicalArchiveRefresh">Обновить</button></div>
-  <div class="muted">Отдельно от архива прогнозов. Оригинальные CSV хранятся локально в IndexedDB этого браузера. Никакие файлы не отправляются на сервер. Импорт ещё не подтверждает матчи и не передаёт их модели.</div>
+  <div class="section-head" style="margin-top:0"><h2>Центр исторических архивов</h2><button type="button" class="linkbtn" id="historicalArchiveRefresh">Обновить</button></div>
+  <div class="muted">Отдельно от архива прогнозов. Оригинальные CSV и ZIP хранятся локально в IndexedDB этого браузера. Никакие файлы не отправляются на сервер. Импорт ещё не подтверждает матчи и не передаёт их модели.</div>
   <div class="stats" style="margin-top:12px"><div class="panel"><div class="muted">Оригинальных архивов</div><div class="stat-num" id="historicalArchiveCount">0</div></div><div class="panel"><div class="muted">Режим хранения</div><div class="stat-num" style="font-size:15px">Локальный</div></div></div>
   <div class="field"><label for="historicalArchiveSource">Предполагаемый источник (не считается подтверждением)</label><select id="historicalArchiveSource"><option value="unknown">Не определён</option><option value="tennismylife">TennisMyLife</option><option value="sackmann">Jeff Sackmann</option><option value="valuebetennis">ValueBetennis</option><option value="other">Другой CSV</option></select></div>
-  <div class="field"><label for="historicalArchiveFile">CSV-файл (до 100 МБ)</label><input id="historicalArchiveFile" type="file" accept=".csv,text/csv"></div>
-  <button type="button" class="refresh" id="historicalArchiveImport">Сохранить оригинал в исторический архив</button>
-  <button type="button" class="secondary-btn" id="historicalArchiveAnalyzeLatest">Предварительный разбор последнего архива</button>
+  <div class="field"><label for="historicalArchiveFile">CSV или ZIP (до 100 МБ)</label><input id="historicalArchiveFile" type="file" accept=".csv,.zip,text/csv,application/zip"></div>
+  <button type="button" class="refresh" id="historicalArchiveImport">Импортировать и обработать</button>
+
   <div class="muted" id="historicalArchiveStatus" role="status" aria-live="polite">Проверка хранилища…</div>
   <div class="section-head"><h3>Загруженные оригиналы</h3></div><div class="archive-list" id="historicalArchiveList"><div class="archive-item">Загрузка…</div></div>
+  <section id="historicalArchiveAnalysis" class="archive-item" hidden></section>
   <div class="section-head"><h3>Журнал операций</h3></div><div class="archive-list" id="historicalArchiveLog"><div class="archive-item">Загрузка…</div></div>
 </section>
 
@@ -4009,8 +4010,8 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('.brand-lockup').onclick=showMain;
   $('.brand-lockup').style.cursor='pointer';
-  $('#navBalance').onclick=showBalance;
-  $('#navHistory').onclick=showHistory;
+  $('#navBalance')?.addEventListener('click',showBalance);
+  $('#navHistory')?.addEventListener('click',showHistory);
   $('#navStats').onclick=showStats;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
@@ -4209,6 +4210,6 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 
 <script src="./edition-runtime.js"></script>
 <script type="module" src="./model-lab.js"></script>
-<script src="./historical-archive.js"></script>
+<script type="module" src="./historical-archive.js"></script>
 </body>
                                                                                                                                 </html>
