@@ -346,3 +346,29 @@ test("an incompatible bulk crosswalk rolls back already staged identity links", 
   assert.throws(() => archive.confirmLinks([binding("sackmann","unseen"),binding("atp","a")]), /rewrite/);
   assert.deepEqual(archive.report(),before);
 });
+
+test("reviewed attachment preserves an existing match and is idempotent", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const tournamentDate = "2025-01-29";
+  const a = match({matchDate:null,tournamentDate,slot:"reviewed:1",scoreOrientation:"winner"});
+  const b = {...a,source:"tennismylife",externalId:"other"};
+  const locations = [1,2].map(sourceRow=>({sourceFile:"fixture.csv",sourceRow}));
+  archive.ingestBatch("original","1",[
+    {...row(1,{...a,slot:null}),locator:locations[0]},
+    {...row(2,{...b,discipline:null,slot:null}),locator:locations[1]}
+  ]);
+  const reviewed = [a,b].map((record,i)=>({
+    record:{...record,tournament:{id:JSON.stringify(["event",tournamentDate])}},locator:locations[i]
+  }));
+  const links = reviewed.flatMap(({record}) =>
+    [["player","a"],["player","b"],["tournament",record.tournament.id]].map(([kind,externalId])=>({
+      kind,externalId,source:record.source,scope:record.scope,targetSource:"review",targetId:externalId
+    })));
+  assert.deepEqual(archive.attachReviewed([reviewed],links).decisions,{ready:1});
+  assert.equal(archive.report().linkedObservations,1);
+  assert.deepEqual(archive.attachReviewed([reviewed],links,{apply:true}).decisions,{attached:1});
+  assert.equal(archive.report().canonicalMatches,1);
+  assert.equal(archive.report().linkedObservations,2);
+  assert.deepEqual(archive.attachReviewed([reviewed],links,{apply:true}).decisions,{already_attached:1});
+});

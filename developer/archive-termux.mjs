@@ -116,6 +116,28 @@ async function run() {
 
 try {
   if (command === "run") await run();
+  else if (command === "attach-reviewed") {
+    const [database, folder, flag] = args;
+    if (!database || !folder || (flag !== undefined && flag !== "--apply")) {
+      throw Error("Usage: attach-reviewed EXISTING_DATABASE UNPACKED_PACKAGE [--apply]");
+    }
+    const config = JSON.parse(readFileSync(join(folder,"manifest.json"),"utf8"));
+    const input = config.inputs;
+    if (!Array.isArray(config.links) || input?.length !== 1 || input[0].file !== "reviewed-matches.ndjson") {
+      throw Error("Expected a reviewed Кортограф package");
+    }
+    const source = safeInput(realpathSync(folder),input[0].file);
+    const groups = new Map();
+    for await (const {raw} of localRows(source,input[0],0)) {
+      const record = adaptLocalRow(raw,source.name,input[0]);
+      if (!record.slot) throw Error("Missing reviewed group identifier");
+      if (!groups.has(record.slot)) groups.set(record.slot,[]);
+      groups.get(record.slot).push({record,locator:{sourceFile:raw.source,sourceRow:raw.source_row}});
+    }
+    const archive = openCanonicalArchive(realpathSync(database),{readOnly:flag !== "--apply"});
+    try { output(archive.attachReviewed([...groups.values()],config.links,{apply:flag === "--apply"})); }
+    finally { archive.close(); }
+  }
   else if (["audit-prepared","review-prepared"].includes(command)) {
     const root = realpathSync(args[0] ?? rootDefault);
     const { entries } = inferEntries(root, discoverSQLite(root));
@@ -136,7 +158,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

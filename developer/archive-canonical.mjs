@@ -112,8 +112,8 @@ CREATE TABLE IF NOT EXISTS checkpoints (
 ) STRICT;
 `;
 
-export function openCanonicalArchive(path) {
-  const db = new DatabaseSync(path);
+export function openCanonicalArchive(path, { readOnly = false } = {}) {
+  const db = new DatabaseSync(path, { readOnly });
   try {
     const appId = db.prepare("PRAGMA application_id").get().application_id;
     const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map(row => row.name);
@@ -121,12 +121,16 @@ export function openCanonicalArchive(path) {
         !["external_id","claims","checkpoints","observations"].every(name => tables.includes(name))))) {
       throw Error("Output database belongs to another application");
     }
-    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA cache_size=-16000; PRAGMA temp_store=FILE;");
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA cache_size=-16000; PRAGMA temp_store=FILE;");
     const version = db.prepare("PRAGMA user_version").get().user_version;
     if (version !== 0 && version !== 1) throw Error("Unsupported canonical archive version");
-    db.exec("BEGIN IMMEDIATE");
-    db.exec(schema);
-    db.exec("PRAGMA application_id=0x54565341; PRAGMA user_version=1; COMMIT");
+    if (readOnly) {
+      if (appId !== 0x54565341 || version !== 1) throw Error("Expected an existing canonical archive");
+    } else {
+      db.exec("PRAGMA journal_mode=WAL; BEGIN IMMEDIATE");
+      db.exec(schema);
+      db.exec("PRAGMA application_id=0x54565341; PRAGMA user_version=1; COMMIT");
+    }
   } catch (error) {
     db.close();
     throw error;
@@ -378,6 +382,101 @@ export function openCanonicalArchive(path) {
     });
   }
 
+  function attachReviewed(groups, bindings, { apply = false } = {}) {
+    const evidence = new Map();
+    for (const link of bindings) {
+      const k = key(link.kind,link.source,link.scope,link.externalId);
+      const target = key(link.targetSource,link.targetId);
+      if (evidence.has(k) && evidence.get(k) !== target) throw Error("Conflicting reviewed identity evidence");
+      evidence.set(k,target);
+    }
+    const assess = pairs => {
+      if (pairs.length !== 2) return "invalid_group";
+      const [a,b] = pairs.map(({record}) => record);
+      const playerIds = r => r.sides?.map(side => side.length === 1 ? clean(side[0]?.id) : null);
+      const proof = (r,kind,ref) => evidence.get(key(kind,r.source,r.scope,ref));
+      const ids = pairs.map(({record}) => playerIds(record));
+      if (a.source === b.source || !a.scope || a.scope !== b.scope || !a.slot || a.slot !== b.slot ||
+          a.discipline !== "singles" || b.discipline !== "singles" || a.season !== b.season || a.draw !== b.draw ||
+          token(a.round) !== token(b.round) || !calendarDate(a.tournamentDate) || a.tournamentDate !== b.tournamentDate ||
+          a.matchDate || b.matchDate || ![a,b].every(r => r.scoreOrientation === "winner" && [1,2].includes(r.winnerSide)) ||
+          ids.some(v => v?.length !== 2 || !v.every(Boolean))) return "invalid_group";
+      const event = proof(a,"tournament",clean(a.tournament?.id));
+      const players = [a,b].map((r,i) => ids[i].map(ref => proof(r,"player",ref)));
+      const score = scoreFromSideOne(a.score,false);
+      if (!event || event !== proof(b,"tournament",clean(b.tournament?.id)) ||
+          players.some(v => !v.every(Boolean) || v[0] === v[1]) ||
+          key(...[...players[0]].sort()) !== key(...[...players[1]].sort()) ||
+          players[0][a.winnerSide-1] !== players[1][b.winnerSide-1] ||
+          !score || score !== scoreFromSideOne(b.score,false)) return "review_evidence_mismatch";
+      const observations = pairs.map(({record,locator}) => {
+        const code = key(record.source,record.scope,clean(record.externalId));
+        const coordinate = observationCoordinate(locator);
+        if (!coordinate || !clean(record.externalId)) return null;
+        const sourceRows = query("SELECT * FROM observations WHERE source_key=?").all(code);
+        const found = sourceRows.filter(row => observationCoordinate(JSON.parse(row.locator)) === coordinate);
+        return found.length === 1 && sourceRows.length === 1 ? found[0] : null;
+      });
+      if (observations.some(row => !row)) return "source_observation_unresolved";
+      if (observations.every(row => row.match_id)) {
+        return observations[0].match_id === observations[1].match_id ? "already_attached" : "two_existing_matches";
+      }
+      const n = observations.findIndex(row => row.match_id);
+      if (n < 0) return "no_existing_match";
+      const [anchor,target] = [observations[n],observations[1-n]];
+      const r = pairs[n].record;
+      if (!["unknown_discipline_or_sides","incomplete_match_identity"].includes(target.reason)) return "isolated_observation_requires_review";
+      const pending = JSON.parse(target.unlinked_payload ?? "null");
+      const pendingIds = pending && playerIds(pending);
+      if (!pendingIds || key(...pendingIds) !== key(...ids[1-n]) ||
+          (pending.winnerSide != null && pending.winnerSide !== pairs[1-n].record.winnerSide)) {
+        return "isolated_observation_evidence_conflict";
+      }
+      const match = query("SELECT * FROM matches WHERE id=?").get(anchor.match_id);
+      if (match.scope !== r.scope || match.discipline !== r.discipline || match.season !== Number(r.season) ||
+          match.draw !== r.draw || match.round !== (rounds[token(r.round)] ?? token(r.round))) return "existing_match_identity_conflict";
+      let nativeEvent;
+      try { nativeEvent = JSON.parse(r.tournament.id); } catch { return "existing_tournament_identity_unresolved"; }
+      if (!Array.isArray(nativeEvent) || nativeEvent.length !== 2 || nativeEvent[1] !== r.tournamentDate ||
+          external("tournament",r.source,r.scope,nativeEvent[0]) !== match.tournament_id) {
+        return "existing_tournament_identity_unresolved";
+      }
+      const known = ids[n].map(ref => external("player",r.source,r.scope,ref));
+      const ordered = known.map(ref => key(ref));
+      if (known.some(ref => !ref) || key(...[...ordered].sort()) !== match.participants) return "existing_players_conflict";
+      const winner = ordered[r.winnerSide-1] === [...ordered].sort()[0] ? 1 : 2;
+      const required = {winner, score:scoreFromSideOne(r.score,winner===2), tournamentDate:r.tournamentDate};
+      for (const [field,value] of Object.entries(required)) {
+        const claims = query(`SELECT DISTINCT c.value FROM claims c JOIN observations o USING(origin)
+          WHERE o.match_id=? AND c.field=?`).all(match.id,field);
+        if (claims.length !== 1 || claims[0].value !== JSON.stringify(value)) return "existing_result_conflict";
+      }
+      if (apply) {
+        query("UPDATE observations SET match_id=?, reason=NULL WHERE origin=?").run(match.id,target.origin);
+        for (const [field,value] of Object.entries(required)) {
+          query("INSERT INTO claims VALUES(?,?,?,NULL)").run(target.origin,field,JSON.stringify(value));
+        }
+        const surface = pairs[1-n].record.fields?.surface;
+        const existingSurface = query("SELECT value FROM claims WHERE origin=? AND field='surface'").get(anchor.origin);
+        if (surface && surface === r.fields?.surface && existingSurface?.value === JSON.stringify(surface)) {
+          query("INSERT INTO claims VALUES(?,?,?,NULL)").run(target.origin,"surface",JSON.stringify(surface));
+        }
+        query("INSERT INTO decisions(origin,match_id,action,reason) VALUES(?,?,'link',?)")
+          .run(target.origin,match.id,"reviewed_cross_provider_group:"+r.slot);
+      }
+      return apply ? "attached" : "ready";
+    };
+    const run = () => {
+      const decisions = {};
+      for (const group of groups) {
+        const result = assess(group);
+        decisions[result] = (decisions[result] ?? 0) + 1;
+      }
+      return { mode: apply ? "apply" : "preview", groups: groups.length, decisions };
+    };
+    return apply ? transaction(run) : run();
+  }
+
   function unlink(origin, reason) {
     if (!clean(reason)) throw Error("A review reason is required");
     return transaction(() => {
@@ -450,7 +549,7 @@ export function openCanonicalArchive(path) {
     };
   }
   return {
-    ingestBatch, confirmLink, confirmLinks, fields, unlink, report,
+    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
