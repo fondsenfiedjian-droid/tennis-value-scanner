@@ -47,10 +47,10 @@ function openOutput(file, inputs = []) {
   return openCanonicalArchive(target);
 }
 
-function auditInWorker(root, entry) {
+function preparedWorker(workerData) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./archive-worker.mjs", import.meta.url), {
-      workerData: { task: "audit-prepared", root, entry }
+      workerData
     });
     worker.once("message", ({ result, error }) => error ? reject(Error(error)) : resolve(result));
     worker.once("error", reject);
@@ -115,10 +115,11 @@ async function run() {
 
 try {
   if (command === "run") await run();
-  else if (command === "audit-prepared") {
+  else if (["audit-prepared","review-prepared"].includes(command)) {
     const root = realpathSync(args[0] ?? rootDefault);
     const { entries } = inferEntries(root, discoverSQLite(root));
-    output(await auditInWorker(root, entries.find(entry => entry.preparedIndex)));
+    output(await preparedWorker({ task: command, root, entry: entries.find(entry => entry.preparedIndex),
+      cursor: args[1] === undefined ? undefined : Number(args[1]), limit: args[2] === undefined ? undefined : Number(args[2]) }));
   } else if (command === "inspect") {
     const root = realpathSync(args[0] ?? rootDefault);
     const files = discoverSQLite(root);
@@ -134,7 +135,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

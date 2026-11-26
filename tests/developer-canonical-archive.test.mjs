@@ -224,11 +224,13 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
       round TEXT, surface TEXT, score TEXT, status TEXT, source TEXT, source_row INTEGER,
       archive TEXT, archive_row INTEGER);
     CREATE INDEX match_source ON match_index(provider,source,source_row);
-    CREATE TABLE strict_overlap_groups(date_kind TEXT,date TEXT,tournament TEXT,round TEXT,score TEXT,winner_name TEXT);
+    CREATE TABLE strict_overlap_groups(date_kind TEXT,date TEXT,tournament TEXT,round TEXT,score TEXT,winner_name TEXT,records INTEGER);
     INSERT INTO strict_overlap_groups VALUES
-      ('tournament_start','2024-02-05','Example Open','F','6-4 6-4','Sample Alpha'),
-      ('source_match_date','2024-02-06','Example Open','SF',NULL,'Sample Beta');
+      ('tournament_start','2024-02-05','Example Open','F','6-4 6-4','Sample Alpha',2),
+      ('source_match_date','2024-02-06','Example Open','SF',NULL,'Sample Beta',2);
 
+    CREATE TABLE strict_overlap_members(group_id INTEGER,match_index_id INTEGER);
+    INSERT INTO strict_overlap_members VALUES (1,1),(1,2);
     INSERT INTO match_index VALUES
       (1,'ATP','ATP','ATP','2024-02-05','tournament_start','sample alpha','sample beta','pair1',
        'sample alpha','example city','R32','hard','6-3 3-6 6-2','completed',
@@ -256,7 +258,7 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
     assert.equal(report.indexedProfiles,1);
     assert.deepEqual(report.isolationReasons.find(row=>row.reason==="prepared_index_unresolved"),
       {reason:"prepared_index_unresolved",n:1});
-    assert.deepEqual(report.pendingTables,[{file:"match-index.sqlite",table:"strict_overlap_groups"}]);
+    assert.deepEqual(report.pendingTables.map(item=>item.table),["strict_overlap_groups","strict_overlap_members"]);
   }
   const audited = spawnSync(process.execPath,["developer/archive-termux.mjs","audit-prepared",dir],{encoding:"utf8"});
   assert.equal(audited.status,0,audited.stderr);
@@ -270,6 +272,10 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
   assert.equal(input.recognizedSinglesRows,2);
   assert.equal(input.dateKinds.tournament_start,2);
   assert.equal(input.compositeIds,2);
+  const review = spawnSync(process.execPath,["developer/archive-termux.mjs","review-prepared",dir,"0","1"],{encoding:"utf8"});
+  assert.equal(review.status,0,review.stderr);
+  assert.deepEqual(JSON.parse(review.stdout),{reportType:"kortograf-strict-review",reviewedGroups:1,
+    resolvedMembers:1,nextCursor:1,candidateDecisions:{archive_coordinates_unresolved:1},appliedMerges:0});
   const changed = new DatabaseSync(join(dir,"match-index.sqlite"));
   changed.exec("UPDATE match_index SET score='6-4 6-4' WHERE id=1");
   changed.close();

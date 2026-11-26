@@ -368,3 +368,76 @@ export function inferEntries(root, files) {
   }
   return { entries, pending };
 }
+
+export function reviewPreparedGroups(root, entry, cursor = 0, limit = 2000) {
+  if (!entry?.preparedIndex) throw Error("Prepared matches and match-index databases are required");
+  if (!Number.isSafeInteger(cursor) || cursor < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 5000) {
+    throw Error("Expected a non-negative group cursor and a limit from 1 to 5000");
+  }
+  const index = new DatabaseSync(safeInput(root, entry.preparedIndex).absolute, { readOnly: true });
+  try {
+    const groups = index.prepare(`
+      SELECT rowid AS id, date_kind, date, round, score, records
+      FROM strict_overlap_groups WHERE rowid>? ORDER BY rowid LIMIT ?
+    `).all(cursor, limit);
+    const states = new Map(groups.map(group => [group.id, { group, members: [] }]));
+    const requested = new Map();
+    const coordinates = row => JSON.stringify([row.provider, row.source, row.source_row, row.archive, row.archive_row]);
+    if (groups.length) {
+      for (const member of index.prepare(`
+        SELECT s.group_id, i.provider, i.circuit, i.source, i.source_row, i.archive, i.archive_row, i.round, i.score
+        FROM strict_overlap_members s LEFT JOIN match_index i ON i.id=s.match_index_id
+        WHERE s.group_id BETWEEN ? AND ?
+      `).iterate(groups[0].id, groups.at(-1).id)) {
+        const state = states.get(member.group_id);
+        if (!state || state.members.length >= 50) continue;
+        const observation = { ...member, rows: [] };
+        state.members.push(observation);
+        if ([member.provider, member.source, member.source_row, member.archive, member.archive_row].some(v => v == null)) continue;
+        const key = coordinates(member);
+        if (!requested.has(key)) requested.set(key, []);
+        requested.get(key).push(observation);
+      }
+    }
+    if (requested.size) {
+      const db = new DatabaseSync(safeInput(root, entry.file).absolute, { readOnly: true });
+      try {
+        for (const row of db.prepare(`
+          SELECT provider,source,source_row,archive,archive_row,match_id,player1,player2,winner,date,date_kind
+          FROM matches
+        `).iterate()) {
+          for (const member of requested.get(coordinates(row)) ?? []) {
+            if (member.rows.length < 2) member.rows.push(row);
+          }
+        }
+      } finally { db.close(); }
+    }
+    const counts = {};
+    let resolvedMembers = 0;
+    for (const {group, members} of states.values()) {
+      resolvedMembers += members.filter(member => member.rows.length === 1).length;
+      let reason;
+      if (members.length >= 50) reason = "large_group_requires_separate_review";
+      else if (members.length < 2 || members.length !== Number(group.records) || members.some(member => member.rows.length !== 1)) {
+        reason = "archive_coordinates_unresolved";
+      } else if (new Set(members.map(member => slug(member.provider))).size !== 1) {
+        reason = "cross_provider_ids_require_verified_links";
+      } else if (new Set(members.map(member => member.circuit)).size !== 1 || !members[0].circuit) {
+        reason = "circuit_conflict";
+      } else {
+        const records = members.map(member => member.rows[0]);
+        const ids = records.map(row => row.match_id);
+        const outcomes = records.map(row => JSON.stringify([[row.player1,row.player2].sort(),row.winner,row.date,slug(row.date_kind)]));
+        const complete = records.every((row, index) => row.player1 && row.player2 && row.player1 !== row.player2 &&
+          [row.player1,row.player2].includes(row.winner) && calendarDate(row.date) &&
+          calendarDate(row.date) === calendarDate(group.date) && slug(row.date_kind) === slug(group.date_kind) &&
+          group.round && members[index].round === group.round && group.score && members[index].score === group.score);
+        reason = complete && ids.every(Boolean) && new Set(ids).size === 1 && new Set(outcomes).size === 1
+          ? "same_provider_match_id_and_result_agree" : "provider_match_identity_needs_review";
+      }
+      counts[reason] = (counts[reason] ?? 0) + 1;
+    }
+    return { reportType: "kortograf-strict-review", reviewedGroups: groups.length, resolvedMembers,
+      nextCursor: groups.at(-1)?.id ?? cursor, candidateDecisions: counts, appliedMerges: 0 };
+  } finally { index.close(); }
+}
