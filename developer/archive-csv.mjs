@@ -93,7 +93,7 @@ export function archiveSchema(fields) {
   const standard = [["winner_name", "winner"], ["loser_name", "loser"], ["tourney_date", "date", "match_date"]]
     .every(aliases => aliases.some(k => ix.has(k)));
   if (!french && !standard) throw Error("Схема CSV не распознана.");
-  return { ix, french, width: headers.length };
+  return { ix, headers, french, width: headers.length };
 }
 
 // Preserve the source status even when no score is available. A blank score
@@ -166,7 +166,8 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
   if (scoreClass === "score_present" && !/^\d+[-:]\d+(?:\(\d+\))?(?:\s+\d+[-:]\d+(?:\(\d+\))?)*$/.test(score)) issues.push("score_format");
   if (openOdds.some(v => v && decimalOdds(v) === null) || closeOdds.some(v => v && decimalOdds(v) === null)) issues.push("odds_format");
   const source = archive.sourceHint && archive.sourceHint !== "unknown" ? archive.sourceHint : archive.id;
-  const identityScope = [source, french ? "fr" : "standard"];
+  const tourScope = /(?:^|[\\/_-])wta(?:[\\/_-]|$)/i.test(member) ? "WTA" : /(?:^|[\\/_-])atp(?:[\\/_-]|$)/i.test(member) ? "ATP" : get("genre", "gender") || "unknown";
+  const identityScope = [source, french ? "fr" : "standard", tourScope];
   const row = {
     id: archive.id + ":" + fileIndex + ":" + record, archiveId: archive.id, member, fileIndex, row: record,
     matchId, date, rawDate, tournament, tournamentId, category, round, surface, rawSurface,
@@ -174,6 +175,9 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
     player1Id, player2Id, player1Name, player2Name, winnerId, winnerSide,
     winnerName: winnerSide === 1 ? player1Name : winnerSide === 2 ? player2Name : "",
     score, rawStatus, scoreClass, openOdds: openOdds.map(decimalOdds), closeOdds: closeOdds.map(decimalOdds),
+    dateKind: schema.ix.has("date") || schema.ix.has("match_date") ? "source_match_date" : "tournament_date",
+    sourceRecord: Object.fromEntries(schema.headers.map((key, i) => [key, fields[i] ?? null])),
+    sourceExtraFields: fields.slice(schema.width),
     issues, reviewStatus: "local_research_only"
   };
   if (fields.length === schema.width && matchId) row.sourceKey = [...identityScope, matchId];
