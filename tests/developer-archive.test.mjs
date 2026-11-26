@@ -97,3 +97,12 @@ test("Developer PWA precaches all archive modules without loading them in the ro
     assert.ok(worker.includes("./" + file), file);
   }
 });
+
+test("Developer exposes a direct archive tab in the installed app shell", async () => {
+  const developer = await readFile(new URL("../developer/index.html", import.meta.url), "utf8");
+  const manifest = JSON.parse(await readFile(new URL("../developer/manifest.webmanifest", import.meta.url), "utf8"));
+  assert.equal(manifest.start_url, "/developer/");
+  assert.match(developer, /class="bottom"[\s\S]*?id="navArchive"[^>]*>[^\n]*Архив/);
+  assert.match(developer, /target\.id==='navArchive'\)showArchive\(\)/);
+  assert.match(developer, /function showArchive\(\)\{\s+showMore\(\);\s+\$\('#historicalArchivePanel'\)/);
+});

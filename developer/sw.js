@@ -1,4 +1,4 @@
-const CACHE_NAME="tvs-developer-static-v3";
+const CACHE_NAME="tvs-developer-static-v4";
 const APP_SHELL=["./","./index.html","./manifest.webmanifest","./icon.svg","./pfe.js","./human-factor.js","./edition-runtime.js","./model-lab.js","./model-lab-core.mjs","./historical-archive.js","./archive-db.mjs","./archive-csv.mjs","./archive-zip.mjs","./archive-pipeline.mjs","./archive-worker.mjs"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("tvs-developer-static-")&&key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
