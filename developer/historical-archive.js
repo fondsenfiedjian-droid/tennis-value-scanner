@@ -80,7 +80,7 @@ async function importFile(){
 }
 function init(){
  if(!$("historicalArchivePanel"))return;
- $("historicalArchiveImport").addEventListener("click",importFile);
+ document.addEventListener("click",event=>{const button=event.target.closest("#historicalArchiveImport");if(!button)return;event.preventDefault();importFile();});
  $("historicalArchiveRefresh").addEventListener("click",()=>refresh().then(()=>$("historicalArchiveStatus").textContent="Архив обновлён.").catch(e=>$("historicalArchiveStatus").textContent="Ошибка: "+e.message));
  refresh().then(()=>$("historicalArchiveStatus").textContent="Отдельное историческое хранилище готово. Оригиналы остаются на устройстве.").catch(e=>$("historicalArchiveStatus").textContent="Хранилище недоступно: "+e.message);
 }
