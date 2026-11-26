@@ -113,7 +113,7 @@ async function analyzeArchive(archiveId){
    if(!present(r,"cote1_cloture")||!present(r,"cote2_cloture"))missing.closeOdds++;
    else if(!validOdds(get(r,"cote1_cloture"))||!validOdds(get(r,"cote2_cloture")))invalidCloseOdds++;
    const score=get(r,"score");
-   if(score&&!/^[0-9\\s()\\-]+$/.test(score))invalidScoreFormat++;
+   if(score&&!/^[0-9\s()-]+$/.test(score))invalidScoreFormat++;
    if(preview.length<5)preview.push({row:i+2,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),winner:w1?get(r,"joueur1"):w2?get(r,"joueur2"):"НЕ ОПРЕДЕЛЁН",surface,score:get(r,"score")});
  }
  const list=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>"<li>"+esc(k)+": "+v+"</li>").join("");
