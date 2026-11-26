@@ -697,7 +697,14 @@
         selected.push(...Object.values(latestByOutcome));
       }
     }
-    return selected;
+    // Reject ambiguous event identities within each bookmaker, independently of other providers.
+    const eventKeysByProvider=new Map();
+    for(const quote of selected){
+      const provider=String(quote.bookmaker||'').trim().toLowerCase();
+      if(!eventKeysByProvider.has(provider))eventKeysByProvider.set(provider,new Set());
+      eventKeysByProvider.get(provider).add(oddsEventGroupKey(quote));
+    }
+    return selected.filter(quote=>eventKeysByProvider.get(String(quote.bookmaker||'').trim().toLowerCase()).size===1);
   }
   function oddsSideForPlayer(o,playerA){
     const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
