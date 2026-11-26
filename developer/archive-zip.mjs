@@ -28,7 +28,7 @@ export async function zipDirectory(blob) {
       const next = offset + 46 + nameLength + u16(30) + u16(32);
       if (next > size) throw Error("Обрезан каталог ZIP.");
       const name = decoder.decode(new Uint8Array(data, offset + 46, nameLength));
-      if (/\.csv$/i.test(name) && !name.split("/").some(part => part === "__MACOSX" || part.startsWith("._"))) {
+      if (/\.(csv|json)$/i.test(name) && !name.split("/").some(part => part === "__MACOSX" || part.startsWith("._"))) {
         const entry = { name, flags: u16(8), method: u16(10), crc: u32(16), compressed: u32(20), size: u32(24), offset: u32(42), boundary: start };
         expanded += entry.size;
         if (u16(34) || (entry.flags & 65) || ![0, 8].includes(entry.method) ||
@@ -39,7 +39,7 @@ export async function zipDirectory(blob) {
       }
       offset = next;
     }
-    if (offset !== size || !entries.length) throw Error("ZIP не содержит доступных CSV.");
+    if (offset !== size || !entries.length) throw Error("ZIP не содержит доступных CSV или JSON.");
     return entries;
   }
   throw Error("Конец каталога ZIP не найден.");
@@ -71,7 +71,7 @@ export async function readZipEntry(blob, entry) {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (offset + value.length > entry.size) throw Error("Фактический размер CSV превышает объявленный в ZIP.");
+      if (offset + value.length > entry.size) throw Error("Фактический размер файла превышает объявленный в ZIP.");
       data.set(value, offset);
       offset += value.length;
       for (const byte of value) crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 255];
@@ -79,6 +79,6 @@ export async function readZipEntry(blob, entry) {
   } finally {
     await reader.cancel();
   }
-  if (offset !== entry.size || ((crc ^ 0xffffffff) >>> 0) !== entry.crc) throw Error("CRC или размер CSV в ZIP не совпадает.");
+  if (offset !== entry.size || ((crc ^ 0xffffffff) >>> 0) !== entry.crc) throw Error("CRC или размер файла в ZIP не совпадает.");
   return new Blob([data]);
 }
