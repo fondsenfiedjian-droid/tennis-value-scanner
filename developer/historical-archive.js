@@ -94,7 +94,7 @@ async function analyzeArchive(archiveId){
  const dateCounts={},surfaceCounts={},seenIds=new Set(),seenNaturalKeys=new Set(),preview=[];
  let validWinner=0,invalidWinner=0,missingPlayers=0,missingDate=0,duplicateMatchId=0,duplicateNaturalKey=0;
  const missing={score:0,tournament:0,tournamentId:0,category:0,gender:0,round:0,openOdds:0,closeOdds:0};
- const present=k=>ix[k]!==undefined&&!!get(r,k);
+ const present=(row,k)=>ix[k]!==undefined&&!!get(row,k);
  const naturalKey=(r)=>[get(r,"date").slice(0,10),get(r,"tournoi_id"),[get(r,"joueur1_id"),get(r,"joueur2_id")].sort().join("|")].join("|");
  for(let i=0;i<parsed.rows.length;i++){
   const r=parsed.rows[i],id1=get(r,"joueur1_id"),id2=get(r,"joueur2_id"),winner=get(r,"vainqueur_id"),date=get(r,"date"),matchId=get(r,"match_id");
@@ -106,9 +106,9 @@ async function analyzeArchive(archiveId){
   const surface=get(r,"surface")||"(пусто)";surfaceCounts[surface]=(surfaceCounts[surface]||0)+1;
   if(matchId){if(seenIds.has(matchId))duplicateMatchId++;else seenIds.add(matchId);}
   const nk=naturalKey(r);if(get(r,"tournoi_id")&&id1&&id2&&date){if(seenNaturalKeys.has(nk))duplicateNaturalKey++;else seenNaturalKeys.add(nk);}
-  for(const [key,field] of [["score","score"],["tournament","tournoi"],["tournamentId","tournoi_id"],["category","categorie"],["gender","genre"],["round","tour"]])if(!present(field))missing[key]++;
-  if(!present("cote1_ouverture")||!present("cote2_ouverture"))missing.openOdds++;
-  if(!present("cote1_cloture")||!present("cote2_cloture"))missing.closeOdds++;
+  for(const [key,field] of [["score","score"],["tournament","tournoi"],["tournamentId","tournoi_id"],["category","categorie"],["gender","genre"],["round","tour"]])if(!present(r,field))missing[key]++;
+  if(!present(r,"cote1_ouverture")||!present(r,"cote2_ouverture"))missing.openOdds++;
+  if(!present(r,"cote1_cloture")||!present(r,"cote2_cloture"))missing.closeOdds++;
   if(preview.length<5)preview.push({row:i+2,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),winner:w1?get(r,"joueur1"):w2?get(r,"joueur2"):"НЕ ОПРЕДЕЛЁН",surface,score:get(r,"score")});
  }
  const list=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>"<li>"+esc(k)+": "+v+"</li>").join("");
