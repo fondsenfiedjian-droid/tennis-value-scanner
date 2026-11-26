@@ -63,8 +63,47 @@ async function refresh(){
  const [archives,ops]=await Promise.all([reqValue(tx.objectStore("archives").getAll()),reqValue(tx.objectStore("operations").getAll())]);await done;
  archives.sort((a,b)=>b.importedAt.localeCompare(a.importedAt));ops.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
  $("historicalArchiveCount").textContent=archives.length;
- $("historicalArchiveList").innerHTML=archives.length?archives.map(a=>'<article class="archive-item"><b>'+esc(a.name)+'</b><div class="archive-meta">'+esc(a.sourceHint)+' · '+bytes(a.size)+' · '+esc(new Date(a.importedAt).toLocaleString("ru-RU"))+'</div><div class="archive-meta">SHA-256: <code>'+esc(a.sha256)+'</code></div><div class="archive-meta">Оригинал сохранён · данные не нормализованы и не подтверждены</div></article>').join(""):'<div class="archive-item">Исторические архивы пока не загружены.</div>';
+ $("historicalArchiveList").innerHTML=archives.length?archives.map(a=>'<article class="archive-item"><b>'+esc(a.name)+'</b><div class="archive-meta">'+esc(a.sourceHint)+' · '+bytes(a.size)+' · '+esc(new Date(a.importedAt).toLocaleString("ru-RU"))+'</div><div class="archive-meta">SHA-256: <code>'+esc(a.sha256)+'</code></div><div class="archive-meta">Оригинал сохранён · данные не нормализованы и не подтверждены</div><button type="button" class="secondary-btn" data-historical-analyze="'+esc(a.id)+'">Предварительный разбор</button></article>').join(""):'<div class="archive-item">Исторические архивы пока не загружены.</div>';
  $("historicalArchiveLog").innerHTML=ops.length?ops.slice(0,20).map(o=>'<div class="archive-item"><b>'+esc(o.action)+' · '+esc(o.status)+'</b><div class="archive-meta">'+esc(new Date(o.createdAt).toLocaleString("ru-RU"))+'</div></div>').join(""):'<div class="archive-item">Операций пока нет.</div>';
+}
+
+function classifyDate(value){
+ const s=String(value??"").trim();
+ if(/^\\d{4}-\\d{2}-\\d{2}(?:[ T].*)?$/.test(s))return "ISO YYYY-MM-DD";
+ if(/^\\d{8}$/.test(s))return "YYYYMMDD";
+ if(/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(s))return "DD/MM/YYYY или MM/DD/YYYY (неоднозначно)";
+ if(/^\\d{2}-\\d{2}-\\d{4}$/.test(s))return "DD-MM-YYYY или MM-DD-YYYY (неоднозначно)";
+ return s?"неизвестный формат":"пустая дата";
+}
+async function analyzeArchive(archiveId){
+ const status=$("historicalArchiveStatus"),db=await openDB();
+ const tx=db.transaction("archives","readonly"),done=txDone(tx);
+ const archive=await reqValue(tx.objectStore("archives").get(archiveId));await done;
+ if(!archive||!archive.original)throw Error("Оригинал архива не найден.");
+ const parsed=parseCSV(await archive.original.text());
+ if(parsed.schema!=="tennismylife-fr")throw Error("Предварительный разбор пока поддерживает только CSV TennisMyLife.");
+ const ix=Object.fromEntries(parsed.headers.map((h,i)=>[h,i]));
+ const get=(r,k)=>String(r[ix[k]]??"").trim();
+ const dateCounts={},surfaceCounts={},seenIds=new Set(),preview=[];
+ let validWinner=0,invalidWinner=0,missingPlayers=0,missingDate=0,duplicateMatchId=0;
+ for(let i=0;i<parsed.rows.length;i++){
+  const r=parsed.rows[i],id1=get(r,"joueur1_id"),id2=get(r,"joueur2_id"),winner=get(r,"vainqueur_id"),date=get(r,"date"),matchId=get(r,"match_id");
+  const w1=!!id1&&winner===id1,w2=!!id2&&winner===id2;
+  if(w1||w2)validWinner++;else invalidWinner++;
+  if(!get(r,"joueur1")||!get(r,"joueur2")||!id1||!id2)missingPlayers++;
+  if(!date)missingDate++;
+  const dt=classifyDate(date);dateCounts[dt]=(dateCounts[dt]||0)+1;
+  const surface=get(r,"surface")||"(пусто)";surfaceCounts[surface]=(surfaceCounts[surface]||0)+1;
+  if(matchId){if(seenIds.has(matchId))duplicateMatchId++;else seenIds.add(matchId);}
+  if(preview.length<5)preview.push({row:i+2,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),winner:w1?get(r,"joueur1"):w2?get(r,"joueur2"):"НЕ ОПРЕДЕЛЁН",surface,score:get(r,"score")});
+ }
+ const list=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>"<li>"+esc(k)+": "+v+"</li>").join("");
+ const sampleRows=preview.map(p=>"<tr><td>"+p.row+"</td><td>"+esc(p.date)+"</td><td>"+esc(p.players)+"</td><td>"+esc(p.winner)+"</td><td>"+esc(p.surface)+"</td><td>"+esc(p.score)+"</td></tr>").join("");
+ let panel=$("historicalArchiveAnalysis");
+ if(!panel){panel=document.createElement("section");panel.id="historicalArchiveAnalysis";panel.className="archive-item";$("historicalArchiveList").insertAdjacentElement("afterend",panel);}
+ panel.innerHTML="<b>Предварительный разбор: "+esc(archive.name)+"</b><p>Строк: "+parsed.rowCount+" · победитель по ID определён: "+validWinner+" · спорный ID победителя: "+invalidWinner+" · неполные данные игроков: "+missingPlayers+" · пустая дата: "+missingDate+" · повторные match_id: "+duplicateMatchId+"</p><b>Форматы дат</b><ul>"+list(dateCounts)+"</ul><b>Поверхности</b><ul>"+list(surfaceCounts)+"</ul><b>Первые пять строк</b><div style='overflow-x:auto'><table><thead><tr><th>Строка</th><th>Дата</th><th>Игроки</th><th>Победитель</th><th>Покрытие</th><th>Счёт</th></tr></thead><tbody>"+sampleRows+"</tbody></table></div><p>Только чтение. Нормализованные записи не сохранены; сопоставление источников и допуск в модель не выполнялись.</p>";
+ await log(db,"archive.analyze","preview_only",{archiveId,rows:parsed.rowCount,validWinner,invalidWinner,missingPlayers,missingDate,duplicateMatchId,dateCounts,surfaceCounts});
+ status.textContent="Предварительный разбор завершён. Оригинал не изменён; данные в модель не передавались.";
 }
 async function importFile(){
  const file=$("historicalArchiveFile").files?.[0],status=$("historicalArchiveStatus"),button=$("historicalArchiveImport");
@@ -92,6 +131,15 @@ function init(){
  if(!$("historicalArchivePanel"))return;
  const importButton=$("historicalArchiveImport");
  if(importButton)importButton.addEventListener("click",event=>{event.preventDefault();importFile();});
+ const archiveList=$("historicalArchiveList");
+ if(archiveList)archiveList.addEventListener("click",event=>{
+  const button=event.target.closest("[data-historical-analyze]");
+  if(!button)return;
+  button.disabled=true;
+  analyzeArchive(button.getAttribute("data-historical-analyze"))
+   .catch(e=>$("historicalArchiveStatus").textContent="Разбор остановлен: "+String(e?.message||e))
+   .finally(()=>{button.disabled=false;});
+ });
  $("historicalArchiveRefresh").addEventListener("click",()=>refresh().then(()=>$("historicalArchiveStatus").textContent="Архив обновлён.").catch(e=>$("historicalArchiveStatus").textContent="Ошибка: "+e.message));
  refresh().then(()=>$("historicalArchiveStatus").textContent="Отдельное историческое хранилище готово. Оригиналы остаются на устройстве.").catch(e=>$("historicalArchiveStatus").textContent="Хранилище недоступно: "+e.message);
 }
