@@ -208,22 +208,25 @@ export function openCanonicalArchive(path) {
     return entityId;
   }
 
-  function confirmLink({ kind, source, scope, externalId, targetSource, targetId, evidence }) {
+  function storeLink({ kind, source, scope, externalId, targetSource, targetId, evidence }) {
     if (!["player", "tournament"].includes(kind) ||
         ![source, scope, externalId, targetSource, targetId, evidence].every(value => typeof value === "string" && value.trim())) {
       throw Error("A confirmed identity link requires two scoped identifiers and documented evidence");
     }
-    return transaction(() => {
-      const existing = external(kind, source, scope, externalId);
-      const target = external(kind, targetSource, scope, targetId) ?? id(kind, targetSource, scope, targetId);
-      if (existing && existing !== target) throw Error("Link would rewrite an existing canonical identity");
-      query("INSERT OR IGNORE INTO entity VALUES(?,?,?)").run(target, kind, scope);
-      const insert = query("INSERT OR IGNORE INTO external_id VALUES(?,?,?,?,?,?)");
-      insert.run(kind, targetSource, scope, targetId, target, evidence);
-      insert.run(kind, source, scope, externalId, target, evidence);
-      return target;
-    });
+    const existing = external(kind, source, scope, externalId);
+    const target = external(kind, targetSource, scope, targetId) ?? id(kind, targetSource, scope, targetId);
+    if (existing && existing !== target) throw Error("Link would rewrite an existing canonical identity");
+    query("INSERT OR IGNORE INTO entity VALUES(?,?,?)").run(target, kind, scope);
+    const insert = query("INSERT OR IGNORE INTO external_id VALUES(?,?,?,?,?,?)");
+    insert.run(kind, targetSource, scope, targetId, target, evidence);
+    insert.run(kind, source, scope, externalId, target, evidence);
+    return target;
   }
+
+  const confirmLink = link => transaction(() => storeLink(link));
+  const confirmLinks = links => transaction(() => {
+    for (const link of links) storeLink(link);
+  });
 
   function ingest(record, origin, locator) {
     const { source, scope } = record;
@@ -447,7 +450,7 @@ export function openCanonicalArchive(path) {
     };
   }
   return {
-    ingestBatch, confirmLink, fields, unlink, report,
+    ingestBatch, confirmLink, confirmLinks, fields, unlink, report,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };

@@ -335,3 +335,14 @@ test("a replay of the same source row advances the checkpoint without duplicatin
   assert.equal(archive.report().linkedObservations,2);
   assert.equal(archive.report().canonicalMatches,1);
 });
+
+test("an incompatible bulk crosswalk rolls back already staged identity links", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  archive.ingestBatch("source","1",[row(1,match())]);
+  const binding = (source,externalId) => ({kind:"player",scope:"ATP",source,externalId,
+    targetSource:"review",targetId:"anchor",evidence:"synthetic"});
+  const before = archive.report();
+  assert.throws(() => archive.confirmLinks([binding("sackmann","unseen"),binding("atp","a")]), /rewrite/);
+  assert.deepEqual(archive.report(),before);
+});

@@ -81,7 +81,7 @@ async function run() {
     .filter(item => !inputs.some(({entry}) => (entry.file === item.file && entry.table === item.table) ||
       (entry.preparedIndex === item.file && item.table === "match_index")));
   try {
-    for (const link of config.links ?? []) archive.confirmLink(link);
+    if (config.links?.length) archive.confirmLinks(config.links);
     for (const [{ entry, file }, input] of inputs.map((value, index) => [value, inputTables[index]])) {
       const { digest, snapshots } = await revisionOf([file.absolute, file.preparedIndex].filter(Boolean), entry);
       const previous = archive.checkpoint(input);
