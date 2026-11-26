@@ -178,7 +178,7 @@ async function init() {
   await registerExisting(db);
   $("historicalArchiveImport").addEventListener("click", async event => {
     const file = $("historicalArchiveFile").files[0];
-    if (!file) return notify("Выберите CSV или ZIP.");
+    if (!file) return notify("Выберите CSV, JSON или ZIP.");
     const submit = event.currentTarget;
     submit.disabled = true;
     notify("Вычисляется SHA-256 и сохраняется оригинал…");
