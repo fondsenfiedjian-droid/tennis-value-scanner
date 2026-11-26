@@ -5,6 +5,29 @@ import { MAX_ARCHIVE_BYTES, readZipEntry, zipDirectory } from "./archive-zip.mjs
 import { acesRecords } from "./archive-acesapi.mjs";
 
 const BATCH_SIZE = 250;
+function auxiliaryKind(fields) {
+  const keys = new Set(fields.map(v => v.trim().toLowerCase().replace(/[\s-]+/g, "_")));
+  const has = (...names) => names.every(k => keys.has(k));
+  if (has("ranking_date","rank","player")) return "historical_ranking";
+  if (has("tour","id","elo","glicko")) return "rating_snapshot";
+  if (has("circuit","metric","window_start","window_end")) return "performance_snapshot";
+  if (has("match_id","pointnumber","pointwinner") || has("match_id","pt","ptwinner")) return "point_detail";
+  if (has("match_id","player1","player2","slam") || has("match_id","player_1","player_2","charted_by")) return "match_metadata";
+  if (has("match_id","player","row") || has("match_id","player","set") || has("match_id","server","returner","row")) return "charting_statistics";
+  if (has("id","player","birthdate")) return "player_profile";
+  return null;
+}
+function auxiliaryRow(archive, member, fileIndex, row, kind, sourceRecord, issues = []) {
+  return {id: archive.id+":"+fileIndex+":"+row, archiveId:archive.id, member,fileIndex,row,kind,sourceRecord,issues,reviewStatus:"local_research_only"};
+}
+async function* jsonRecords(blob, archive, member, index) {
+  const data = JSON.parse(await blob.text());
+  if (Array.isArray(data?.items) && data.items.every(v => v && typeof v === "object" && "id" in v && "year" in v && "start_date" in v && "tour" in v)) {
+    for (const [i, item] of data.items.entries()) yield auxiliaryRow(archive,member,index,i+1,"tournament_calendar",item);
+    return;
+  }
+  yield* acesRecords(blob,archive,member,index);
+}
 export const newJob = id => ({
   id, state: "queued", stage: "integrity", fileIndex: 0, cursor: 0, files: null,
   rows: 0, issues: {}, scores: {}, duplicates: 0, missingScores: 0, suspectRows: 0,
@@ -73,13 +96,23 @@ function evidence(row) {
 const bump = (counts, key) => { counts[key] = (counts[key] ?? 0) + 1; };
 
 async function commitBatch(db, id, fileIndex, batch) {
-  return transaction(db, ["archiveJobs", "normalizedMatches", "duplicateRegistry"], "readwrite", async tx => {
+  return transaction(db, ["archiveJobs", "normalizedMatches", "duplicateRegistry", "archiveAuxiliary"], "readwrite", async tx => {
     const jobs = tx.objectStore("archiveJobs");
     const job = await request(jobs.get(id));
     if (job.state !== "running") return job;
     const matches = tx.objectStore("normalizedMatches");
     const duplicates = tx.objectStore("duplicateRegistry");
     for (const row of batch) {
+      if (row.kind) {
+        tx.objectStore("archiveAuxiliary").add(row);
+        job.auxiliaryRows = (job.auxiliaryRows ?? 0) + 1;
+        job.auxiliaryKinds ??= {};
+        bump(job.auxiliaryKinds, row.kind);
+        job.cursor = row.row;
+        if (row.issues.length) job.suspectRows++;
+        for (const issue of row.issues) bump(job.issues, issue);
+        continue;
+      }
       const links = new Map();
       for (const key of ["sourceKey", "naturalKey"]) {
         if (!row[key]) continue;
@@ -140,12 +173,14 @@ export async function runArchive(id, progress) {
       for (let index = job.fileIndex; index < entries.length && job.state === "running"; index++) {
         member = entries[index].name;
         const blob = isZip ? await readZipEntry(archive.original, entries[index]) : archive.original;
-        let schema, batch = [], total = 0;
+        let schema, auxiliary, headers, batch = [], total = 0;
         const json = /\.json$/i.test(member);
-        const records = json ? acesRecords(blob, archive, member, index) : csvRecords(blob);
+        const records = json ? jsonRecords(blob, archive, member, index) : csvRecords(blob);
         for await (const record of records) {
-          if (!json && !schema) {
-            schema = archiveSchema(record.fields);
+          if (!json && !schema && !auxiliary) {
+            auxiliary = auxiliaryKind(record.fields);
+            if (auxiliary) headers = record.fields;
+            else schema = archiveSchema(record.fields);
             continue;
           }
           total++;
@@ -153,7 +188,7 @@ export async function runArchive(id, progress) {
             if (total % 2048 === 0 && (await get(db, "archiveJobs", id)).state !== "running") return;
             continue;
           }
-          batch.push(json ? record : normalizeArchiveRecord(record.fields, record.record, schema, archive, member, index));
+          batch.push(json ? record : auxiliary ? auxiliaryRow(archive, member, index, record.record, auxiliary, {headers, fields: record.fields}, record.fields.length === headers.length ? [] : ["field_count"]) : normalizeArchiveRecord(record.fields, record.record, schema, archive, member, index));
           if (batch.length < BATCH_SIZE) continue;
           job = await commitBatch(db, id, index, batch);
           progress(job);
