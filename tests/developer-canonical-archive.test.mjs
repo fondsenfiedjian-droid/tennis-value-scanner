@@ -320,3 +320,18 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
   updatePlayers.close();
 
 });
+
+test("a replay of the same source row advances the checkpoint without duplicating an observation", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const first = { ...row(1,match()), locator:{sourceFile:"original.csv",sourceRow:9} };
+  archive.ingestBatch("original","1",[first],{complete:true});
+  const replay = {...first,locator:{source:"original.csv",source_row:"9",file:"new-import.sqlite"}};
+  const distinct = {...first,position:2,locator:{source:"original.csv",source_row:10}};
+  archive.ingestBatch("replay","2",[replay],{expectedPosition:0});
+  assert.equal(archive.report().linkedObservations,1);
+  assert.equal(archive.checkpoint("replay").position,1);
+  archive.ingestBatch("replay","2",[distinct],{complete:true,expectedPosition:1});
+  assert.equal(archive.report().linkedObservations,2);
+  assert.equal(archive.report().canonicalMatches,1);
+});

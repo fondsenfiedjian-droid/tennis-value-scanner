@@ -48,6 +48,18 @@ function scoreFromSideOne(value, reverse) {
   }).join(" ");
 }
 
+function observationCoordinate(locator) {
+  const file = locator?.sourceFile ?? locator?.source_file ?? locator?.source;
+  const row = locator?.sourceRow ?? locator?.source_row;
+  if (clean(file) && Number.isSafeInteger(Number(row)) && Number(row) > 0) {
+    return key("source", clean(file), Number(row));
+  }
+  if (locator?.sha256Revision && locator.file && Number.isSafeInteger(locator.row) && locator.row > 0) {
+    return key("input", locator.sha256Revision, locator.file, locator.table ?? null, locator.member ?? null, locator.row);
+  }
+  return null;
+}
+
 const schema = `
 CREATE TABLE IF NOT EXISTS entity (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL, scope TEXT NOT NULL
@@ -85,6 +97,7 @@ CREATE TABLE IF NOT EXISTS observations (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS observation_match ON observations(match_id);
 CREATE INDEX IF NOT EXISTS observation_source ON observations(source_key);
+CREATE INDEX IF NOT EXISTS observation_digest ON observations(digest);
 CREATE INDEX IF NOT EXISTS observation_match_source ON observations(match_id, source, source_key);
 CREATE TABLE IF NOT EXISTS claims (
   origin TEXT NOT NULL REFERENCES observations(origin), field TEXT NOT NULL, value TEXT NOT NULL,
@@ -220,6 +233,9 @@ export function openCanonicalArchive(path) {
       if (previous.digest !== digest) throw Error("Changed source row at " + origin);
       return;
     }
+    const coordinate = observationCoordinate(locator);
+    if (coordinate && query("SELECT locator FROM observations WHERE digest=?").all(digest)
+      .some(row => observationCoordinate(JSON.parse(row.locator)) === coordinate)) return;
     const sourceKey = clean(record.externalId) ? key(source, scope, clean(record.externalId)) : null;
     const insert = (matchId, reason, payload) => query("INSERT INTO observations VALUES(?,?,?,?,?,?,?,?)")
       .run(origin, source || "unknown", sourceKey, digest, matchId, JSON.stringify(locator), reason, payload);
