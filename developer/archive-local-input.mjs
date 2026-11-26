@@ -376,6 +376,14 @@ function readPlayerProof(root, file) {
   const identities = new Map();
   const signatures = new Map();
   const identityKey = (provider, scope, id) => JSON.stringify([slug(provider), scope, String(id)]);
+  const direct = (provider, id) => {
+    const profile = identities.get(id);
+    if (profile?.births.size !== 1 || profile.signatures.size !== 1) return null;
+    const [signature] = profile.signatures;
+    return signatures.get(JSON.stringify([slug(provider),signature])).size === 1 ? signature : null;
+  };
+  const links = new Map();
+  const linkedSignatures = new Map();
   try {
     for (const row of db.prepare(`
       SELECT provider,circuit,player_id,normalized,birthdate FROM unified_player_index
@@ -396,13 +404,40 @@ function readPlayerProof(root, file) {
       if (!signatures.has(scoped)) signatures.set(scoped,new Set());
       signatures.get(scoped).add(id);
     }
+    if (db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='verified_link_evidence'").get()) {
+      const verified = db.prepare(`
+        SELECT open_id,tour,target_id,target_provider,target_tour,target_normalized
+        FROM verified_link_evidence WHERE status='id_name_tour_agree'
+      `);
+      for (const row of verified.iterate()) {
+        const scope = scopeOf(row.tour);
+        const provider = slug(row.target_provider);
+        if (!scope || scope !== scopeOf(row.target_tour) || !provider || !row.target_id) continue;
+        const bridge = direct("opentennisdata",identityKey("opentennisdata",scope,row.open_id));
+        if (!bridge || JSON.parse(bridge)[1] !== String(row.target_normalized ?? "").trim().toLowerCase()) continue;
+        const target = identityKey(provider,scope,row.target_id);
+        if (!links.has(target)) links.set(target,new Set());
+        links.get(target).add(bridge);
+        const key = JSON.stringify([provider,bridge]);
+        if (!linkedSignatures.has(key)) linkedSignatures.set(key,new Set());
+        linkedSignatures.get(key).add(target);
+      }
+    }
   } finally { db.close(); }
   return (provider,circuit,id) => {
     if (id == null || !String(id).trim()) return null;
-    const profile = identities.get(identityKey(provider,scopeOf(circuit),id));
-    if (profile?.births.size !== 1 || profile.signatures.size !== 1) return null;
-    const [signature] = profile.signatures;
-    return signatures.get(JSON.stringify([slug(provider),signature])).size === 1 ? signature : null;
+    const target = identityKey(provider,scopeOf(circuit),id);
+    const own = direct(provider,target);
+    const linked = links.get(target);
+    if (!linked) return own;
+    if (linked.size !== 1) return null;
+    const [bridge] = linked;
+    if (own) return own === bridge ? own : null;
+    if (identities.has(target)) return null;
+    const key = JSON.stringify([slug(provider),bridge]);
+    if (linkedSignatures.get(key).size !== 1 ||
+        [...(signatures.get(key) ?? [])].some(other => other !== target)) return null;
+    return bridge;
   };
 }
 

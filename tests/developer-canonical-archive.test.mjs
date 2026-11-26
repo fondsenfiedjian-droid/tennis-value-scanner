@@ -303,6 +303,20 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
   assert.deepEqual(classify(),{cross_provider_players_agree_verify_tournament:1});
   updatePlayers.exec("UPDATE unified_player_index SET birthdate=NULL WHERE player_id='fixture103'");
   assert.deepEqual(classify(),{cross_provider_player_profiles_unresolved:1});
+  updatePlayers.exec(`
+    UPDATE unified_player_index SET birthdate='1998-11-01' WHERE player_id='fixture103';
+    UPDATE unified_player_index SET birthdate=NULL WHERE provider='ATP';
+    INSERT INTO unified_player_index VALUES
+      ('OpenTennisData','open-a','Sample Alpha','sample alpha','ATP','ATP','profile',1,'1999-02-23'),
+      ('OpenTennisData','open-b','Sample Beta','sample beta','ATP','ATP','profile',1,'1998-11-01');
+    CREATE TABLE verified_link_evidence(open_id,tour,target_id,target_provider,target_tour,target_normalized,status);
+    INSERT INTO verified_link_evidence VALUES
+      ('open-a','ATP','fixture101','ATP','ATP','sample alpha','id_name_tour_agree'),
+      ('open-b','ATP','fixture102','ATP','ATP','sample beta','id_name_tour_agree');
+  `);
+  assert.deepEqual(classify(),{cross_provider_players_agree_verify_tournament:1});
+  updatePlayers.exec("UPDATE verified_link_evidence SET target_tour='WTA' WHERE open_id='open-a'");
+  assert.deepEqual(classify(),{cross_provider_player_profiles_unresolved:1});
   updatePlayers.close();
 
 });
