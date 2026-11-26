@@ -75,6 +75,13 @@ function classifyDate(value){
  if(/^\d{2}-\d{2}-\d{4}$/.test(s))return "DD-MM-YYYY или MM-DD-YYYY (неоднозначно)";
  return s?"неизвестный формат":"пустая дата";
 }
+async function analyzeLatestArchive(){
+ const db=await openDB(),tx=db.transaction("archives","readonly"),done=txDone(tx);
+ const archives=await reqValue(tx.objectStore("archives").getAll());await done;
+ archives.sort((a,b)=>b.importedAt.localeCompare(a.importedAt));
+ if(!archives.length)throw Error("Сначала сохраните CSV в исторический архив.");
+ await analyzeArchive(archives[0].id);
+}
 async function analyzeArchive(archiveId){
  const status=$("historicalArchiveStatus"),db=await openDB();
  const tx=db.transaction("archives","readonly"),done=txDone(tx);
@@ -129,6 +136,11 @@ async function importFile(){
 }
 function init(){
  if(!$("historicalArchivePanel"))return;
+ const topButton=$("historicalArchiveAnalyzeLatest");
+ if(topButton)topButton.addEventListener("click",()=>{
+  topButton.disabled=true;
+  analyzeLatestArchive().catch(e=>$("historicalArchiveStatus").textContent="Разбор остановлен: "+String(e?.message||e)).finally(()=>{topButton.disabled=false;});
+ });
  const importButton=$("historicalArchiveImport");
  if(importButton)importButton.addEventListener("click",event=>{event.preventDefault();importFile();});
  const archiveList=$("historicalArchiveList");
