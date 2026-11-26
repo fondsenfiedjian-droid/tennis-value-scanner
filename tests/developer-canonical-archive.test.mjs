@@ -224,6 +224,11 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
       round TEXT, surface TEXT, score TEXT, status TEXT, source TEXT, source_row INTEGER,
       archive TEXT, archive_row INTEGER);
     CREATE INDEX match_source ON match_index(provider,source,source_row);
+    CREATE TABLE strict_overlap_groups(date_kind TEXT,date TEXT,tournament TEXT,round TEXT,score TEXT,winner_name TEXT);
+    INSERT INTO strict_overlap_groups VALUES
+      ('tournament_start','2024-02-05','Example Open','F','6-4 6-4','Sample Alpha'),
+      ('source_match_date','2024-02-06','Example Open','SF',NULL,'Sample Beta');
+
     INSERT INTO match_index VALUES
       (1,'ATP','ATP','ATP','2024-02-05','tournament_start','sample alpha','sample beta','pair1',
        'sample alpha','example city','R32','hard','6-3 3-6 6-2','completed',
@@ -251,11 +256,17 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
     assert.equal(report.indexedProfiles,1);
     assert.deepEqual(report.isolationReasons.find(row=>row.reason==="prepared_index_unresolved"),
       {reason:"prepared_index_unresolved",n:1});
-    assert.equal(report.pendingTables.length,0);
+    assert.deepEqual(report.pendingTables,[{file:"match-index.sqlite",table:"strict_overlap_groups"}]);
   }
   const audited = spawnSync(process.execPath,["developer/archive-termux.mjs","audit-prepared",dir],{encoding:"utf8"});
   assert.equal(audited.status,0,audited.stderr);
-  const [input] = JSON.parse(audited.stdout).preparedMatchInputs;
+  const audit = JSON.parse(audited.stdout);
+  const [input] = audit.preparedMatchInputs;
+  assert.equal(audit.approvedMerges,0);
+  assert.deepEqual(audit.reviewQueue, [
+    {nextCheck:"missing_result_evidence",groups:1},
+    {nextCheck:"verify_identities_with_tournament_date",groups:1}
+  ]);
   assert.equal(input.recognizedSinglesRows,2);
   assert.equal(input.dateKinds.tournament_start,2);
   assert.equal(input.compositeIds,2);

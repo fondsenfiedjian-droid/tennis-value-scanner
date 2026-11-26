@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+import { Worker } from "node:worker_threads";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, readFileSync, statSync, writeFileSync, renameSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { openCanonicalArchive } from "./archive-canonical.mjs";
-import { adaptLocalRow, auditPreparedInput, discoverSQLite, inferEntries, localRows, safeInput, sqliteSchema } from "./archive-local-input.mjs";
+import { adaptLocalRow, discoverSQLite, inferEntries, localRows, safeInput, sqliteSchema } from "./archive-local-input.mjs";
 
 const [command = "run", ...args] = process.argv.slice(2);
 const rootDefault = "/sdcard/Download/TennisCleanArchive";
@@ -44,6 +45,17 @@ function openOutput(file, inputs = []) {
   }
   if (/^(matches|players|match-index|supplemental)\.sqlite$/i.test(basename(target))) throw Error("Use a distinct canonical database filename");
   return openCanonicalArchive(target);
+}
+
+function auditInWorker(root, entry) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./archive-worker.mjs", import.meta.url), {
+      workerData: { task: "audit-prepared", root, entry }
+    });
+    worker.once("message", ({ result, error }) => error ? reject(Error(error)) : resolve(result));
+    worker.once("error", reject);
+    worker.once("exit", code => reject(Error("Archive worker exited before returning its report (" + code + ")")));
+  });
 }
 
 async function run() {
@@ -106,7 +118,7 @@ try {
   else if (command === "audit-prepared") {
     const root = realpathSync(args[0] ?? rootDefault);
     const { entries } = inferEntries(root, discoverSQLite(root));
-    output(auditPreparedInput(root, entries.find(entry => entry.preparedIndex)));
+    output(await auditInWorker(root, entries.find(entry => entry.preparedIndex)));
   } else if (command === "inspect") {
     const root = realpathSync(args[0] ?? rootDefault);
     const files = discoverSQLite(root);

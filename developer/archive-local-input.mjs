@@ -249,9 +249,27 @@ export function auditPreparedInput(root, entry) {
     }
     const index = new DatabaseSync(safeInput(root,entry.preparedIndex).absolute,{ readOnly: true });
     try {
-      const strictRows = index.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='strict_overlap_groups'").get()
-        ? index.prepare("SELECT date_kind, count(*) AS groups FROM strict_overlap_groups GROUP BY date_kind").all() : [];
-      return { preparedMatchInputs: [...coverage.values()], strictOverlapCandidatesByDateKind: strictRows };
+      const hasGroups = index.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='strict_overlap_groups'").get();
+      const strictRows = hasGroups
+        ? index.prepare("SELECT date_kind, count(*) AS groups FROM strict_overlap_groups GROUP BY date_kind ORDER BY date_kind").all() : [];
+      const reviewQueue = hasGroups ? index.prepare(`
+        WITH flags AS (
+          SELECT CASE
+            WHEN nullif(trim(tournament),'') IS NULL THEN 'missing_tournament'
+            WHEN nullif(trim(round),'') IS NULL THEN 'missing_round'
+            WHEN nullif(trim(score),'') IS NULL OR nullif(trim(winner_name),'') IS NULL THEN 'missing_result_evidence'
+            WHEN lower(replace(replace(date_kind,'_',''),'-','')) IN
+              ('matchdate','matchstart','matchstartutc','sourcematchdate','sourcetimestamputc')
+              AND nullif(trim(date),'') IS NOT NULL THEN 'verify_identities_with_match_date'
+            WHEN lower(replace(replace(date_kind,'_',''),'-','')) IN ('tournamentdate','tournamentstart')
+              THEN 'verify_identities_with_tournament_date'
+            ELSE 'verify_date_scope'
+          END AS nextCheck
+          FROM strict_overlap_groups
+        ) SELECT nextCheck, count(*) AS groups FROM flags GROUP BY nextCheck ORDER BY nextCheck
+      `).all() : [];
+      return { reportType: "kortograf-prepared-audit", preparedMatchInputs: [...coverage.values()],
+        strictOverlapCandidatesByDateKind: strictRows, reviewQueue, approvedMerges: 0 };
     } finally { index.close(); }
   } finally { matches.close(); }
 }
