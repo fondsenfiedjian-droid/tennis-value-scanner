@@ -1,3 +1,5 @@
+(function(){
+"use strict";
 const DB_NAME="tvs-developer-historical-archives";
 const DB_VERSION=1;
 const MAX_BYTES=100*1024*1024;
@@ -86,3 +88,5 @@ function init(){
  refresh().then(()=>$("historicalArchiveStatus").textContent="Отдельное историческое хранилище готово. Оригиналы остаются на устройстве.").catch(e=>$("historicalArchiveStatus").textContent="Хранилище недоступно: "+e.message);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+
+})();
