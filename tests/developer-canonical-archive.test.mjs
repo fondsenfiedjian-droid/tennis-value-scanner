@@ -175,3 +175,28 @@ test("profile entries and scoped point supplements contribute without inventing 
   assert.equal(report.isolatedObservations,1);
   assert.ok(report.fieldCoverage.some(field=>field.field==="point:1"));
 });
+
+test("tournament edition identity needs city, category, surface, season and name", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const event = (id, city) => ({id,name:"Example Open",metadata:{city,category:"250",surface:"hard"}});
+  archive.ingestBatch("one","1",[
+    row(1,match({tournament:event("event","Paris")})),
+    row(2,crossSource({tournament:event("e2","Paris")})),
+    row(3,crossSource({tournament:event("e3","Lyon"),externalId:"m3"}))
+  ]);
+  assert.equal(archive.report().canonicalMatches,2);
+  assert.equal(archive.report().tournaments,2);
+});
+
+test("contradictory provider birth dates block subsequent unattended match links", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const profile = value => ({source:"atp",scope:"ATP",kind:"player_profile",profile:value});
+  archive.ingestBatch("one","1",[
+    row(1,profile(first)),row(2,profile({...first,birth:"1995-06-01"})),row(3,match())
+  ]);
+  assert.equal(archive.report().blockedProviderIds,1);
+  assert.equal(archive.report().canonicalMatches,0);
+  assert.equal(archive.report().isolatedObservations,2);
+});

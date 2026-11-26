@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS entity_claim (
   PRIMARY KEY(entity_id, origin)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS entity_birth ON entity_claim(birth, name_key, entity_id);
+CREATE TABLE IF NOT EXISTS blocked_external (
+  kind TEXT NOT NULL, source TEXT NOT NULL, scope TEXT NOT NULL, external TEXT NOT NULL,
+  origin TEXT NOT NULL, reason TEXT NOT NULL,
+  PRIMARY KEY(kind, source, scope, external)
+) STRICT;
+CREATE TABLE IF NOT EXISTS tournament_edition (
+  entity_id TEXT NOT NULL REFERENCES entity(id), source TEXT NOT NULL, signature TEXT NOT NULL,
+  PRIMARY KEY(signature, entity_id, source)
+) STRICT;
 CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY, participants TEXT NOT NULL, tournament_id TEXT NOT NULL REFERENCES entity(id),
   season INTEGER NOT NULL, scope TEXT NOT NULL, discipline TEXT NOT NULL, draw TEXT NOT NULL,
@@ -93,12 +102,18 @@ CREATE TABLE IF NOT EXISTS checkpoints (
 export function openCanonicalArchive(path) {
   const db = new DatabaseSync(path);
   try {
+    const appId = db.prepare("PRAGMA application_id").get().application_id;
+    const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map(row => row.name);
+    if (appId !== 0x54565341 && (appId !== 0 || (tables.length &&
+        !["external_id","claims","checkpoints","observations"].every(name => tables.includes(name))))) {
+      throw Error("Output database belongs to another application");
+    }
     db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA cache_size=-16000; PRAGMA temp_store=FILE;");
     const version = db.prepare("PRAGMA user_version").get().user_version;
     if (version !== 0 && version !== 1) throw Error("Unsupported canonical archive version");
     db.exec("BEGIN IMMEDIATE");
     db.exec(schema);
-    db.exec("PRAGMA user_version=1; COMMIT");
+    db.exec("PRAGMA application_id=0x54565341; PRAGMA user_version=1; COMMIT");
   } catch (error) {
     db.close();
     throw error;
@@ -125,14 +140,19 @@ export function openCanonicalArchive(path) {
 
   function entity(kind, source, scope, reference, origin) {
     const code = clean(reference?.id);
-    if (!code) return null;
+    if (!code || query("SELECT 1 FROM blocked_external WHERE kind=? AND source=? AND scope=? AND external=?")
+      .get(kind,source,scope,code)) return null;
     const name = clean(reference.name);
     const birth = calendarDate(reference.birth);
     const normalized = nameKey(name);
     let entityId = external(kind, source, scope, code);
     if (entityId && birth && query(
       "SELECT 1 FROM entity_claim WHERE entity_id=? AND birth IS NOT NULL AND birth<>? LIMIT 1"
-    ).get(entityId, birth)) return null;
+    ).get(entityId, birth)) {
+      query("INSERT INTO blocked_external VALUES(?,?,?,?,?,?)")
+        .run(kind, source, scope, code, origin, "conflicting_birth_date");
+      return null;
+    }
     let evidence = "provider_id";
     if (!entityId && kind === "player" && birth && normalized) {
       const candidates = query(`
@@ -147,9 +167,27 @@ export function openCanonicalArchive(path) {
         evidence = "name_birth_scope";
       }
     }
+    const metadata = reference.metadata ?? {};
+    const editionParts = [metadata.season, name, metadata.city, metadata.category, metadata.surface].map(token);
+    const edition = kind === "tournament" && editionParts.every(part => part && part !== "unknown")
+      ? key(scope, ...editionParts) : null;
+    if (edition && !entityId) {
+      const candidates = query(`
+        SELECT DISTINCT entity_id FROM tournament_edition
+        WHERE signature=? AND source<>? AND entity_id NOT IN (
+          SELECT entity_id FROM tournament_edition WHERE signature=? AND source=?
+        ) LIMIT 2
+      `).all(edition, source, edition, source);
+      if (candidates.length > 1) return null;
+      if (candidates.length === 1) {
+        entityId = candidates[0].entity_id;
+        evidence = "exact_edition_name_city_category_surface";
+      }
+    }
     entityId ??= id(kind, source, scope, code);
     query("INSERT OR IGNORE INTO entity VALUES(?,?,?)").run(entityId, kind, scope);
     query("INSERT OR IGNORE INTO external_id VALUES(?,?,?,?,?,?)").run(kind, source, scope, code, entityId, evidence);
+    if (edition) query("INSERT OR IGNORE INTO tournament_edition VALUES(?,?,?)").run(entityId,source,edition);
     if (name || birth || reference.metadata) {
       query("INSERT OR IGNORE INTO entity_claim VALUES(?,?,?,?,?,?)")
         .run(entityId, origin, name || null, normalized || null, birth, reference.metadata ? key(reference.metadata) : null);
@@ -223,8 +261,10 @@ export function openCanonicalArchive(path) {
     const pair = sides.map(side => JSON.stringify(side));
     const reverse = pair[0] > pair[1];
     const participants = JSON.stringify(pair.sort());
-    const tournament = entity("tournament", source, scope, record.tournament, origin);
     const season = Number(record.season);
+    const tournament = entity("tournament", source, scope, {
+      ...record.tournament, metadata: { ...record.tournament?.metadata, season }
+    }, origin);
     const roundToken = token(record.round);
     const round = rounds[roundToken] ?? roundToken;
     const draw = token(record.draw);
@@ -362,6 +402,7 @@ export function openCanonicalArchive(path) {
       linkedObservations: count("SELECT count(*) n FROM observations WHERE match_id IS NOT NULL"),
       mergedObservations: count("SELECT count(*)-(SELECT count(*) FROM matches) n FROM observations WHERE match_id IS NOT NULL"),
       isolatedObservations: count("SELECT count(*) n FROM observations WHERE match_id IS NULL AND reason<>'indexed_profile'"),
+      blockedProviderIds: count("SELECT count(*) n FROM blocked_external"),
       indexedProfiles: count("SELECT count(*) n FROM observations WHERE reason='indexed_profile'"),
       providerFileOverlap: query(`SELECT source,count(*) shared_provider_ids FROM (
         SELECT source,source_key FROM observations

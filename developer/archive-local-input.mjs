@@ -20,20 +20,20 @@ const scopeOf = value => ({
 
 export function adaptLocalRow(input, path, mapping = {}) {
   const r = Object.fromEntries(Object.entries(input).map(([k, v]) => [k.toLowerCase(), v]));
-  for (const [target, from] of Object.entries(mapping.columns ?? {})) r[target] = r[from.toLowerCase()];
   // Accept the Developer normalized shape as well as the local preparer's raw envelope.
   const rawText = get(r, "raw", "source_record", "sourcerecord", "raw_json", "record_json", "payload_json", "data_json", "normalized_json");
   const raw = typeof rawText === "string" && rawText.startsWith("{") ? JSON.parse(rawText) : rawText;
   if (raw && typeof raw === "object") {
     Object.assign(r, Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.toLowerCase(), v])));
   }
+  for (const [target, from] of Object.entries(mapping.columns ?? {})) r[target] = r[from.toLowerCase()];
   const envelope = raw && typeof raw === "object" ? { ...input, ...raw } : input;
   const sourcePath = String(get(r, "source_file", "source_path", "member", "source") ?? path);
   const pathParts = sourcePath.split(/[\\/]/);
   const sourceCandidate = slug(mapping.source ?? get(r, "provider", "source_name", "provider_name") ??
     pathParts.find(part => providers.has(slug(part))) ?? pathParts[0]);
   const source = providers.has(sourceCandidate) || mapping.source ? sourceCandidate : null;
-  const scope = mapping.scope ?? scopeOf(get(r, "scope", "tour_type_human", "gender", "genre", "circuit", "tour")) ??
+  const scope = mapping.scope ?? ["scope", "tour_type_human", "gender", "genre", "circuit", "tour"].map(k => scopeOf(r[k])).find(Boolean) ??
     (/\bwta\b/i.test(sourcePath.replaceAll("_", " ")) ? "WTA" : /\batp\b/i.test(sourcePath.replaceAll("_", " ")) ? "ATP" : undefined);
   if (mapping.kind === "player_profile" || mapping.kind === "tournament_profile") {
     return { source, scope, kind: mapping.kind, profile: { id: get(r, "player_id", "tournament_id", "id"),
@@ -97,7 +97,7 @@ export function adaptLocalRow(input, path, mapping = {}) {
   }
   return {
     source: source || null, scope,
-    discipline: mapping.discipline ?? get(r, "discipline", "match_type") ??
+    discipline: mapping.discipline ?? ({single:"singles",singles:"singles",double:"doubles",doubles:"doubles"})[slug(get(r,"discipline","match_type"))] ??
       (/\b(?:singles|double|doubles)\b/i.test(sourcePath.replaceAll("_"," ")) ?
         (/\bdoubles?\b/i.test(sourcePath.replaceAll("_"," ")) ? "doubles" : "singles") : undefined) ??
       (winnerFirst && ["sackmann","sackmannextended","tennismylife"].includes(source) &&
