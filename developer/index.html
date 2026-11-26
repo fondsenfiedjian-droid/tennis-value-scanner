@@ -1134,6 +1134,18 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 </div>
 
 <div class="stats-view" id="statsView">
+<section class="panel" id="historicalArchivePanel" style="margin:16px 0">
+  <div class="section-head" style="margin-top:0"><h2>Исторические данные · отдельный архив</h2><button type="button" class="linkbtn" id="historicalArchiveRefresh">Обновить</button></div>
+  <div class="muted">Отдельно от архива прогнозов. Оригинальные CSV хранятся локально в IndexedDB этого браузера. Никакие файлы не отправляются на сервер. Импорт ещё не подтверждает матчи и не передаёт их модели.</div>
+  <div class="stats" style="margin-top:12px"><div class="panel"><div class="muted">Оригинальных архивов</div><div class="stat-num" id="historicalArchiveCount">0</div></div><div class="panel"><div class="muted">Режим хранения</div><div class="stat-num" style="font-size:15px">Локальный</div></div></div>
+  <div class="field"><label for="historicalArchiveSource">Предполагаемый источник (не считается подтверждением)</label><select id="historicalArchiveSource"><option value="unknown">Не определён</option><option value="tennismylife">TennisMyLife</option><option value="sackmann">Jeff Sackmann</option><option value="valuebetennis">ValueBetennis</option><option value="other">Другой CSV</option></select></div>
+  <div class="field"><label for="historicalArchiveFile">CSV-файл (до 100 МБ)</label><input id="historicalArchiveFile" type="file" accept=".csv,text/csv"></div>
+  <button type="button" class="refresh" id="historicalArchiveImport">Сохранить оригинал в исторический архив</button>
+  <div class="muted" id="historicalArchiveStatus" role="status" aria-live="polite">Проверка хранилища…</div>
+  <div class="section-head"><h3>Загруженные оригиналы</h3></div><div class="archive-list" id="historicalArchiveList"><div class="archive-item">Загрузка…</div></div>
+  <div class="section-head"><h3>Журнал операций</h3></div><div class="archive-list" id="historicalArchiveLog"><div class="archive-item">Загрузка…</div></div>
+</section>
+
   <h1>Статистика прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <section class="panel research-journal" id="researchTestJournal" style="margin-top:16px">
@@ -4183,5 +4195,6 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 
 <script src="./edition-runtime.js"></script>
 <script type="module" src="./model-lab.js"></script>
+<script type="module" src="./historical-archive.js"></script>
 </body>
                                                                                                                                 </html>
