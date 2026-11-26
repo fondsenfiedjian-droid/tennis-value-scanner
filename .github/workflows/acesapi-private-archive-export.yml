@@ -1,0 +1,36 @@
+name: AcesAPI private archive export 2023–2024
+on:
+  push:
+    branches: [research/acesapi-archive-export-2023-2024]
+    paths: [.github/workflows/acesapi-private-archive-export.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: acesapi-private-archive-export
+  cancel-in-progress: false
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download bounded historical results
+        env:
+          ACESAPI_API_KEY: ${{ secrets.ACESAPI_API_KEY }}
+          ACES_EXPORT_DIR: ${{ runner.temp }}/aces-private-pages
+        run: node scripts/acesapi-private-archive-export.mjs
+      - name: Encrypt archive for private retrieval
+        run: |
+          set -euo pipefail
+          tar -C "$RUNNER_TEMP/aces-private-pages" -czf "$RUNNER_TEMP/acesapi-2023-2024.tar.gz" .
+          openssl cms -encrypt -binary -aes256 -outform DER -in "$RUNNER_TEMP/acesapi-2023-2024.tar.gz" -out "$RUNNER_TEMP/acesapi-2023-2024.cms" scripts/acesapi-archive-recipient.pem
+      - uses: actions/upload-artifact@v4
+        with:
+          name: acesapi-2023-2024-encrypted
+          path: ${{ runner.temp }}/acesapi-2023-2024.cms
+          if-no-files-found: error
+          retention-days: 1
