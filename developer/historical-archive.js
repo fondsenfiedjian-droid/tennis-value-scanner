@@ -217,4 +217,35 @@ async function init() {
   await refresh();
 }
 
-if ($("historicalArchivePanel")) init().catch(handleError);
+function bindCanonicalReport() {
+  const input = $("canonicalArchiveReport");
+  if (!input) return;
+  let generation = 0;
+  input.addEventListener("change", async () => {
+    const revision = ++generation;
+    const summary = $("canonicalArchiveSummary");
+    const file = input.files[0];
+    summary.textContent = "";
+    if (!file) return;
+    try {
+      if (file.size > 2 * 1024 * 1024) throw Error("Отчёт превышает 2 МБ.");
+      const report = JSON.parse(await file.text());
+      const counts = [report.canonicalMatches, report.mergedObservations, report.isolatedObservations];
+      if (report.reportType !== "developer-canonical-archive" ||
+          !counts.every(value => Number.isSafeInteger(value) && value >= 0)) {
+        throw Error("Выберите отчёт канонического архива Developer.");
+      }
+      if (revision !== generation) return;
+      const [matches, merged, conflicts] = counts.map(value => value.toLocaleString("ru-RU"));
+      const pending = Array.isArray(report.pendingTables) ? report.pendingTables.length : 0;
+      summary.textContent = `Записей матчей в базе ${matches} · Присоединённых наблюдений ${merged} · Изолированных строк ${conflicts} · Необработанных таблиц ${pending}. Совпадения с неустановленными связями игроков или турниров могут оставаться отдельными.`;
+    } catch (error) {
+      if (revision === generation) summary.textContent = error.message;
+    }
+  });
+}
+
+if ($("historicalArchivePanel")) {
+  bindCanonicalReport();
+  init().catch(handleError);
+}

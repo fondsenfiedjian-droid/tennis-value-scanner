@@ -1144,6 +1144,13 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 
   <div class="muted" id="historicalArchiveStatus" role="status" aria-live="polite">Проверка хранилища…</div>
   <div class="section-head"><h3>Загруженные оригиналы</h3></div><div class="archive-list" id="historicalArchiveList"><div class="archive-item">Загрузка…</div></div>
+  <details class="archive-item">
+    <summary>Канонический архив SQLite для Android</summary>
+    <p>Подготовленные базы обрабатываются в Termux. После запуска здесь можно открыть итоговый отчёт <code>tennis-canonical.sqlite.report.json</code>.</p>
+    <label for="canonicalArchiveReport">Отчёт локальной обработки</label>
+    <input type="file" id="canonicalArchiveReport" accept=".json,application/json">
+    <div id="canonicalArchiveSummary" role="status" aria-live="polite"></div>
+  </details>
   <section id="historicalArchiveAnalysis" class="archive-item" hidden></section>
   <div class="section-head"><h3>Журнал операций</h3></div><div class="archive-list" id="historicalArchiveLog"><div class="archive-item">Загрузка…</div></div>
 </section>
