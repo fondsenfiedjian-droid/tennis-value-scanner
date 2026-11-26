@@ -78,7 +78,7 @@ function classifyScoreStatus(value){
 }
 function isValidScoreFormat(value){
  const s=String(value??"").trim();if(!s)return true;
- const core=s.replace(/\b(ret\.?|retired|w\s*\/?\s*o|walkover|def\.?|defaulted|abandoned|cancelled|canceled|suspended)\b/ig,"").trim();
+ const core=s.replace(/\b(?:ret(?:ired)?\.?|w\s*\/?\s*o|walkover|def(?:aulted)?\.?|abandoned|cancelled|canceled|suspended)(?=\s|$)/ig,"").trim();
  return /^[0-9\s()-]+$/.test(core);
 }
 function classifyDate(value){
