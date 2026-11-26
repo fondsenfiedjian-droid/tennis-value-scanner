@@ -10,13 +10,19 @@ const rootDefault = "/sdcard/Download/TennisCleanArchive";
 const json = value => JSON.stringify(value, null, 2);
 const output = value => console.log(json(value));
 
-async function revisionOf(file, entry) {
+async function revisionOf(files, entry) {
   const hash = createHash("sha256").update(JSON.stringify(entry));
-  const before = statSync(file);
-  if (existsSync(file + "-wal") && statSync(file + "-wal").size) throw Error("Close the writer and checkpoint the input SQLite database: " + file);
-  for await (const chunk of createReadStream(file)) hash.update(chunk);
-  checkUnchanged(file, before);
-  return { digest: hash.digest("hex"), before };
+  const snapshots = [];
+  for (const file of files) {
+    const before = statSync(file);
+    checkUnchanged(file, before);
+    const digest = createHash("sha256");
+    for await (const chunk of createReadStream(file)) digest.update(chunk);
+    checkUnchanged(file, before);
+    hash.update(digest.digest());
+    snapshots.push([file, before]);
+  }
+  return { digest: hash.digest("hex"), snapshots };
 }
 
 function checkUnchanged(file, before) {
@@ -50,16 +56,21 @@ async function run() {
     output({ pending: inferred.pending, schemas: discovered.map(file => ({ file: relative(root, file), tables: sqliteSchema(file) })) });
     throw Error("No recognized match input. Use inspect and supply a matching manifest.");
   }
-  const inputs = config.inputs.map(entry => ({ entry, file: safeInput(root, entry.file) }));
+  const inputs = config.inputs.map(entry => {
+    const file = safeInput(root, entry.file);
+    if (entry.preparedIndex) file.preparedIndex = safeInput(root, entry.preparedIndex).absolute;
+    return { entry, file };
+  });
   const inputTables = inputs.map(({ entry, file }) => JSON.stringify([file.name, entry.table ?? entry.member ?? null]));
   if (new Set(inputTables).size !== inputTables.length) throw Error("Duplicate input path and table in manifest");
-  const archive = openOutput(destination, [...discovered, ...inputs.map(({file}) => file.absolute)]);
+  const archive = openOutput(destination, [...discovered, ...inputs.flatMap(({file}) => [file.absolute, file.preparedIndex].filter(Boolean))]);
   const pending = discovered.flatMap(file => sqliteSchema(file).map(table => ({ file: relative(root,file), table: table.name })))
-    .filter(item => !inputs.some(({entry}) => entry.file === item.file && entry.table === item.table));
+    .filter(item => !inputs.some(({entry}) => (entry.file === item.file && entry.table === item.table) ||
+      (entry.preparedIndex === item.file && item.table === "match_index")));
   try {
     for (const link of config.links ?? []) archive.confirmLink(link);
     for (const [{ entry, file }, input] of inputs.map((value, index) => [value, inputTables[index]])) {
-      const { digest, before } = await revisionOf(file.absolute, entry);
+      const { digest, snapshots } = await revisionOf([file.absolute, file.preparedIndex].filter(Boolean), entry);
       const previous = archive.checkpoint(input);
       if (previous?.revision && previous.revision !== digest) throw Error("Input changed since checkpoint: " + input);
       if (previous?.complete) continue;
@@ -69,14 +80,15 @@ async function run() {
         batch.push({ position: row.position, record: adaptLocalRow(row.raw, file.name, entry),
           locator: { file: file.name, table: entry.table ?? null, member: entry.member ?? null, row: row.position,
             sourceFile: row.raw.source_file ?? row.raw.source ?? row.raw.member ?? null,
-            sourceRow: row.raw.source_row ?? row.raw.row ?? null, sha256Revision: digest } });
+            sourceRow: row.raw.source_row ?? row.raw.row ?? null, archive: row.raw.archive ?? null,
+            archiveRow: row.raw.archive_row ?? null, sha256Revision: digest } });
         if (batch.length < 500) continue;
-        checkUnchanged(file.absolute, before);
+        snapshots.forEach(([path, before]) => checkUnchanged(path, before));
         position = archive.ingestBatch(input, digest, batch, { expectedPosition: position });
         if (position % 25000 < 500) console.error(file.name + " · " + position);
         batch = [];
       }
-      checkUnchanged(file.absolute, before);
+      snapshots.forEach(([path, before]) => checkUnchanged(path, before));
       position = archive.ingestBatch(input, digest, batch, { complete: true, expectedPosition: position });
       console.error(file.name + " · " + position + " · complete");
     }

@@ -200,3 +200,63 @@ test("contradictory provider birth dates block subsequent unattended match links
   assert.equal(archive.report().canonicalMatches,0);
   assert.equal(archive.report().isolatedObservations,2);
 });
+
+test("prepared phone archive joins indexed source coordinates and keeps tournament dates separate", t => {
+  const dir = mkdtempSync(join(tmpdir(),"canonical-prepared-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const destination = join(dir,"tennis-canonical.sqlite");
+  const matches = new DatabaseSync(join(dir,"matches.sqlite"));
+  matches.exec(`
+    CREATE TABLE matches(id INTEGER PRIMARY KEY, identity TEXT UNIQUE, fingerprint TEXT,
+      provider TEXT, tour TEXT, match_id TEXT, date TEXT, date_kind TEXT, surface TEXT,
+      player1 TEXT, player2 TEXT, winner TEXT, source TEXT, source_row INTEGER, archive TEXT, archive_row INTEGER);
+    INSERT INTO matches VALUES
+      (1,'one','a','ATP','ATP','2024-900:1','2024-02-05','tournament_start','Hard',
+        'fixture101','fixture102','fixture101','ATP/atp_matches_2024.csv',2,'matches_candidates.ndjson.gz',1),
+      (2,'two','b','ATP','ATP','2024-900:2','2024-02-05','tournament_start','Hard',
+        'fixture103','fixture104','fixture103','ATP/atp_matches_2024.csv',3,'matches_candidates.ndjson.gz',2);
+  `);
+  matches.close();
+  const index = new DatabaseSync(join(dir,"match-index.sqlite"));
+  index.exec(`
+    CREATE TABLE match_index(id INTEGER PRIMARY KEY, provider TEXT, circuit TEXT, original_tour TEXT,
+      date TEXT, date_kind TEXT, name1 TEXT, name2 TEXT, pair_key TEXT, winner_name TEXT, tournament TEXT,
+      round TEXT, surface TEXT, score TEXT, status TEXT, source TEXT, source_row INTEGER,
+      archive TEXT, archive_row INTEGER);
+    CREATE INDEX match_source ON match_index(provider,source,source_row);
+    INSERT INTO match_index VALUES
+      (1,'ATP','ATP','ATP','2024-02-05','tournament_start','sample alpha','sample beta','pair1',
+       'sample alpha','example city','R32','hard','6-3 3-6 6-2','completed',
+       'ATP/atp_matches_2024.csv',2,'matches_candidates.ndjson.gz',1),
+      (2,'ATP','ATP','ATP','2024-02-05','tournament_start','sample gamma','sample delta','pair2',
+       'sample gamma','example city','R32','hard','6-2 6-3','completed',
+       'ATP/atp_matches_2024.csv',3,'matches_candidates.ndjson.gz',999);
+  `);
+  index.close();
+  const players = new DatabaseSync(join(dir,"players.sqlite"));
+  players.exec(`
+    CREATE TABLE unified_player_index(provider TEXT, player_id TEXT, name TEXT, normalized TEXT,
+      original_tour TEXT, circuit TEXT, evidence TEXT, observations INTEGER, birthdate TEXT);
+    INSERT INTO unified_player_index VALUES ('ATP','fixture101','Sample Alpha','sample alpha',
+      'ATP','ATP','profile',1,'1999-02-23');
+  `);
+  players.close();
+  const invoke = () => spawnSync(process.execPath,["developer/archive-termux.mjs","run",dir,destination],{encoding:"utf8"});
+  for (let i=0;i<2;i++) {
+    const result = invoke();
+    assert.equal(result.status,0,result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.canonicalMatches,1);
+    assert.equal(report.missingMatchDate,1);
+    assert.equal(report.indexedProfiles,1);
+    assert.deepEqual(report.isolationReasons.find(row=>row.reason==="prepared_index_unresolved"),
+      {reason:"prepared_index_unresolved",n:1});
+    assert.equal(report.pendingTables.length,0);
+  }
+  const changed = new DatabaseSync(join(dir,"match-index.sqlite"));
+  changed.exec("UPDATE match_index SET score='6-4 6-4' WHERE id=1");
+  changed.close();
+  const retry = invoke();
+  assert.equal(retry.status,1);
+  assert.match(retry.stderr,/Input changed since checkpoint/);
+});

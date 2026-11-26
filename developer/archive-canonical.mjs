@@ -226,6 +226,7 @@ export function openCanonicalArchive(path) {
     function isolate(reason) {
       insert(null, reason, JSON.stringify(record));
     }
+    if (record.isolateReason) return isolate(record.isolateReason);
     if (!source || !scope) return isolate("unknown_source_or_scope");
     if (record.kind === "player_profile" || record.kind === "tournament_profile") {
       const kind = record.kind === "player_profile" ? "player" : "tournament";

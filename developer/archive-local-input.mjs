@@ -97,6 +97,7 @@ export function adaptLocalRow(input, path, mapping = {}) {
   }
   return {
     source: source || null, scope,
+    isolateReason: envelope.preparedReason,
     discipline: mapping.discipline ?? ({single:"singles",singles:"singles",double:"doubles",doubles:"doubles"})[slug(get(r,"discipline","match_type"))] ??
       (/\b(?:singles|double|doubles)\b/i.test(sourcePath.replaceAll("_"," ")) ?
         (/\bdoubles?\b/i.test(sourcePath.replaceAll("_"," ")) ? "doubles" : "singles") : undefined) ??
@@ -148,6 +149,10 @@ export function safeInput(root, file) {
 
 export async function* localRows(file, entry, start) {
   const { absolute, name } = file;
+  if (entry.preparedIndex) {
+    yield* preparedRows(file, entry, start);
+    return;
+  }
   if (entry.table) {
     const db = new DatabaseSync(absolute, { readOnly: true });
     try {
@@ -208,18 +213,91 @@ export async function* localRows(file, entry, start) {
   }
 }
 
+// Prepared SQLite stores IDs and display/result metadata in separate databases.
+async function* preparedRows(file, entry, start) {
+  const matches = new DatabaseSync(file.absolute, { readOnly: true });
+  try {
+    const index = new DatabaseSync(file.preparedIndex, { readOnly: true });
+    try {
+      const lookup = index.prepare(`
+        SELECT circuit, date, date_kind, name1, name2, winner_name, tournament, round, surface, score, status,
+          archive, archive_row
+        FROM match_index WHERE provider=? AND source=? AND source_row=? LIMIT 3
+      `);
+      // Require an indexed search before scanning the large input.
+      const plan = index.prepare(`EXPLAIN QUERY PLAN
+        SELECT id FROM match_index WHERE provider=? AND source=? AND source_row=?`).all("", "", 0);
+      if (!plan.some(row => /SEARCH .*provider=\? AND source=\? AND source_row=\?/i.test(row.detail))) {
+        throw Error("Prepared match index requires an index on (provider, source, source_row)");
+      }
+      const read = matches.prepare("SELECT _rowid_ AS position, * FROM matches WHERE _rowid_>? ORDER BY _rowid_");
+      for (const { position, ...m } of read.iterate(start)) {
+        const hits = m.provider != null && m.source != null && m.source_row != null
+          ? lookup.all(m.provider, m.source, m.source_row) : [];
+        const hit = hits.length < 3 && m.archive != null && m.archive_row != null
+          ? hits.filter(r => r.archive === m.archive && r.archive_row === m.archive_row) : [];
+        const r = hit.length === 1 ? hit[0] : null;
+        const provider = slug(m.provider);
+        // The Sackmann-style ATP/WTA singles files define tournament and match number in this format.
+        const standard = /^(?:ATP|WTA|Sackmann|SackmannExtended|TennisMyLife)\//i.test(m.source ?? "") &&
+          /(?:^|\/)(?:atp|wta)_matches(?:_(?:qual_chall|futures))?_\d{4}\.csv$/i.test(m.source ?? "");
+        const composite = standard ? /^(\d{4}-[^:]+):\d+$/.exec(String(m.match_id ?? "")) : null;
+        const winner = m.winner != null ? String(m.winner) : null;
+        const winnerSide = winner && winner === String(m.player1) ? 1
+          : winner && winner === String(m.player2) ? 2 : null;
+        const reason = !r ? "prepared_index_unresolved" :
+          (m.date && r.date && String(m.date) !== String(r.date)) ||
+          (m.date_kind && r.date_kind && slug(m.date_kind) !== slug(r.date_kind)) ? "prepared_date_conflict" : null;
+        const dateKind = slug(m.date_kind ?? r?.date_kind);
+        const date = m.date ?? r?.date;
+        yield { position, raw: {
+          ...m, provider, source: m.source, scope: scopeOf(r?.circuit) ?? scopeOf(m.tour),
+          player1_id: m.player1, player2_id: m.player2,
+          player1_name: r?.name1, player2_name: r?.name2,
+          tournament: r?.tournament,
+          tournament_id: composite?.[1],
+          season: composite?.[1].slice(0, 4),
+          date: null, date_kind: dateKind,
+          match_date: ["matchstart","matchstartutc","sourcematchdate","sourcetimestamputc","matchdate"].includes(dateKind) ? date : null,
+          tournament_date: ["tournamentstart","tournamentdate"].includes(dateKind) ? date : null,
+          round: r?.round,
+          status: r?.status,
+          score: r?.score,
+          surface: r?.surface ?? m.surface,
+          winner_side: winnerSide, scoreOrientation: standard ? "winner" : null,
+          discipline: standard ? "singles" : null,
+          fields: { tournamentName: r?.tournament ?? null },
+          preparedReason: reason
+        } };
+      }
+    } finally { index.close(); }
+  } finally { matches.close(); }
+}
+
 export function inferEntries(root, files) {
   const entries = [];
   const pending = [];
-  for (const file of files) {
-    const path = relative(root, file);
-    for (const { name, columns } of sqliteSchema(file)) {
+  const catalog = files.flatMap(file => sqliteSchema(file).map(table => ({ ...table, file: relative(root,file) })));
+  const has = (table, fields) => table && fields.every(field => table.columns.includes(field));
+  const find = (file, table) => catalog.find(item => basename(item.file) === file && item.name === table);
+  const matchTable = find("matches.sqlite", "matches");
+  const indexTable = find("match-index.sqlite", "match_index");
+  if (has(matchTable, ["provider","tour","match_id","player1","player2","winner","archive","archive_row","source","source_row"]) &&
+      has(indexTable, ["provider","source","source_row","archive","archive_row","name1","name2","tournament","score"])) {
+    const players = find("players.sqlite", "unified_player_index");
+    if (has(players, ["provider","circuit","player_id","name","birthdate"])) {
+      entries.push({ file: players.file, table: players.name, kind: "player_profile" });
+    }
+    entries.push({ file: matchTable.file, table: matchTable.name, preparedIndex: indexTable.file });
+  }
+  for (const { file: path, name, columns } of catalog) {
+      if (entries.some(entry => (entry.file === path && entry.table === name) ||
+          (entry.preparedIndex === path && name === "match_index"))) continue;
       const aliases = new Set(columns.map(column => column.toLowerCase()));
       const recognizable = ["raw_json", "record_json", "payload_json", "data_json", "normalized_json", "source_record", "raw"].some(c => aliases.has(c)) ||
         ["player1_id", "player1id", "winner_id", "home_id", "joueur1_id"].some(c => aliases.has(c));
-      if (basename(file) === "matches.sqlite" && recognizable) entries.push({ file: path, table: name });
+      if (basename(path) === "matches.sqlite" && recognizable) entries.push({ file: path, table: name });
       else pending.push({ file: path, table: name, columns });
-    }
   }
   if (!entries.length) {
     for (const name of ["matches_candidates.ndjson", "matches_review.ndjson"]) {
