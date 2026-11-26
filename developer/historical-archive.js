@@ -37,12 +37,20 @@ function parseCSV(input){
  if(headers.some(x=>!x))throw Error("Пустое имя столбца.");
  if(new Set(headers).size!==headers.length)throw Error("Повторяются имена столбцов.");
  const has=aliases=>aliases.some(x=>headers.includes(x));
- const groups=[["winner_name","winner"],["loser_name","loser"],["tourney_date","date","match_date"]];
- const missing=groups.filter(g=>!has(g)).map(g=>g[0]);
- if(missing.length)throw Error("Не распознаны обязательные столбцы: "+missing.join(", ")+". Оригинал не сохранён.");
+ const englishSchema=has(["winner_name","winner"])&&has(["loser_name","loser"])&&has(["tourney_date","date","match_date"]);
+ const frenchSchema=["joueur1","joueur1_id","joueur2","joueur2_id","vainqueur_id","date"].every(x=>headers.includes(x));
+ if(!englishSchema&&!frenchSchema)throw Error("Не распознана схема CSV. Нужны winner_name/loser_name/date либо французские поля joueur1, joueur1_id, joueur2, joueur2_id, vainqueur_id, date. Оригинал не сохранён.");
  const bad=rows.findIndex(r=>r.length!==headers.length);
  if(bad>=0)throw Error("Неверное число полей в строке "+(bad+2)+". Оригинал не сохранён.");
- return {headers,rowCount:rows.length};
+ if(frenchSchema){
+  const ix=Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const invalid=rows.findIndex(r=>{
+   const id1=String(r[ix.joueur1_id]??"").trim(),id2=String(r[ix.joueur2_id]??"").trim(),winner=String(r[ix.vainqueur_id]??"").trim();
+   return !String(r[ix.joueur1]??"").trim()||!String(r[ix.joueur2]??"").trim()||!id1||!id2||!winner||!(winner===id1||winner===id2)||!String(r[ix.date]??"").trim();
+  });
+  if(invalid>=0)throw Error("Некорректные игроки, дата или ID победителя в строке "+(invalid+2)+". Оригинал не сохранён.");
+ }
+ return {headers,rowCount:rows.length,schema:frenchSchema?"tennismylife-fr":"standard"};
 }
 async function log(db,action,status,details){
  const tx=db.transaction("operations","readwrite"),done=txDone(tx);
