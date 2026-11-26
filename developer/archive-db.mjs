@@ -10,7 +10,7 @@ export function request(req) {
 
 export function openArchiveDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = () => {
       const db = req.result;
       const create = (name, indexes = []) => {
@@ -22,8 +22,9 @@ export function openArchiveDB() {
       create("archives", [["sha256", { unique: true }], ["importedAt"]]);
       create("operations", [["createdAt"]]);
       const matches = create("normalizedMatches", [["archiveId"], ["reviewStatus"]]);
-      matches.createIndex("naturalKey", "naturalKey");
-      matches.createIndex("sourceKey", "sourceKey");
+      if (!matches.indexNames.contains("naturalKey")) matches.createIndex("naturalKey", "naturalKey");
+      if (!matches.indexNames.contains("sourceKey")) matches.createIndex("sourceKey", "sourceKey");
+      create("archiveAuxiliary", [["archiveId"], ["kind"], ["reviewStatus"]]);
       create("duplicateRegistry", [["archiveId"], ["reviewStatus"]]);
       create("archiveJobs");
     };
