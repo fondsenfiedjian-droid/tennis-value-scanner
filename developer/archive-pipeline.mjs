@@ -2,6 +2,8 @@ import { openArchiveDB, request, sha256, transaction } from "./archive-db.mjs";
 import { archiveSchema, csvRecords, normalizeArchiveRecord } from "./archive-csv.mjs";
 import { MAX_ARCHIVE_BYTES, readZipEntry, zipDirectory } from "./archive-zip.mjs";
 
+import { acesRecords } from "./archive-acesapi.mjs";
+
 const BATCH_SIZE = 250;
 export const newJob = id => ({
   id, state: "queued", stage: "integrity", fileIndex: 0, cursor: 0, files: null,
@@ -33,8 +35,8 @@ export async function controlJob(db, id, action) {
 }
 
 export async function importArchive(db, file, sourceHint) {
-  const extension = /\.(csv|zip)$/i.exec(file.name)?.[1].toLowerCase();
-  if (!extension || !file.size || file.size > MAX_ARCHIVE_BYTES) throw Error("Выберите CSV или ZIP размером от 1 байта до 100 МБ.");
+  const extension = /\.(csv|zip|json)$/i.exec(file.name)?.[1].toLowerCase();
+  if (!extension || !file.size || file.size > MAX_ARCHIVE_BYTES) throw Error("Выберите CSV, JSON или ZIP размером от 1 байта до 100 МБ.");
   const hash = await sha256(file);
   return transaction(db, ["archives", "archiveJobs", "operations"], "readwrite", async tx => {
     const originals = tx.objectStore("archives");
@@ -139,24 +141,26 @@ export async function runArchive(id, progress) {
         member = entries[index].name;
         const blob = isZip ? await readZipEntry(archive.original, entries[index]) : archive.original;
         let schema, batch = [], total = 0;
-        for await (const record of csvRecords(blob)) {
-          if (!schema) {
+        const json = /\.json$/i.test(member);
+        const records = json ? acesRecords(blob, archive, member, index) : csvRecords(blob);
+        for await (const record of records) {
+          if (!json && !schema) {
             schema = archiveSchema(record.fields);
             continue;
           }
           total++;
-          if (record.record <= job.cursor) {
+          if ((json ? record.row : record.record) <= job.cursor) {
             if (total % 2048 === 0 && (await get(db, "archiveJobs", id)).state !== "running") return;
             continue;
           }
-          batch.push(normalizeArchiveRecord(record.fields, record.record, schema, archive, member, index));
+          batch.push(json ? record : normalizeArchiveRecord(record.fields, record.record, schema, archive, member, index));
           if (batch.length < BATCH_SIZE) continue;
           job = await commitBatch(db, id, index, batch);
           progress(job);
           if (job.state !== "running") return;
           batch = [];
         }
-        if (!total) throw Error("В CSV нет строк данных.");
+        if (!total) throw Error("В файле нет записей данных.");
         if (batch.length) job = await commitBatch(db, id, index, batch);
         job = await updateJob(db, id, item => {
           if (item.state !== "running") return;
