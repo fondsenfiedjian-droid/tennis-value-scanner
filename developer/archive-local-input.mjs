@@ -348,7 +348,8 @@ export function inferEntries(root, files) {
     if (has(players, ["provider","circuit","player_id","name","birthdate"])) {
       entries.push({ file: players.file, table: players.name, kind: "player_profile" });
     }
-    entries.push({ file: matchTable.file, table: matchTable.name, preparedIndex: indexTable.file });
+    entries.push({ file: matchTable.file, table: matchTable.name, preparedIndex: indexTable.file,
+      ...(has(players, ["provider","circuit","player_id","normalized","birthdate"]) ? {preparedPlayers:players.file} : {}) });
   }
   for (const { file: path, name, columns } of catalog) {
       if (entries.some(entry => (entry.file === path && entry.table === name) ||
@@ -367,6 +368,42 @@ export function inferEntries(root, files) {
     }
   }
   return { entries, pending };
+}
+
+function readPlayerProof(root, file) {
+  if (!file) return () => null;
+  const db = new DatabaseSync(safeInput(root,file).absolute, { readOnly: true });
+  const identities = new Map();
+  const signatures = new Map();
+  const identityKey = (provider, scope, id) => JSON.stringify([slug(provider), scope, String(id)]);
+  try {
+    for (const row of db.prepare(`
+      SELECT provider,circuit,player_id,normalized,birthdate FROM unified_player_index
+      WHERE birthdate IS NOT NULL AND player_id IS NOT NULL
+    `).iterate()) {
+      const scope = scopeOf(row.circuit);
+      const birth = calendarDate(row.birthdate);
+      if (!scope || !birth) continue;
+      const id = identityKey(row.provider,scope,row.player_id);
+      if (!identities.has(id)) identities.set(id,{births:new Set(),signatures:new Set()});
+      const profile = identities.get(id);
+      profile.births.add(birth);
+      const name = String(row.normalized ?? "").trim().toLowerCase();
+      if (!name) continue;
+      const signature = JSON.stringify([scope,name,birth]);
+      profile.signatures.add(signature);
+      const scoped = JSON.stringify([slug(row.provider),signature]);
+      if (!signatures.has(scoped)) signatures.set(scoped,new Set());
+      signatures.get(scoped).add(id);
+    }
+  } finally { db.close(); }
+  return (provider,circuit,id) => {
+    if (id == null || !String(id).trim()) return null;
+    const profile = identities.get(identityKey(provider,scopeOf(circuit),id));
+    if (profile?.births.size !== 1 || profile.signatures.size !== 1) return null;
+    const [signature] = profile.signatures;
+    return signatures.get(JSON.stringify([slug(provider),signature])).size === 1 ? signature : null;
+  };
 }
 
 export function reviewPreparedGroups(root, entry, cursor = 0, limit = 2000) {
@@ -412,6 +449,7 @@ export function reviewPreparedGroups(root, entry, cursor = 0, limit = 2000) {
         }
       } finally { db.close(); }
     }
+    const playerProof = readPlayerProof(root, entry.preparedPlayers);
     const counts = {};
     let resolvedMembers = 0;
     for (const {group, members} of states.values()) {
@@ -420,10 +458,18 @@ export function reviewPreparedGroups(root, entry, cursor = 0, limit = 2000) {
       if (members.length >= 50) reason = "large_group_requires_separate_review";
       else if (members.length < 2 || members.length !== Number(group.records) || members.some(member => member.rows.length !== 1)) {
         reason = "archive_coordinates_unresolved";
-      } else if (new Set(members.map(member => slug(member.provider))).size !== 1) {
-        reason = "cross_provider_ids_require_verified_links";
-      } else if (new Set(members.map(member => member.circuit)).size !== 1 || !members[0].circuit) {
+      } else if (new Set(members.map(member => scopeOf(member.circuit))).size !== 1 || !scopeOf(members[0].circuit)) {
         reason = "circuit_conflict";
+      } else if (new Set(members.map(member => slug(member.provider))).size !== 1) {
+        const pairs = members.map(member => [member.rows[0].player1,member.rows[0].player2]
+          .map(id => playerProof(member.provider,member.circuit,id)));
+        if (pairs.some(pair => pair.includes(null) || pair[0] === pair[1])) {
+          reason = "cross_provider_player_profiles_unresolved";
+        } else if (new Set(pairs.map(pair => JSON.stringify(pair.sort()))).size !== 1) {
+          reason = "cross_provider_player_identity_conflict";
+        } else {
+          reason = "cross_provider_players_agree_verify_tournament";
+        }
       } else {
         const records = members.map(member => member.rows[0]);
         const ids = records.map(row => row.match_id);

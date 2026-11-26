@@ -71,7 +71,8 @@ async function run() {
   const inputs = config.inputs.map(entry => {
     const file = safeInput(root, entry.file);
     if (entry.preparedIndex) file.preparedIndex = safeInput(root, entry.preparedIndex).absolute;
-    return { entry, file };
+    const { preparedPlayers, ...importEntry } = entry;
+    return { entry: importEntry, file };
   });
   const inputTables = inputs.map(({ entry, file }) => JSON.stringify([file.name, entry.table ?? entry.member ?? null]));
   if (new Set(inputTables).size !== inputTables.length) throw Error("Duplicate input path and table in manifest");

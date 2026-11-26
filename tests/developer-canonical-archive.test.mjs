@@ -282,4 +282,27 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
   const retry = invoke();
   assert.equal(retry.status,1);
   assert.match(retry.stderr,/Input changed since checkpoint/);
+  const updateIndex = new DatabaseSync(join(dir,"match-index.sqlite"));
+  updateIndex.exec("UPDATE match_index SET provider='TennisMyLife', archive_row=2 WHERE id=2");
+  updateIndex.close();
+  const updateMatches = new DatabaseSync(join(dir,"matches.sqlite"));
+  updateMatches.exec("UPDATE matches SET provider='TennisMyLife' WHERE id=2");
+  updateMatches.close();
+  const updatePlayers = new DatabaseSync(join(dir,"players.sqlite"));
+  updatePlayers.exec(`
+    INSERT INTO unified_player_index VALUES
+      ('ATP','fixture102','Sample Beta','sample beta','ATP','ATP','profile',1,'1998-11-01'),
+      ('TennisMyLife','fixture103','Sample Beta','sample beta','ATP','ATP','profile',1,'1998-11-01'),
+      ('TennisMyLife','fixture104','Sample Alpha','sample alpha','ATP','ATP','profile',1,'1999-02-23');
+  `);
+  const classify = () => {
+    const result = spawnSync(process.execPath,["developer/archive-termux.mjs","review-prepared",dir,"0","1"],{encoding:"utf8"});
+    assert.equal(result.status,0,result.stderr);
+    return JSON.parse(result.stdout).candidateDecisions;
+  };
+  assert.deepEqual(classify(),{cross_provider_players_agree_verify_tournament:1});
+  updatePlayers.exec("UPDATE unified_player_index SET birthdate=NULL WHERE player_id='fixture103'");
+  assert.deepEqual(classify(),{cross_provider_player_profiles_unresolved:1});
+  updatePlayers.close();
+
 });
