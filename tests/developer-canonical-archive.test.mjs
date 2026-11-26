@@ -253,6 +253,12 @@ test("prepared phone archive joins indexed source coordinates and keeps tourname
       {reason:"prepared_index_unresolved",n:1});
     assert.equal(report.pendingTables.length,0);
   }
+  const audited = spawnSync(process.execPath,["developer/archive-termux.mjs","audit-prepared",dir],{encoding:"utf8"});
+  assert.equal(audited.status,0,audited.stderr);
+  const [input] = JSON.parse(audited.stdout).preparedMatchInputs;
+  assert.equal(input.recognizedSinglesRows,2);
+  assert.equal(input.dateKinds.tournament_start,2);
+  assert.equal(input.compositeIds,2);
   const changed = new DatabaseSync(join(dir,"match-index.sqlite"));
   changed.exec("UPDATE match_index SET score='6-4 6-4' WHERE id=1");
   changed.close();

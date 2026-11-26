@@ -213,6 +213,49 @@ export async function* localRows(file, entry, start) {
   }
 }
 
+function preparedSinglesSource(provider, source) {
+  const file = basename(source ?? "");
+  if (provider === "tennismylife") {
+    return /^\d{4}_(?:atp(?:_quali)?|wta|challenger)\.csv$/i.test(file) ||
+      /^(?:atp|wta)_matches(?:_qual_chall)?_\d{4}\.csv$/i.test(file);
+  }
+  return ["atp", "wta", "sackmann", "sackmannextended"].includes(provider) &&
+    /^(?:atp|wta)_matches(?:_(?:qual_chall|futures))?_\d{4}\.csv$/i.test(file);
+}
+
+export function auditPreparedInput(root, entry) {
+  if (!entry?.preparedIndex) throw Error("Prepared matches and match-index databases are required");
+  const matches = new DatabaseSync(safeInput(root,entry.file).absolute,{ readOnly: true });
+  try {
+    matches.exec("PRAGMA temp_store=FILE");
+    const rows = matches.prepare(`
+      SELECT provider, source, date_kind, COUNT(*) AS rows,
+        sum(CASE WHEN match_id GLOB '[0-9][0-9][0-9][0-9]-*:[0-9]*' THEN 1 ELSE 0 END) AS composite
+      FROM matches GROUP BY provider,source,date_kind ORDER BY provider,rows DESC
+    `).iterate();
+    const coverage = new Map();
+    for (const row of rows) {
+      const key = row.provider ?? "unknown";
+      if (!coverage.has(key)) coverage.set(key, { provider: key, rows: 0, compositeIds: 0, recognizedSinglesRows: 0,
+        dateKinds: {}, sourcePatterns: [] });
+      const provider = coverage.get(key);
+      provider.rows += row.rows;
+      provider.compositeIds += row.composite;
+      if (preparedSinglesSource(slug(key),row.source)) provider.recognizedSinglesRows += row.rows;
+      const dateKind = row.date_kind ?? "unknown";
+      provider.dateKinds[dateKind] = (provider.dateKinds[dateKind] ?? 0) + row.rows;
+      const sourcePattern = String(row.source ?? "unknown").replace(/(?<!\d)(?:19|20)\d{2}(?!\d)/g, "YYYY");
+      if (provider.sourcePatterns.length < 5 && !provider.sourcePatterns.includes(sourcePattern)) provider.sourcePatterns.push(sourcePattern);
+    }
+    const index = new DatabaseSync(safeInput(root,entry.preparedIndex).absolute,{ readOnly: true });
+    try {
+      const strictRows = index.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='strict_overlap_groups'").get()
+        ? index.prepare("SELECT date_kind, count(*) AS groups FROM strict_overlap_groups GROUP BY date_kind").all() : [];
+      return { preparedMatchInputs: [...coverage.values()], strictOverlapCandidatesByDateKind: strictRows };
+    } finally { index.close(); }
+  } finally { matches.close(); }
+}
+
 // Prepared SQLite stores IDs and display/result metadata in separate databases.
 async function* preparedRows(file, entry, start) {
   const matches = new DatabaseSync(file.absolute, { readOnly: true });
@@ -239,8 +282,7 @@ async function* preparedRows(file, entry, start) {
         const r = hit.length === 1 ? hit[0] : null;
         const provider = slug(m.provider);
         // The Sackmann-style ATP/WTA singles files define tournament and match number in this format.
-        const standard = /^(?:ATP|WTA|Sackmann|SackmannExtended|TennisMyLife)\//i.test(m.source ?? "") &&
-          /(?:^|\/)(?:atp|wta)_matches(?:_(?:qual_chall|futures))?_\d{4}\.csv$/i.test(m.source ?? "");
+        const standard = preparedSinglesSource(provider, m.source);
         const composite = standard ? /^(\d{4}-[^:]+):\d+$/.exec(String(m.match_id ?? "")) : null;
         const winner = m.winner != null ? String(m.winner) : null;
         const winnerSide = winner && winner === String(m.player1) ? 1

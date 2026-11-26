@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, readFileSync, statSync, writeFileSync, renameSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { openCanonicalArchive } from "./archive-canonical.mjs";
-import { adaptLocalRow, discoverSQLite, inferEntries, localRows, safeInput, sqliteSchema } from "./archive-local-input.mjs";
+import { adaptLocalRow, auditPreparedInput, discoverSQLite, inferEntries, localRows, safeInput, sqliteSchema } from "./archive-local-input.mjs";
 
 const [command = "run", ...args] = process.argv.slice(2);
 const rootDefault = "/sdcard/Download/TennisCleanArchive";
@@ -103,7 +103,11 @@ async function run() {
 
 try {
   if (command === "run") await run();
-  else if (command === "inspect") {
+  else if (command === "audit-prepared") {
+    const root = realpathSync(args[0] ?? rootDefault);
+    const { entries } = inferEntries(root, discoverSQLite(root));
+    output(auditPreparedInput(root, entries.find(entry => entry.preparedIndex)));
+  } else if (command === "inspect") {
     const root = realpathSync(args[0] ?? rootDefault);
     const files = discoverSQLite(root);
     output({ databases: files.map(file => ({ file: relative(root, file), tables: sqliteSchema(file) })),
@@ -118,7 +122,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
