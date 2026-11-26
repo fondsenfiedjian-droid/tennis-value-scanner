@@ -71,7 +71,7 @@ function classifyDate(value){
  const s=String(value??"").trim();
  if(/^\d{4}-\d{2}-\d{2}(?:[ T].*)?$/.test(s))return "ISO YYYY-MM-DD";
  if(/^\d{8}$/.test(s))return "YYYYMMDD";
- if(/^\d{2}\\/\d{2}\\/\d{4}$/.test(s))return "DD/MM/YYYY или MM/DD/YYYY (неоднозначно)";
+ if(/^\d{2}[/]\d{2}[/]\d{4}$/.test(s))return "DD/MM/YYYY или MM/DD/YYYY (неоднозначно)";
  if(/^\d{2}-\d{2}-\d{4}$/.test(s))return "DD-MM-YYYY или MM-DD-YYYY (неоднозначно)";
  return s?"неизвестный формат":"пустая дата";
 }
