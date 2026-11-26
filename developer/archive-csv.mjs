@@ -92,8 +92,9 @@ export function archiveSchema(fields) {
   const french = ["joueur1", "joueur1_id", "joueur2", "joueur2_id", "vainqueur_id", "date"].every(k => ix.has(k));
   const standard = [["winner_name", "winner"], ["loser_name", "loser"], ["tourney_date", "date", "match_date"]]
     .every(aliases => aliases.some(k => ix.has(k)));
-  if (!french && !standard) throw Error("Схема CSV не распознана.");
-  return { ix, headers, french, width: headers.length };
+  const tennisData = ["home_name", "away_name", "home_id", "away_id", "winner_code", "date_timestamp", "match_id"].every(k => ix.has(k));
+  if (!french && !standard && !tennisData) throw Error("Схема CSV не распознана.");
+  return { ix, headers, french, tennisData, width: headers.length };
 }
 
 // Preserve the source status even when no score is available. A blank score
@@ -132,17 +133,19 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
     return (fields[schema.ix.get(key)] ?? "").trim();
   };
   const french = schema.french;
-  const player1Name = french ? get("joueur1") : get("winner_name", "winner");
-  const player2Name = french ? get("joueur2") : get("loser_name", "loser");
-  const player1Id = french ? get("joueur1_id") : get("winner_id");
-  const player2Id = french ? get("joueur2_id") : get("loser_id");
-  const winnerId = french ? get("vainqueur_id") : player1Id;
+  const td = schema.tennisData;
+  const player1Name = french ? get("joueur1") : td ? get("home_name") : get("winner_name", "winner");
+  const player2Name = french ? get("joueur2") : td ? get("away_name") : get("loser_name", "loser");
+  const player1Id = french ? get("joueur1_id") : td ? get("home_id") : get("winner_id");
+  const player2Id = french ? get("joueur2_id") : td ? get("away_id") : get("loser_id");
+  const winnerId = french ? get("vainqueur_id") : td ? (get("winner_code") === "1" ? player1Id : get("winner_code") === "2" ? player2Id : "") : player1Id;
   const distinct = player1Name && player2Name && (!player1Id || !player2Id || player1Id !== player2Id) &&
     player1Name.toLowerCase() !== player2Name.toLowerCase();
-  const winnerSide = distinct && (!french || (winnerId && winnerId === player1Id)) ? 1 :
-    distinct && french && winnerId && winnerId === player2Id ? 2 : null;
-  const rawDate = get("date", "match_date", "tourney_date");
-  const date = normalizeDate(rawDate);
+  const winnerSide = distinct && (!(french || td) || (winnerId && winnerId === player1Id)) ? 1 :
+    distinct && (french || td) && winnerId && winnerId === player2Id ? 2 : null;
+  const rawDate = td ? get("date_timestamp") : get("date", "match_date", "tourney_date");
+  const instant = td && /^\d{10}$/.test(rawDate) ? new Date(Number(rawDate) * 1000) : null;
+  const date = td ? (instant && Number.isFinite(+instant) ? instant.toISOString().slice(0, 10) : null) : normalizeDate(rawDate);
   const tournament = get("tournoi", "tourney_name", "tournament");
   const tournamentId = get("tournoi_id", "tourney_id", "tournament_id");
   const category = get("categorie", "category", "tourney_level");
@@ -150,14 +153,14 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
   const rawSurface = get("surface");
   const surface = surfaces.get(rawSurface.toLowerCase()) ?? "unknown";
   const matchId = get("match_id");
-  const score = get("score");
-  const rawStatus = get("statut", "status", "result_status");
+  const score = td ? Array.from({length: 5}, (_, i) => [get(`home_set_${i+1}_score`), get(`away_set_${i+1}_score`)]).filter(pair => pair.every(v => /^\d+$/.test(v))).map(pair => pair.join("-")).join(" ") : get("score");
+  const rawStatus = td ? [get("status"), get("status_extra")].filter(Boolean).join(" ") : get("statut", "status", "result_status");
   const scoreClass = classifyScore(score, rawStatus);
   const openOdds = [get("cote1_ouverture"), get("cote2_ouverture")];
   const closeOdds = [get("cote1_cloture"), get("cote2_cloture")];
   const issues = [];
   if (fields.length !== schema.width) issues.push("field_count");
-  if (!distinct || (french && (!player1Id || !player2Id))) issues.push("invalid_players");
+  if (!distinct || ((french || td) && (!player1Id || !player2Id))) issues.push("invalid_players");
   if (!winnerSide) issues.push("winner_unknown");
   if (!date) issues.push("date_unknown");
   if (!category) issues.push("category_unknown");
@@ -167,7 +170,7 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
   if (openOdds.some(v => v && decimalOdds(v) === null) || closeOdds.some(v => v && decimalOdds(v) === null)) issues.push("odds_format");
   const source = archive.sourceHint && archive.sourceHint !== "unknown" ? archive.sourceHint : archive.id;
   const tourScope = /(?:^|[\\/_-])wta(?:[\\/_-]|$)/i.test(member) ? "WTA" : /(?:^|[\\/_-])atp(?:[\\/_-]|$)/i.test(member) ? "ATP" : get("genre", "gender") || "unknown";
-  const identityScope = [source, french ? "fr" : "standard", tourScope];
+  const identityScope = [td ? "tennisdataapp" : source, td ? "home_away" : french ? "fr" : "standard", td ? get("tour_type") : tourScope];
   const row = {
     id: archive.id + ":" + fileIndex + ":" + record, archiveId: archive.id, member, fileIndex, row: record,
     matchId, date, rawDate, tournament, tournamentId, category, round, surface, rawSurface,
@@ -175,7 +178,9 @@ export function normalizeArchiveRecord(fields, record, schema, archive, member, 
     player1Id, player2Id, player1Name, player2Name, winnerId, winnerSide,
     winnerName: winnerSide === 1 ? player1Name : winnerSide === 2 ? player2Name : "",
     score, rawStatus, scoreClass, openOdds: openOdds.map(decimalOdds), closeOdds: closeOdds.map(decimalOdds),
-    dateKind: schema.ix.has("date") || schema.ix.has("match_date") ? "source_match_date" : "tournament_date",
+    matchWinnerOdds: td ? [get("home_odds_match_winner"), get("away_odds_match_winner")].map(decimalOdds) : null,
+    firstSetWinnerOdds: td ? [get("home_odds_first_set_winner"), get("away_odds_first_set_winner")].map(decimalOdds) : null,
+    dateKind: td ? "source_timestamp_utc" : schema.ix.has("date") || schema.ix.has("match_date") ? "source_match_date" : "tournament_date",
     sourceRecord: Object.fromEntries(schema.headers.map((key, i) => [key, fields[i] ?? null])),
     sourceExtraFields: fields.slice(schema.width),
     issues, reviewStatus: "local_research_only"
