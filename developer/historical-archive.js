@@ -91,11 +91,12 @@ async function analyzeArchive(archiveId){
  if(parsed.schema!=="tennismylife-fr")throw Error("Предварительный разбор пока поддерживает только CSV TennisMyLife.");
  const ix=Object.fromEntries(parsed.headers.map((h,i)=>[h,i]));
  const get=(r,k)=>String(r[ix[k]]??"").trim();
- const dateCounts={},surfaceCounts={},seenIds=new Set(),seenNaturalKeys=new Set(),preview=[];
- let validWinner=0,invalidWinner=0,missingPlayers=0,missingDate=0,duplicateMatchId=0,duplicateNaturalKey=0;
+ const dateCounts={},surfaceCounts={},seenIds=new Set(),seenNaturalKeys=new Set(),naturalKeyFirst=new Map(),possibleDuplicateRows=[],preview=[];
+ let validWinner=0,invalidWinner=0,missingPlayers=0,missingDate=0,duplicateMatchId=0,duplicateNaturalKey=0,invalidScoreFormat=0,invalidOpenOdds=0,invalidCloseOdds=0;
  const missing={score:0,tournament:0,tournamentId:0,category:0,gender:0,round:0,openOdds:0,closeOdds:0};
  const present=(row,k)=>ix[k]!==undefined&&!!get(row,k);
  const naturalKey=(r)=>[get(r,"date").slice(0,10),get(r,"tournoi_id"),[get(r,"joueur1_id"),get(r,"joueur2_id")].sort().join("|")].join("|");
+  const validOdds=v=>{const n=Number(String(v).trim().replace(",","."));return Number.isFinite(n)&&n>1&&n<=100;};
  for(let i=0;i<parsed.rows.length;i++){
   const r=parsed.rows[i],id1=get(r,"joueur1_id"),id2=get(r,"joueur2_id"),winner=get(r,"vainqueur_id"),date=get(r,"date"),matchId=get(r,"match_id");
   const w1=!!id1&&winner===id1,w2=!!id2&&winner===id2;
@@ -105,18 +106,23 @@ async function analyzeArchive(archiveId){
   const dt=classifyDate(date);dateCounts[dt]=(dateCounts[dt]||0)+1;
   const surface=get(r,"surface")||"(пусто)";surfaceCounts[surface]=(surfaceCounts[surface]||0)+1;
   if(matchId){if(seenIds.has(matchId))duplicateMatchId++;else seenIds.add(matchId);}
-  const nk=naturalKey(r);if(get(r,"tournoi_id")&&id1&&id2&&date){if(seenNaturalKeys.has(nk))duplicateNaturalKey++;else seenNaturalKeys.add(nk);}
+  const nk=naturalKey(r);if(get(r,"tournoi_id")&&id1&&id2&&date){if(naturalKeyFirst.has(nk)){duplicateNaturalKey++;const first=naturalKeyFirst.get(nk);possibleDuplicateRows.push({first,duplicate:{row:i+2,matchId,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),tournament:get(r,"tournoi"),score:get(r,"score")}});}else{seenNaturalKeys.add(nk);naturalKeyFirst.set(nk,{row:i+2,matchId,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),tournament:get(r,"tournoi"),score:get(r,"score")});}}
   for(const [key,field] of [["score","score"],["tournament","tournoi"],["tournamentId","tournoi_id"],["category","categorie"],["gender","genre"],["round","tour"]])if(!present(r,field))missing[key]++;
   if(!present(r,"cote1_ouverture")||!present(r,"cote2_ouverture"))missing.openOdds++;
-  if(!present(r,"cote1_cloture")||!present(r,"cote2_cloture"))missing.closeOdds++;
-  if(preview.length<5)preview.push({row:i+2,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),winner:w1?get(r,"joueur1"):w2?get(r,"joueur2"):"НЕ ОПРЕДЕЛЁН",surface,score:get(r,"score")});
+   else if(!validOdds(get(r,"cote1_ouverture"))||!validOdds(get(r,"cote2_ouverture")))invalidOpenOdds++;
+   if(!present(r,"cote1_cloture")||!present(r,"cote2_cloture"))missing.closeOdds++;
+   else if(!validOdds(get(r,"cote1_cloture"))||!validOdds(get(r,"cote2_cloture")))invalidCloseOdds++;
+   const score=get(r,"score");
+   if(score&&!/^[0-9\\s()\\-]+$/.test(score))invalidScoreFormat++;
+   if(preview.length<5)preview.push({row:i+2,date,players:get(r,"joueur1")+" — "+get(r,"joueur2"),winner:w1?get(r,"joueur1"):w2?get(r,"joueur2"):"НЕ ОПРЕДЕЛЁН",surface,score:get(r,"score")});
  }
  const list=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>"<li>"+esc(k)+": "+v+"</li>").join("");
  const sampleRows=preview.map(p=>"<tr><td>"+p.row+"</td><td>"+esc(p.date)+"</td><td>"+esc(p.players)+"</td><td>"+esc(p.winner)+"</td><td>"+esc(p.surface)+"</td><td>"+esc(p.score)+"</td></tr>").join("");
- let panel=$("historicalArchiveAnalysis");
+ const duplicateTable=possibleDuplicateRows.length?"<table><thead><tr><th>Первая строка</th><th>Повторная строка</th><th>Дата</th><th>Турнир</th><th>Игроки</th><th>Счёт первой / повторной</th><th>match_id</th></tr></thead><tbody>"+possibleDuplicateRows.map(d=>"<tr><td>"+d.first.row+"</td><td>"+d.duplicate.row+"</td><td>"+esc(d.duplicate.date)+"</td><td>"+esc(d.duplicate.tournament)+"</td><td>"+esc(d.duplicate.players)+"</td><td>"+esc(d.first.score)+" / "+esc(d.duplicate.score)+"</td><td>"+esc(d.first.matchId)+" / "+esc(d.duplicate.matchId)+"</td></tr>").join("")+"</tbody></table>":"<p>Кандидатов на повторы не обнаружено.</p>";
+  let panel=$("historicalArchiveAnalysis");
  if(!panel){panel=document.createElement("section");panel.id="historicalArchiveAnalysis";panel.className="archive-item";$("historicalArchiveList").insertAdjacentElement("afterend",panel);}
- panel.innerHTML="<b>Предварительный разбор: "+esc(archive.name)+"</b><p>Строк: "+parsed.rowCount+" · победитель по ID определён: "+validWinner+" · спорный ID победителя: "+invalidWinner+" · неполные данные игроков: "+missingPlayers+" · пустая дата: "+missingDate+" · повторные match_id: "+duplicateMatchId+" · возможные повторы по дате/турниру/паре: "+duplicateNaturalKey+"</p><b>Форматы дат</b><ul>"+list(dateCounts)+"</ul><b>Поверхности</b><ul>"+list(surfaceCounts)+"</ul><b>Пропуски по полям</b><ul>"+Object.entries(missing).map(([k,v])=>"<li>"+esc(({score:"Без счёта",tournament:"Без названия турнира",tournamentId:"Без ID турнира",category:"Без категории",gender:"Без пола/тура",round:"Без раунда",openOdds:"Без полной пары стартовых коэффициентов",closeOdds:"Без полной пары закрывающих коэффициентов"})[k])+": "+v+"</li>").join("")+"</ul><b>Первые пять строк</b><div style='overflow-x:auto'><table><thead><tr><th>Строка</th><th>Дата</th><th>Игроки</th><th>Победитель</th><th>Покрытие</th><th>Счёт</th></tr></thead><tbody>"+sampleRows+"</tbody></table></div><p>Только чтение. Нормализованные записи не сохранены; сопоставление источников и допуск в модель не выполнялись.</p>";
- await log(db,"archive.analyze","preview_only",{archiveId,rows:parsed.rowCount,validWinner,invalidWinner,missingPlayers,missingDate,duplicateMatchId,duplicateNaturalKey,missing,dateCounts,surfaceCounts});
+ panel.innerHTML="<b>Предварительный разбор: "+esc(archive.name)+"</b><p>Строк: "+parsed.rowCount+" · победитель по ID определён: "+validWinner+" · спорный ID победителя: "+invalidWinner+" · неполные данные игроков: "+missingPlayers+" · пустая дата: "+missingDate+" · повторные match_id: "+duplicateMatchId+" · возможные повторы по дате/турниру/паре: "+duplicateNaturalKey+"</p><b>Форматы дат</b><ul>"+list(dateCounts)+"</ul><b>Поверхности</b><ul>"+list(surfaceCounts)+"</ul><b>Пропуски по полям</b><ul>"+Object.entries(missing).map(([k,v])=>"<li>"+esc(({score:"Без счёта",tournament:"Без названия турнира",tournamentId:"Без ID турнира",category:"Без категории",gender:"Без пола/тура",round:"Без раунда",openOdds:"Без полной пары стартовых коэффициентов",closeOdds:"Без полной пары закрывающих коэффициентов"})[k])+": "+v+"</li>").join("")+"</ul><b>Проверка формата</b><ul><li>Подозрительный формат счёта: "+invalidScoreFormat+"</li><li>Неправдоподобные стартовые коэффициенты: "+invalidOpenOdds+"</li><li>Неправдоподобные закрывающие коэффициенты: "+invalidCloseOdds+"</li></ul><b>Кандидаты на повторы (не удалять автоматически)</b><div style='overflow-x:auto'>"+duplicateTable+"</div><b>Первые пять строк</b><div style='overflow-x:auto'><table><thead><tr><th>Строка</th><th>Дата</th><th>Игроки</th><th>Победитель</th><th>Покрытие</th><th>Счёт</th></tr></thead><tbody>"+sampleRows+"</tbody></table></div><p>Только чтение. Нормализованные записи не сохранены; сопоставление источников и допуск в модель не выполнялись.</p>";
+ await log(db,"archive.analyze","preview_only",{archiveId,rows:parsed.rowCount,validWinner,invalidWinner,missingPlayers,missingDate,duplicateMatchId,duplicateNaturalKey,invalidScoreFormat,invalidOpenOdds,invalidCloseOdds,missing,dateCounts,surfaceCounts,possibleDuplicateRows});
  status.textContent="Предварительный разбор завершён. Оригинал не изменён; данные в модель не передавались.";
 }
 async function importFile(){
