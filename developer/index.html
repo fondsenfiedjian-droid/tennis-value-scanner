@@ -1348,6 +1348,17 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
   }
   mountIndependentScreens();
+  // Ensure the local historical archive is visible in the Archive & System screen
+  // even if independent screens were mounted earlier by another initializer.
+  (function ensureHistoricalArchiveMount(){
+    const panel=$('#historicalArchivePanel');
+    const target=$('#moreArchiveMount');
+    if(panel&&target&&!target.contains(panel)){
+      target.prepend(panel);
+      panel.hidden=false;
+      panel.style.display='block';
+    }
+  })();
   const now = new Date();
   $('#dateText').textContent = now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
   let selectedDay = 'today';
