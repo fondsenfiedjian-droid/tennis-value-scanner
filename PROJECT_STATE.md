@@ -1085,3 +1085,9 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Preview branch only (`feature/tvs2-editions-lab`, PR #171). No merge, Production deployment, model change, Worker change, or Apify configuration change.
 
 - First CI run for this UI refinement found three stale test assertions still expecting Production cache v144; the actual PWA cache was correctly advanced to v145. Updated the corresponding expectations in `tests/app-ui.test.mjs` and `tests/worker.test.mjs`; no application-code defect was reported. Re-run required before considering validation complete.
+
+## 2026-11-26 — Developer Edition historical archive pipeline
+
+- Based on the Developer Edition branch from PR #171 and linked to registry #190 and archive review issue #189.
+- The historical archive center queues CSV/ZIP imports and existing originals for local worker processing. IndexedDB v3 persists normalized research records, quality findings, duplicate candidates and the resume cursor atomically by batch.
+- See [Developer archive audit and operating notes](docs/DEVELOPER_ARCHIVE.md) for the reviewed branch inventory, supported formats, PWA behavior and the remaining review of the real ValueBetennis 2025 archive.
