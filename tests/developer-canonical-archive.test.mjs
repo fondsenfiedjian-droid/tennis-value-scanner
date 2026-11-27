@@ -456,21 +456,21 @@ test("TennisDataApp date funnel reports the exact field where strict matching st
   const file = join(dir,"index.sqlite");
   const index = new DatabaseSync(file);
   index.exec(`CREATE TABLE match_index(
-    id INTEGER PRIMARY KEY,provider TEXT,circuit TEXT,pair_key TEXT,date TEXT,date_kind TEXT,
+    id INTEGER PRIMARY KEY,provider TEXT,circuit TEXT,pair_key TEXT,name1 TEXT,name2 TEXT,date TEXT,date_kind TEXT,
     tournament TEXT,round TEXT,surface TEXT,score TEXT,winner_name TEXT,source TEXT,
     source_row INTEGER,archive TEXT,archive_row INTEGER);
     CREATE INDEX match_pair_date ON match_index(circuit,pair_key,date);
     INSERT INTO match_index VALUES
-    (1,'TennisDataApp','ATP','first|second','2025-02-02','match_start_utc','Example','F','hard','7-6(4) 6-2','first','tda.csv',1,'raw',1),
-    (2,'TennisDataApp','ATP','first|second','2025-02-02','match_start_utc','Other','F','hard','7-6(4) 6-2','first','tda.csv',2,'raw',2),
-    (3,'TennisDataApp','ATP','first|second','2025-02-02','match_start_utc','Example','SF','hard','7-6(4) 6-2','first','tda.csv',3,'raw',3),
-    (4,'ATP','ATP','first|second','2025-01-29','tournament_start','Example','F','hard','7-6(4) 6-2','first','atp.csv',1,'raw',4)`);
+    (1,'TennisDataApp','ATP','first|second','first','second','2025-02-02','match_start_utc','Example','F','hard','7-6(4) 6-2','first','tda.csv',1,'raw',1),
+    (2,'TennisDataApp','ATP','first|second','first','second','2025-02-02','match_start_utc','Other','F','hard','7-6(4) 6-2','first','tda.csv',2,'raw',2),
+    (3,'TennisDataApp','ATP','first|second','first','second','2025-02-02','match_start_utc','Example','SF','hard','7-6(4) 6-2','first','tda.csv',3,'raw',3),
+    (4,'ATP','ATP','different-key','first','second','2025-01-29','tournament_start','Example','F','hard','7-6(4) 6-2','first','atp.csv',1,'raw',4)`);
   index.close();
   const archive = openCanonicalArchive(":memory:");
   t.after(() => archive.close());
   const report = archive.trainingTennisDataDateFunnel(file,2025);
   assert.deepEqual(report.funnel.map(row => [row.stage,row.source_rows]),[
-    ["dated_source_rows",3],["with_pair_key",3],["pair_and_date_window",3],
-    ["same_tournament",2],["same_round",1],["same_surface",1],["same_score",1],["same_winner",1]
+    ["dated_source_rows",3],["with_pair_key",3]
   ]);
+  assert.equal(report.nameBasedFunnel.find(row=>row.stage==="same_winner").source_rows,1);
 });

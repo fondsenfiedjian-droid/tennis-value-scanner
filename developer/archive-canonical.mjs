@@ -803,7 +803,85 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
             WHEN 'pair_and_date_window' THEN 3 WHEN 'same_tournament' THEN 4 WHEN 'same_round' THEN 5
             WHEN 'same_surface' THEN 6 WHEN 'same_score' THEN 7 WHEN 'same_winner' THEN 8 ELSE 9 END
       `).all(from,to,`${from}-01-01`,`${to}-12-31`,from,to);
-      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel};
+      const sourceRows = query(`
+        SELECT id,circuit,date,name1,name2,tournament,round,surface,score,winner_name
+        FROM prepared_overlap.match_index
+        WHERE lower(trim(provider))='tennisdataapp' AND date_kind='match_start_utc'
+          AND date BETWEEN ? AND ?
+      `).all(`${from}-01-01`,`${to}-12-31`);
+      const references = query(`
+        SELECT circuit,date,name1,name2,tournament,round,surface,score,winner_name,
+          lower(trim(provider)) AS provider,source,source_row,archive,archive_row
+        FROM prepared_overlap.match_index
+        WHERE date_kind='tournament_start' AND date BETWEEN ? AND ?
+          AND circuit IN ('ATP','WTA')
+      `).all(`${from-1}-01-01`,`${to+1}-12-31`);
+      const pairKey = (circuit,a,b) => {
+        const names = [String(a ?? '').trim().toLowerCase(),String(b ?? '').trim().toLowerCase()].sort();
+        return names[0] && names[1] ? `${circuit}\u0000${names[0]}\u0000${names[1]}` : null;
+      };
+      const byPlayers = new Map();
+      for (const reference of references) {
+        const key = pairKey(reference.circuit,reference.name1,reference.name2);
+        if (!key) continue;
+        const matches = byPlayers.get(key) ?? [];
+        matches.push(reference);
+        byPlayers.set(key,matches);
+      }
+      const candidateCoordinates = new Set(query(`${trainingClassification}
+        SELECT DISTINCT c.scope,lower(trim(o.source)),
+          json_extract(o.locator,'$.sourceFile'),json_extract(o.locator,'$.sourceRow'),
+          json_extract(o.locator,'$.archive'),json_extract(o.locator,'$.archiveRow')
+        FROM classified c JOIN observations o ON o.match_id=c.id
+        WHERE c.season BETWEEN ? AND ? AND c.result_status IN
+          ('completed_with_score','completion_compatible_score') AND c.match_date IS NULL
+      `).all(from,to).map(row => JSON.stringify(Object.values(row))));
+      const nameCounts = new Map();
+      const stages = ['same_name_pair_within_year','same_name_pair_in_date_window','same_tournament',
+        'same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
+      for (const scope of ['ATP','WTA']) {
+        nameCounts.set(scope,Object.fromEntries(stages.map(stage => [stage,0])));
+      }
+      for (const sourceRow of sourceRows) {
+        const counts = nameCounts.get(sourceRow.circuit);
+        if (!counts) continue;
+        const matches = byPlayers.get(pairKey(sourceRow.circuit,sourceRow.name1,sourceRow.name2)) ?? [];
+        const withinYear = matches.filter(reference => {
+          const gap = (Date.parse(reference.date)-Date.parse(sourceRow.date))/86400000;
+          return gap >= -366 && gap <= 366;
+        });
+        if (withinYear.length) counts.same_name_pair_within_year++;
+        const datedMatches = withinYear.filter(reference => {
+          const gap = (Date.parse(reference.date)-Date.parse(sourceRow.date))/86400000;
+          return gap >= -21 && gap <= 7;
+        });
+        if (datedMatches.length) counts.same_name_pair_in_date_window++;
+        const tournamentMatches = datedMatches.filter(reference =>
+          sourceRow.tournament?.trim() && sourceRow.tournament.trim().toLowerCase()===reference.tournament?.trim().toLowerCase());
+        if (tournamentMatches.length) counts.same_tournament++;
+        const roundMatches = tournamentMatches.filter(reference =>
+          sourceRow.round?.trim() && sourceRow.round.trim().toLowerCase()===reference.round?.trim().toLowerCase());
+        if (roundMatches.length) counts.same_round++;
+        const surfaceMatches = roundMatches.filter(reference =>
+          ['hard','clay','grass','carpet'].includes(sourceRow.surface?.trim().toLowerCase()) &&
+          sourceRow.surface.trim().toLowerCase()===reference.surface?.trim().toLowerCase());
+        if (surfaceMatches.length) counts.same_surface++;
+        const scoreMatches = surfaceMatches.filter(reference =>
+          sourceRow.score?.trim() && sourceRow.score.trim()===reference.score?.trim());
+        if (scoreMatches.length) counts.same_score++;
+        const winnerMatches = scoreMatches.filter(reference =>
+          sourceRow.winner_name?.trim() && sourceRow.winner_name.trim().toLowerCase()===reference.winner_name?.trim().toLowerCase());
+        if (winnerMatches.length) counts.same_winner++;
+        const linksCandidate = winnerMatches.some(reference => candidateCoordinates.has(JSON.stringify([
+          sourceRow.circuit,reference.provider,reference.source,reference.source_row,reference.archive,reference.archive_row
+        ])));
+        if (linksCandidate) counts.links_to_training_candidates++;
+      }
+      const nameBasedFunnel = Array.from(nameCounts,([scope,counts]) => [
+        ...[{stage:'dated_source_rows',source_rows:sourceRows.filter(row=>row.circuit===scope).length}],
+        ...stages.map(stage=>({stage,source_rows:counts[stage]}))
+      ].map(row=>({scope,...row}))).flat();
+      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel};
     });
   }
 
