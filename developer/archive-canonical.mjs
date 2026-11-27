@@ -513,6 +513,45 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         conflict: alternatives.length > 1, alternatives }];
     }));
   }
+  function trainingCoverage(from = 2021, to = 2026) {
+    if (![from,to].every(year => Number.isInteger(year) && year >= 1800 && year <= 2200) || from > to) {
+      throw Error("Expected a valid inclusive season range");
+    }
+    const coverage = query(`
+      WITH result AS (
+        SELECT m.id, m.season, m.scope, m.match_date,
+          COUNT(DISTINCT CASE WHEN c.field='winner' THEN c.value END) AS winners,
+          MIN(CASE WHEN c.field='winner' THEN c.value END) AS winner,
+          COUNT(DISTINCT CASE WHEN c.field='score' THEN c.value END) AS scores,
+          COUNT(DISTINCT CASE WHEN c.field='tournamentDate' THEN c.value END) AS tournament_dates,
+          MAX(CASE WHEN c.field='status' AND c.value='"completed"' THEN 1 ELSE 0 END) AS completed,
+          MAX(CASE WHEN c.field='status' AND c.value IN
+            ('"retirement"','"walkover"','"default"','"withdrawn"','"abandoned"','"cancelled"','"suspended"','"interrupted"')
+            THEN 1 ELSE 0 END) AS nonstandard
+        FROM matches m
+        LEFT JOIN observations o ON o.match_id=m.id
+        LEFT JOIN claims c ON c.origin=o.origin
+        WHERE m.season BETWEEN ? AND ? AND m.discipline='singles'
+        GROUP BY m.id
+      ),
+      classified AS (
+        SELECT *, CASE
+          WHEN winners<>1 OR winner NOT IN ('1','2') OR scores<>1 THEN 'missing_or_conflicting_result'
+          WHEN nonstandard=1 THEN 'nonstandard_outcome'
+          WHEN completed=1 THEN 'completed_with_score'
+          ELSE 'completion_unverified'
+        END AS result_status
+        FROM result
+      )
+      SELECT season,scope,result_status,count(*) AS matches,
+        sum(match_date IS NOT NULL) AS with_match_date,
+        sum(match_date IS NULL AND tournament_dates=1) AS with_tournament_date_only,
+        sum(match_date IS NULL AND tournament_dates<>1) AS date_unresolved
+      FROM classified GROUP BY season,scope,result_status ORDER BY season,scope,result_status
+    `).all(from,to);
+    return { reportType:"kortograf-training-coverage", from, to, coverage };
+  }
+
   function report() {
     const count = sql => query(sql).get().n;
     return {
@@ -549,7 +588,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     };
   }
   return {
-    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report,
+    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };

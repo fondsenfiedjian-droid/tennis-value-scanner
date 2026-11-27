@@ -372,3 +372,17 @@ test("reviewed attachment preserves an existing match and is idempotent", t => {
   assert.equal(archive.report().linkedObservations,2);
   assert.deepEqual(archive.attachReviewed([reviewed],links,{apply:true}).decisions,{already_attached:1});
 });
+
+test("training coverage distinguishes completion evidence and the two date scopes", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  archive.ingestBatch("one","1",[
+    row(1,match()),
+    row(2,match({externalId:"second",round:"SF",status:null,matchDate:null,tournamentDate:"2025-01-29"})),
+    row(3,match({externalId:"third",round:"QF",status:"retirement"}))
+  ]);
+  const {coverage} = archive.trainingCoverage(2025,2025);
+  assert.deepEqual(coverage.map(r=>[r.result_status,r.matches,r.with_match_date,r.with_tournament_date_only]),[
+    ["completed_with_score",1,1,0],["completion_unverified",1,0,1],["nonstandard_outcome",1,1,0]
+  ]);
+});

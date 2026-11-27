@@ -116,6 +116,13 @@ async function run() {
 
 try {
   if (command === "run") await run();
+  else if (command === "training-coverage") {
+    const [database, from = "2021", to = "2026"] = args;
+    if (!database) throw Error("Usage: training-coverage EXISTING_DATABASE [FIRST_YEAR] [LAST_YEAR]");
+    const archive = openCanonicalArchive(realpathSync(database),{readOnly:true});
+    try { output(archive.trainingCoverage(Number(from),Number(to))); }
+    finally { archive.close(); }
+  }
   else if (command === "attach-reviewed") {
     const [database, folder, flag] = args;
     if (!database || !folder || (flag !== undefined && flag !== "--apply")) {
@@ -158,7 +165,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, training-coverage, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
