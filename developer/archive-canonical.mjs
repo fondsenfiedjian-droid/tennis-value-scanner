@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS observations (
   match_id TEXT REFERENCES matches(id), locator TEXT NOT NULL, reason TEXT, unlinked_payload TEXT
 ) STRICT;
 CREATE INDEX IF NOT EXISTS observation_match ON observations(match_id);
-CREATE INDEX IF NOT EXISTS observation_source ON observations(source_key);
+CREATE INDEX IF NOT EXISTS observation_source ON observations(source_key);\nCREATE INDEX IF NOT EXISTS observation_source_reason ON observations(source, reason);
 CREATE INDEX IF NOT EXISTS observation_digest ON observations(digest);
 CREATE INDEX IF NOT EXISTS observation_match_source ON observations(match_id, source, source_key);
 CREATE TABLE IF NOT EXISTS claims (
@@ -511,6 +511,35 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         .run(JSON.parse(anchor("matchDate") ?? "null"),JSON.parse(anchor("slot") ?? "null"),row.match_id);
       query("INSERT INTO decisions(origin,match_id,action,reason) VALUES(?,?,'unlink',?)").run(origin, row.match_id, reason);
     });
+  }
+
+  function reclassifyTennisMyLifeAnnualSingles({ apply = false, limit = 500 } = {}) {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw Error("Expected a batch limit from 1 to 5000");
+    const eligible = "source='tennismylife' AND reason='unknown_discipline_or_sides' AND unlinked_payload IS NOT NULL AND lower(json_extract(locator,'$.sourceFile')) GLOB '*tennismylife/archive/[0-9][0-9][0-9][0-9].csv' AND json_extract(unlinked_payload,'$.scope')='ATP' AND json_extract(unlinked_payload,'$.discipline') IS NULL AND json_array_length(unlinked_payload,'$.sides')=2 AND json_array_length(unlinked_payload,'$.sides[0]')=1 AND json_array_length(unlinked_payload,'$.sides[1]')=1";
+    const remaining = () => query("SELECT count(*) AS n FROM observations WHERE " + eligible).get().n;
+    if (!apply) return { mode:"preview",eligible:remaining(),processed:0,linked:0,remaining:remaining() };
+    const rows = query("SELECT origin,locator,unlinked_payload FROM observations WHERE " + eligible + " ORDER BY origin LIMIT ?").all(limit);
+    if (!rows.length) return { mode:"apply",eligible:0,processed:0,linked:0,remaining:0 };
+    const linked = transaction(() => {
+      let count = 0;
+      for (const row of rows) {
+        const record = JSON.parse(row.unlinked_payload);
+        const locator = JSON.parse(row.locator);
+        const current = query("SELECT reason,locator FROM observations WHERE origin=?").get(row.origin);
+        if (!current || current.reason !== "unknown_discipline_or_sides" ||
+            observationCoordinate(JSON.parse(current.locator)) !== observationCoordinate(locator) ||
+            query("SELECT 1 FROM claims WHERE origin=? LIMIT 1").get(row.origin) ||
+            query("SELECT 1 FROM decisions WHERE origin=? LIMIT 1").get(row.origin)) {
+          throw Error("Observation changed during TennisMyLife reclassification");
+        }
+        query("DELETE FROM observations WHERE origin=?").run(row.origin);
+        record.discipline = "singles";
+        ingest(record,row.origin,locator);
+        if (query("SELECT match_id FROM observations WHERE origin=?").get(row.origin)?.match_id) count++;
+      }
+      return count;
+    });
+    return { mode:"apply",eligible:rows.length,processed:rows.length,linked,remaining:remaining() };
   }
 
   function fields(matchId, asOf) {
@@ -1089,7 +1118,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
   }
   return {
     ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap, trainingAcesDates, trainingTennisDataDates,
-    trainingTennisDataDateFunnel,
+    trainingTennisDataDateFunnel, reclassifyTennisMyLifeAnnualSingles,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
