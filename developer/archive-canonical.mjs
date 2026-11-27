@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS checkpoints (
 ) STRICT;
 `;
 
-export function openCanonicalArchive(path, { readOnly = false } = {}) {
+export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false } = {}) {
   const db = new DatabaseSync(path, { readOnly });
   try {
     const appId = db.prepare("PRAGMA application_id").get().application_id;
@@ -151,6 +151,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       db.exec(schema);
       db.exec("PRAGMA application_id=0x54565341; PRAGMA user_version=1; COMMIT");
     }
+    if (bulkWrite) db.exec("PRAGMA synchronous=NORMAL; PRAGMA cache_size=-32000");
   } catch (error) {
     db.close();
     throw error;
@@ -513,8 +514,11 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     });
   }
 
-  function reclassifyTennisMyLifeAnnualSingles({ apply = false, limit = 500 } = {}) {
+  function reclassifyTennisMyLifeAnnualSingles({ apply = false, limit = 500, remaining: expectedRemaining } = {}) {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw Error("Expected a batch limit from 1 to 5000");
+    if (expectedRemaining != null && (!Number.isSafeInteger(expectedRemaining) || expectedRemaining < 0)) {
+      throw Error("Expected a non-negative remaining row count");
+    }
     const eligible = "source='tennismylife' AND reason='unknown_discipline_or_sides' AND unlinked_payload IS NOT NULL AND lower(json_extract(locator,'$.sourceFile')) GLOB '*tennismylife/archive/[0-9][0-9][0-9][0-9].csv' AND json_extract(unlinked_payload,'$.scope')='ATP' AND json_extract(unlinked_payload,'$.discipline') IS NULL AND json_array_length(unlinked_payload,'$.sides')=2 AND json_array_length(unlinked_payload,'$.sides[0]')=1 AND json_array_length(unlinked_payload,'$.sides[1]')=1";
     const remaining = () => query("SELECT count(*) AS n FROM observations WHERE " + eligible).get().n;
     if (!apply) return { mode:"preview",eligible:remaining(),processed:0,linked:0,remaining:remaining() };
@@ -539,7 +543,10 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       }
       return count;
     });
-    return { mode:"apply",eligible:rows.length,processed:rows.length,linked,remaining:remaining() };
+    const pending = expectedRemaining == null
+      ? (rows.length < limit ? 0 : remaining())
+      : Math.max(0,expectedRemaining - rows.length);
+    return { mode:"apply",eligible:rows.length,processed:rows.length,linked,remaining:pending };
   }
 
   function fields(matchId, asOf) {
