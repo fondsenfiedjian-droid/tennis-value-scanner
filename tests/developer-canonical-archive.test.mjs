@@ -412,3 +412,31 @@ test("training overlap counts distinct canonical candidates by strict archive co
   assert.equal(result.strict_groups_with_multiple_candidates,1);
   assert.equal(result.candidates_in_multiple_match_groups,2);
 });
+
+test("AcesAPI date audit counts strict evidence separately from already attached dates", t => {
+  const dir = mkdtempSync(join(tmpdir(),"kortograf-aces-date-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const file = join(dir,"index.sqlite");
+  const index = new DatabaseSync(file);
+  index.exec(`CREATE TABLE match_index(
+    id INTEGER PRIMARY KEY,provider TEXT,circuit TEXT,pair_key TEXT,date TEXT,date_kind TEXT,
+    tournament TEXT,round TEXT,surface TEXT,score TEXT,winner_name TEXT,source TEXT,
+    source_row INTEGER,archive TEXT,archive_row INTEGER);
+    CREATE INDEX match_pair_date ON match_index(circuit,pair_key,date);
+    INSERT INTO match_index VALUES
+    (1,'ATP','ATP','first|second','2025-01-29','tournament_start','Example','F','hard','7-6(4) 6-2','first','a.csv',1,'raw',1),
+    (2,'AcesAPI','ATP','first|second','2025-02-02','source_match_date','Example','F','hard','7-6(4) 6-2','first','aces.json',1,'raw',2),
+    (3,'AcesAPI','ATP','first|second','2025-02-03','source_match_date','Example','F','hard','6-3 6-2','first','aces.json',2,'raw',3)`);
+  index.close();
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  archive.ingestBatch("one","1",[{...row(1,match({matchDate:null,tournamentDate:"2025-01-29"})),
+    locator:{sourceFile:"a.csv",sourceRow:1,archive:"raw",archiveRow:1}}]);
+  const report = archive.trainingAcesDates(file,2025,2025);
+  assert.equal(report.sourceRows[0].rows_with_match_date,2);
+  assert.deepEqual({...report.coverage[0]},{
+    season:2025,scope:"ATP",candidates_without_match_date:1,existing_aces_link_with_date:0,
+    strict_candidates_requiring_id_review:1,ambiguous_aces_matches:0,without_aces_candidate:0
+  });
+  assert.equal(archive.report().missingMatchDate,1);
+});

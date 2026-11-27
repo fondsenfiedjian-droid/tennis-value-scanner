@@ -116,11 +116,14 @@ async function run() {
 
 try {
   if (command === "run") await run();
-  else if (command === "training-overlap") {
+  else if (["training-overlap","training-aces-dates"].includes(command)) {
     const [database,index,from = "2021",to = "2026"] = args;
-    if (!database || !index) throw Error("Usage: training-overlap EXISTING_DATABASE MATCH_INDEX [FIRST_YEAR] [LAST_YEAR]");
+    if (!database || !index) throw Error(`Usage: ${command} EXISTING_DATABASE MATCH_INDEX [FIRST_YEAR] [LAST_YEAR]`);
     const archive = openCanonicalArchive(realpathSync(database),{readOnly:true});
-    try { output(archive.trainingOverlap(realpathSync(index),Number(from),Number(to))); }
+    try {
+      const args = [realpathSync(index),Number(from),Number(to)];
+      output(command === "training-overlap" ? archive.trainingOverlap(...args) : archive.trainingAcesDates(...args));
+    }
     finally { archive.close(); }
   }
   else if (command === "training-coverage") {
@@ -172,7 +175,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, training-coverage, training-overlap, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, training-coverage, training-overlap, training-aces-dates, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

@@ -582,8 +582,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     return { reportType:"kortograf-training-coverage", from, to, coverage };
   }
 
-  function trainingOverlap(indexFile, from = 2021, to = 2026) {
-    validateSeasonRange(from,to);
+  function withPreparedIndex(indexFile, read) {
     // The audit reads from a separate input index without modifying either database.
     const wasReadOnly = db.prepare("PRAGMA query_only").get().query_only === 1;
     db.exec("PRAGMA query_only=ON");
@@ -591,6 +590,16 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     try {
       db.prepare("ATTACH DATABASE ? AS prepared_overlap").run(indexFile);
       attached = true;
+      return read();
+    } finally {
+      try { if (attached) db.exec("DETACH DATABASE prepared_overlap"); }
+      finally { if (!wasReadOnly) db.exec("PRAGMA query_only=OFF"); }
+    }
+  }
+
+  function trainingOverlap(indexFile, from = 2021, to = 2026) {
+    validateSeasonRange(from,to);
+    return withPreparedIndex(indexFile, () => {
       const coverage = query(`${trainingClassification},
         candidates AS MATERIALIZED (
           SELECT id, season, scope FROM classified
@@ -634,10 +643,81 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         ORDER BY t.season,t.scope
       `).all(from,to);
       return { reportType:"kortograf-training-overlap",from,to,coverage };
-    } finally {
-      try { if (attached) db.exec("DETACH DATABASE prepared_overlap"); }
-      finally { if (!wasReadOnly) db.exec("PRAGMA query_only=OFF"); }
-    }
+    });
+  }
+
+  function trainingAcesDates(indexFile, from = 2021, to = 2026) {
+    validateSeasonRange(from,to);
+    return withPreparedIndex(indexFile, () => {
+      const sourceRows = query(`
+        SELECT substr(date,1,4) AS year,circuit,count(*) AS rows_with_match_date
+        FROM prepared_overlap.match_index
+        WHERE lower(trim(provider))='acesapi' AND date_kind='source_match_date'
+          AND date BETWEEN ? AND ?
+        GROUP BY year,circuit ORDER BY year,circuit
+      `).all(`${from}-01-01`,`${to}-12-31`);
+      const coverage = query(`${trainingClassification},
+        candidates AS MATERIALIZED (
+          SELECT id,season,scope FROM classified
+          WHERE result_status IN ('completed_with_score','completion_compatible_score')
+            AND match_date IS NULL
+        ),
+        coordinates AS MATERIALIZED (
+          SELECT c.*,o.source AS provider,
+            json_extract(o.locator,'$.sourceFile') AS source_file,
+            json_extract(o.locator,'$.sourceRow') AS source_row,
+            json_extract(o.locator,'$.archive') AS archive_file,
+            json_extract(o.locator,'$.archiveRow') AS archive_row
+          FROM candidates c JOIN observations o ON o.match_id=c.id
+        ),
+        indexed AS MATERIALIZED (
+          SELECT DISTINCT c.id,i.id AS source_id,i.circuit AS scope,c.provider,
+            i.date_kind,i.date,i.pair_key,i.tournament,i.round,i.surface,i.score,i.winner_name
+          FROM prepared_overlap.match_index i CROSS JOIN coordinates c
+          WHERE c.provider=lower(trim(i.provider)) AND c.scope=i.circuit AND c.source_file=i.source
+            AND c.source_row=i.source_row AND c.archive_file=i.archive AND c.archive_row=i.archive_row
+            AND i.date IS NOT NULL AND i.date_kind IN ('source_match_date','tournament_start')
+        ),
+        direct AS (
+          SELECT id,source_id,date FROM indexed WHERE provider='acesapi' AND date_kind='source_match_date'
+        ),
+        reference AS (
+          SELECT * FROM indexed WHERE date_kind='tournament_start' AND nullif(trim(pair_key),'') IS NOT NULL
+        ),
+        exact AS MATERIALIZED (
+          SELECT DISTINCT r.id,i.id AS source_id,i.date
+          FROM reference r JOIN prepared_overlap.match_index i
+            ON i.circuit=r.scope AND i.pair_key=r.pair_key
+            AND i.date BETWEEN date(r.date,'-7 days') AND date(r.date,'+21 days')
+          WHERE lower(trim(i.provider))='acesapi' AND i.date_kind='source_match_date'
+            AND nullif(trim(r.tournament),'') IS NOT NULL AND lower(trim(i.tournament))=lower(trim(r.tournament))
+            AND nullif(trim(r.round),'') IS NOT NULL AND lower(trim(i.round))=lower(trim(r.round))
+            AND lower(trim(r.surface)) IN ('hard','clay','grass','carpet') AND lower(trim(i.surface))=lower(trim(r.surface))
+            AND nullif(trim(r.score),'') IS NOT NULL AND trim(i.score)=trim(r.score)
+            AND nullif(trim(r.winner_name),'') IS NOT NULL AND lower(trim(i.winner_name))=lower(trim(r.winner_name))
+        ),
+        evidence AS (
+          SELECT id,source_id,date,1 AS linked FROM direct
+          UNION ALL SELECT id,source_id,date,0 FROM exact
+        ),
+        reused AS (
+          SELECT source_id FROM evidence GROUP BY source_id HAVING count(DISTINCT id)>1
+        ),
+        hit_counts AS (
+          SELECT e.id,count(DISTINCT e.source_id) AS sources,count(DISTINCT e.date) AS dates,
+            max(e.linked) AS linked,max(r.source_id IS NOT NULL) AS reused
+          FROM evidence e LEFT JOIN reused r USING(source_id) GROUP BY e.id
+        )
+        SELECT c.season,c.scope,count(*) AS candidates_without_match_date,
+          sum(CASE WHEN h.sources=1 AND h.dates=1 AND h.reused=0 AND h.linked=1 THEN 1 ELSE 0 END) AS existing_aces_link_with_date,
+          sum(CASE WHEN h.sources=1 AND h.dates=1 AND h.reused=0 AND h.linked=0 THEN 1 ELSE 0 END) AS strict_candidates_requiring_id_review,
+          sum(CASE WHEN h.sources>1 OR h.dates>1 OR h.reused=1 THEN 1 ELSE 0 END) AS ambiguous_aces_matches,
+          sum(h.id IS NULL) AS without_aces_candidate
+        FROM candidates c LEFT JOIN hit_counts h USING(id)
+        GROUP BY c.season,c.scope ORDER BY c.season,c.scope
+      `).all(from,to);
+      return {reportType:"kortograf-aces-date-audit",from,to,sourceRows,coverage};
+    });
   }
 
   function report() {
@@ -676,7 +756,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     };
   }
   return {
-    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap,
+    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap, trainingAcesDates,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
