@@ -522,3 +522,18 @@ export function reviewPreparedGroups(root, entry, cursor = 0, limit = 2000) {
       nextCursor: groups.at(-1)?.id ?? cursor, candidateDecisions: counts, appliedMerges: 0 };
   } finally { index.close(); }
 }
+
+export function countMatchDateSources(path) {
+  const db = new DatabaseSync(path, { readOnly:true });
+  try {
+    db.exec("PRAGMA temp_store=FILE");
+    return db.prepare(`
+      SELECT provider,substr(date,1,4) AS year,circuit AS tour,date_kind,count(*) AS matches
+      FROM match_index
+      WHERE date_kind IN ('source_match_date','match_start','match_start_utc')
+        AND date>='2021-01-01' AND date<'2027-01-01'
+      GROUP BY provider,year,circuit,date_kind
+      ORDER BY year,provider,tour,date_kind
+    `).all();
+  } finally { db.close(); }
+}

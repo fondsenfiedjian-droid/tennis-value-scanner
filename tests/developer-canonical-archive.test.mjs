@@ -432,6 +432,10 @@ test("AcesAPI date audit counts strict evidence separately from already attached
   t.after(() => archive.close());
   archive.ingestBatch("one","1",[{...row(1,match({matchDate:null,tournamentDate:"2025-01-29"})),
     locator:{sourceFile:"a.csv",sourceRow:1,archive:"raw",archiveRow:1}}]);
+  const inventory = spawnSync(process.execPath,["developer/archive-termux.mjs","date-sources",file],{encoding:"utf8"});
+  assert.equal(inventory.status,0,inventory.stderr);
+  assert.match(inventory.stdout,/AcesAPI.*2025.*ATP.*source_match_date.*2/);
+  assert.doesNotMatch(inventory.stdout,/tournament_start/);
   const report = archive.trainingAcesDates(file,2025,2025);
   assert.equal(report.sourceRows[0].rows_with_match_date,2);
   assert.deepEqual({...report.coverage[0]},{
