@@ -724,9 +724,94 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     });
   }
 
+  function trainingTennisDataDateFunnelQuery(indexFile, from = 2026, to = from) {
+    validateSeasonRange(from,to);
+    return withPreparedIndex(indexFile, () => {
+      const funnel = query(`${trainingClassification},
+        dated AS MATERIALIZED (
+          SELECT id,circuit,date,pair_key,tournament,round,surface,score,winner_name
+          FROM prepared_overlap.match_index
+          WHERE lower(trim(provider))='tennisdataapp' AND date_kind='match_start_utc'
+            AND date BETWEEN ? AND ?
+        ),
+        pair_date AS MATERIALIZED (
+          SELECT a.id AS source_id,a.circuit,r.id AS reference_id,
+            a.tournament AS source_tournament,r.tournament AS reference_tournament,
+            a.round AS source_round,r.round AS reference_round,
+            a.surface AS source_surface,r.surface AS reference_surface,
+            a.score AS source_score,r.score AS reference_score,
+            a.winner_name AS source_winner,r.winner_name AS reference_winner,
+            r.source,r.source_row,r.archive,r.archive_row,r.provider
+          FROM dated a CROSS JOIN prepared_overlap.match_index r INDEXED BY match_pair_date
+          WHERE r.circuit=a.circuit AND r.pair_key=a.pair_key
+            AND r.date BETWEEN date(a.date,'-21 days') AND date(a.date,'+7 days')
+            AND r.date_kind='tournament_start' AND nullif(trim(a.pair_key),'') IS NOT NULL
+        ),
+        tournament AS MATERIALIZED (
+          SELECT * FROM pair_date WHERE nullif(trim(source_tournament),'') IS NOT NULL
+            AND lower(trim(source_tournament))=lower(trim(reference_tournament))
+        ),
+        tournament_round AS MATERIALIZED (
+          SELECT * FROM tournament
+          WHERE nullif(trim(source_round),'') IS NOT NULL AND lower(trim(source_round))=lower(trim(reference_round))
+        ),
+        tournament_round_surface AS MATERIALIZED (
+          SELECT * FROM tournament_round
+          WHERE lower(trim(source_surface)) IN ('hard','clay','grass','carpet')
+            AND lower(trim(reference_surface))=lower(trim(source_surface))
+        ),
+        tournament_round_surface_score AS MATERIALIZED (
+          SELECT * FROM tournament_round_surface
+          WHERE nullif(trim(source_score),'') IS NOT NULL AND trim(reference_score)=trim(source_score)
+        ),
+        exact_match AS MATERIALIZED (
+          SELECT * FROM tournament_round_surface_score
+          WHERE nullif(trim(source_winner),'') IS NOT NULL
+            AND lower(trim(reference_winner))=lower(trim(source_winner))
+        ),
+        candidate_coordinates AS MATERIALIZED (
+          SELECT c.id,c.scope,o.source,
+            json_extract(o.locator,'$.sourceFile') AS source_file,
+            json_extract(o.locator,'$.sourceRow') AS source_row,
+            json_extract(o.locator,'$.archive') AS archive_file,
+            json_extract(o.locator,'$.archiveRow') AS archive_row
+          FROM classified c JOIN observations o ON o.match_id=c.id
+          WHERE c.season BETWEEN ? AND ? AND c.result_status IN
+            ('completed_with_score','completion_compatible_score') AND c.match_date IS NULL
+        ),
+        linked_candidates AS (
+          SELECT DISTINCT e.source_id,c.id,c.scope FROM exact_match e
+          JOIN candidate_coordinates c ON c.scope=e.circuit AND c.source=lower(trim(e.provider))
+            AND c.source_file=e.source AND c.source_row=e.source_row
+            AND c.archive_file=e.archive AND c.archive_row=e.archive_row
+        ),
+        stages AS (
+          SELECT circuit,'dated_source_rows' AS stage,count(DISTINCT id) AS source_rows FROM dated GROUP BY circuit
+          UNION ALL SELECT circuit,'with_pair_key',count(DISTINCT id) FROM dated
+            WHERE nullif(trim(pair_key),'') IS NOT NULL GROUP BY circuit
+          UNION ALL SELECT circuit,'pair_and_date_window',count(DISTINCT source_id) FROM pair_date GROUP BY circuit
+          UNION ALL SELECT circuit,'same_tournament',count(DISTINCT source_id) FROM tournament GROUP BY circuit
+          UNION ALL SELECT circuit,'same_round',count(DISTINCT source_id) FROM tournament_round GROUP BY circuit
+          UNION ALL SELECT circuit,'same_surface',count(DISTINCT source_id) FROM tournament_round_surface GROUP BY circuit
+          UNION ALL SELECT circuit,'same_score',count(DISTINCT source_id) FROM tournament_round_surface_score GROUP BY circuit
+          UNION ALL SELECT circuit,'same_winner',count(DISTINCT source_id) FROM exact_match GROUP BY circuit
+          UNION ALL SELECT scope,'links_to_training_candidates',count(DISTINCT source_id)
+            FROM linked_candidates GROUP BY scope
+        )
+        SELECT circuit AS scope,stage,source_rows FROM stages ORDER BY scope,
+          CASE stage WHEN 'dated_source_rows' THEN 1 WHEN 'with_pair_key' THEN 2
+            WHEN 'pair_and_date_window' THEN 3 WHEN 'same_tournament' THEN 4 WHEN 'same_round' THEN 5
+            WHEN 'same_surface' THEN 6 WHEN 'same_score' THEN 7 WHEN 'same_winner' THEN 8 ELSE 9 END
+      `).all(from,to,`${from}-01-01`,`${to}-12-31`,from,to);
+      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel};
+    });
+  }
+
   const trainingAcesDates = (indexFile,from = 2021,to = 2026) => trainingMatchDates(indexFile,from,to,"acesapi");
   const trainingTennisDataDates = (indexFile,from = 2026,to = from) =>
     trainingMatchDates(indexFile,from,to,"tennisdataapp");
+  const trainingTennisDataDateFunnel = (indexFile,from = 2026,to = from) =>
+    trainingTennisDataDateFunnelQuery(indexFile,from,to);
 
   function report() {
     const count = sql => query(sql).get().n;
@@ -765,6 +850,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
   }
   return {
     ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap, trainingAcesDates, trainingTennisDataDates,
+    trainingTennisDataDateFunnel,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
