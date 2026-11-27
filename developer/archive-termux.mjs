@@ -158,7 +158,7 @@ try {
     }
     const file = realpathSync(database);
     const apply = flag === "--apply";
-    const archive = openCanonicalArchive(file,{readOnly:!apply});
+    const archive = openCanonicalArchive(file,{readOnly:!apply,bulkWrite:apply});
     try {
       if (!apply) output({ reportType:"kortograf-tennismylife-reclassification",
         ...archive.reclassifyTennisMyLifeAnnualSingles() });
@@ -169,17 +169,19 @@ try {
           try { await backup(source,backupFile); }
           finally { source.close(); }
         }
-        let processed = 0, linked = 0, result;
-        do {
-          result = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:500});
+        let processed = 0, linked = 0;
+        let pending = archive.reclassifyTennisMyLifeAnnualSingles().eligible;
+        while (pending > 0) {
+          const result = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:500,remaining:pending});
           processed += result.processed;
           linked += result.linked;
-          if (result.processed && processed % 10000 === 0) {
+          if (result.processed && processed % 5000 === 0) {
             console.error("TennisMyLife annual ATP · " + processed + " · remaining " + result.remaining);
           }
-        } while (result.remaining > 0);
+          pending = result.remaining;
+        }
         output({reportType:"kortograf-tennismylife-reclassification",mode:"apply",processed,linked,
-          remaining:result.remaining,backup:backupFile});
+          remaining:pending,backup:backupFile});
       }
     } finally { archive.close(); }
   }
