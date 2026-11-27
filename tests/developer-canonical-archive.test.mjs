@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
-import { excelDate, openCanonicalArchive } from "../developer/archive-canonical.mjs";
+import { excelDate, openCanonicalArchive } from "../developer/archive-canonical.mjs";\nimport { auditPreparedInput } from "../developer/archive-local-input.mjs";
 
 const player = (id, name, birth) => ({id, name, birth});
 const first = player("a", "Иван Петров", "1994-06-01");
@@ -116,6 +116,24 @@ test("Excel 1900 and 1904 serials stay on the source calendar day", () => {
   assert.equal(excelDate(61,"1900"),"1900-03-01");
   assert.equal(excelDate(0,"1904"),"1904-01-01");
   assert.equal(excelDate(45000),null);
+});
+
+test("TennisMyLife annual ATP source is recognized as a prepared singles archive", t => {
+  const dir = mkdtempSync(join(tmpdir(),"canonical-tennismylife-source-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const matches = new DatabaseSync(join(dir,"matches.sqlite"));
+  matches.exec(`CREATE TABLE matches(provider TEXT,source TEXT,date_kind TEXT,match_id TEXT);
+    INSERT INTO matches VALUES
+      ('TennisMyLife','TennisMyLife/archive/2026.csv','tournament_start','2026-001:1'),
+      ('TennisMyLife','TennisMyLife/archive/2026_wta.csv','tournament_start','2026-001:2'),
+      ('ATP','ATP/atp_matches_2026.csv','tournament_start','2026-001:3');`);
+  matches.close();
+  const index = new DatabaseSync(join(dir,"match-index.sqlite"));
+  index.exec("CREATE TABLE strict_overlap_groups(date_kind TEXT,date TEXT,tournament TEXT,round TEXT,score TEXT,winner_name TEXT)");
+  index.close();
+  const report = auditPreparedInput(dir,{file:"matches.sqlite",preparedIndex:"match-index.sqlite"});
+  assert.equal(report.preparedMatchInputs.find(item=>item.provider==="TennisMyLife").recognizedSinglesRows,2);
+  assert.equal(report.preparedMatchInputs.find(item=>item.provider==="ATP").recognizedSinglesRows,1);
 });
 
 test("Termux command imports SQLite read-only, checkpoints reruns and hashes original files", t => {
