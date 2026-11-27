@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { homedir } from "node:os";
 import { Worker } from "node:worker_threads";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, readFileSync, statSync, writeFileSync, renameSync } from "node:fs";
@@ -120,6 +121,12 @@ try {
     const index = realpathSync(args[0] ?? join(rootDefault,"match-index.sqlite"));
     console.table(countMatchDateSources(index));
   }
+  else if (command === "training-tennisdata-dates") {
+    const [year = "2026"] = args;
+    const archive = openCanonicalArchive(realpathSync(join(homedir(),"tennis-canonical.sqlite")),{readOnly:true});
+    try { output(archive.trainingTennisDataDates(realpathSync(join(rootDefault,"match-index.sqlite")),Number(year))); }
+    finally { archive.close(); }
+  }
   else if (["training-overlap","training-aces-dates"].includes(command)) {
     const [database,index,from = "2021",to = "2026"] = args;
     if (!database || !index) throw Error(`Usage: ${command} EXISTING_DATABASE MATCH_INDEX [FIRST_YEAR] [LAST_YEAR]`);
@@ -179,7 +186,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, date-sources, training-coverage, training-overlap, training-aces-dates, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, date-sources, training-coverage, training-overlap, training-aces-dates, training-tennisdata-dates, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

@@ -426,7 +426,8 @@ test("AcesAPI date audit counts strict evidence separately from already attached
     INSERT INTO match_index VALUES
     (1,'ATP','ATP','first|second','2025-01-29','tournament_start','Example','F','hard','7-6(4) 6-2','first','a.csv',1,'raw',1),
     (2,'AcesAPI','ATP','first|second','2025-02-02','source_match_date','Example','F','hard','7-6(4) 6-2','first','aces.json',1,'raw',2),
-    (3,'AcesAPI','ATP','first|second','2025-02-03','source_match_date','Example','F','hard','6-3 6-2','first','aces.json',2,'raw',3)`);
+    (3,'AcesAPI','ATP','first|second','2025-02-03','source_match_date','Example','F','hard','6-3 6-2','first','aces.json',2,'raw',3),
+    (4,'TennisDataApp','ATP','first|second','2025-02-02','match_start_utc','Example','F','hard','7-6(4) 6-2','first','tennisdata.csv',1,'raw',4)`);
   index.close();
   const archive = openCanonicalArchive(":memory:");
   t.after(() => archive.close());
@@ -442,5 +443,9 @@ test("AcesAPI date audit counts strict evidence separately from already attached
     season:2025,scope:"ATP",candidates_without_match_date:1,existing_aces_link_with_date:0,
     strict_candidates_requiring_id_review:1,ambiguous_aces_matches:0,without_aces_candidate:0
   });
+  const tennisData = archive.trainingTennisDataDates(file,2025);
+  assert.equal(tennisData.sourceRows[0].rows_with_match_date,1);
+  assert.equal(tennisData.coverage[0].strict_candidates_requiring_id_review,1);
+  assert.equal(tennisData.coverage[0].existing_tennisdata_link_with_date,0);
   assert.equal(archive.report().missingMatchDate,1);
 });

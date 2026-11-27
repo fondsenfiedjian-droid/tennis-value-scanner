@@ -646,16 +646,19 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     });
   }
 
-  function trainingAcesDates(indexFile, from = 2021, to = 2026) {
+  function trainingMatchDates(indexFile, from, to, source) {
     validateSeasonRange(from,to);
+    const aces = source === "acesapi";
+    const kind = aces ? "source_match_date" : "match_start_utc";
+    const label = aces ? "aces" : "tennisdata";
     return withPreparedIndex(indexFile, () => {
       const sourceRows = query(`
         SELECT substr(date,1,4) AS year,circuit,count(*) AS rows_with_match_date
         FROM prepared_overlap.match_index
-        WHERE lower(trim(provider))='acesapi' AND date_kind='source_match_date'
+        WHERE lower(trim(provider))=? AND date_kind=?
           AND date BETWEEN ? AND ?
         GROUP BY year,circuit ORDER BY year,circuit
-      `).all(`${from}-01-01`,`${to}-12-31`);
+      `).all(source,kind,`${from}-01-01`,`${to}-12-31`);
       const coverage = query(`${trainingClassification},
         candidates AS MATERIALIZED (
           SELECT id,season,scope FROM classified
@@ -670,17 +673,17 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
             json_extract(o.locator,'$.archiveRow') AS archive_row
           FROM candidates c JOIN observations o ON o.match_id=c.id
         ),
-        aces AS MATERIALIZED (
+        dated AS MATERIALIZED (
           SELECT id,circuit,date,pair_key,tournament,round,surface,score,winner_name,
             source,source_row,archive,archive_row
           FROM prepared_overlap.match_index
-          WHERE lower(trim(provider))='acesapi' AND date_kind='source_match_date'
+          WHERE lower(trim(provider))=? AND date_kind=?
             AND date BETWEEN date(?,'-7 days') AND date(?,'+21 days')
         ),
         exact_references AS MATERIALIZED (
           SELECT a.id AS source_id,a.date,r.circuit,lower(trim(r.provider)) AS provider,
             r.source,r.source_row,r.archive,r.archive_row
-          FROM aces a CROSS JOIN prepared_overlap.match_index r INDEXED BY match_pair_date
+          FROM dated a CROSS JOIN prepared_overlap.match_index r INDEXED BY match_pair_date
           WHERE r.circuit=a.circuit AND r.pair_key=a.pair_key
             AND r.date BETWEEN date(a.date,'-21 days') AND date(a.date,'+7 days')
             AND r.date_kind='tournament_start' AND nullif(trim(a.pair_key),'') IS NOT NULL
@@ -692,8 +695,8 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         ),
         evidence AS MATERIALIZED (
           SELECT DISTINCT c.id,a.id AS source_id,a.date,1 AS linked
-          FROM aces a CROSS JOIN coordinates c
-          WHERE c.provider='acesapi' AND c.scope=a.circuit AND c.source_file=a.source
+          FROM dated a CROSS JOIN coordinates c
+          WHERE c.provider=? AND c.scope=a.circuit AND c.source_file=a.source
             AND c.source_row=a.source_row AND c.archive_file=a.archive AND c.archive_row=a.archive_row
           UNION ALL
           SELECT DISTINCT c.id,r.source_id,r.date,0 AS linked
@@ -710,16 +713,20 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           FROM evidence e LEFT JOIN reused r USING(source_id) GROUP BY e.id
         )
         SELECT c.season,c.scope,count(*) AS candidates_without_match_date,
-          sum(CASE WHEN h.sources=1 AND h.dates=1 AND h.reused=0 AND h.linked=1 THEN 1 ELSE 0 END) AS existing_aces_link_with_date,
+          sum(CASE WHEN h.sources=1 AND h.dates=1 AND h.reused=0 AND h.linked=1 THEN 1 ELSE 0 END) AS existing_${label}_link_with_date,
           sum(CASE WHEN h.sources=1 AND h.dates=1 AND h.reused=0 AND h.linked=0 THEN 1 ELSE 0 END) AS strict_candidates_requiring_id_review,
-          sum(CASE WHEN h.sources>1 OR h.dates>1 OR h.reused=1 THEN 1 ELSE 0 END) AS ambiguous_aces_matches,
-          sum(h.id IS NULL) AS without_aces_candidate
+          sum(CASE WHEN h.sources>1 OR h.dates>1 OR h.reused=1 THEN 1 ELSE 0 END) AS ambiguous_${label}_matches,
+          sum(h.id IS NULL) AS without_${label}_candidate
         FROM candidates c LEFT JOIN hit_counts h USING(id)
         GROUP BY c.season,c.scope ORDER BY c.season,c.scope
-      `).all(from,to,`${from}-01-01`,`${to}-12-31`);
-      return {reportType:"kortograf-aces-date-audit",from,to,sourceRows,coverage};
+      `).all(from,to,source,kind,`${from}-01-01`,`${to}-12-31`,source);
+      return {reportType:`kortograf-${label}-date-audit`,from,to,sourceRows,coverage};
     });
   }
+
+  const trainingAcesDates = (indexFile,from = 2021,to = 2026) => trainingMatchDates(indexFile,from,to,"acesapi");
+  const trainingTennisDataDates = (indexFile,from = 2026,to = from) =>
+    trainingMatchDates(indexFile,from,to,"tennisdataapp");
 
   function report() {
     const count = sql => query(sql).get().n;
@@ -757,7 +764,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     };
   }
   return {
-    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap, trainingAcesDates,
+    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap, trainingAcesDates, trainingTennisDataDates,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
