@@ -60,6 +60,26 @@ function observationCoordinate(locator) {
   return null;
 }
 
+function regularWinningScore(scoreValue, winnerValue, scope) {
+  if (!scoreValue || !winnerValue) return 0;
+  const winner = JSON.parse(winnerValue);
+  if (![1,2].includes(winner)) return 0;
+  const sets = JSON.parse(scoreValue).split(/\s+/);
+  let won = 0, lost = 0, lastWon = false;
+  for (const set of sets) {
+    const parts = /^(\d+)-(\d+)(?:\(\d+\))?$/.exec(set);
+    if (!parts) return 0;
+    const first = Number(parts[1]), second = Number(parts[2]);
+    const high = Math.max(first,second), low = Math.min(first,second);
+    if (!(high === 6 && low <= 4 || high === 7 && [5,6].includes(low))) return 0;
+    if (set.includes("(") && !(high === 7 && low === 6)) return 0;
+    lastWon = winner === 1 ? first > second : second > first;
+    if (lastWon) won++;
+    else lost++;
+  }
+  return Number(lastWon && (won === 2 || (scope === "ATP" && won === 3)) && lost < won);
+}
+
 const schema = `
 CREATE TABLE IF NOT EXISTS entity (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL, scope TEXT NOT NULL
@@ -517,12 +537,14 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     if (![from,to].every(year => Number.isInteger(year) && year >= 1800 && year <= 2200) || from > to) {
       throw Error("Expected a valid inclusive season range");
     }
+    db.function("regular_winning_score", {deterministic:true}, regularWinningScore);
     const coverage = query(`
       WITH result AS (
         SELECT m.id, m.season, m.scope, m.match_date,
           COUNT(DISTINCT CASE WHEN c.field='winner' THEN c.value END) AS winners,
           MIN(CASE WHEN c.field='winner' THEN c.value END) AS winner,
           COUNT(DISTINCT CASE WHEN c.field='score' THEN c.value END) AS scores,
+          MIN(CASE WHEN c.field='score' THEN c.value END) AS score,
           COUNT(DISTINCT CASE WHEN c.field='tournamentDate' THEN c.value END) AS tournament_dates,
           MAX(CASE WHEN c.field='status' AND c.value='"completed"' THEN 1 ELSE 0 END) AS completed,
           MAX(CASE WHEN c.field='status' AND c.value IN
@@ -539,6 +561,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           WHEN winners<>1 OR winner NOT IN ('1','2') OR scores<>1 THEN 'missing_or_conflicting_result'
           WHEN nonstandard=1 THEN 'nonstandard_outcome'
           WHEN completed=1 THEN 'completed_with_score'
+          WHEN regular_winning_score(score,winner,scope)=1 THEN 'completion_compatible_score'
           ELSE 'completion_unverified'
         END AS result_status
         FROM result

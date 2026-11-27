@@ -379,10 +379,12 @@ test("training coverage distinguishes completion evidence and the two date scope
   archive.ingestBatch("one","1",[
     row(1,match()),
     row(2,match({externalId:"second",round:"SF",status:null,matchDate:null,tournamentDate:"2025-01-29"})),
-    row(3,match({externalId:"third",round:"QF",status:"retirement"}))
+    row(3,match({externalId:"third",round:"QF",status:"retirement"})),
+    row(4,match({externalId:"fourth",round:"R16",status:null,winnerSide:2,score:"2-6 6-7(3)"})),
+    row(5,match({externalId:"fifth",round:"R32",status:null,score:"6-3 3-2"}))
   ]);
   const {coverage} = archive.trainingCoverage(2025,2025);
   assert.deepEqual(coverage.map(r=>[r.result_status,r.matches,r.with_match_date,r.with_tournament_date_only]),[
-    ["completed_with_score",1,1,0],["completion_unverified",1,0,1],["nonstandard_outcome",1,1,0]
+    ["completed_with_score",1,1,0],["completion_compatible_score",2,1,1],["completion_unverified",1,1,0],["nonstandard_outcome",1,1,0]
   ]);
 });
