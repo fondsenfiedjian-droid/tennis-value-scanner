@@ -473,4 +473,6 @@ test("TennisDataApp date funnel reports the exact field where strict matching st
     ["dated_source_rows",3],["with_pair_key",3]
   ]);
   assert.equal(report.nameBasedFunnel.find(row=>row.stage==="same_winner").source_rows,1);
+  assert.deepEqual(report.nameDiagnostics.map(({scope,sourceRows,rowsWithBothNames,rowsWithBothNamesKnown})=>
+    [scope,sourceRows,rowsWithBothNames,rowsWithBothNamesKnown]),[["ATP",3,3,3],["WTA",0,0,0]]);
 });

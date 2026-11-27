@@ -816,6 +816,21 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         WHERE date_kind='tournament_start' AND date BETWEEN ? AND ?
           AND circuit IN ('ATP','WTA')
       `).all(`${from-1}-01-01`,`${to+1}-12-31`);
+      const referenceNames = new Map(['ATP','WTA'].map(scope=>[scope,new Set()]));
+      const referenceSamples = new Map(['ATP','WTA'].map(scope=>[scope,[]]));
+      for (const reference of references) {
+        const names=referenceNames.get(reference.circuit);
+        if (!names) continue;
+        for (const name of [reference.name1,reference.name2]) {
+          if (name?.trim()) names.add(name.trim().toLowerCase());
+        }
+        const samples=referenceSamples.get(reference.circuit);
+        if (samples.length<3 && reference.name1?.trim() && reference.name2?.trim()) {
+          samples.push({date:reference.date,name1:reference.name1,name2:reference.name2,
+            tournament:reference.tournament,round:reference.round,surface:reference.surface,
+            score:reference.score,provider:reference.provider});
+        }
+      }
       const pairKey = (circuit,a,b) => {
         const names = [String(a ?? '').trim().toLowerCase(),String(b ?? '').trim().toLowerCase()].sort();
         return names[0] && names[1] ? `${circuit}\u0000${names[0]}\u0000${names[1]}` : null;
@@ -837,6 +852,9 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           ('completed_with_score','completion_compatible_score') AND c.match_date IS NULL
       `).all(from,to).map(row => JSON.stringify(Object.values(row))));
       const nameCounts = new Map();
+      const playerNameCounts = new Map(['ATP','WTA'].map(scope=>[scope,
+        {sourceRows:0,rowsWithBothNames:0,rowsWithAnyNameKnown:0,rowsWithBothNamesKnown:0}]));
+      const sourceSamples = new Map(['ATP','WTA'].map(scope=>[scope,[]]));
       const stages = ['same_name_pair_within_year','same_name_pair_in_date_window','same_tournament',
         'same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
       for (const scope of ['ATP','WTA']) {
@@ -845,6 +863,20 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       for (const sourceRow of sourceRows) {
         const counts = nameCounts.get(sourceRow.circuit);
         if (!counts) continue;
+        const playerCounts=playerNameCounts.get(sourceRow.circuit);
+        const playerNames=[sourceRow.name1,sourceRow.name2].filter(name=>name?.trim()).map(name=>name.trim().toLowerCase());
+        playerCounts.sourceRows++;
+        if (playerNames.length===2) playerCounts.rowsWithBothNames++;
+        const knownNames=referenceNames.get(sourceRow.circuit);
+        const knownSides=playerNames.filter(name=>knownNames.has(name)).length;
+        if (knownSides>0) playerCounts.rowsWithAnyNameKnown++;
+        if (playerNames.length===2 && knownSides===2) playerCounts.rowsWithBothNamesKnown++;
+        const samples=sourceSamples.get(sourceRow.circuit);
+        if (samples.length<3 && sourceRow.name1?.trim() && sourceRow.name2?.trim()) {
+          samples.push({date:sourceRow.date,name1:sourceRow.name1,name2:sourceRow.name2,
+            tournament:sourceRow.tournament,round:sourceRow.round,surface:sourceRow.surface,
+            score:sourceRow.score});
+        }
         const matches = byPlayers.get(pairKey(sourceRow.circuit,sourceRow.name1,sourceRow.name2)) ?? [];
         const withinYear = matches.filter(reference => {
           const gap = (Date.parse(reference.date)-Date.parse(sourceRow.date))/86400000;
@@ -881,7 +913,10 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         ...[{stage:'dated_source_rows',source_rows:sourceRows.filter(row=>row.circuit===scope).length}],
         ...stages.map(stage=>({stage,source_rows:counts[stage]}))
       ].map(row=>({scope,...row}))).flat();
-      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel};
+      const nameDiagnostics=Array.from(playerNameCounts,([scope,counts])=>({scope,...counts,
+        distinctReferencePlayerNames:referenceNames.get(scope).size,
+        sourceSamples:sourceSamples.get(scope),referenceSamples:referenceSamples.get(scope)}));
+      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel,nameDiagnostics};
     });
   }
 
