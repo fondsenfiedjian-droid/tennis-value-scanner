@@ -164,10 +164,11 @@ try {
         ...archive.reclassifyTennisMyLifeAnnualSingles() });
       else {
         const backupFile = file + ".before-tennismylife-reclass.sqlite";
-        if (existsSync(backupFile)) throw Error("Backup already exists: " + backupFile);
-        const source = new DatabaseSync(file,{readOnly:true});
-        try { await backup(source,backupFile); }
-        finally { source.close(); }
+        if (!existsSync(backupFile)) {
+          const source = new DatabaseSync(file,{readOnly:true});
+          try { await backup(source,backupFile); }
+          finally { source.close(); }
+        }
         let processed = 0, linked = 0, result;
         do {
           result = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:500});
