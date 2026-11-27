@@ -503,9 +503,42 @@ test("TennisDataApp abbreviated names can be audited against full names without 
     ["same_abbreviated_pair_in_date_window",1],
     ["same_tournament",1],
     ["same_round",1],
+    ["round_compatible",1],
     ["same_surface",1],
     ["same_score",1],
     ["same_winner",1],
     ["links_to_training_candidates",0]
   ]);
+});
+
+test("TennisDataApp audit accepts round aliases, missing rounds and reversed set scores", t => {
+  const dir = mkdtempSync(join(tmpdir(),"kortograf-tennisdata-round-aliases-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const file = join(dir,"index.sqlite");
+  const index = new DatabaseSync(file);
+  index.exec(`CREATE TABLE match_index(
+    id INTEGER PRIMARY KEY,provider TEXT,circuit TEXT,pair_key TEXT,name1 TEXT,name2 TEXT,date TEXT,date_kind TEXT,
+    tournament TEXT,round TEXT,surface TEXT,score TEXT,winner_name TEXT,source TEXT,
+    source_row INTEGER,archive TEXT,archive_row INTEGER);
+    CREATE INDEX match_pair_date ON match_index(circuit,pair_key,date);
+    INSERT INTO match_index VALUES
+    (1,'TennisDataApp','ATP','baez s|munar j','munar j','baez s','2025-02-02','match_start_utc',
+      'United Cup ATP','','Hard','4-6 4-6','baez s','tda.csv',1,'raw',1),
+    (2,'Sackmann','ATP','jaume munar|sebastian baez','sebastian baez','jaume munar','2025-02-02',
+      'tournament_start','United Cup','RR','Hard','6-4 6-4','sebastian baez','atp.csv',1,'raw',2),
+    (3,'TennisDataApp','ATP','baez s|munar j','munar j','baez s','2025-02-03','match_start_utc',
+      'Example ATP','1/16-finals','Hard','7-5 6-2','munar j','tda.csv',2,'raw',3),
+    (4,'Sackmann','ATP','jaume munar|sebastian baez','jaume munar','sebastian baez','2025-02-03',
+      'tournament_start','Example','R32','Hard','7-5 6-2','jaume munar','atp.csv',2,'raw',4)`);
+  index.close();
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const report = archive.trainingTennisDataDateFunnel(file,2025);
+  const atpStages=Object.fromEntries(report.abbreviatedNameFunnel.filter(row=>row.scope==="ATP")
+    .map(row=>[row.stage,row.source_rows]));
+  assert.equal(atpStages.same_round,1);
+  assert.equal(atpStages.round_compatible,2);
+  assert.equal(atpStages.same_surface,2);
+  assert.equal(atpStages.same_score,2);
+  assert.equal(atpStages.same_winner,2);
 });

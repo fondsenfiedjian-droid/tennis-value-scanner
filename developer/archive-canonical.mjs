@@ -880,18 +880,35 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       const stages = ['same_name_pair_within_year','same_name_pair_in_date_window','same_tournament',
         'same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
       const abbreviatedStages = ['same_abbreviated_pair_within_year','same_abbreviated_pair_in_date_window',
-        'same_tournament','same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
+        'same_tournament','same_round','round_compatible','same_surface','same_score','same_winner',
+        'links_to_training_candidates'];
       for (const scope of ['ATP','WTA']) {
         nameCounts.set(scope,Object.fromEntries(stages.map(stage => [stage,0])));
         abbreviatedNameCounts.set(scope,Object.fromEntries(abbreviatedStages.map(stage => [stage,0])));
       }
-      const tournamentKey = value => nameKey(value).replace(/\b(?:atp|wta)\b/g,' ').replace(/\s+/g,' ').trim();
+      const tournamentKey = value => nameKey(value)
+        .replace(/\b(?:atp|wta|qualification|qualifying)\b/g,' ').replace(/\s+/g,' ').trim();
+      const roundKey = value => {
+        const raw=String(value ?? '').toLowerCase().trim();
+        const fraction=/^1\s*\/\s*(\d+)\s*-?\s*finals?$/.exec(raw);
+        if (fraction) return `r${Number(fraction[1])*2}`;
+        const normalized=nameKey(value).replace(/\./g,'').trim();
+        if (!normalized) return null;
+        if (/^(?:q[12]|qualifier|qualifying|qualification)$/.test(normalized)) return 'qualifying';
+        if (/^(?:rr|round robin)$/.test(normalized)) return 'rr';
+        const roundOf=/^round of (\d+)$/.exec(normalized);
+        if (roundOf) return `r${roundOf[1]}`;
+        return ({
+          final:'f', semifinals:'sf', 'semi finals':'sf', 'semi final':'sf',
+          quarterfinals:'qf', 'quarter finals':'qf', 'quarter final':'qf'
+        })[normalized] ?? normalized;
+      };
       const scoreKey = value => {
         const sets = String(value ?? '').trim().split(/\s+/);
         if (!sets.length || !sets.every(set => /^\d+[-:]\d+(?:\(\d+\))?$/.test(set))) return null;
         return sets.map(set => {
-          const [,a,b,tie=''] = /^(\d+)[-:](\d+)(\(\d+\))?$/.exec(set);
-          return `${Math.min(Number(a),Number(b))}-${Math.max(Number(a),Number(b))}${tie}`;
+          const [,a,b] = /^(\d+)[-:](\d+)(?:\(\d+\))?$/.exec(set);
+          return `${Math.min(Number(a),Number(b))}-${Math.max(Number(a),Number(b))}`;
         }).join(' ');
       };
       for (const sourceRow of sourceRows) {
@@ -982,9 +999,15 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           }
         }
         const abbreviatedRoundMatches = abbreviatedTournamentMatches.filter(reference =>
-          sourceRow.round?.trim() && nameKey(sourceRow.round)===nameKey(reference.round));
+          roundKey(sourceRow.round) && roundKey(reference.round) &&
+          roundKey(sourceRow.round)===roundKey(reference.round));
         if (abbreviatedRoundMatches.length) abbreviatedCounts.same_round++;
-        const abbreviatedSurfaceMatches = abbreviatedRoundMatches.filter(reference =>
+        const abbreviatedRoundCompatible = abbreviatedTournamentMatches.filter(reference => {
+          const sourceRound=roundKey(sourceRow.round), referenceRound=roundKey(reference.round);
+          return !sourceRound || !referenceRound || sourceRound===referenceRound;
+        });
+        if (abbreviatedRoundCompatible.length) abbreviatedCounts.round_compatible++;
+        const abbreviatedSurfaceMatches = abbreviatedRoundCompatible.filter(reference =>
           ['hard','clay','grass','carpet'].includes(String(sourceRow.surface ?? '').trim().toLowerCase()) &&
           String(sourceRow.surface).trim().toLowerCase()===String(reference.surface ?? '').trim().toLowerCase());
         if (abbreviatedSurfaceMatches.length) abbreviatedCounts.same_surface++;
