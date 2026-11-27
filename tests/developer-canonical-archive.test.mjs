@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
-import { excelDate, openCanonicalArchive } from "../developer/archive-canonical.mjs";\nimport { auditPreparedInput } from "../developer/archive-local-input.mjs";
+import { excelDate, openCanonicalArchive } from "../developer/archive-canonical.mjs";
+import { auditPreparedInput } from "../developer/archive-local-input.mjs";
 
 const player = (id, name, birth) => ({id, name, birth});
 const first = player("a", "Иван Петров", "1994-06-01");
