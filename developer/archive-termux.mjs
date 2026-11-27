@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { homedir } from "node:os";\nimport { backup, DatabaseSync } from "node:sqlite";
+import { homedir } from "node:os";
+import { backup, DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, readFileSync, statSync, writeFileSync, renameSync } from "node:fs";
