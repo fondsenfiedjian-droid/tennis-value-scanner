@@ -670,35 +670,36 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
             json_extract(o.locator,'$.archiveRow') AS archive_row
           FROM candidates c JOIN observations o ON o.match_id=c.id
         ),
-        indexed AS MATERIALIZED (
-          SELECT DISTINCT c.id,i.id AS source_id,i.circuit AS scope,c.provider,
-            i.date_kind,i.date,i.pair_key,i.tournament,i.round,i.surface,i.score,i.winner_name
-          FROM prepared_overlap.match_index i CROSS JOIN coordinates c
-          WHERE c.provider=lower(trim(i.provider)) AND c.scope=i.circuit AND c.source_file=i.source
-            AND c.source_row=i.source_row AND c.archive_file=i.archive AND c.archive_row=i.archive_row
-            AND i.date IS NOT NULL AND i.date_kind IN ('source_match_date','tournament_start')
+        aces AS MATERIALIZED (
+          SELECT id,circuit,date,pair_key,tournament,round,surface,score,winner_name,
+            source,source_row,archive,archive_row
+          FROM prepared_overlap.match_index
+          WHERE lower(trim(provider))='acesapi' AND date_kind='source_match_date'
+            AND date BETWEEN date(?,'-7 days') AND date(?,'+21 days')
         ),
-        direct AS (
-          SELECT id,source_id,date FROM indexed WHERE provider='acesapi' AND date_kind='source_match_date'
+        exact_references AS MATERIALIZED (
+          SELECT a.id AS source_id,a.date,r.circuit,lower(trim(r.provider)) AS provider,
+            r.source,r.source_row,r.archive,r.archive_row
+          FROM aces a CROSS JOIN prepared_overlap.match_index r INDEXED BY match_pair_date
+          WHERE r.circuit=a.circuit AND r.pair_key=a.pair_key
+            AND r.date BETWEEN date(a.date,'-21 days') AND date(a.date,'+7 days')
+            AND r.date_kind='tournament_start' AND nullif(trim(a.pair_key),'') IS NOT NULL
+            AND nullif(trim(a.tournament),'') IS NOT NULL AND lower(trim(a.tournament))=lower(trim(r.tournament))
+            AND nullif(trim(a.round),'') IS NOT NULL AND lower(trim(a.round))=lower(trim(r.round))
+            AND lower(trim(a.surface)) IN ('hard','clay','grass','carpet') AND lower(trim(a.surface))=lower(trim(r.surface))
+            AND nullif(trim(a.score),'') IS NOT NULL AND trim(a.score)=trim(r.score)
+            AND nullif(trim(a.winner_name),'') IS NOT NULL AND lower(trim(a.winner_name))=lower(trim(r.winner_name))
         ),
-        reference AS (
-          SELECT * FROM indexed WHERE date_kind='tournament_start' AND nullif(trim(pair_key),'') IS NOT NULL
-        ),
-        exact AS MATERIALIZED (
-          SELECT DISTINCT r.id,i.id AS source_id,i.date
-          FROM reference r JOIN prepared_overlap.match_index i
-            ON i.circuit=r.scope AND i.pair_key=r.pair_key
-            AND i.date BETWEEN date(r.date,'-7 days') AND date(r.date,'+21 days')
-          WHERE lower(trim(i.provider))='acesapi' AND i.date_kind='source_match_date'
-            AND nullif(trim(r.tournament),'') IS NOT NULL AND lower(trim(i.tournament))=lower(trim(r.tournament))
-            AND nullif(trim(r.round),'') IS NOT NULL AND lower(trim(i.round))=lower(trim(r.round))
-            AND lower(trim(r.surface)) IN ('hard','clay','grass','carpet') AND lower(trim(i.surface))=lower(trim(r.surface))
-            AND nullif(trim(r.score),'') IS NOT NULL AND trim(i.score)=trim(r.score)
-            AND nullif(trim(r.winner_name),'') IS NOT NULL AND lower(trim(i.winner_name))=lower(trim(r.winner_name))
-        ),
-        evidence AS (
-          SELECT id,source_id,date,1 AS linked FROM direct
-          UNION ALL SELECT id,source_id,date,0 FROM exact
+        evidence AS MATERIALIZED (
+          SELECT DISTINCT c.id,a.id AS source_id,a.date,1 AS linked
+          FROM aces a CROSS JOIN coordinates c
+          WHERE c.provider='acesapi' AND c.scope=a.circuit AND c.source_file=a.source
+            AND c.source_row=a.source_row AND c.archive_file=a.archive AND c.archive_row=a.archive_row
+          UNION ALL
+          SELECT DISTINCT c.id,r.source_id,r.date,0 AS linked
+          FROM exact_references r CROSS JOIN coordinates c
+          WHERE c.provider=r.provider AND c.scope=r.circuit AND c.source_file=r.source
+            AND c.source_row=r.source_row AND c.archive_file=r.archive AND c.archive_row=r.archive_row
         ),
         reused AS (
           SELECT source_id FROM evidence GROUP BY source_id HAVING count(DISTINCT id)>1
@@ -715,7 +716,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           sum(h.id IS NULL) AS without_aces_candidate
         FROM candidates c LEFT JOIN hit_counts h USING(id)
         GROUP BY c.season,c.scope ORDER BY c.season,c.scope
-      `).all(from,to);
+      `).all(from,to,`${from}-01-01`,`${to}-12-31`);
       return {reportType:"kortograf-aces-date-audit",from,to,sourceRows,coverage};
     });
   }
