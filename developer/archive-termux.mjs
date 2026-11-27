@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { homedir } from "node:os";
+import { homedir } from "node:os";\nimport { backup, DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, readFileSync, statSync, writeFileSync, renameSync } from "node:fs";
@@ -150,6 +150,35 @@ try {
     try { output(archive.trainingCoverage(Number(from),Number(to))); }
     finally { archive.close(); }
   }
+  else if (command === "reclassify-tennismylife") {
+    const [database, flag] = args;
+    if (!database || (flag !== undefined && flag !== "--apply")) {
+      throw Error("Usage: reclassify-tennismylife EXISTING_DATABASE [--apply]");
+    }
+    const file = realpathSync(database);
+    const apply = flag === "--apply";
+    const archive = openCanonicalArchive(file);
+    try {
+      if (!apply) output({ reportType:"kortograf-tennismylife-reclassification",
+        ...archive.reclassifyTennisMyLifeAnnualSingles() });
+      else {
+        const backupFile = file + ".before-tennismylife-reclass.sqlite";
+        if (existsSync(backupFile)) throw Error("Backup already exists: " + backupFile);
+        const source = new DatabaseSync(file,{readOnly:true});
+        try { await backup(source,backupFile); }
+        finally { source.close(); }
+        let processed = 0, linked = 0, result;
+        do {
+          result = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:500});
+          processed += result.processed;
+          linked += result.linked;
+          if (result.processed) console.error("TennisMyLife annual ATP · " + processed + " · remaining " + result.remaining);
+        } while (result.remaining > 0);
+        output({reportType:"kortograf-tennismylife-reclassification",mode:"apply",processed,linked,
+          remaining:result.remaining,backup:backupFile});
+      }
+    } finally { archive.close(); }
+  }
   else if (command === "attach-reviewed") {
     const [database, folder, flag] = args;
     if (!database || !folder || (flag !== undefined && flag !== "--apply")) {
@@ -192,7 +221,7 @@ try {
         output(archive.fields(args[1], args[2]));
       } else archive.unlink(args[1], args[2]);
     } finally { archive.close(); }
-  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, date-sources, training-coverage, training-overlap, training-aces-dates, training-tennisdata-dates, training-tennisdata-funnel, report, fields, unlink");
+  } else throw Error("Commands: run, inspect, audit-prepared, review-prepared, attach-reviewed, date-sources, training-coverage, training-overlap, training-aces-dates, training-tennisdata-dates, training-tennisdata-funnel, reclassify-tennismylife, report, fields, unlink");
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
