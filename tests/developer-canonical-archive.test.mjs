@@ -388,3 +388,27 @@ test("training coverage distinguishes completion evidence and the two date scope
     ["completed_with_score",1,1,0],["completion_compatible_score",2,1,1],["completion_unverified",1,1,0],["nonstandard_outcome",1,1,0]
   ]);
 });
+
+test("training overlap counts distinct canonical candidates by strict archive coordinates", t => {
+  const dir = mkdtempSync(join(tmpdir(),"kortograf-training-overlap-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const file = join(dir,"index.sqlite");
+  const db = new DatabaseSync(file);
+  db.exec(`CREATE TABLE strict_overlap_members(group_id INTEGER,provider TEXT,source TEXT,source_row INTEGER,archive TEXT,archive_row INTEGER);
+    INSERT INTO strict_overlap_members VALUES
+    (1,'ATP','match.csv',1,'raw.ndjson',1),(1,'Sackmann','match.csv',2,'raw.ndjson',2),
+    (2,'ATP','match.csv',1,'raw.ndjson',1),(2,'Sackmann','match.csv',2,'wrong.ndjson',2)`);
+  db.close();
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const loc = n => ({sourceFile:"match.csv",sourceRow:n,archive:"raw.ndjson",archiveRow:n});
+  archive.ingestBatch("one","1",[
+    {...row(1,match()),locator:loc(1)},
+    {...row(2,crossSource()),locator:loc(2)}
+  ]);
+  const [result] = archive.trainingOverlap(file,2025,2025).coverage;
+  assert.equal(result.score_candidates,2);
+  assert.equal(result.matched_strict_groups,2);
+  assert.equal(result.strict_groups_with_multiple_candidates,1);
+  assert.equal(result.candidates_in_multiple_match_groups,2);
+});

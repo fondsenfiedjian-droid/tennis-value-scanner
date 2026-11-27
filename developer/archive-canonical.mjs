@@ -533,12 +533,14 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         conflict: alternatives.length > 1, alternatives }];
     }));
   }
-  function trainingCoverage(from = 2021, to = 2026) {
+  function validateSeasonRange(from,to) {
     if (![from,to].every(year => Number.isInteger(year) && year >= 1800 && year <= 2200) || from > to) {
       throw Error("Expected a valid inclusive season range");
     }
-    db.function("regular_winning_score", {deterministic:true}, regularWinningScore);
-    const coverage = query(`
+  }
+
+  db.function("regular_winning_score", {deterministic:true}, regularWinningScore);
+  const trainingClassification = `
       WITH result AS (
         SELECT m.id, m.season, m.scope, m.match_date,
           COUNT(DISTINCT CASE WHEN c.field='winner' THEN c.value END) AS winners,
@@ -566,6 +568,11 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         END AS result_status
         FROM result
       )
+    `;
+
+  function trainingCoverage(from = 2021, to = 2026) {
+    validateSeasonRange(from,to);
+    const coverage = query(`${trainingClassification}
       SELECT season,scope,result_status,count(*) AS matches,
         sum(match_date IS NOT NULL) AS with_match_date,
         sum(match_date IS NULL AND tournament_dates=1) AS with_tournament_date_only,
@@ -573,6 +580,64 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       FROM classified GROUP BY season,scope,result_status ORDER BY season,scope,result_status
     `).all(from,to);
     return { reportType:"kortograf-training-coverage", from, to, coverage };
+  }
+
+  function trainingOverlap(indexFile, from = 2021, to = 2026) {
+    validateSeasonRange(from,to);
+    // The audit reads from a separate input index without modifying either database.
+    const wasReadOnly = db.prepare("PRAGMA query_only").get().query_only === 1;
+    db.exec("PRAGMA query_only=ON");
+    let attached = false;
+    try {
+      db.prepare("ATTACH DATABASE ? AS prepared_overlap").run(indexFile);
+      attached = true;
+      const coverage = query(`${trainingClassification},
+        candidates AS MATERIALIZED (
+          SELECT id, season, scope FROM classified
+          WHERE result_status IN ('completed_with_score','completion_compatible_score')
+        ),
+        coordinates AS MATERIALIZED (
+          SELECT DISTINCT c.id, c.season, c.scope, o.source,
+            json_extract(o.locator,'$.sourceFile') AS source_file,
+            json_extract(o.locator,'$.sourceRow') AS source_row,
+            json_extract(o.locator,'$.archive') AS archive_file,
+            json_extract(o.locator,'$.archiveRow') AS archive_row
+          FROM candidates c JOIN observations o ON o.match_id=c.id
+        ),
+        linked AS MATERIALIZED (
+          SELECT DISTINCT c.id,c.season,c.scope,s.group_id
+          FROM prepared_overlap.strict_overlap_members s
+          JOIN coordinates c ON c.source=lower(trim(s.provider)) AND c.source_file=s.source
+            AND c.source_row=s.source_row AND c.archive_file=s.archive AND c.archive_row=s.archive_row
+        ),
+        grouped AS MATERIALIZED (
+          SELECT season,scope,group_id,count(*) AS matches
+          FROM linked GROUP BY season,scope,group_id
+        ),
+        totals AS (
+          SELECT season,scope,count(*) AS score_candidates FROM candidates GROUP BY season,scope
+        ),
+        group_counts AS (
+          SELECT season,scope,count(*) AS matched_strict_groups,
+            sum(matches>1) AS strict_groups_with_multiple_candidates
+          FROM grouped GROUP BY season,scope
+        ),
+        suspect AS (
+          SELECT l.season,l.scope,count(DISTINCT l.id) AS candidates_in_multiple_match_groups
+          FROM linked l JOIN grouped g USING(season,scope,group_id)
+          WHERE g.matches>1 GROUP BY l.season,l.scope
+        )
+        SELECT t.*, coalesce(g.matched_strict_groups,0) AS matched_strict_groups,
+          coalesce(g.strict_groups_with_multiple_candidates,0) AS strict_groups_with_multiple_candidates,
+          coalesce(s.candidates_in_multiple_match_groups,0) AS candidates_in_multiple_match_groups
+        FROM totals t LEFT JOIN group_counts g USING(season,scope) LEFT JOIN suspect s USING(season,scope)
+        ORDER BY t.season,t.scope
+      `).all(from,to);
+      return { reportType:"kortograf-training-overlap",from,to,coverage };
+    } finally {
+      try { if (attached) db.exec("DETACH DATABASE prepared_overlap"); }
+      finally { if (!wasReadOnly) db.exec("PRAGMA query_only=OFF"); }
+    }
   }
 
   function report() {
@@ -611,7 +676,7 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
     };
   }
   return {
-    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage,
+    ingestBatch, confirmLink, confirmLinks, attachReviewed, fields, unlink, report, trainingCoverage, trainingOverlap,
     checkpoint: input => query("SELECT * FROM checkpoints WHERE input=?").get(input),
     close: () => db.close()
   };
