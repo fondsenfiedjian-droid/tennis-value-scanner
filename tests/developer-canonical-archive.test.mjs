@@ -476,3 +476,36 @@ test("TennisDataApp date funnel reports the exact field where strict matching st
   assert.deepEqual(report.nameDiagnostics.map(({scope,sourceRows,rowsWithBothNames,rowsWithBothNamesKnown})=>
     [scope,sourceRows,rowsWithBothNames,rowsWithBothNamesKnown]),[["ATP",3,3,3],["WTA",0,0,0]]);
 });
+
+test("TennisDataApp abbreviated names can be audited against full names without auto-linking", t => {
+  const dir = mkdtempSync(join(tmpdir(),"kortograf-tennisdata-abbreviated-"));
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  const file = join(dir,"index.sqlite");
+  const index = new DatabaseSync(file);
+  index.exec(`CREATE TABLE match_index(
+    id INTEGER PRIMARY KEY,provider TEXT,circuit TEXT,pair_key TEXT,name1 TEXT,name2 TEXT,date TEXT,date_kind TEXT,
+    tournament TEXT,round TEXT,surface TEXT,score TEXT,winner_name TEXT,source TEXT,
+    source_row INTEGER,archive TEXT,archive_row INTEGER);
+    CREATE INDEX match_pair_date ON match_index(circuit,pair_key,date);
+    INSERT INTO match_index VALUES
+    (1,'TennisDataApp','ATP','baez s|munar j','munar j','baez s','2025-02-02','match_start_utc',
+      'Example ATP','F','Hard','7-5 6-2','munar j','tda.csv',1,'raw',1),
+    (2,'Sackmann','ATP','jaume munar|sebastian baez','jaume munar','sebastian baez','2025-01-29',
+      'tournament_start','Example','F','Hard','5-7 2-6','jaume munar','atp.csv',1,'raw',2)`);
+  index.close();
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const report = archive.trainingTennisDataDateFunnel(file,2025);
+  assert.equal(report.nameBasedFunnel.find(row=>row.scope==="ATP" && row.stage==="same_name_pair_within_year").source_rows,0);
+  assert.deepEqual(report.abbreviatedNameFunnel.filter(row=>row.scope==="ATP").map(row=>[row.stage,row.source_rows]),[
+    ["dated_source_rows",1],
+    ["same_abbreviated_pair_within_year",1],
+    ["same_abbreviated_pair_in_date_window",1],
+    ["same_tournament",1],
+    ["same_round",1],
+    ["same_surface",1],
+    ["same_score",1],
+    ["same_winner",1],
+    ["links_to_training_candidates",0]
+  ]);
+});

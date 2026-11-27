@@ -835,13 +835,31 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         const names = [String(a ?? '').trim().toLowerCase(),String(b ?? '').trim().toLowerCase()].sort();
         return names[0] && names[1] ? `${circuit}\u0000${names[0]}\u0000${names[1]}` : null;
       };
+      const abbreviatedNameKey = value => {
+        const parts = nameKey(value).split(' ').filter(Boolean);
+        if (parts.length === 2 && parts[1].length === 1) return `${parts[0]} ${parts[1]}`;
+        if (parts.length < 2) return null;
+        return `${parts.at(-1)} ${parts[0][0]}`;
+      };
+      const abbreviatedPairKey = (circuit,a,b) => {
+        const names = [abbreviatedNameKey(a),abbreviatedNameKey(b)].sort();
+        return names[0] && names[1] ? `${circuit}\u0000${names[0]}\u0000${names[1]}` : null;
+      };
       const byPlayers = new Map();
+      const byAbbreviatedPlayers = new Map();
       for (const reference of references) {
         const key = pairKey(reference.circuit,reference.name1,reference.name2);
-        if (!key) continue;
-        const matches = byPlayers.get(key) ?? [];
-        matches.push(reference);
-        byPlayers.set(key,matches);
+        if (key) {
+          const matches = byPlayers.get(key) ?? [];
+          matches.push(reference);
+          byPlayers.set(key,matches);
+        }
+        const abbreviatedKey = abbreviatedPairKey(reference.circuit,reference.name1,reference.name2);
+        if (abbreviatedKey) {
+          const matches = byAbbreviatedPlayers.get(abbreviatedKey) ?? [];
+          matches.push(reference);
+          byAbbreviatedPlayers.set(abbreviatedKey,matches);
+        }
       }
       const candidateCoordinates = new Set(query(`${trainingClassification}
         SELECT DISTINCT c.scope,lower(trim(o.source)),
@@ -852,17 +870,31 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           ('completed_with_score','completion_compatible_score') AND c.match_date IS NULL
       `).all(from,to).map(row => JSON.stringify(Object.values(row))));
       const nameCounts = new Map();
+      const abbreviatedNameCounts = new Map();
       const playerNameCounts = new Map(['ATP','WTA'].map(scope=>[scope,
         {sourceRows:0,rowsWithBothNames:0,rowsWithAnyNameKnown:0,rowsWithBothNamesKnown:0}]));
       const sourceSamples = new Map(['ATP','WTA'].map(scope=>[scope,[]]));
       const stages = ['same_name_pair_within_year','same_name_pair_in_date_window','same_tournament',
         'same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
+      const abbreviatedStages = ['same_abbreviated_pair_within_year','same_abbreviated_pair_in_date_window',
+        'same_tournament','same_round','same_surface','same_score','same_winner','links_to_training_candidates'];
       for (const scope of ['ATP','WTA']) {
         nameCounts.set(scope,Object.fromEntries(stages.map(stage => [stage,0])));
+        abbreviatedNameCounts.set(scope,Object.fromEntries(abbreviatedStages.map(stage => [stage,0])));
       }
+      const tournamentKey = value => nameKey(value).replace(/\b(?:atp|wta)\b/g,' ').replace(/\s+/g,' ').trim();
+      const scoreKey = value => {
+        const sets = String(value ?? '').trim().split(/\s+/);
+        if (!sets.length || !sets.every(set => /^\d+[-:]\d+(?:\(\d+\))?$/.test(set))) return null;
+        return sets.map(set => {
+          const [,a,b,tie=''] = /^(\d+)[-:](\d+)(\(\d+\))?$/.exec(set);
+          return `${Math.min(Number(a),Number(b))}-${Math.max(Number(a),Number(b))}${tie}`;
+        }).join(' ');
+      };
       for (const sourceRow of sourceRows) {
         const counts = nameCounts.get(sourceRow.circuit);
         if (!counts) continue;
+        const abbreviatedCounts = abbreviatedNameCounts.get(sourceRow.circuit);
         const playerCounts=playerNameCounts.get(sourceRow.circuit);
         const playerNames=[sourceRow.name1,sourceRow.name2].filter(name=>name?.trim()).map(name=>name.trim().toLowerCase());
         playerCounts.sourceRows++;
@@ -908,6 +940,41 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
           sourceRow.circuit,reference.provider,reference.source,reference.source_row,reference.archive,reference.archive_row
         ])));
         if (linksCandidate) counts.links_to_training_candidates++;
+
+        const abbreviatedMatches = byAbbreviatedPlayers.get(
+          abbreviatedPairKey(sourceRow.circuit,sourceRow.name1,sourceRow.name2)
+        ) ?? [];
+        const abbreviatedWithinYear = abbreviatedMatches.filter(reference => {
+          const gap = (Date.parse(reference.date)-Date.parse(sourceRow.date))/86400000;
+          return gap >= -366 && gap <= 366;
+        });
+        if (abbreviatedWithinYear.length) abbreviatedCounts.same_abbreviated_pair_within_year++;
+        const abbreviatedDatedMatches = abbreviatedWithinYear.filter(reference => {
+          const gap = (Date.parse(reference.date)-Date.parse(sourceRow.date))/86400000;
+          return gap >= -21 && gap <= 7;
+        });
+        if (abbreviatedDatedMatches.length) abbreviatedCounts.same_abbreviated_pair_in_date_window++;
+        const abbreviatedTournamentMatches = abbreviatedDatedMatches.filter(reference =>
+          tournamentKey(sourceRow.tournament) && tournamentKey(sourceRow.tournament)===tournamentKey(reference.tournament));
+        if (abbreviatedTournamentMatches.length) abbreviatedCounts.same_tournament++;
+        const abbreviatedRoundMatches = abbreviatedTournamentMatches.filter(reference =>
+          sourceRow.round?.trim() && nameKey(sourceRow.round)===nameKey(reference.round));
+        if (abbreviatedRoundMatches.length) abbreviatedCounts.same_round++;
+        const abbreviatedSurfaceMatches = abbreviatedRoundMatches.filter(reference =>
+          ['hard','clay','grass','carpet'].includes(String(sourceRow.surface ?? '').trim().toLowerCase()) &&
+          String(sourceRow.surface).trim().toLowerCase()===String(reference.surface ?? '').trim().toLowerCase());
+        if (abbreviatedSurfaceMatches.length) abbreviatedCounts.same_surface++;
+        const abbreviatedScoreMatches = abbreviatedSurfaceMatches.filter(reference =>
+          scoreKey(sourceRow.score) && scoreKey(sourceRow.score)===scoreKey(reference.score));
+        if (abbreviatedScoreMatches.length) abbreviatedCounts.same_score++;
+        const abbreviatedWinnerMatches = abbreviatedScoreMatches.filter(reference =>
+          abbreviatedNameKey(sourceRow.winner_name) &&
+          abbreviatedNameKey(sourceRow.winner_name)===abbreviatedNameKey(reference.winner_name));
+        if (abbreviatedWinnerMatches.length) abbreviatedCounts.same_winner++;
+        const abbreviatedCandidateLinks = abbreviatedWinnerMatches.some(reference => candidateCoordinates.has(JSON.stringify([
+          sourceRow.circuit,reference.provider,reference.source,reference.source_row,reference.archive,reference.archive_row
+        ])));
+        if (abbreviatedCandidateLinks) abbreviatedCounts.links_to_training_candidates++;
       }
       const nameBasedFunnel = Array.from(nameCounts,([scope,counts]) => [
         ...[{stage:'dated_source_rows',source_rows:sourceRows.filter(row=>row.circuit===scope).length}],
@@ -916,7 +983,12 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       const nameDiagnostics=Array.from(playerNameCounts,([scope,counts])=>({scope,...counts,
         distinctReferencePlayerNames:referenceNames.get(scope).size,
         sourceSamples:sourceSamples.get(scope),referenceSamples:referenceSamples.get(scope)}));
-      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel,nameDiagnostics};
+      const abbreviatedNameFunnel=Array.from(abbreviatedNameCounts,([scope,counts])=>[
+        ...[{stage:'dated_source_rows',source_rows:sourceRows.filter(row=>row.circuit===scope).length}],
+        ...abbreviatedStages.map(stage=>({stage,source_rows:counts[stage]}))
+      ].map(row=>({scope,...row}))).flat();
+      return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel,
+        abbreviatedNameFunnel,nameDiagnostics};
     });
   }
 
