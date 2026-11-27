@@ -871,6 +871,9 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
       `).all(from,to).map(row => JSON.stringify(Object.values(row))));
       const nameCounts = new Map();
       const abbreviatedNameCounts = new Map();
+      const abbreviatedNameDiagnostics = new Map(['ATP','WTA'].map(scope=>[scope,{
+        sameTournamentSamples:[],roundPairCounts:new Map()
+      }]));
       const playerNameCounts = new Map(['ATP','WTA'].map(scope=>[scope,
         {sourceRows:0,rowsWithBothNames:0,rowsWithAnyNameKnown:0,rowsWithBothNamesKnown:0}]));
       const sourceSamples = new Map(['ATP','WTA'].map(scope=>[scope,[]]));
@@ -956,7 +959,28 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         if (abbreviatedDatedMatches.length) abbreviatedCounts.same_abbreviated_pair_in_date_window++;
         const abbreviatedTournamentMatches = abbreviatedDatedMatches.filter(reference =>
           tournamentKey(sourceRow.tournament) && tournamentKey(sourceRow.tournament)===tournamentKey(reference.tournament));
-        if (abbreviatedTournamentMatches.length) abbreviatedCounts.same_tournament++;
+        if (abbreviatedTournamentMatches.length) {
+          abbreviatedCounts.same_tournament++;
+          const diagnostics=abbreviatedNameDiagnostics.get(sourceRow.circuit);
+          if (diagnostics.sameTournamentSamples.length<5) {
+            diagnostics.sameTournamentSamples.push({
+              source:{date:sourceRow.date,name1:sourceRow.name1,name2:sourceRow.name2,
+                tournament:sourceRow.tournament,round:sourceRow.round,surface:sourceRow.surface,
+                score:sourceRow.score,winner:sourceRow.winner_name},
+              references:abbreviatedTournamentMatches.slice(0,3).map(reference=>({
+                date:reference.date,name1:reference.name1,name2:reference.name2,
+                tournament:reference.tournament,round:reference.round,surface:reference.surface,
+                score:reference.score,winner:reference.winner_name,provider:reference.provider
+              }))
+            });
+          }
+          for (const reference of abbreviatedTournamentMatches) {
+            const sourceRound=sourceRow.round?.trim() || '(blank)';
+            const referenceRound=reference.round?.trim() || '(blank)';
+            const roundKey=JSON.stringify([sourceRound,referenceRound]);
+            diagnostics.roundPairCounts.set(roundKey,(diagnostics.roundPairCounts.get(roundKey) ?? 0)+1);
+          }
+        }
         const abbreviatedRoundMatches = abbreviatedTournamentMatches.filter(reference =>
           sourceRow.round?.trim() && nameKey(sourceRow.round)===nameKey(reference.round));
         if (abbreviatedRoundMatches.length) abbreviatedCounts.same_round++;
@@ -988,7 +1012,14 @@ export function openCanonicalArchive(path, { readOnly = false } = {}) {
         ...abbreviatedStages.map(stage=>({stage,source_rows:counts[stage]}))
       ].map(row=>({scope,...row}))).flat();
       return {reportType:"kortograf-tennisdata-date-funnel",from,to,funnel,nameBasedFunnel,
-        abbreviatedNameFunnel,nameDiagnostics};
+        abbreviatedNameFunnel,
+        abbreviatedNameDiagnostics:Array.from(abbreviatedNameDiagnostics,([scope,diagnostics])=>({
+          scope,sameTournamentSamples:diagnostics.sameTournamentSamples,
+          roundPairCounts:[...diagnostics.roundPairCounts].map(([key,count])=>({
+            sourceRound:JSON.parse(key)[0],referenceRound:JSON.parse(key)[1],candidatePairs:count
+          })).sort((a,b)=>b.candidatePairs-a.candidatePairs).slice(0,10)
+        })),
+        nameDiagnostics};
     });
   }
 
