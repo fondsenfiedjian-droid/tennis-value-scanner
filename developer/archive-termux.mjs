@@ -174,7 +174,9 @@ try {
           result = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:500});
           processed += result.processed;
           linked += result.linked;
-          if (result.processed) console.error("TennisMyLife annual ATP · " + processed + " · remaining " + result.remaining);
+          if (result.processed && processed % 10000 === 0) {
+            console.error("TennisMyLife annual ATP · " + processed + " · remaining " + result.remaining);
+          }
         } while (result.remaining > 0);
         output({reportType:"kortograf-tennismylife-reclassification",mode:"apply",processed,linked,
           remaining:result.remaining,backup:backupFile});
