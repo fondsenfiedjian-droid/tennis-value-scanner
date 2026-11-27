@@ -216,7 +216,7 @@ export async function* localRows(file, entry, start) {
 function preparedSinglesSource(provider, source) {
   const file = basename(source ?? "");
   if (provider === "tennismylife") {
-    return /^\d{4}_(?:atp(?:_quali)?|wta|challenger)\.csv$/i.test(file) ||
+    return /^\d{4}(?:_(?:atp(?:_quali)?|wta|challenger))?\.csv$/i.test(file) ||
       /^(?:atp|wta)_matches(?:_qual_chall)?_\d{4}\.csv$/i.test(file);
   }
   return ["atp", "wta", "sackmann", "sackmannextended"].includes(provider) &&
