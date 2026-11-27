@@ -157,7 +157,7 @@ try {
     }
     const file = realpathSync(database);
     const apply = flag === "--apply";
-    const archive = openCanonicalArchive(file);
+    const archive = openCanonicalArchive(file,{readOnly:!apply});
     try {
       if (!apply) output({ reportType:"kortograf-tennismylife-reclassification",
         ...archive.reclassifyTennisMyLifeAnnualSingles() });
