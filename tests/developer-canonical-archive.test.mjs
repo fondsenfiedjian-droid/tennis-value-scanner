@@ -136,6 +136,22 @@ test("TennisMyLife annual ATP source is recognized as a prepared singles archive
   assert.equal(report.preparedMatchInputs.find(item=>item.provider==="ATP").recognizedSinglesRows,1);
 });
 
+test("TennisMyLife annual ATP isolates can be safely reclassified in resumable batches", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const record = match({source:"tennismylife",discipline:undefined,matchDate:null,externalId:"annual-1"});
+  const locator = {file:"matches.sqlite",row:1,sourceFile:"TennisMyLife/archive/2025.csv",sourceRow:4};
+  archive.ingestBatch("prepared","rev",[{position:1,record,locator}],{complete:true});
+  assert.equal(archive.report().canonicalMatches,0);
+  assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles(),
+    {mode:"preview",eligible:1,processed:0,linked:0,remaining:1});
+  assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:1}),
+    {mode:"apply",eligible:1,processed:1,linked:1,remaining:0});
+  assert.equal(archive.report().canonicalMatches,1);
+  assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles({apply:true}),
+    {mode:"apply",eligible:0,processed:0,linked:0,remaining:0});
+});
+
 test("Termux command imports SQLite read-only, checkpoints reruns and hashes original files", t => {
   const dir = mkdtempSync(join(tmpdir(),"canonical-cli-"));
   t.after(() => rmSync(dir,{recursive:true,force:true}));
