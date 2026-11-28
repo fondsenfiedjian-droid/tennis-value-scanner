@@ -28,6 +28,10 @@ test("both edition manifests declare scalable SVG icons without unsafe maskable 
 });
 test("both editions expose an in-app version and Developer has a separate label",()=>{
   assert.match(rootHtml,/id="editionVersion"/);
+  assert.match(rootHtml,/\.edition-version\{display:inline-block;white-space:nowrap;[^}]*font-size:8px/);
+  assert.match(devHtml,/\.edition-version\{display:inline-block;white-space:nowrap;[^}]*font-size:8px/);
+  assert.match(rootRuntime,/badge\.textContent="v"\+edition\.version/);
+  assert.match(devRuntime,/badge\.textContent="v"\+edition\.version/);
   assert.match(devHtml,/version:"2\.1\.0-dev\.1"/);
   assert.match(rootHtml,/edition-runtime\.js/);
   assert.match(devHtml,/edition-runtime\.js/);
@@ -51,8 +55,8 @@ test("Developer local data and service worker caches are isolated",()=>{
   assert.match(devHtml,/tvs-developer:/);
   assert.match(devHtml,/proto\.clear=function/);
   assert.match(devHtml,/proto\.key=function/);
-  assert.match(devHtml,/prefix\+String\(name\)/);
-  assert.match(devWorker,/tvs-developer-static-v1/);
+  assert.match(devHtml,/key==="tvs-developer:tvs-developer-historical-archives"\?key:prefix\+key/);
+  assert.match(devWorker,/tvs-developer-static-v[0-9]+/);
   assert.match(devWorker,/model-lab-core\.mjs/);
   assert.match(devWorker,/startsWith\("tvs-developer-static-"\)/);
   assert.match(rootWorker,/startsWith\("tennis-value-static-"\)/);

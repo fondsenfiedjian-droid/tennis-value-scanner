@@ -7,7 +7,7 @@ const isDeveloper=edition.channel==="developer";
 document.documentElement.dataset.edition=edition.channel;
 document.body.dataset.edition=edition.channel;
 const badge=document.getElementById("editionVersion");
-if(badge)badge.textContent=(isDeveloper?"DEVELOPER":"PRODUCTION")+" · v"+edition.version;
+if(badge)badge.textContent="v"+edition.version;
 const labButton=document.getElementById("quickLab");
 if(!isDeveloper){if(labButton){labButton.hidden=true;labButton.setAttribute("aria-hidden","true");labButton.onclick=null;}document.getElementById("labView")?.remove();window.showLab=()=>{};return;}
 if(!labButton)return;

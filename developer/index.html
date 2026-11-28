@@ -33,7 +33,7 @@
     .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
     .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#080808ed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
-    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
     .nav b{display:block;font-size:18px;margin-bottom:3px}
     .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
     .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#1b1715;border:1px solid var(--line);border-radius:22px;padding:18px}
@@ -1048,8 +1048,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   .research-status.completed{color:#b6d8c7;border-color:#416653}
   .research-status.running{color:#f0d58b;border-color:#8a6c32}
   .research-status.planned{color:var(--muted)}
-  .edition-version{display:inline-flex;align-items:center;white-space:nowrap;border:1px solid #625954;border-radius:7px;padding:4px 6px;color:#d6c2b8;font-size:9px;font-weight:800;letter-spacing:.04em}
-    body[data-edition="developer"] .edition-version{border-color:#347c98;color:#8cecff;background:#102333}
+  .edition-version{display:inline-block;white-space:nowrap;color:#b5a8a1;font-size:8px;font-weight:600;letter-spacing:.03em;line-height:1;opacity:.78}
+    body[data-edition="developer"] .edition-version{color:#8bb4c5}
     #quickLab[hidden]{display:none!important}
   </style>
 </head>
@@ -1066,7 +1066,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
  proto.key=function(index){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key.slice(prefix.length));}return keys[index]??null;};
  proto.clear=function(){const keys=[];for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))keys.push(key);}keys.forEach(key=>originalRemove.call(this,key));};
  try{Object.defineProperty(proto,"length",{configurable:true,get(){let count=0;for(let i=0;i<physicalLength(this);i++){const key=originalKey.call(this,i);if(key&&key.startsWith(prefix))count++;}return count;}});}catch(error){console.warn("Developer Storage length isolation could not be applied",error);}
- try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){return originalOpen.call(this,prefix+String(name),...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
+ try{const factory=Object.getPrototypeOf(indexedDB),originalOpen=factory.open;factory.open=function(name,...args){const key=String(name);return originalOpen.call(this,key==="tvs-developer:tvs-developer-historical-archives"?key:prefix+key,...args);};}catch(error){console.warn("Developer IndexedDB namespace could not be applied",error);}
 })();
 </script>
 <div class="app">
@@ -1134,6 +1134,20 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 </div>
 
 <div class="stats-view" id="statsView">
+<section class="panel" id="historicalArchivePanel" style="margin:16px 0">
+  <div class="section-head" style="margin-top:0"><h2>Центр исторических архивов</h2><button type="button" class="linkbtn" id="historicalArchiveRefresh">Обновить</button></div>
+  <div class="muted">Отдельно от архива прогнозов. Оригинальные CSV и ZIP хранятся локально в IndexedDB этого браузера. Никакие файлы не отправляются на сервер. Импорт ещё не подтверждает матчи и не передаёт их модели.</div>
+  <div class="stats" style="margin-top:12px"><div class="panel"><div class="muted">Оригинальных архивов</div><div class="stat-num" id="historicalArchiveCount">0</div></div><div class="panel"><div class="muted">Режим хранения</div><div class="stat-num" style="font-size:15px">Локальный</div></div></div>
+  <div class="field"><label for="historicalArchiveSource">Предполагаемый источник (не считается подтверждением)</label><select id="historicalArchiveSource"><option value="unknown">Не определён</option><option value="tennismylife">TennisMyLife</option><option value="sackmann">Jeff Sackmann</option><option value="valuebetennis">ValueBetennis</option><option value="other">Другой CSV</option></select></div>
+  <div class="field"><label for="historicalArchiveFile">CSV или ZIP (до 100 МБ)</label><input id="historicalArchiveFile" type="file" accept=".csv,.zip,text/csv,application/zip"></div>
+  <button type="button" class="refresh" id="historicalArchiveImport">Импортировать и обработать</button>
+
+  <div class="muted" id="historicalArchiveStatus" role="status" aria-live="polite">Проверка хранилища…</div>
+  <div class="section-head"><h3>Загруженные оригиналы</h3></div><div class="archive-list" id="historicalArchiveList"><div class="archive-item">Загрузка…</div></div>
+  <section id="historicalArchiveAnalysis" class="archive-item" hidden></section>
+  <div class="section-head"><h3>Журнал операций</h3></div><div class="archive-list" id="historicalArchiveLog"><div class="archive-item">Загрузка…</div></div>
+</section>
+
   <h1>Статистика прогнозов</h1>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <section class="panel research-journal" id="researchTestJournal" style="margin-top:16px">
@@ -1174,6 +1188,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   <button id="navMatches" aria-label="Матчи"><b>🎾</b>Матчи</button>
   <button id="navCompare" aria-label="Сравнение"><b>⇄</b>Сравнение</button>
   <button id="navStats" aria-label="Статистика"><b>▥</b>Статистика</button>
+  <button id="navArchive" type="button" aria-label="Архив и система"><b>▤</b>Архив</button>
   <button id="navSettings" aria-label="Настройки"><b>⚙</b>Настройки</button>
 </div></div>
 
@@ -1231,7 +1246,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   // Bind the bottom navigation immediately, before the rest of app startup.
   // This keeps navigation responsive even if a later optional initializer fails.
   document.addEventListener('click',event=>{
-    const target=event.target instanceof Element?event.target.closest('#navHome,#navMatches,#navCompare,#navStats,#navSettings'):null;
+    const target=event.target instanceof Element?event.target.closest('#navHome,#navMatches,#navCompare,#navStats,#navArchive,#navSettings'):null;
     if(!target)return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -1239,6 +1254,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     else if(target.id==='navMatches')showMatches();
     else if(target.id==='navCompare')showCompare();
     else if(target.id==='navStats')showStats();
+    else if(target.id==='navArchive')showArchive();
     else if(target.id==='navSettings'){populateSettingsForm();$('#settingsModal').classList.add('show');}
   },true);
 
@@ -1327,6 +1343,8 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     if(labButton)labMount.appendChild(labButton);
     if(labPanel){labPanel.hidden=false;labMount.appendChild(labPanel);}
     const archiveMount=$('#moreArchiveMount');
+    const historicalArchivePanel=$('#historicalArchivePanel');
+    if(historicalArchivePanel)archiveMount.prepend(historicalArchivePanel);
     const archiveQuality=$('#archiveOddsQuality')?.parentElement;
     const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
     [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
@@ -1334,6 +1352,17 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     $('#moreScreenSettings').addEventListener('click',()=>{populateSettingsForm();$('#settingsModal').classList.add('show');});
   }
   mountIndependentScreens();
+  // Ensure the local historical archive is visible in the Archive & System screen
+  // even if independent screens were mounted earlier by another initializer.
+  (function ensureHistoricalArchiveMount(){
+    const panel=$('#historicalArchivePanel');
+    const target=$('#moreArchiveMount');
+    if(panel&&target&&!target.contains(panel)){
+      target.prepend(panel);
+      panel.hidden=false;
+      panel.style.display='block';
+    }
+  })();
   const now = new Date();
   $('#dateText').textContent = now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
   let selectedDay = 'today';
@@ -1382,7 +1411,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   $('#quickCompare').onclick=showCompare;
   $('#quickLab').onclick=showLab;
   $('#quickStats').onclick=showStats;
-  $('#quickArchive').onclick=()=>{showMore();$('#moreArchiveMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
+  $('#quickArchive').onclick=showArchive;
   $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
   $('#cancelSettings').onclick=cancelSettings;
   modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
@@ -2815,9 +2844,13 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   }
   function showMore(){
     hideAllScreens();$('#moreView').style.display='block';
-    setActiveNavigation('');
+    setActiveNavigation('navArchive');
     const status=$('#moreSystemStatus');
     if(status)status.textContent=$('#connectionStatus')?.textContent+' · '+($('#oddsStatus')?.textContent||'Статус котировок не получен');
+  }
+  function showArchive(){
+    showMore();
+    $('#historicalArchivePanel')?.scrollIntoView({block:'start'});
   }
   function findScheduledPlayerId(name){
     const target=String(name||'').trim();
@@ -4030,8 +4063,8 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('.brand-lockup').onclick=showMain;
   $('.brand-lockup').style.cursor='pointer';
-  $('#navBalance').onclick=showBalance;
-  $('#navHistory').onclick=showHistory;
+  $('#navBalance')?.addEventListener('click',showBalance);
+  $('#navHistory')?.addEventListener('click',showHistory);
   $('#navStats').onclick=showStats;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
@@ -4231,5 +4264,6 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 <script src="./edition-runtime.js"></script>
 <script type="module" src="./model-lab.js"></script>
 <script type="module" src="./market-history.js"></script>
+<script type="module" src="./historical-archive.js"></script>
 </body>
                                                                                                                                 </html>

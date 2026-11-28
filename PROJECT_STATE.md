@@ -1155,3 +1155,19 @@ Deployment still requires operator access to Netlify and Cloudflare. No deployme
 - Updated the comparison UI to remain useful when numeric Elo is absent: show official ranking/points and the separate Elo leaderboard position, explicitly suppress win probabilities/fair odds, and still load recent history and H2H. No fabricated numeric Elo or probability is introduced.
 - Extended Preview smoke to verify the live comparison path and report whether it is in numeric-Elo or profile-fallback mode. Runtime smoke passed in profile-fallback mode; regression suite passed after the fallback assertion was corrected.
 - This is Preview-only. A proper numeric Elo comparison still requires a valid numeric rating source, such as a separately validated chronological rating calculation. The Elo rank field must never be used as a substitute. No Production deploy, merge, or Apify task change.
+
+## 2026-11-25 — Compact version label in both app editions
+- Updated the existing version marker in both Production (`/`) and Developer (`/developer/`) app shells: it now shows only the actual version string (for example `v2.0.0` or `v2.1.0-dev.1`) in the upper-right header area.
+- Reduced the marker to 8px muted text with no border, pill, background, or extra padding; Developer keeps a subtle cool tint. The version value remains driven by the edition runtime, not hard-coded into the shared label.
+- Bumped the Production PWA cache to `tennis-value-static-v145` and the Developer PWA cache to `tvs-developer-static-v2` so installed clients refresh the changed header. Cache namespaces remain isolated.
+- Extended `tests/edition.test.mjs` to assert both editions use the compact text-only label and dynamically display their edition version; updated the Developer cache-version assertion.
+- Preview branch only (`feature/tvs2-editions-lab`, PR #171). No merge, Production deployment, model change, Worker change, or Apify configuration change.
+
+- First CI run for this UI refinement found three stale test assertions still expecting Production cache v144; the actual PWA cache was correctly advanced to v145. Updated the corresponding expectations in `tests/app-ui.test.mjs` and `tests/worker.test.mjs`; no application-code defect was reported. Re-run required before considering validation complete.
+
+## 2026-11-26 — Developer Edition historical archive pipeline
+
+- Based on the Developer Edition branch from PR #171 and linked to registry #190 and archive review issue #189.
+- The historical archive center queues CSV/ZIP imports and existing originals for local worker processing. IndexedDB v3 persists normalized research records, quality findings, duplicate candidates and the resume cursor atomically by batch.
+- See [Developer archive audit and operating notes](docs/DEVELOPER_ARCHIVE.md) for the reviewed branch inventory, supported formats, PWA behavior and the remaining review of the real ValueBetennis 2025 archive.
+
