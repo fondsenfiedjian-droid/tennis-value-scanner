@@ -1978,7 +1978,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
       const playerId1=getPlayerId(p1),playerId2=getPlayerId(p2);
       const matchSurface=String(m.surface||m.court||m.court_name||((/finals/i.test(tournament)&&/turin/i.test(tournament))?'hard':'')).trim().slice(0,40);
       const ids=(playerId1&&playerId2)?' data-player-a="'+escapeHtml(playerId1)+'" data-player-b="'+escapeHtml(playerId2)+'" data-surface="'+escapeHtml(matchSurface)+'" data-name-a="'+escapeHtml(a)+'" data-name-b="'+escapeHtml(b)+'" data-odds-a="'+(oddsA||'')+'" data-odds-b="'+(oddsB||'')+'" data-bookmaker-a="'+escapeHtml(bookmakerA)+'" data-bookmaker-b="'+escapeHtml(bookmakerB)+'" data-event-id-a="'+escapeHtml(displayQuoteA?.eventId||'')+'" data-event-id-b="'+escapeHtml(displayQuoteB?.eventId||'')+'" data-quote-captured-a="'+(displayQuoteA&&Number.isFinite(Date.parse(displayQuoteA.scrapedAt))?Date.parse(displayQuoteA.scrapedAt):'')+'" data-quote-captured-b="'+(displayQuoteB&&Number.isFinite(Date.parse(displayQuoteB.scrapedAt))?Date.parse(displayQuoteB.scrapedAt):'')+'" data-odds-age-minutes="'+(Number.isFinite(oddsAgeMinutes)?Math.max(0,oddsAgeMinutes):'')+'" data-odds-observed-at="'+oddsObservedAt+'"':'';
-      return '<article class="match-card" data-match-index="'+i+'" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-player-quick" id="model-summary-'+i+'">'+(playerId1&&playerId2?'Сравнение Elo: ожидает расчёта рейтингов…':'Сравнение Elo недоступно: нет ID обоих игроков')+'</div><div class="match-bottom odds-visible">'+oddsHtml+'</div><div class="match-quote-status '+oddsPairStatusClass+'">'+escapeHtml(oddsPairStatus)+'</div><div class="match-details"><div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
+      return '<article class="match-card" data-live-match-id="'+escapeHtml(m.id??m.match_id??"")+'" data-match-index="'+i+'" role="button" tabindex="0" aria-expanded="false">'+bookmakerTag+'<div class="match-top"><span>'+escapeHtml(tournament)+'</span><span>'+escapeHtml(time)+'</span></div><div class="match-players">'+escapeHtml(a)+'<br>— '+escapeHtml(b)+'</div><div class="match-player-quick" id="model-summary-'+i+'">'+(playerId1&&playerId2?'Сравнение Elo: ожидает расчёта рейтингов…':'Сравнение Elo недоступно: нет ID обоих игроков')+'</div><div class="match-bottom odds-visible">'+oddsHtml+'</div><div class="match-quote-status '+oddsPairStatusClass+'">'+escapeHtml(oddsPairStatus)+'</div><div class="match-details"><div class="model-result model-muted" id="model-'+i+'"'+ids+'>Модель Elo: ожидание данных рейтингов…</div><div class="match-bottom">'+[court,status].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div><div class="match-bottom card-hint">Нажми, чтобы открыть подробности</div></article>';
     }).join('');
     list.querySelectorAll('.match-card').forEach(card=>{
       const toggle=()=>{const open=card.classList.toggle('expanded');card.setAttribute('aria-expanded',String(open));const hint=card.querySelector('.card-hint');if(hint)hint.textContent=open?'Нажми, чтобы свернуть':'Нажми, чтобы открыть подробности';};
@@ -2899,6 +2899,26 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     const totals=payload.totals||{},meetings=Array.isArray(payload.meetings)?payload.meetings:[],surfaces=payload.by_surface&&typeof payload.by_surface==='object'?Object.entries(payload.by_surface):[];
     return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><div class="compare-h2h-total">'+escapeHtml(p1)+' '+Number(totals.p1_wins||0)+' : '+Number(totals.p2_wins||0)+' '+escapeHtml(p2)+'</div><small>Встреч: '+Number(totals.meetings||meetings.length)+' · неопределённых: '+Number(totals.undecided||0)+' · период: '+escapeHtml(payload.period||'1968-present')+'</small><div class="compare-surface-records">'+surfaces.map(([k,v])=>'<span>'+escapeHtml(k)+': '+Number(v?.p1??v?.p1_wins??0)+'–'+Number(v?.p2??v?.p2_wins??0)+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние встречи</b>'+meetings.slice(0,5).map(m=>'<div class="compare-history-row"><span>'+escapeHtml(m.date||'дата не указана')+' · '+(m.winner===1?escapeHtml(p1):m.winner===2?escapeHtml(p2):'победитель не определён')+'</span><small>'+escapeHtml(m.score||m.outcome||'')+'</small></div>').join('')+'</div></section>';
   }
+  function renderCompareUnavailableElo(diagnostic,nameA,nameB,surface){
+    const node=$('#compareResult');
+    const card=(label,identity,eloFields)=>{
+      const rank=Number(identity?.ranking),points=Number(identity?.rankingPoints);
+      const eloRankField=Array.isArray(eloFields)?eloFields.find(item=>String(item?.path||'').endsWith('.elo_rank')):null;
+      const eloRank=Number(eloRankField?.value);
+      const tour=identity?.tour==='atp'?'ATP':identity?.tour==='wta'?'WTA':String(identity?.tour||'тур не указан').toUpperCase();
+      return '<div class="compare-result-player"><strong>'+escapeHtml(identity?.name||label)+'</strong>'+
+        '<small>Тур: '+escapeHtml(tour)+'</small>'+
+        '<span class="compare-rating">'+(Number.isSafeInteger(rank)&&rank>0?'№'+rank:'—')+'</span><small>Официальный рейтинг</small>'+
+        '<span class="compare-probability">'+(Number.isFinite(points)&&points>0?points.toLocaleString('ru-RU'):'—')+'</span><small>Очки официального рейтинга</small>'+
+        '<small>Место в Elo-рейтинге: '+(Number.isSafeInteger(eloRank)&&eloRank>0?'№'+eloRank:'не опубликовано')+'</small></div>';
+    };
+    node.innerHTML='<div class="compare-result-grid">'+
+      card(nameA,diagnostic?.profileIdentityA,diagnostic?.eloFieldsA)+
+      card(nameB,diagnostic?.profileIdentityB,diagnostic?.eloFieldsB)+
+      '</div><div class="compare-result-summary">Покрытие: '+(surface?escapeHtml(surface):'не выбрано')+
+      '. Численные значения Elo в профилях не предоставлены. Место в Elo-рейтинге не является рейтингом Elo; вероятности победы и справедливые коэффициенты не рассчитывались.</div>';
+    node.hidden=false;
+  }
   function renderCompareResult(result,nameA,nameB,surface){
     const node=$('#compareResult');
     const ratingA=Number(result.ratingA),ratingB=Number(result.ratingB),probA=Number(result.probabilityA),probB=Number(result.probabilityB);
@@ -3009,7 +3029,34 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
     try{
       const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
       const payload=await response.json();
-      if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
+      if(!response.ok){
+        const diagnostic=payload?.diagnostic;
+        if(response.status===422&&payload?.error==='Elo rating is unavailable for one or both players'&&
+          diagnostic?.profileIdentityA?.name&&diagnostic?.profileIdentityB?.name){
+          if(requestId!==compareRequestSequence)return;
+          const exactNameA=String(diagnostic.profileIdentityA.name),exactNameB=String(diagnostic.profileIdentityB.name);
+          renderCompareUnavailableElo(diagnostic,exactNameA,exactNameB,surface);
+          status.textContent='Профили найдены. Численный Elo недоступен; история и личные встречи загружаются отдельно…';
+          loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB).catch(error=>{
+            if(requestId===compareRequestSequence)status.textContent='Профили загружены; дополнительные данные не загрузились: '+String(error.message||error);
+          });
+          return;
+        }
+        let detail='';
+        if(diagnostic){
+          const describe=(label,identity,keys,eloFields)=>{
+            const who=identity?.name||label;
+            const fields=Array.isArray(eloFields)&&eloFields.length
+              ?eloFields.slice(0,12).map(item=>item.path+'='+String(item.value)).join(', ')
+              :'поля Elo в профиле не найдены';
+            const profileKeys=Array.isArray(keys)?keys.slice(0,18).join(', '):'нет данных';
+            return who+': '+fields+'. Поля профиля: '+(profileKeys||'не указаны');
+          };
+          detail=' Диагностика — '+describe('Игрок A',diagnostic.profileIdentityA,diagnostic.profileKeysA,diagnostic.eloFieldsA)
+            +' | '+describe('Игрок B',diagnostic.profileIdentityB,diagnostic.profileKeysB,diagnostic.eloFieldsB);
+        }
+        throw new Error((payload.error||('API вернул ошибку '+response.status))+detail);
+      }
       const probabilityA=Number(payload.probabilityA),probabilityB=Number(payload.probabilityB);
       if(!Number.isFinite(probabilityA)||!Number.isFinite(probabilityB)||probabilityA<=0||probabilityA>=100||probabilityB<=0||probabilityB>=100||Math.abs(probabilityA+probabilityB-100)>0.05)
         throw new Error('API вернул некорректные или несогласованные вероятности для этой пары.');
@@ -4216,6 +4263,7 @@ window.TVS_EDITION={channel:"developer",version:"2.1.0-dev.1",modelVersion:"gene
 
 <script src="./edition-runtime.js"></script>
 <script type="module" src="./model-lab.js"></script>
+<script type="module" src="./market-history.js"></script>
 <script type="module" src="./historical-archive.js"></script>
 </body>
                                                                                                                                 </html>

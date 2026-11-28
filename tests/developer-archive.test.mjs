@@ -89,10 +89,11 @@ test("ZIP stored and deflated members round trip and CRC corruption stays detect
   await assert.rejects(zipDirectory(new Blob(["not a zip"])), /ZIP/);
 });
 
-test("Developer PWA precaches all archive modules without loading them in the root app", async () => {
+test("archive modules stay gated to their Developer surfaces", async () => {
   const root = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const worker = await readFile(new URL("../developer/sw.js", import.meta.url), "utf8");
-  assert.doesNotMatch(root, /archive-pipeline|historical-archive\.js/);
+  assert.match(root, /location\.hostname\s*===\s*["']deploy-preview-172--tennis-value-scanner-developer\.netlify\.app["']/);
+  assert.match(root, /if\s*\(isArchivePreview\)\s*\{[\s\S]*?import\(['"]\.\/developer\/historical-archive\.js['"]\)/);
   for (const file of ["historical-archive.js", "archive-db.mjs", "archive-csv.mjs", "archive-zip.mjs", "archive-pipeline.mjs", "archive-worker.mjs"]) {
     assert.ok(worker.includes("./" + file), file);
   }

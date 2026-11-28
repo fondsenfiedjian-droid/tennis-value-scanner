@@ -1,13 +1,13 @@
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Research-Access",
   "Access-Control-Expose-Headers": "Retry-After, X-Data-Cache"
 };
 
 const APIFY_TASK_ID = "s9Des4R3jhMfA8e3s";
 const ODDS_FRESHNESS_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const WORKER_BUILD_ID = "tvs2-player-search-2026-11-22-1";
+const WORKER_BUILD_ID = "tvs2-pro-data-2026-11-24-1";
 
 function diagnoseOddsItems(items, now = Date.now()) {
   const fields = [
@@ -442,10 +442,11 @@ export default {
         service: "tennis-value-api",
         buildId: WORKER_BUILD_ID,
         liveTennisApiConfigured: Boolean(env.LIVE_TENNIS_API_KEY),
+        researchAccessConfigured: Boolean(env.TVS_RESEARCH_ACCESS_TOKEN),
         apifyTokenConfigured: Boolean(env.APIFY_TOKEN),
         apifyTaskConfigured: Boolean(APIFY_TASK_ID),
         oddsApiConfigured: Boolean(env.ODDS_API_KEY),
-        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/predict"]
+        endpoints: ["/health", "/usage", "/matches?status=upcoming", "/matches?status=live", "/matches?status=completed", "/history/coverage", "/history/packages?kind=tape", "/history/packages?kind=archive", "/history/packages/2026-11", "/result?id=123", "/player-stats?id=123", "/odds", "/odds-api/sports", "/odds-api/test?sport=tennis_atp_finals", "/odds-api/quotes?sport=tennis_atp_finals", "/historical", "/players/search?search=name", "/player-history?id=123", "/player-h2h?p1=name1&p2=name2", "/markets?match_id=123", "/markets/123/prices", "/matches/123/prices", "/predict"]
       });
     }
 
@@ -943,6 +944,118 @@ export default {
       }
     }
 
+    // Live Tennis PRO bulk history packages: monthly point tapes and yearly archive results.
+    // Package files are streamed unchanged; API keys remain server-side.
+    const historyPackageMatch = path.match(/^\/history\/packages(?:\/(\d{4}(?:-\d{2})?))?$/);
+    if (historyPackageMatch) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      const period = historyPackageMatch[1] || null;
+      const params = new URLSearchParams();
+      const kind = (url.searchParams.get("kind") || "tape").trim().toLowerCase();
+      const allowedKinds = ["tape", "rankings", "rally", "archive", "elo", "archive_tape"];
+      if (!allowedKinds.includes(kind)) return response({ error: "Invalid history package kind", allowed: allowedKinds }, 400);
+      if (period && ["rankings", "rally", "archive", "elo", "archive_tape"].includes(kind)) {
+        if (!/^\d{4}$/.test(period)) return response({ error: "Yearly package period must be YYYY" }, 400);
+      } else if (period && !/^\d{4}-\d{2}$/.test(period)) {
+        return response({ error: "Monthly tape package period must be YYYY-MM" }, 400);
+      }
+      params.set("kind", kind);
+      const year = url.searchParams.get("year");
+      if (year !== null) {
+        if (!/^\d{4}$/.test(year)) return response({ error: "year must be YYYY" }, 400);
+        if (period) return response({ error: "year cannot be combined with a package period" }, 400);
+        params.set("year", year);
+      }
+      const format = url.searchParams.get("format");
+      if (format !== null) {
+        if (env.TVS_RESEARCH_PREVIEW_ONLY !== "true" || !env.TVS_RESEARCH_ACCESS_TOKEN || request.headers.get("X-Research-Access") !== env.TVS_RESEARCH_ACCESS_TOKEN) {
+          return response({ error: "Research package downloads require a valid preview access token" }, 403);
+        }
+        if (!period) return response({ error: "format requires a package period" }, 400);
+        if (!["jsonl", "csv", "corrections"].includes(format)) {
+          return response({ error: "format must be jsonl, csv or corrections" }, 400);
+        }
+        params.set("format", format);
+      }
+      const upstreamPath = period
+        ? "/history/packages/" + encodeURIComponent(period) + "?" + params.toString()
+        : "/history/packages?" + params.toString();
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(cacheKeyUrl(env, "/__history-packages/v1" + upstreamPath));
+        const cacheable = format === null;
+        const cached = cacheable ? await cache.match(cacheKey) : null;
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis(
+          "https://api.livetennisapi.com/api/public/v1" + upstreamPath,
+          { headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" } }, env
+        );
+        const headers = new Headers(cors);
+        for (const name of ["Content-Type", "Content-Disposition", "Content-Length", "Content-Encoding", "Cache-Control", "Retry-After"]) {
+          const value = upstream.headers.get(name);
+          if (value) headers.set(name, value);
+        }
+        if (format !== null && upstream.ok) {
+          headers.set("Cache-Control", "private, no-store");
+          return new Response(upstream.body, { status: upstream.status, headers });
+        }
+        let body;
+        try { body = await upstream.json(); }
+        catch { return response({ error: "Live Tennis history package returned invalid JSON" }, 502); }
+        if (upstream.ok && cacheable) {
+          headers.set("Content-Type", "application/json; charset=utf-8");
+          headers.set("Cache-Control", "public, max-age=21600");
+          headers.set("X-Data-Cache", "MISS");
+          await cache.put(cacheKey, new Response(JSON.stringify(body), { status: 200, headers }));
+        }
+        return response(body, upstream.status, Object.fromEntries(headers.entries()));
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis history packages", accessStatus: "unavailable" }, 502);
+      }
+    }
+
+    if (path === "/history/coverage") {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+      try {
+        const cache = caches.default;
+        const cacheKey = internalCacheRequest(request, "/__history-coverage/v1");
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1/history/coverage", {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); } catch {
+          return response({ error: "Live Tennis history coverage returned invalid JSON" }, 502);
+        }
+        if (!upstream.ok) {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(body, upstream.status, retryAfter ? { "Retry-After": retryAfter } : {});
+        }
+        await cache.put(cacheKey, new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=21600" }
+        }));
+        return response(body, 200, { "Cache-Control": "public, max-age=21600", "X-Data-Cache": "MISS" });
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis history coverage", accessStatus: "unavailable" }, 502);
+      }
+    }
+
     if (path === "/usage") {
       if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
       if (!env.LIVE_TENNIS_API_KEY) return response({ error: "LIVE_TENNIS_API_KEY secret is not configured" }, 500);
@@ -955,6 +1068,95 @@ export default {
         return response(body, upstream.status);
       } catch (error) {
         return response({ error: "Could not retrieve API usage" }, 502);
+      }
+    }
+
+    // Live Tennis API PRO match-winner markets and price history.
+    // Only match-winner prices are exposed; derivative markets are not supported by the provider.
+    if (path === "/markets" || /^\/markets\/\d+\/prices$/.test(path) || /^\/matches\/\d+\/prices$/.test(path)) {
+      if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+      if (!env.LIVE_TENNIS_API_KEY) {
+        return response({ error: "LIVE_TENNIS_API_KEY secret is not configured", accessStatus: "api_key_missing" }, 500);
+      }
+
+      let upstreamPath;
+      let cacheTtl = 60;
+      if (path === "/markets") {
+        const rawMatchId = url.searchParams.get("match_id") || "";
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match_id must be a positive integer" }, 400);
+        }
+        upstreamPath = "/markets?match_id=" + encodeURIComponent(String(Number(rawMatchId)));
+      } else {
+        const match = path.match(/^\/(markets|matches)\/(\d+)\/prices$/);
+        const rawMatchId = match?.[2] || "";
+        if (!/^\d{1,15}$/.test(rawMatchId) || !Number.isSafeInteger(Number(rawMatchId)) || Number(rawMatchId) <= 0) {
+          return response({ error: "match ID must be a positive integer" }, 400);
+        }
+        const isMarketRoute = match[1] === "markets";
+        const params = new URLSearchParams();
+        const rawLimit = url.searchParams.get("limit") || (isMarketRoute ? "50" : "100");
+        const maxLimit = isMarketRoute ? 200 : 500;
+        if (!/^\d{1,3}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > maxLimit) {
+          return response({ error: "limit must be an integer from 1 to " + maxLimit }, 400);
+        }
+        params.set("limit", String(Number(rawLimit)));
+        if (!isMarketRoute) {
+          const minutes = url.searchParams.get("minutes");
+          if (minutes !== null) {
+            if (!/^\d{1,4}$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 1440) {
+              return response({ error: "minutes must be an integer from 1 to 1440" }, 400);
+            }
+            params.set("minutes", String(Number(minutes)));
+          }
+          const cursor = url.searchParams.get("cursor");
+          if (cursor !== null) {
+            if (!cursor.trim() || cursor.length > 500) return response({ error: "cursor must contain 1 to 500 characters" }, 400);
+            params.set("cursor", cursor);
+          }
+        }
+        upstreamPath = isMarketRoute
+          ? "/markets/" + String(Number(rawMatchId)) + "/prices?" + params.toString()
+          : "/matches/" + String(Number(rawMatchId)) + "/prices?" + params.toString();
+        cacheTtl = 20;
+      }
+
+      try {
+        const cache = caches.default;
+        const cacheKey = new Request(cacheKeyUrl(env, "/__live-tennis-markets/v1" + path + "?" + url.searchParams.toString()), { method: "GET" });
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const headers = new Headers(cached.headers);
+          headers.set("X-Data-Cache", "HIT");
+          return new Response(cached.body, { status: cached.status, headers });
+        }
+        const upstream = await fetchLiveTennis("https://api.livetennisapi.com/api/public/v1" + upstreamPath, {
+          headers: { "X-API-Key": env.LIVE_TENNIS_API_KEY, "Accept": "application/json" }
+        }, env);
+        let body;
+        try { body = await upstream.json(); }
+        catch {
+          const retryAfter = upstream.headers.get("Retry-After");
+          return response(
+            { error: "Live Tennis API returned a non-JSON response", accessStatus: "invalid_upstream_response" },
+            502,
+            retryAfter ? { "Retry-After": retryAfter } : {}
+          );
+        }
+        const retryAfter = upstream.headers.get("Retry-After");
+        const headers = {};
+        if (retryAfter) headers["Retry-After"] = retryAfter;
+        if (upstream.ok) {
+          headers["Cache-Control"] = "public, max-age=" + cacheTtl;
+          headers["X-Data-Cache"] = "MISS";
+          await cache.put(cacheKey, new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=" + cacheTtl }
+          }));
+        }
+        return response(body, upstream.status, headers);
+      } catch {
+        return response({ error: "Could not retrieve Live Tennis market prices", accessStatus: "upstream_unavailable" }, 502);
       }
     }
 

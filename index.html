@@ -33,7 +33,7 @@
     .empty{text-align:center;padding:30px 16px}.empty-icon{font-size:28px;margin-bottom:8px}.empty strong{display:block;margin-bottom:6px}
     .notice{border:1px solid #6a5428;background:#302817;color:#f5d99d;padding:12px;border-radius:13px;font-size:12px;line-height:1.5;margin-top:14px}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#080808ed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:4}
-    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
+    .nav{max-width:760px;width:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}.nav button{border:0;background:transparent;color:var(--muted);padding:8px 3px;border-radius:11px;font-size:11px}.nav button.active{color:#e6bd58;background:#302414}
     .nav b{display:block;font-size:18px;margin-bottom:3px}
     .modal-back{display:none;position:fixed;inset:0;background:#0009;z-index:10;padding:18px;align-items:flex-end;justify-content:center}.modal-back.show{display:flex}
     .modal{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:#1b1715;border:1px solid var(--line);border-radius:22px;padding:18px}
@@ -688,6 +688,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     body[data-skin="terracotta"] .best-bet,
     body[data-skin="terracotta"] .daily-pick{background:linear-gradient(135deg,#3a3025,#242424 72%)!important;border-color:#d88932!important;box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important}
     body[data-skin="terracotta"] .best-bet:before{background:linear-gradient(120deg,#8be83c,#6ba93a 32%,#d88932 72%,#f2ad3d)!important}
+    body[data-skin="terracotta"] .mandatory-bets{background:linear-gradient(135deg,#3a3025,#242424 72%)!important;border-color:#d88932!important;box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important}
+    body[data-skin="terracotta"] .mandatory-bets:before{background:linear-gradient(120deg,#8be83c,#6ba93a 32%,#d88932 72%,#f2ad3d)!important}
+    body[data-skin="terracotta"] .ev-bet-card{background:linear-gradient(145deg,#343434,#252525 78%)!important;border-color:#5b584f!important}
+    body[data-skin="terracotta"] .ev-bet-card:has(.ev-bet-row.selected){border-left-color:#d88932!important}
+    body[data-skin="terracotta"] .ev-bet-row.selected .ev-bet-odds{color:#f2a52b!important;text-shadow:0 0 9px #d8893244!important}
+
     body[data-skin="terracotta"] .best-bet-title,
     body[data-skin="terracotta"] .best-bet-value,
     body[data-skin="terracotta"] .daily-pick .best-bet-title{color:#f2a52b!important}
@@ -1051,13 +1057,253 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   .edition-version{display:inline-block;white-space:nowrap;color:#b5a8a1;font-size:8px;font-weight:600;letter-spacing:.03em;line-height:1;opacity:.78}
     body[data-edition="developer"] .edition-version{color:#8bb4c5}
     #quickLab[hidden]{display:none!important}
-  </style>
+  
+    /* EV+ cards: surname left, aligned Winamax prices centre, movement right */
+    .mandatory-bets{margin:0 0 13px;padding:9px;border:1px solid transparent;border-radius:17px;background:linear-gradient(145deg,#211018,#090909 68%);box-shadow:inset 0 1px #fff4,0 8px 24px #0009;position:relative}.mandatory-bets:before{content:"";position:absolute;inset:0;padding:1px;border-radius:inherit;background:linear-gradient(120deg,#d9a0a7,#77716d 12%,#d58a8e 35%,#a51f45 58%,#d58a8e 78%,#e2dcd7);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+    .mandatory-bets>.plan-summary{margin:0 0 7px;padding:0 2px 7px;border:0;border-bottom:1px solid #75404b;border-radius:0;background:transparent;box-shadow:none}
+    .mandatory-bets .plan-summary-heading{margin:0 0 5px;color:#f0dce0;font-size:12px;letter-spacing:.055em}
+    .mandatory-bets .plan-summary-heading b{color:#e65b70}
+    .mandatory-bets .plan-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .mandatory-bets .plan-summary-item{padding:4px 3px}
+    .mandatory-bets .plan-summary-item span{min-height:23px;font-size:8px;letter-spacing:.025em}
+    .mandatory-bets .plan-summary-item b{font-size:19px}
+    .mandatory-bets .plan-summary-item small{font-size:8px;line-height:1.25}
+    .ev-bet-list{display:grid;gap:5px}
+    .ev-bet-card{position:relative;border:1px solid #625149;border-left:3px solid #c66b49;border-radius:11px;background:linear-gradient(145deg,#211814,#100e0d);overflow:hidden;transition:border-color .18s,background .18s}
+    .ev-bet-card:has(.ev-bet-row.selected){border-left-color:#e1845d}
+    .ev-bet-toggle{display:block;width:100%;padding:5px 8px 2px;border:0;background:transparent;color:inherit;text-align:left}
+    .ev-bet-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(58px,.75fr) minmax(68px,.75fr);align-items:center;gap:5px;min-height:25px}
+    .ev-bet-player{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:750;color:#aaa4a6}
+    .ev-bet-odds{justify-self:center;font-size:10px;font-weight:700;color:#777579;font-variant-numeric:tabular-nums}
+    .ev-bet-row.selected .ev-bet-player{color:#f1dfe1;font-size:12px}
+    .ev-bet-row.selected .ev-bet-odds{font-size:21px;font-weight:950;color:#e1845d;text-shadow:0 0 11px #c66b4938}
+    .ev-bet-trend{justify-self:end;white-space:nowrap;font-size:10px;font-weight:850;font-variant-numeric:tabular-nums;color:#929096}
+    .ev-bet-trend.up{color:#56c783}
+    .ev-bet-trend.down{color:#ef6874}
+    .ev-bet-trend.flat{color:#8e8b91}
+    .ev-bet-foot{display:flex;justify-content:flex-end;align-items:center;height:10px;padding-right:1px;color:#b64c5d}
+    .ev-bet-foot svg{width:11px;height:11px}
+    .ev-bet-details{display:none;padding:8px 10px 10px;border-top:1px solid #75404b;background:#151116;color:#c9bdb6;font-size:10px;line-height:1.55}
+    .ev-bet-card.expanded .ev-bet-details{display:block}
+    .ev-bet-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px}
+    .ev-bet-details b{color:#eee1dc}
+    .ev-bet-details .ev-bet-positive{color:#e6bd58}
+    .ev-bet-details .ev-bet-stake{color:#d8a184}
+    .mandatory-bets .ev-bet-list{gap:5px}
+    .ev-bet-carousel{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 1px 7px;scroll-snap-type:x mandatory;scrollbar-width:thin;scrollbar-color:#a51f45 #211018}
+    .ev-bet-carousel .ev-bet-card{flex:0 0 min(86%,310px);scroll-snap-align:start}
+    .ev-bet-carousel::-webkit-scrollbar{height:4px}
+    .ev-bet-carousel::-webkit-scrollbar-track{background:#211018;border-radius:4px}
+    .ev-bet-carousel::-webkit-scrollbar-thumb{background:#a51f45;border-radius:4px}
+    .ev-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:66px;padding:10px 11px;border:1px dashed #653344;border-radius:10px;background:linear-gradient(105deg,#1b1118,#111116 72%);color:#d8c8cc}
+    .ev-empty-mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid #9c304c;border-radius:9px;background:#28111b;color:#ef7185;font-size:12px;font-weight:950;letter-spacing:-.04em;text-shadow:0 0 10px #c43b5b88;box-shadow:inset 0 0 12px #a72d4a22,0 0 10px #a72d4a22}
+    .ev-empty-state b{display:block;margin-bottom:4px;color:#f0dce0;font-size:11px}
+    .ev-empty-state small{display:block;color:#a99ba1;font-size:9px;line-height:1.45}
+    .ev-empty-count{color:#e15b72;font-size:24px;font-weight:950;font-variant-numeric:tabular-nums}
+    body[data-edition="developer"] .edition-version{border-color:#347c98;color:#8cecff;background:#102333}
+    @media(max-width:390px){.ev-bet-row{grid-template-columns:minmax(76px,1.1fr) minmax(54px,.7fr) minmax(62px,.8fr);gap:3px}.ev-bet-player{font-size:10px}.ev-bet-row.selected .ev-bet-player{font-size:11px}.ev-bet-row.selected .ev-bet-odds{font-size:19px}.ev-bet-trend{font-size:9px}}
+
+
+    /* EV+ outer frame mirrors the daily-pick panel in every active skin */
+    #mandatoryBets{
+      padding:14px!important;margin:0 0 13px!important;border-radius:19px!important;
+      background:linear-gradient(120deg,#230d15,#0b0b0e 60%,#121018)!important;
+      border:1px solid #a51f45!important;
+      box-shadow:0 0 16px #a51f4530,inset 0 1px #fff2!important;
+    }
+    #mandatoryBets:before{display:none!important}
+    body[data-skin="steel"] #mandatoryBets{
+      background:linear-gradient(135deg,#f4faf8,#d5e4e1 60%,#c3d8d3)!important;
+      border:1px solid #28a887!important;
+      box-shadow:0 0 12px #00a87955,0 0 27px #00a87933,inset 0 1px #fff!important;
+    }
+    body[data-skin="neon"] #mandatoryBets{
+      background:linear-gradient(135deg,#21152e,#101522 70%)!important;
+      border:1px solid #9256c5!important;
+      box-shadow:0 0 15px #8d52c533,inset 0 1px #fff2!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets{
+      background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
+      border:1px solid #d88932!important;
+      box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets{
+      background:linear-gradient(125deg,#1d170f 0%,#19140d 54%,#110e09 100%)!important;
+      border:1px solid #80572f!important;
+      box-shadow:inset 0 1px #ffd99a12,0 0 12px #d99a4320,0 8px 24px #000b!important;
+    }
+
+    /* Terracotta: keep EV+ frame in the same copper palette as Daily Pick. */
+    body[data-skin="terracotta"] section#mandatoryBets.mandatory-bets{
+      border:1px solid #d88932!important;
+      background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
+      box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
+    }
+
+    /* Terracotta EV+: suppress inherited ruby pseudo-frame and separator. */
+    body[data-skin="terracotta"] #mandatoryBets:before,
+    body[data-skin="terracotta"] #mandatoryBets.mandatory-bets:before{
+      content:none!important;display:none!important;background:none!important;
+      border:0!important;box-shadow:none!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets>.plan-summary{
+      border:0!important;border-bottom:1px solid #d88932!important;
+      background:transparent!important;box-shadow:none!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets{
+      border:1px solid #d88932!important;
+      background:linear-gradient(135deg,#3a3025,#242424 72%)!important;
+      box-shadow:0 0 13px #d889322b,inset 0 1px #fff2!important;
+    }
+
+    /* Terracotta EV+ inner palette: carry copper/amber through every nested element. */
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-heading,
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-heading b{
+      color:#f2ad3d!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-heading span,
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-item span,
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-item small{
+      color:#c7b9a7!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-item b,
+    body[data-skin="terracotta"] #mandatoryBets #planMandatoryCount,
+    body[data-skin="terracotta"] #mandatoryBets #planStakeTotal{
+      color:#ffc04a!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .plan-summary-item{
+      border-color:#66513c!important;
+      background:linear-gradient(145deg,#383128,#292722)!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-card{
+      border-color:#66594a!important;
+      border-left-color:#c77a42!important;
+      background:linear-gradient(145deg,#34312b,#252525 78%)!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-card:has(.ev-bet-row.selected){
+      border-left-color:#f2a52b!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-row.selected .ev-bet-player{
+      color:#fff1d6!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-row.selected .ev-bet-odds,
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-details .ev-bet-positive,
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-details .ev-bet-stake{
+      color:#ffc04a!important;
+      text-shadow:0 0 8px #d8893240!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-foot{
+      color:#d88932!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-details{
+      border-top-color:#80613e!important;
+      background:linear-gradient(145deg,#2d2b26,#222222)!important;
+      color:#d5cabb!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-details b,
+    body[data-skin="terracotta"] #mandatoryBets .ev-empty-state b{
+      color:#fff0d3!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-empty-state{
+      border-color:#9a713d!important;
+      background:linear-gradient(105deg,#393127,#292722 72%)!important;
+      color:#e0d3bf!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-empty-mark{
+      border-color:#c1813e!important;
+      background:#3b3021!important;
+      color:#ffc04a!important;
+      text-shadow:0 0 8px #d8893266!important;
+      box-shadow:inset 0 0 12px #d8893222,0 0 8px #d8893222!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-empty-state small{
+      color:#c7b9a7!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-empty-count{
+      color:#ffc04a!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-carousel{
+      scrollbar-color:#d88932 #302b24!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-carousel::-webkit-scrollbar-track{
+      background:#302b24!important;
+    }
+    body[data-skin="terracotta"] #mandatoryBets .ev-bet-carousel::-webkit-scrollbar-thumb{
+      background:#d88932!important;
+    }
+  
+    /* AMBER EQUALIZER — EV+ block palette (black + amber neon) */
+    body[data-skin="amber-led"] #mandatoryBets{
+      background:linear-gradient(135deg,#17110b,#090909 68%,#15100a)!important;
+      border-color:#b88743!important;
+      box-shadow:0 0 14px #d99a4328,inset 0 1px #ffe0a022!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets:before{display:none!important;content:none!important}
+    body[data-skin="amber-led"] #mandatoryBets>.plan-summary{
+      border-bottom:1px solid #765327!important;background:transparent!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-heading{color:#f4dfbd!important}
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-heading b,
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-item b,
+    body[data-skin="amber-led"] #mandatoryBets .ev-empty-count{color:#ffc15c!important;text-shadow:0 0 8px #ffad4538!important}
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-item,
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-item span{border-color:#684a27!important;color:#c9ad87!important}
+    body[data-skin="amber-led"] #mandatoryBets .plan-summary-item small{color:#9f896d!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-card{
+      border-color:#654a2b!important;border-left-color:#bd843d!important;
+      background:linear-gradient(145deg,#21180e,#100d09)!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-card:has(.ev-bet-row.selected){border-left-color:#ffc15c!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-player{color:#bca98e!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-row.selected .ev-bet-player{color:#f2e4cc!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-odds{color:#8f806d!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-row.selected .ev-bet-odds{
+      color:#ffd078!important;text-shadow:0 0 10px #ffb84a55!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-foot{color:#d6a34f!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-details{
+      border-top-color:#765327!important;background:#15100b!important;color:#cbb99e!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-details b{color:#f3e4c9!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-details .ev-bet-positive{color:#ffd078!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-details .ev-bet-stake{color:#e2b46d!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-carousel{scrollbar-color:#b88743 #21180e!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-carousel::-webkit-scrollbar-track{background:#21180e!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-bet-carousel::-webkit-scrollbar-thumb{background:#b88743!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-empty-state{
+      border-color:#765327!important;background:linear-gradient(105deg,#1d160d,#100e0a 72%)!important;color:#d8c7aa!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .ev-empty-mark{
+      border-color:#a9783b!important;background:#24190d!important;color:#ffc15c!important;
+      text-shadow:0 0 10px #d99a4388!important;box-shadow:inset 0 0 12px #a9783b22,0 0 10px #a9783b22!important;
+    }
+    body[data-skin="amber-led"] #mandatoryBets .ev-empty-state b{color:#f4dfbd!important}
+    body[data-skin="amber-led"] #mandatoryBets .ev-empty-state small{color:#a99578!important}
+
+
+    /* Compact header: settings remain in the bottom navigation */
+    .main-header{padding:10px 2px 8px!important;gap:8px!important;margin-bottom:4px!important}
+    .brand-lockup{gap:8px!important;min-width:0}
+    .brand-ball{width:34px!important;height:34px!important;min-width:34px;display:grid;place-items:center;border-radius:11px!important;font-size:19px!important}
+    .brand-lockup .brand{font-size:16px!important;line-height:1!important;letter-spacing:.04em!important}
+    .header-actions{display:grid!important;justify-items:end;align-content:center;gap:3px!important;min-width:0}
+    .header-actions .status{padding:3px 6px!important;font-size:8px!important;line-height:1.1;letter-spacing:.04em}
+    .header-actions .edition-version{padding:2px 5px!important;font-size:8px!important;line-height:1.1;letter-spacing:.025em}
+    @media(max-width:380px){
+      .main-header{gap:5px!important}
+      .brand-lockup{gap:6px!important}
+      .brand-lockup .brand{font-size:14px!important;letter-spacing:.02em!important}
+      .brand-ball{width:31px!important;height:31px!important;min-width:31px;font-size:17px!important}
+      .header-actions .edition-version{font-size:7px!important}
+    }
+</style>
+  <style>.nav:has(#navArchive:not([hidden])){grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}</style>
 </head>
 <body>
 <div class="app">
   <header class="main-header">
     <div class="brand-lockup"><div class="brand-ball">🎾</div><div><div class="brand">TENNIS<br>VALUE <em>SCANNER</em></div></div></div>
-    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><span class="edition-version" id="editionVersion">PRODUCTION · v2.0.0</span><button type="button" id="headerSettings" aria-label="Открыть настройки">⚙</button></div>
+    <div class="header-actions"><div class="status" id="connectionStatus" role="status" aria-live="polite">API: ПРОВЕРКА</div><span class="edition-version" id="editionVersion">PRODUCTION · v2.0.0</span></div>
   </header>
   <nav class="top-status-nav" aria-label="Матчи по статусу"><button type="button" id="topLive">● LIVE</button><button type="button" id="topUpcoming">СКОРО</button><button type="button" id="topTomorrow">ЗАВТРА</button></nav>
 
@@ -1078,18 +1324,19 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
   <section id="bestBet" class="best-bet daily-pick" role="region" aria-label="Ставка дня" aria-live="polite"><div class="best-bet-title">СТАВКА ДНЯ</div><div class="best-bet-empty">Ожидаю расчёта вероятностей…</div></section>
 
-  <section class="plan-summary" aria-label="Сводка плана ставок">
-    <div class="plan-summary-heading"><b>▥ &nbsp; ПЛАН СТАВОК НА СЕГОДНЯ</b><span id="planUpdated">Ожидаю данные</span></div>
-    <div class="plan-summary-grid">
-      <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫЕ СТАВКИ</span><b id="planMandatoryCount">0</b></div>
-      <div class="plan-summary-item"><span>СУММА СТАВОК</span><b id="planStakeTotal">—</b><small>банк не задан · сумма не рассчитана</small></div>
-      <div class="plan-summary-item"><span>РИСК БАНКА</span><b id="planExposure">—</b><small>риск не рассчитывается</small></div>
-      <div class="plan-summary-item"><span>В НАБЛЮДЕНИИ</span><b id="additionalCountSummary">0</b></div>
+  <section id="mandatoryBets" class="mandatory-bets" aria-label="Ставки с положительным EV+">
+    <div class="plan-summary" aria-label="Сводка ставок">
+      <div class="plan-summary-heading"><b>СТАВКИ С ПОЛОЖИТЕЛЬНЫМ EV+</b><span id="planUpdated">Ожидаю данные</span></div>
+      <div class="plan-summary-grid">
+        <div class="plan-summary-item"><span>ОБЯЗАТЕЛЬНЫХ СТАВОК</span><b id="planMandatoryCount">0</b><small>Прошли строгие критерии отбора</small></div>
+        <div class="plan-summary-item"><span>ЗАДЕЙСТВОВАННЫЙ КАПИТАЛ</span><b id="planStakeTotal">—</b><small>банк не задан · сумма не рассчитана</small></div>
+        <div class="plan-summary-item"><span>ВИРТУАЛЬНЫЙ БАНК</span><b id="planCapitalTotal">—</b><small>Банк не настроен пользователем</small></div>
+        <div class="plan-summary-item"><span>ОБЩИЙ РИСК</span><b id="planExposure">—</b><small>риск не рассчитывается</small></div>
+      </div>
     </div>
+    <div id="mandatoryBetsContent" class="ev-bet-list"><div class="muted">Ожидаю расчёта вероятностей…</div></div>
   </section>
   <div class="plan-refresh-row"><span id="oddsStatus" class="muted" role="status" aria-live="polite">Коэффициенты Winamax ещё не загружены.</span><button class="plan-refresh" id="refreshBtn" aria-label="Обновить данные">↻</button></div>
-
-  <section id="mandatoryBets" class="mandatory-bets" aria-label="Обязательные ставки"><div class="section-head"><h2>Обязательные ставки</h2><span class="muted">Строгий отбор</span></div><div id="mandatoryBetsContent" class="mandatory-bets-content"><div class="muted">Ожидаю расчёта вероятностей…</div></div></section>
   <section id="additionalOpportunities" class="additional-opportunities" aria-live="polite"><div class="additional-opportunities-head"><h2>Дополнительные возможности</h2><span class="muted" id="additionalCount">0</span></div><div id="additionalOpportunitiesContent" class="additional-opportunities-content"><div class="muted">Ожидаю проверки матчей…</div></div></section>
 
   <nav class="quick-links" aria-label="Быстрые разделы">
@@ -1120,6 +1367,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 
 <div class="stats-view" id="statsView">
   <h1>Статистика прогнозов</h1>
+  <button type="button" id="statsOpenTests" class="linkbtn">Проверка прогнозов →</button>
   <div class="muted">Снимки вероятностей и коэффициентов. Точность считается только по подтверждённым завершённым матчам; снятия и отмены исключаются.</div>
   <section class="panel research-journal" id="researchTestJournal" style="margin-top:16px">
     <div class="section-head" style="margin-top:0"><h2>Журнал исследований модели</h2><button type="button" class="linkbtn" id="researchJournalRefresh">Обновить</button></div>
@@ -1154,11 +1402,57 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   <div class="archive-list" id="archiveList"><div class="panel empty">Архив пока пуст.</div></div>
 </div>
 
+<div class="screen-view" id="testsView">
+  <div class="screen-header"><div><div class="brand">ТЕСТЫ ПРОГНОЗОВ</div><div class="sub">Итоговое сравнение двух действующих моделей на общей проверенной выборке</div></div><button type="button" class="screen-refresh" id="forecastTestsRefresh">Обновить</button></div>
+  <section class="panel">
+    <b>Общий Elo против рыночной оценки</b>
+    <div class="muted" id="forecastTestsMeta">Расчёт по сохранённым предматчевым прогнозам и подтверждённым исходам.</div>
+    <div class="archive-list" id="forecastTestsSummary"><div class="archive-item">Подготовка выборки…</div></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Итоговая проверка · отложенная часть</b>
+    <div class="muted">Обе модели оцениваются на одних и тех же матчах. Хронологическое разделение 70/30: ранняя часть — обучение/настройка, поздняя — независимая проверка. Меньше Brier Score и LogLoss — лучше.</div>
+    <div class="research-table-wrap"><table class="research-table"><thead><tr><th>Модель</th><th>Матчей</th><th>Brier</th><th>LogLoss</th><th>Статус</th></tr></thead><tbody id="forecastTestsRows"><tr><td colspan="5">Недостаточно данных для расчёта.</td></tr></tbody></table></div>
+    <div class="archive-meta" id="forecastTestsDelta"></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Результаты исторических тестов на расширенной базе</b>
+    <div class="muted" id="forecastTestsHistoricalMeta">Загружаю подтверждённые результаты исследований и покрытие базы…</div>
+    <div class="archive-list" id="forecastTestsHistorical"><div class="archive-item">Загрузка…</div></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Качество по сегментам</b>
+    <div class="archive-list" id="forecastTestsSegments"><div class="archive-item">Нет общей проверенной истории по сегментам.</div></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <b>Контроль качества выборки</b>
+    <div class="archive-list" id="forecastTestsQuality"><div class="archive-item">—</div></div>
+  </section>
+  <div class="notice" style="margin-top:12px">Эта вкладка публикует результаты фактических сохранённых прогнозов. Большая историческая база матчей сама по себе не содержит прогнозов обеих моделей на момент до начала матча. Она будет включена в отдельный ретроспективный Elo-бэктест только после воспроизведения прогнозов без утечки будущих данных. Тесты не меняют рабочие вероятности автоматически.</div>
+</div>
+
+<template id="historicalArchiveTemplate">
+<section class="panel" id="historicalArchivePanel" style="margin:16px 0">
+  <div class="section-head" style="margin-top:0"><h2>Центр исторических архивов</h2><button type="button" class="linkbtn" id="historicalArchiveRefresh">Обновить</button></div>
+  <div class="muted">Отдельно от архива прогнозов. Оригинальные CSV и ZIP хранятся локально в IndexedDB этого браузера. Никакие файлы не отправляются на сервер. Импорт ещё не подтверждает матчи и не передаёт их модели.</div>
+  <div class="stats" style="margin-top:12px"><div class="panel"><div class="muted">Оригинальных архивов</div><div class="stat-num" id="historicalArchiveCount">0</div></div><div class="panel"><div class="muted">Режим хранения</div><div class="stat-num" style="font-size:15px">Локальный</div></div></div>
+  <div class="field"><label for="historicalArchiveSource">Предполагаемый источник (не считается подтверждением)</label><select id="historicalArchiveSource"><option value="unknown">Не определён</option><option value="tennismylife">TennisMyLife</option><option value="sackmann">Jeff Sackmann</option><option value="valuebetennis">ValueBetennis</option><option value="other">Другой CSV</option></select></div>
+  <div class="field"><label for="historicalArchiveFile">CSV или ZIP (до 100 МБ)</label><input id="historicalArchiveFile" type="file" accept=".csv,.zip,text/csv,application/zip"></div>
+  <button type="button" class="refresh" id="historicalArchiveImport">Импортировать и обработать</button>
+
+  <div class="muted" id="historicalArchiveStatus" role="status" aria-live="polite">Проверка хранилища…</div>
+  <div class="section-head"><h3>Загруженные оригиналы</h3></div><div class="archive-list" id="historicalArchiveList"><div class="archive-item">Загрузка…</div></div>
+  <section id="historicalArchiveAnalysis" class="archive-item" hidden></section>
+  <div class="section-head"><h3>Журнал операций</h3></div><div class="archive-list" id="historicalArchiveLog"><div class="archive-item">Загрузка…</div></div>
+</section>
+</template>
+
 <div class="bottom"><div class="nav">
   <button id="navHome" aria-label="Главная"><b>⌂</b>Главная</button>
   <button id="navMatches" aria-label="Матчи"><b>🎾</b>Матчи</button>
   <button id="navCompare" aria-label="Сравнение"><b>⇄</b>Сравнение</button>
   <button id="navStats" aria-label="Статистика"><b>▥</b>Статистика</button>
+  <button id="navArchive" type="button" aria-label="Архив и система" hidden><b>▤</b>Архив</button>
   <button id="navSettings" aria-label="Настройки"><b>⚙</b>Настройки</button>
 </div></div>
 
@@ -1212,11 +1506,17 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 <script src="./pfe.js"></script>
 <script>
   const $ = s => document.querySelector(s);
+  const isArchivePreview = location.hostname === "deploy-preview-172--tennis-value-scanner-developer.netlify.app";
 
   // Bind the bottom navigation immediately, before the rest of app startup.
   // This keeps navigation responsive even if a later optional initializer fails.
   document.addEventListener('click',event=>{
     const target=event.target instanceof Element?event.target.closest('#navHome,#navMatches,#navCompare,#navStats,#navSettings'):null;
+    if(isArchivePreview&&event.target instanceof Element&&event.target.closest('#navArchive')){
+      event.preventDefault();
+      showArchive();
+      return;
+    }
     if(!target)return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -1312,6 +1612,13 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(labButton)labMount.appendChild(labButton);
     if(labPanel){labPanel.hidden=false;labMount.appendChild(labPanel);}
     const archiveMount=$('#moreArchiveMount');
+    if(isArchivePreview){
+      archiveMount.prepend($('#historicalArchiveTemplate').content.cloneNode(true));
+      $('#navArchive').hidden=false;
+      import('./developer/historical-archive.js').catch(error=>{
+        $('#historicalArchiveStatus').textContent='Не удалось загрузить анализатор: '+error.message;
+      });
+    }
     const archiveQuality=$('#archiveOddsQuality')?.parentElement;
     const archiveLastHead=[...document.querySelectorAll('#statsView .section-head')].find(el=>el.textContent.includes('Последние записи'));
     [$('#archiveOddsByBookmaker'),archiveQuality,$('.stats-actions'),archiveLastHead,$('#archiveList')].filter(Boolean).forEach(node=>archiveMount.appendChild(node));
@@ -1367,7 +1674,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   $('#quickCompare').onclick=showCompare;
   $('#quickLab').onclick=showLab;
   $('#quickStats').onclick=showStats;
-  $('#quickArchive').onclick=()=>{showMore();$('#moreArchiveMount')?.scrollIntoView({behavior:'smooth',block:'start'});};
+  $('#quickArchive').onclick=showArchive;
   $('#moreModal').addEventListener('click',event=>{if(event.target===$('#moreModal'))closeMore();});
   $('#cancelSettings').onclick=cancelSettings;
   modal.addEventListener('click',e=>{if(e.target===modal)cancelSettings()});
@@ -1477,7 +1784,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     scheduleAutoRefresh();
     if(window.cachedMatches)renderMatches(window.cachedMatches);
   };
-  const API=location.hostname.startsWith('deploy-preview-')?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
+  const isPreviewBuild=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app';
+  const editionBadge=$('#editionVersion');
+  if(editionBadge){editionBadge.textContent=(isPreviewBuild?'PREVIEW':'PRODUCTION')+' · v2.0.0';if(isPreviewBuild)document.body.dataset.edition='developer';}
+  const API=isPreviewBuild?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev':'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   async function fetchWithTimeout(url,options={},timeoutMs=15000){
     const controller=new AbortController();
     let timer;
@@ -1728,8 +2038,12 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   function oddsEventGroupKey(o){
     const eventId=String(o?.eventId||'').trim();
     if(eventId)return String(o?.bookmaker||'').trim().toLowerCase()+'|'+eventId;
-    const {home,away}=oddsEventParticipants(o),start=String(o?.startTime||'').trim();
-    if(!start||!home||!away)return null;
+    const {home,away}=oddsEventParticipants(o),rawStart=String(o?.startTime||'').trim();
+    if(!rawStart||!home||!away)return null;
+    const parsedStart=Date.parse(rawStart);
+    if(!Number.isFinite(parsedStart))return null;
+    // Equivalent instants with different UTC offsets must form the same event key.
+    const start=new Date(parsedStart).toISOString();
     return [String(o?.bookmaker||'').trim().toLowerCase(),start,[home,away].sort().join('|'),String(o?.competition||'').trim().toLowerCase()].join('|');
   }
   function oddsForMatch(m){
@@ -1754,7 +2068,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const eventName=String(o.eventName||'').trim();
       const eventParts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean);
       if(eventParts.length===2&&!((playerNamesMatch(eventParts[0],home)&&playerNamesMatch(eventParts[1],away))||(playerNamesMatch(eventParts[0],away)&&playerNamesMatch(eventParts[1],home))))return false;
-      if(!((playerNamesMatch(home,a)&&playerNamesMatch(away,b))||(playerNamesMatch(home,b)&&playerNamesMatch(away,a))))return false;
+      const aHome=playerNamesMatch(home,a),aAway=playerNamesMatch(away,a);
+      const bHome=playerNamesMatch(home,b),bAway=playerNamesMatch(away,b);
+      // Each scheduled player must resolve to exactly one, opposite event participant.
+      if(aHome===aAway||bHome===bAway||aHome===bHome)return false;
       if(!tournamentCompatible(tournament,o.competition))return false;
       const eventStart=new Date(o.startTime);
       if(!o.startTime||Number.isNaN(eventStart.getTime())||eventStart.getTime()<=now||Math.abs(eventStart-matchStart)>36*60*60*1000)return false;
@@ -1778,12 +2095,129 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     }
     return selected;
   }
+
+  const ODDS_HISTORY_KEY='tvs-winamax-odds-history-v1';
+  function oddsHistoryIdentity(match,quote,player){
+    const event=String(quote?.eventId||match?.id||match?.event_id||'').trim();
+    const start=String(quote?.startTime||'').trim();
+    const bookmaker=String(quote?.bookmaker||'Winamax').trim().toLowerCase();
+    const outcome=String(quote?.outcome||'').trim().toLowerCase();
+    return [bookmaker,event||normalizePlayer(playerName(match?.players?.p1||match?.player1))+'|'+normalizePlayer(playerName(match?.players?.p2||match?.player2))+'|'+start,outcome].join('|');
+  }
+  function recordOddsHistory(match,quoteA,quoteB,playerA,playerB){
+    try{
+      const raw=localStorage.getItem(ODDS_HISTORY_KEY);
+      const history=raw?JSON.parse(raw):{};
+      for(const [quote,player] of [[quoteA,playerA],[quoteB,playerB]]){
+        if(!quote||!Number.isFinite(Number(quote.oddsDecimal)))continue;
+        const timestamp=Date.parse(quote.scrapedAt);
+        if(!Number.isFinite(timestamp))continue;
+        const key=oddsHistoryIdentity(match,quote,player);
+        const rows=Array.isArray(history[key])?history[key]:[];
+        if(!rows.some(row=>Number(row.timestamp)===timestamp)){
+          rows.push({timestamp,odds:Number(quote.oddsDecimal)});
+          rows.sort((a,b)=>a.timestamp-b.timestamp);
+          history[key]=rows.slice(-24);
+        }
+      }
+      const keys=Object.keys(history);
+      if(keys.length>1200)keys.slice(0,keys.length-1200).forEach(key=>delete history[key]);
+      localStorage.setItem(ODDS_HISTORY_KEY,JSON.stringify(history));
+    }catch(error){}
+  }
+  function oddsMovement(match,quote,player){
+    try{
+      if(!quote)return {label:'нет истории',className:'flat',first:null};
+      const raw=localStorage.getItem(ODDS_HISTORY_KEY);
+      const history=raw?JSON.parse(raw):{};
+      const rows=history[oddsHistoryIdentity(match,quote,player)]||[];
+      if(rows.length<2)return {label:'наблюдение',className:'flat',first:rows[0]?.odds??null};
+      const first=Number(rows[0].odds),last=Number(rows[rows.length-1].odds);
+      if(!(first>1&&last>1))return {label:'наблюдение',className:'flat',first:null};
+      const change=(last/first-1)*100;
+      if(Math.abs(change)<0.15)return {label:'→ 0,0%',className:'flat',first};
+      const up=change>0;
+      return {label:(up?'↑ ':'↓ ')+(up?'+':'')+change.toFixed(1).replace('.',',')+'%',className:up?'up':'down',first};
+    }catch(error){return {label:'нет истории',className:'flat',first:null};}
+  }
+
+  function oddsMatchDiagnostic(m){
+    const p=m.players||{},a=normalizePlayer(playerName(p.p1||m.player1)),b=normalizePlayer(playerName(p.p2||m.player2));
+    if(!a||!b||a===b)return {code:'invalid_match',label:'Не удалось определить обоих игроков'};
+    const matchStart=matchDate(m),now=Date.now();
+    if(!isPreMatchMatch(m,matchStart,now))return {code:'not_prematch',label:'Матч уже начался, завершён или время не определено'};
+    const tournament=normalizePlayer(m.tournament_name||m.tournament||m.event_name||m.competition||'');
+    const providerItems=cachedOdds.filter(o=>{
+      const provider=String(o?.bookmaker||'').trim().toLowerCase(),config=ODDS_PROVIDER_REGISTRY[provider];
+      // The TVS betting model is Winamax-only; never diagnose a different bookmaker as usable.
+      if(provider!=='winamax'||!config||!config.enabled)return false;
+      const country=String(o.bookmakerCountry||'').trim().toUpperCase();
+      if(country&&country!==config.country)return false;
+      return true;
+    });
+    if(!providerItems.length)return {code:'no_provider_data',label:'Нет данных Winamax'};
+    const marketItems=providerItems.filter(o=>String(o.sport||'').toLowerCase()==='tennis'&&String(o.marketType||'').toLowerCase()==='match_winner'&&(o.line===null||o.line===undefined||o.line==='')&&['home','away'].includes(String(o.outcome||'').toLowerCase()));
+    if(!marketItems.length)return {code:'market_unavailable',label:'Нет рынка «Победитель матча» или формат котировок не поддерживается'};
+    const participantItems=marketItems.filter(o=>{const q=oddsEventParticipants(o);return q.home&&q.away&&q.home!==q.away;});
+    if(!participantItems.length)return {code:'participants_missing',label:'В котировках не распознаны оба игрока'};
+    const eventItems=participantItems.filter(o=>{
+      const eventName=String(o.eventName||'').trim(),parts=eventName.split(/\s+(?:-|–|—|vs\.?|v)\s+/i).map(part=>part.trim()).filter(Boolean),q=oddsEventParticipants(o);
+      return parts.length!==2||((playerNamesMatch(parts[0],q.home)&&playerNamesMatch(parts[1],q.away))||(playerNamesMatch(parts[0],q.away)&&playerNamesMatch(parts[1],q.home)));
+    });
+    if(!eventItems.length)return {code:'event_identity_conflict',label:'Название события противоречит полям игроков'};
+    const teamCountries=new Set(['argentina','australia','austria','belgium','brazil','canada','chile','china','colombia','croatia','czech republic','czechia','denmark','france','germany','great britain','britain','united kingdom','hungary','india','italy','japan','kazakhstan','netherlands','norway','poland','serbia','slovakia','slovenia','south korea','korea republic','spain','sweden','switzerland','ukraine','united states','usa','argentine','autriche','allemagne','belgique','bresil','chine','colombie','danemark','espagne','etats unis','grande bretagne','hongrie','inde','italie','japon','pays bas','royaume uni','republique tcheque','coree du sud','serbie','slovaquie','slovenie','suede','suisse']);
+    const isCountryTeamName=value=>teamCountries.has(normalizePlayer(value));
+    const unsupportedDrawItems=eventItems.filter(o=>{
+      const competition=normalizePlayer(o.competition||'');
+      const q=oddsEventParticipants(o);
+      const doubles=/doubles|mixed doubles/.test(competition)||/\//.test(q.home+' '+q.away);
+      const teamCompetition=/davis cup|coupe davis|billie jean king cup|fed cup|united cup/.test(competition);
+      // Davis Cup/BJK Cup also contain individual singles rubbers. Exclude only country-vs-country ties.
+      const countryTie=teamCompetition&&isCountryTeamName(q.home)&&isCountryTeamName(q.away);
+      return doubles||countryTie;
+    });
+    const singlesItems=eventItems.filter(o=>!unsupportedDrawItems.includes(o));
+    if(!singlesItems.length&&unsupportedDrawItems.length)return {code:'unsupported_draw',label:'В Winamax есть только командные или парные события; одиночных котировок нет'};
+    const playerItems=singlesItems.filter(o=>{
+      const q=oddsEventParticipants(o);
+      const aHome=playerNamesMatch(q.home,a),aAway=playerNamesMatch(q.away,a);
+      const bHome=playerNamesMatch(q.home,b),bAway=playerNamesMatch(q.away,b);
+      return aHome!==aAway&&bHome!==bAway&&aHome!==bHome;
+    });
+    if(!playerItems.length)return {code:'players_mismatch',label:'Имена игроков в котировках не совпадают'};
+    const tournamentItems=playerItems.filter(o=>tournamentCompatible(tournament,o.competition));
+    if(!tournamentItems.length)return {code:'tournament_mismatch',label:'Не совпадает название турнира'};
+    const timedItems=tournamentItems.filter(o=>{const d=new Date(o.startTime);return o.startTime&&!Number.isNaN(d.getTime())&&d.getTime()>now&&Math.abs(d-matchStart)<=36*60*60*1000;});
+    if(!timedItems.length)return {code:'time_mismatch',label:'Время события отсутствует, уже прошло или отличается более чем на 36 часов'};
+    const freshItems=timedItems.filter(o=>{const d=new Date(o.scrapedAt);return o.scrapedAt&&!Number.isNaN(d.getTime())&&now-d.getTime()<=ODDS_FRESHNESS_MAX_AGE_MS&&d.getTime()-now<=5*60*1000;});
+    if(!freshItems.length)return {code:'stale_quotes',label:'Котировки устарели или имеют некорректное время получения'};
+    const validItems=freshItems.filter(o=>{const n=Number(o.oddsDecimal);return Number.isFinite(n)&&n>1;});
+    if(!validItems.length)return {code:'invalid_odds',label:'Коэффициенты имеют некорректный формат'};
+    const groups=new Map();
+    for(const quote of validItems){const key=oddsEventGroupKey(quote);if(!key)continue;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(quote);}
+    let incomplete=false,unsynchronised=false;
+    for(const quotes of groups.values()){
+      const latest={};
+      for(const quote of quotes){const side=String(quote.outcome).toLowerCase(),current=latest[side];if(!current||(Date.parse(quote.scrapedAt)||0)>(Date.parse(current.scrapedAt)||0))latest[side]=quote;}
+      if(!latest.home||!latest.away){incomplete=true;continue;}
+      const h=Date.parse(latest.home.scrapedAt),aTime=Date.parse(latest.away.scrapedAt);
+      if(!Number.isFinite(h)||!Number.isFinite(aTime)||Math.abs(h-aTime)>30*60*1000)unsynchronised=true;
+      else return {code:'available',label:'Полная актуальная пара найдена'};
+    }
+    if(unsynchronised)return {code:'unsynchronised_pair',label:'Коэффициенты получены в разное время — разница больше 30 минут'};
+    if(incomplete)return {code:'incomplete_pair',label:'Найден только один коэффициент из двух'};
+    return {code:'pair_not_grouped',label:'Котировки не удалось объединить в одну пару события'};
+  }
   function oddsSideForPlayer(o,playerA){
     const {home,away}=oddsEventParticipants(o),a=normalizePlayer(playerA);
     if(!home||!away||!a)return null;
     const outcome=String(o.outcome||'').toLowerCase();
-    if(playerNamesMatch(a,home))return outcome==='home'?'1':outcome==='away'?'2':null;
-    if(playerNamesMatch(a,away))return outcome==='away'?'1':outcome==='home'?'2':null;
+    const matchesHome=playerNamesMatch(a,home),matchesAway=playerNamesMatch(a,away);
+    // Initial-only names can match both participants (for example, J. Sinner).
+    // Never guess a side when participant identity is ambiguous.
+    if(matchesHome===matchesAway)return null;
+    if(matchesHome)return outcome==='home'?'1':outcome==='away'?'2':null;
+    if(matchesAway)return outcome==='away'?'1':outcome==='home'?'2':null;
     return null;
   }
   function normalizeTour(value){
@@ -1917,6 +2351,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       // Prediction and EV use the actual best live quotes; the configured odds range only filters value candidates.
       const displayQuoteA=bestQuoteForSide(allMatched,'1'),displayQuoteB=bestQuoteForSide(allMatched,'2');
       const oddsA=displayQuoteA?Number(displayQuoteA.oddsDecimal):null,oddsB=displayQuoteB?Number(displayQuoteB.oddsDecimal):null;
+      recordOddsHistory(m,displayQuoteA,displayQuoteB,a,b);
       const bookmakerA=displayQuoteA?String(displayQuoteA.bookmaker||'').trim():'';
       const bookmakerB=displayQuoteB?String(displayQuoteB.bookmaker||'').trim():'';
       const providers=[...new Set([bookmakerA,bookmakerB].filter(Boolean))];
@@ -1925,7 +2360,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const oddsHtml=allMatched.length?'<b>Коэффициенты:</b> '+[
         displayQuoteA?'<b>1</b> '+escapeHtml(displayQuoteA.bookmaker||'Winamax')+' <b>'+Number(displayQuoteA.oddsDecimal).toFixed(2)+'</b>':'',
         displayQuoteB?'<b>2</b> '+escapeHtml(displayQuoteB.bookmaker||'Winamax')+' <b>'+Number(displayQuoteB.oddsDecimal).toFixed(2)+'</b>':''
-      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):(winnerEnabled?'Коэффициенты букмекеров не найдены':'Рынок победителя отключён');
+      ].filter(Boolean).join(' · ')+(matched.length?'':' · вне заданного диапазона EV'):'Коэффициенты не найдены · '+escapeHtml(oddsMatchDiagnostic(m).label);
       const oddsPairStatus=!winnerEnabled?'Рынок победителя отключён':allMatched.length>=2?'Полная свежая пара':allMatched.length===1?'Неполная пара · найден 1 исход':'Нет свежей полной пары';
       const oddsPairStatusClass=!winnerEnabled?'disabled':allMatched.length>=2?'complete':allMatched.length===1?'partial':'missing';
       const oddsObservedAt=Date.now();
@@ -2606,7 +3041,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   function hideAllScreens(){
     const app=$('.app');if(app)app.classList.add('screen-open');
-    ['#matchesView','#liveView','#compareView','#statsView','#moreView','#labView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
+    ['#matchesView','#liveView','#compareView','#statsView','#testsView','#moreView','#labView','#balanceView','#historyView','#settingsView'].forEach(selector=>{const node=$(selector);if(node)node.style.display='none';});
     document.querySelectorAll('.top-status-nav button').forEach(button=>button.classList.remove('active'));
   }
   function showMain(){
@@ -2669,6 +3104,63 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     archiveStorageReady.then(renderArchive);
     loadResearchTestJournal();
   }
+  function renderForecastTests(){
+    const summary=$('#forecastTestsSummary'),rowsNode=$('#forecastTestsRows'),segmentsNode=$('#forecastTestsSegments'),qualityNode=$('#forecastTestsQuality');
+    if(!summary||!rowsNode||!segmentsNode||!qualityNode)return;
+    try{
+      const archive=readPredictionArchive();
+      loadHistoricalForecastTestResults();
+      const elo=TVSPFE.buildModelHistoryRecords(archive);
+      const market=TVSPFE.buildMarketHistoryRecords(archive);
+      const combined=[...elo.records,...market.records];
+      const result=TVSPFE.compareModelHistory(combined,{modelIds:['general-elo-v2','market-consensus'],stabilityWindows:[10,20,30,50]});
+      const models=result.models||[];
+      const fmt=value=>Number.isFinite(value)?value.toFixed(5):'—';
+      const eloModel=models.find(item=>item.modelId==='general-elo-v2');
+      const marketModel=models.find(item=>item.modelId==='market-consensus');
+      $('#forecastTestsMeta').textContent='Архив прогнозов: '+archive.length+' записей · Elo: '+elo.records.length+' подтверждённых прогнозов · рынок: '+market.records.length+' подтверждённых рыночных оценок · общая выборка: '+result.matchedSampleSize+' матчей.';
+      summary.innerHTML='<div class="archive-item"><b>Общая выборка: '+result.matchedSampleSize+' матчей</b><div class="archive-meta">Обучающая часть: '+result.trainingSampleSize+' · отложенная проверка: '+result.validationSampleSize+' · схема: хронологические 70/30</div></div>';
+      rowsNode.innerHTML=models.map(model=>'<tr><td>'+escapeHtml(model.name)+'</td><td>'+model.validation.sampleSize+'</td><td class="research-metric">'+fmt(model.validation.brierScore)+'</td><td class="research-metric">'+fmt(model.validation.logLoss)+'</td><td>'+ (model.status==='validated'?'Проверено':'Недостаточно данных')+'</td></tr>').join('')||'<tr><td colspan="5">Нет проверенных прогнозов.</td></tr>';
+      const delta=result.comparisons?.[0];
+      $('#forecastTestsDelta').textContent=result.status==='evaluated'&&delta
+        ?'Разница рынок − Elo: Brier '+(delta.validationDeltaBrier>=0?'+':'')+fmt(delta.validationDeltaBrier)+' · LogLoss '+(delta.validationDeltaLogLoss>=0?'+':'')+fmt(delta.validationDeltaLogLoss)+'. Положительная разница означает худший результат рынка.'
+        :'Итоговое сравнение пока не опубликовано: нужно не менее 30 матчей в обучающей и 10 в отложенной части.';
+      segmentsNode.innerHTML=(result.segments||[]).map(item=>'<div class="archive-item"><b>'+(item.dimension==='surface'?'Покрытие: ':'Турнир: ')+escapeHtml(item.value)+'</b><div class="archive-meta">Обучение: '+item.trainingSampleSize+' · проверка: '+item.validationSampleSize+' · '+(item.status==='validated'?'проверено':'предварительно')+' · Δ Brier объединённой оценки: '+fmt(item.validationDeltaBrier)+'</div></div>').join('')||'<div class="archive-item">Нет матчей с известным сегментом в общей выборке.</div>';
+      qualityNode.innerHTML=[
+        'Отброшено непарных матчей: '+(result.excluded?.unpaired||0),
+        'Конфликт исходов: '+(result.excluded?.outcomeConflict||0),
+        'Расхождение времени начала: '+(result.excluded?.scheduleConflict||0),
+        'Некорректные записи: '+(result.excluded?.invalid||0),
+        'Отклонено Elo-архивом: '+elo.rejected.length,
+        'Отклонено рыночным архивом: '+market.rejected.length
+      ].map(value=>'<div class="archive-meta">'+escapeHtml(value)+'</div>').join('');
+    }catch(error){
+      summary.textContent='Не удалось рассчитать сравнение: '+String(error.message||error);
+      rowsNode.innerHTML='<tr><td colspan="5">Ошибка расчёта.</td></tr>';
+    }
+  }
+  async function loadHistoricalForecastTestResults(){
+    const meta=$('#forecastTestsHistoricalMeta'),node=$('#forecastTestsHistorical');
+    if(!meta||!node)return;
+    try{
+      const response=await fetch('https://raw.githubusercontent.com/fondsenfiedjian-droid/tennis-value-scanner/ui/tennis-value-scanner-2/research/test-journal.json',{cache:'no-store'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const journal=await response.json(),coverage=journal.sourceCoverage||{},tests=(journal.tests||[]).filter(item=>item.status==='completed'&&item.brierBaseline!==null&&item.brierCandidate!==null);
+      meta.textContent='Источник: '+(journal.source||'исторический архив')+' · период '+coverage.periodFrom+'–'+coverage.periodTo+' · '+Number(coverage.annualPackages||0)+' годовых пакетов · '+Number(coverage.manifestMatchCount||0).toLocaleString('ru-RU')+' исходных строк · '+Number(coverage.completedRows||0).toLocaleString('ru-RU')+' завершённых матчей в отобранных уровнях.';
+      const fmt=value=>Number.isFinite(Number(value))?Number(value).toFixed(5):'—';
+      node.innerHTML=tests.map(item=>{
+        const db=Number(item.brierCandidate)-Number(item.brierBaseline),dl=Number(item.logLossCandidate)-Number(item.logLossBaseline);
+        const better=db<0&&dl<0?'Обе метрики лучше':db>0&&dl>0?'Обе метрики хуже':'Смешанный результат';
+        return '<div class="archive-item"><b>'+escapeHtml(item.id)+' · '+escapeHtml(item.tour||'')+'</b><div class="archive-meta">'+escapeHtml(item.baseline||'')+' → '+escapeHtml(item.candidate||'')+' · N='+Number(item.sampleMatches||0).toLocaleString('ru-RU')+' · '+escapeHtml(item.evaluationPeriod||'')+'</div><div class="archive-meta">Brier '+fmt(item.brierBaseline)+' → '+fmt(item.brierCandidate)+' (Δ '+(db>=0?'+':'')+fmt(db)+') · LogLoss '+fmt(item.logLossBaseline)+' → '+fmt(item.logLossCandidate)+' (Δ '+(dl>=0?'+':'')+fmt(dl)+')</div><div class="archive-meta">'+better+' · '+escapeHtml(item.notes||'')+'</div></div>';
+      }).join('')||'<div class="archive-item">Пока нет завершённых прогнозных тестов с метриками.</div>';
+    }catch(error){meta.textContent='Исторические результаты временно недоступны: '+String(error.message||error);node.textContent='Не удалось загрузить результаты.';
+    }
+  }
+  function showTests(){
+    hideAllScreens();$('#testsView').style.display='block';setActiveNavigation('navTests');
+    archiveStorageReady.then(renderForecastTests);
+  }
+  $('#forecastTestsRefresh')?.addEventListener('click',renderForecastTests);
   const VIRTUAL_BANK_KEY='tvs-virtual-bank-v1';
   function currentVirtualBankOptions(){
     const settings=readSettings(),clamp=(value,min,max,fallback)=>Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
@@ -2800,9 +3292,13 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   }
   function showMore(){
     hideAllScreens();$('#moreView').style.display='block';
-    setActiveNavigation('');
+    setActiveNavigation(isArchivePreview?'navArchive':'');
     const status=$('#moreSystemStatus');
     if(status)status.textContent=$('#connectionStatus')?.textContent+' · '+($('#oddsStatus')?.textContent||'Статус котировок не получен');
+  }
+  function showArchive(){
+    showMore();
+    ($('#historicalArchivePanel') || $('#moreArchiveMount'))?.scrollIntoView({block:'start'});
   }
   function findScheduledPlayerId(name){
     const target=String(name||'').trim();
@@ -2850,6 +3346,26 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     if(!p1||!p2||norm(p1)!==norm(nameA)||norm(p2)!==norm(nameB))return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><small>Идентичность игроков не подтверждена точным совпадением имён. Статистика скрыта.</small></section>';
     const totals=payload.totals||{},meetings=Array.isArray(payload.meetings)?payload.meetings:[],surfaces=payload.by_surface&&typeof payload.by_surface==='object'?Object.entries(payload.by_surface):[];
     return '<section class="compare-dossier-block"><b>Личные встречи (H2H)</b><div class="compare-h2h-total">'+escapeHtml(p1)+' '+Number(totals.p1_wins||0)+' : '+Number(totals.p2_wins||0)+' '+escapeHtml(p2)+'</div><small>Встреч: '+Number(totals.meetings||meetings.length)+' · неопределённых: '+Number(totals.undecided||0)+' · период: '+escapeHtml(payload.period||'1968-present')+'</small><div class="compare-surface-records">'+surfaces.map(([k,v])=>'<span>'+escapeHtml(k)+': '+Number(v?.p1??v?.p1_wins??0)+'–'+Number(v?.p2??v?.p2_wins??0)+'</span>').join('')+'</div><div class="compare-history-list"><b>Последние встречи</b>'+meetings.slice(0,5).map(m=>'<div class="compare-history-row"><span>'+escapeHtml(m.date||'дата не указана')+' · '+(m.winner===1?escapeHtml(p1):m.winner===2?escapeHtml(p2):'победитель не определён')+'</span><small>'+escapeHtml(m.score||m.outcome||'')+'</small></div>').join('')+'</div></section>';
+  }
+  function renderCompareUnavailableElo(diagnostic,nameA,nameB,surface){
+    const node=$('#compareResult');
+    const card=(label,identity,eloFields)=>{
+      const rank=Number(identity?.ranking),points=Number(identity?.rankingPoints);
+      const eloRankField=Array.isArray(eloFields)?eloFields.find(item=>String(item?.path||'').endsWith('.elo_rank')):null;
+      const eloRank=Number(eloRankField?.value);
+      const tour=identity?.tour==='atp'?'ATP':identity?.tour==='wta'?'WTA':String(identity?.tour||'тур не указан').toUpperCase();
+      return '<div class="compare-result-player"><strong>'+escapeHtml(identity?.name||label)+'</strong>'+
+        '<small>Тур: '+escapeHtml(tour)+'</small>'+
+        '<span class="compare-rating">'+(Number.isSafeInteger(rank)&&rank>0?'№'+rank:'—')+'</span><small>Официальный рейтинг</small>'+
+        '<span class="compare-probability">'+(Number.isFinite(points)&&points>0?points.toLocaleString('ru-RU'):'—')+'</span><small>Очки официального рейтинга</small>'+
+        '<small>Место в Elo-рейтинге: '+(Number.isSafeInteger(eloRank)&&eloRank>0?'№'+eloRank:'не опубликовано')+'</small></div>';
+    };
+    node.innerHTML='<div class="compare-result-grid">'+
+      card(nameA,diagnostic?.profileIdentityA,diagnostic?.eloFieldsA)+
+      card(nameB,diagnostic?.profileIdentityB,diagnostic?.eloFieldsB)+
+      '</div><div class="compare-result-summary">Покрытие: '+(surface?escapeHtml(surface):'не выбрано')+
+      '. Численные значения Elo в профилях не предоставлены. Место в Elo-рейтинге не является рейтингом Elo; вероятности победы и справедливые коэффициенты не рассчитывались.</div>';
+    node.hidden=false;
   }
   function renderCompareResult(result,nameA,nameB,surface){
     const node=$('#compareResult');
@@ -2961,7 +3477,34 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
     try{
       const response=await fetchWithTimeout(API+'/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerIdA:idA,playerIdB:idB,playerA:nameA,playerB:nameB,surface})});
       const payload=await response.json();
-      if(!response.ok)throw new Error(payload.error||('API вернул ошибку '+response.status));
+      if(!response.ok){
+        const diagnostic=payload?.diagnostic;
+        if(response.status===422&&payload?.error==='Elo rating is unavailable for one or both players'&&
+          diagnostic?.profileIdentityA?.name&&diagnostic?.profileIdentityB?.name){
+          if(requestId!==compareRequestSequence)return;
+          const exactNameA=String(diagnostic.profileIdentityA.name),exactNameB=String(diagnostic.profileIdentityB.name);
+          renderCompareUnavailableElo(diagnostic,exactNameA,exactNameB,surface);
+          status.textContent='Профили найдены. Численный Elo недоступен; история и личные встречи загружаются отдельно…';
+          loadCompareSupplementary(requestId,idA,idB,exactNameA,exactNameB).catch(error=>{
+            if(requestId===compareRequestSequence)status.textContent='Профили загружены; дополнительные данные не загрузились: '+String(error.message||error);
+          });
+          return;
+        }
+        let detail='';
+        if(diagnostic){
+          const describe=(label,identity,keys,eloFields)=>{
+            const who=identity?.name||label;
+            const fields=Array.isArray(eloFields)&&eloFields.length
+              ?eloFields.slice(0,12).map(item=>item.path+'='+String(item.value)).join(', ')
+              :'поля Elo в профиле не найдены';
+            const profileKeys=Array.isArray(keys)?keys.slice(0,18).join(', '):'нет данных';
+            return who+': '+fields+'. Поля профиля: '+(profileKeys||'не указаны');
+          };
+          detail=' Диагностика — '+describe('Игрок A',diagnostic.profileIdentityA,diagnostic.profileKeysA,diagnostic.eloFieldsA)
+            +' | '+describe('Игрок B',diagnostic.profileIdentityB,diagnostic.profileKeysB,diagnostic.eloFieldsB);
+        }
+        throw new Error((payload.error||('API вернул ошибку '+response.status))+detail);
+      }
       const probabilityA=Number(payload.probabilityA),probabilityB=Number(payload.probabilityB);
       if(!Number.isFinite(probabilityA)||!Number.isFinite(probabilityB)||probabilityA<=0||probabilityA>=100||probabilityB<=0||probabilityB>=100||Math.abs(probabilityA+probabilityB-100)>0.05)
         throw new Error('API вернул некорректные или несогласованные вероятности для этой пары.');
@@ -3322,7 +3865,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       box.classList.add('empty-daily-pick');
       box.style.display='';
       box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div></div><div class="best-bet-empty">Сегодня нет ставок, прошедших строгий отбор. Матчи без рекомендации здесь не показываются.</div>';
-      const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+      const mandatoryList=$('#mandatoryBetsContent');if(mandatoryList)mandatoryList.innerHTML='<div class="ev-empty-state"><span class="ev-empty-mark">EV+</span><div><b>Пока нет обязательных ставок</b><small>Список появится после загрузки свежих коэффициентов и проверки матчей. Система не добавляет рекомендации искусственно.</small></div><span class="ev-empty-count">0</span></div>';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     }else{
       if(featuredMatchTimer){clearInterval(featuredMatchTimer);featuredMatchTimer=null;}
@@ -3333,7 +3876,31 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       const initials=String(best.player||'').split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase();
       box.innerHTML='<div class="best-bet-title-row"><div class="best-bet-title">🏆 &nbsp; СТАВКА ДНЯ</div><span class="best-bet-value-pill">Высокая ценность</span><div class="best-bet-navigation"><span class="best-bet-counter">'+(bestBetCarouselIndex+1)+' / '+bestBets.length+'</span>'+(bestBets.length>1?'<button type="button" id="bestBetPrev" aria-label="Предыдущая рекомендация">‹</button><button type="button" id="bestBetNext" aria-label="Следующая рекомендация">›</button>':'')+'</div></div><button type="button" id="bestBetOpen" class="best-bet-open"><span class="daily-pick-photo">'+(selectedPhoto?'<img src="'+escapeHtml(selectedPhoto)+'" alt="'+escapeHtml(best.player)+'" loading="lazy">':'<span class="daily-pick-initials">'+escapeHtml(initials)+'</span>')+'</span><span class="daily-pick-info"><span class="best-bet-pair">'+escapeHtml(best.player)+' — '+escapeHtml(best.opponent)+'</span><span class="daily-pick-event">'+escapeHtml(best.match?.tournament?.name||best.match?.tournament||best.match?.competition||'Турнир не указан')+' · '+(matchDate(best.match)?matchDate(best.match).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'время не указано')+'</span><span class="daily-pick-metrics"><span>Выбор<b>'+escapeHtml(best.player)+'</b></span><span>Коэффициент<b class="daily-odds">'+best.odds.toFixed(2)+'</b></span><span>EV<b class="daily-ev">+'+best.ev.toFixed(1)+'%</b></span></span><span class="daily-bookmaker">Букмекер: '+escapeHtml(best.bookmaker||'Winamax')+'</span><span class="daily-pick-confidence">◈ Надёжность: '+best.reliabilityScore+'/100</span></span></button><div class="best-bet-footnote">Динамическая карточка выбранной ставки. '+(bestBets.length>1?'Перелистывай кандидатов стрелками.':'')+' Размер ставки не рассчитан: банк и правило управления суммой не заданы. '+coverage+'</div>';
       const mandatoryList=$('#mandatoryBetsContent');
-      if(mandatoryList)mandatoryList.innerHTML=bestBets.length?bestBets.map(bet=>'<article class="mandatory-bet-row"><div class="mandatory-bet-match"><b>'+escapeHtml(bet.player)+' — '+escapeHtml(bet.opponent)+'</b><small>'+escapeHtml(bet.bookmaker||'Winamax')+' · Победа '+escapeHtml(bet.player)+'</small></div><div><small>Коэф.</small><b>'+bet.odds.toFixed(2)+'</b></div><div><small>Вероятность</small><b>'+bet.probability.toFixed(1)+'%</b></div><div><small>EV</small><b class="daily-ev">+'+bet.ev.toFixed(1)+'%</b></div><div class="mandatory-stake"><small>Сумма</small><b>—</b></div></article>').join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+      if(mandatoryList)mandatoryList.innerHTML=bestBets.length?bestBets.map((bet,index)=>{
+         const quotes=oddsForMatch(bet.match)||[];
+         const chosen=quotes.find(q=>oddsSideForPlayer(q,bet.player)!==null)||null;
+         const other=quotes.find(q=>q!==chosen)||null;
+         const opponentOdds=other&&Number.isFinite(Number(other.oddsDecimal))?Number(other.oddsDecimal).toFixed(2):'—';
+         const selectedTrend=oddsMovement(bet.match,chosen,bet.player);
+         const opponentName=String(bet.opponent||'Соперник');
+         const surname=value=>{const parts=String(value||'').trim().split(/\s+/).filter(Boolean);return parts.length?parts[parts.length-1]:'—';};
+         const opponentTrend=oddsMovement(bet.match,other,opponentName);
+         const movementHtml=trend=>'<span class="ev-bet-trend '+trend.className+'">'+escapeHtml(trend.label)+'</span>';
+         const date=matchDate(bet.match);
+         const eventName=bet.match?.tournament?.name||bet.match?.tournament||bet.match?.competition||bet.match?.tournament_name||'Турнир не указан';
+         return '<article class="ev-bet-card" data-ev-bet="'+index+'"><button type="button" class="ev-bet-toggle" aria-expanded="false"><span class="ev-bet-row"><span class="ev-bet-player" title="'+escapeHtml(opponentName)+'">'+escapeHtml(surname(opponentName))+'</span><span class="ev-bet-odds">'+opponentOdds+'</span>'+movementHtml(opponentTrend)+'</span><span class="ev-bet-row selected"><span class="ev-bet-player" title="'+escapeHtml(bet.player)+'">'+escapeHtml(surname(bet.player))+'</span><span class="ev-bet-odds">'+bet.odds.toFixed(2)+'</span>'+movementHtml(selectedTrend)+'</span><span class="ev-bet-foot"><svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m2 4.5 4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><div class="ev-bet-details"><div><b>'+escapeHtml(eventName)+'</b> · '+escapeHtml(bet.bookmaker||'Winamax')+(date?' · '+escapeHtml(date.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'')+'</div><div class="ev-bet-details-grid"><span>EV+: <b class="ev-bet-positive">+'+bet.ev.toFixed(2)+'%</b></span><span>Вероятность: <b>'+bet.probability.toFixed(1)+'%</b></span><span>Справедливый коэффициент: <b>'+(100/Math.max(0.01,Number(bet.probability||0))).toFixed(2)+'</b></span><span>Надёжность: <b>'+bet.reliabilityScore+'/100</b></span><span>Рекомендуемый исход: <b>'+escapeHtml(bet.player)+'</b></span><span>Размер ставки: <b class="ev-bet-stake">не рассчитан</b></span></div><div>Первый зафиксированный коэффициент: <b>'+ (selectedTrend.first?Number(selectedTrend.first).toFixed(2):'история накапливается')+'</b> · Текущий: <b>'+bet.odds.toFixed(2)+'</b></div><div>Движение рассчитывается по сохранённым снимкам Winamax. При первом запуске история появится после нескольких обновлений.</div></div></article>';
+       }).join(''):'<div class="muted">Нет ставок, прошедших строгий отбор.</div>';
+       if(mandatoryList&&bestBets.length>3){
+          const cards=[...mandatoryList.querySelectorAll(':scope > .ev-bet-card')];
+          const carousel=document.createElement('div');
+          carousel.className='ev-bet-carousel';
+          carousel.setAttribute('aria-label','Дополнительные ставки каруселью');
+          cards.slice(3).forEach(card=>carousel.appendChild(card));
+          mandatoryList.appendChild(carousel);
+        }
+       mandatoryList?.querySelectorAll('.ev-bet-toggle').forEach(toggle=>{
+         toggle.onclick=()=>{const card=toggle.closest('.ev-bet-card');const expanded=card.classList.toggle('expanded');toggle.setAttribute('aria-expanded',String(expanded));};
+       });
       const summaryWatch=$('#additionalCountSummary');if(summaryWatch)summaryWatch.textContent='—';
       const updated=$('#planUpdated');if(updated)updated.textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
       const openDetails=()=>{
@@ -3968,9 +4535,10 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{if(window.cachedMatches)renderMatches(window.cachedMatches);}));
   $('.brand-lockup').onclick=showMain;
   $('.brand-lockup').style.cursor='pointer';
-  $('#navBalance').onclick=showBalance;
-  $('#navHistory').onclick=showHistory;
+  if($('#navBalance'))$('#navBalance').onclick=showBalance;
+  if($('#navHistory'))$('#navHistory').onclick=showHistory;
   $('#navStats').onclick=showStats;
+  $('#statsOpenTests').onclick=showTests;
   $('#navSettings').onclick=()=>{populateSettingsForm();$('#settingsModal').classList.add('show');};
   window.getPredictionArchiveForLocalAudit=async()=>{await archiveStorageReady;return readPredictionArchive();};
   const archiveStorageReady=initializeArchiveStorage();
@@ -3990,7 +4558,8 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
 </script>
 <script>
 (function(){
-  const worker=location.hostname.startsWith('deploy-preview-')
+  const isPreviewHost=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app';
+  const worker=isPreviewHost
     ?'https://tennis-value-api-preview.fonds-enfiedjian.workers.dev'
     :'https://tennis-value-api.fonds-enfiedjian.workers.dev';
   const status=document.getElementById('connectionStatus');
@@ -4012,7 +4581,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
       if(status){status.textContent='API: НЕТ СВЯЗИ';status.title=String(error&&error.message||error);}
     }
   }
-  const screenIds=['matchesView','liveView','compareView','statsView','moreView','balanceView','historyView','settingsView'];
+  const screenIds=['matchesView','liveView','compareView','statsView','testsView','moreView','balanceView','historyView','settingsView'];
   function openStatusScreen(target){
     const app=document.querySelector('.app');
     if(app)app.classList.add('screen-open');
@@ -4047,7 +4616,7 @@ button:focus-visible,.match-card:focus-visible{outline:2px solid #79d9f2!importa
   const panel=document.querySelector('#humanFactorAuditPanel');
   const output=document.querySelector('#humanFactorAuditResult');
   const fmt=n=>Number(n||0).toLocaleString('ru-RU');
-  button.addEventListener('click',async()=>{
+  if(button&&panel&&output)button.addEventListener('click',async()=>{
     button.disabled=true;button.textContent='АНАЛИЗ…';
     try{
       const rows=await window.getPredictionArchiveForLocalAudit();

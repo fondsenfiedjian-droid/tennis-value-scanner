@@ -99,6 +99,30 @@ test("surface-specific training uses only prior matches on the selected training
   assert.equal(hardOnly.summary.rank.matches, pooled.summary.rank.matches);
 });
 
+test("fixed rolling training windows exclude older seasons without using future results", () => {
+  const rows = [
+    ...makeSeason("2000"),
+    ...makeSeason("2001"),
+    ...makeSeason("2002"),
+    ...makeSeason("2003"),
+    ...makeSeason("2004")
+  ];
+  const options = {
+    tour: "atp",
+    evaluationStart: "20040101",
+    evaluationEnd: "20041231",
+    minTrainingMatches: 100,
+    maxTrainingRows: 2000
+  };
+  const expanding = runRankAgeWalkForward(rows, options);
+  const rolling = runRankAgeWalkForward(rows, { ...options, trainingWindowYears: 2 });
+  assert.equal(rolling.trainingWindowYears, 2);
+  assert.equal(rolling.byYear["2004"].rank.trainingMatches, 640);
+  assert.ok(rolling.byYear["2004"].rank.trainingMatches < expanding.byYear["2004"].rank.trainingMatches);
+  assert.equal(rolling.byYear["2004"].rank.matches, expanding.byYear["2004"].rank.matches);
+  assert.throws(() => runRankAgeWalkForward(rows, { ...options, trainingWindowYears: 0 }), /trainingWindowYears/);
+});
+
 test("future seasons cannot change an earlier evaluation year", () => {
   const historical = [
     ...makeSeason("2000"),

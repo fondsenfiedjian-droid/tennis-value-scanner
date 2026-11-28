@@ -3468,11 +3468,15 @@ test("TVS 2.0 preview deployment is isolated from Production", () => {
   assert.doesNotMatch(workerSource, /https:\/\/tennis-value-api\.fonds-enfiedjian\.workers\.dev\/__\w+/);
   assert.match(frontendSource, /location\.hostname\.startsWith\('deploy-preview-'\)/);
   assert.match(frontendSource, /tennis-value-api-preview\.fonds-enfiedjian\.workers\.dev/);
-  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
+  assert.match(previewConfig, /TVS_RESEARCH_PREVIEW_ONLY\s*=\s*"true"/);
+  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/integration\/tvs2-pro-api'/);
+  assert.match(deployWorkflow, /ref: integration\/tvs2-pro-api/);
+  assert.match(deployWorkflow, /LIVE_TENNIS_API_KEY_PREVIEW/);
+  assert.match(deployWorkflow, /TVS_RESEARCH_ACCESS_TOKEN_PREVIEW/);
+  assert.doesNotMatch(deployWorkflow, /ui\/tennis-value-scanner-2/);
   assert.match(deployWorkflow, /wrangler\.preview\.toml/);
   assert.match(deployWorkflow, /on:\s*workflow_dispatch:/);
   assert.doesNotMatch(deployWorkflow, /(^|\n)\s*push:/);
-  assert.match(deployWorkflow, /github\.ref == 'refs\/heads\/ui\/tennis-value-scanner-2'/);
 });
 
 test("scanner batch size adapts to refresh interval within the BASIC daily quota", () => {
@@ -3486,4 +3490,106 @@ test("scanner batch size adapts to refresh interval within the BASIC daily quota
   assert.equal(sandbox.maxBatch(60),14);
   assert.equal(sandbox.maxBatch(180),42);
   assert.equal(sandbox.maxBatch("invalid"),14);
+});
+
+
+test("Live Tennis PRO market endpoint validates IDs, calls the PRO route and keeps the API key server-side", async () => {
+  const requested = [];
+  workerSandbox.fetch = async (url, options) => {
+    requested.push({ url: String(url), headers: options.headers });
+    return new Response(JSON.stringify({ data: [{ id: 77, prices: [] }], meta: { match_id: 123, count: 1 } }), { status: 200 });
+  };
+
+  for (const invalid of ["/markets", "/markets?match_id=0", "/markets?match_id=abc", "/markets?match_id=9007199254740992", "/markets/0/prices", "/markets/123/prices?limit=201", "/matches/123/prices?minutes=1441", "/matches/123/prices?cursor="]) {
+    const result = await call(invalid);
+    assert.equal(result.status, 400, "reject invalid market request " + invalid);
+  }
+  assert.equal(requested.length, 0, "invalid requests must not reach the provider");
+
+  const market = await call("/markets?match_id=123");
+  assert.equal(market.status, 200);
+  assert.equal(requested[0].url, "https://api.livetennisapi.com/api/public/v1/markets?match_id=123");
+  assert.equal(requested[0].headers["X-API-Key"], "test-key");
+  assert.equal(requested[0].headers.Accept, "application/json");
+
+  const prices = await call("/markets/123/prices?limit=75");
+  assert.equal(prices.status, 200);
+  assert.equal(requested[1].url, "https://api.livetennisapi.com/api/public/v1/markets/123/prices?limit=75");
+  assert.equal(requested[1].headers["X-API-Key"], "test-key");
+
+  const matchPrices = await call("/matches/123/prices?limit=200&minutes=60&cursor=next-page");
+  assert.equal(matchPrices.status, 200);
+  assert.equal(requested[2].url, "https://api.livetennisapi.com/api/public/v1/matches/123/prices?limit=200&minutes=60&cursor=next-page");
+});
+
+test("Live Tennis PRO market routes reject non-JSON upstream responses", async () => {
+  workerSandbox.fetch = async () => new Response("<html>upstream error</html>", {
+    status: 200, headers: { "Content-Type": "text/html" }
+  });
+  const result = await call("/matches/123/prices");
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).accessStatus, "invalid_upstream_response");
+});
+
+test("Live Tennis PRO market routes preserve provider 403, no-market 404 and Retry-After", async () => {
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "no_market", coverage: "none" }), { status: 404 });
+  const missingMarket = await call("/markets/123/prices");
+  assert.equal(missingMarket.status, 404);
+  assert.equal((await missingMarket.json()).error, "no_market");
+
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  const forbidden = await call("/markets?match_id=123");
+  assert.equal(forbidden.status, 403);
+
+  workerSandbox.fetch = async () => new Response(JSON.stringify({ error: "rate_limited", scope: "minute" }), {
+    status: 429, headers: { "Retry-After": "25" }
+  });
+  const limited = await call("/matches/123/prices");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("Retry-After"), "25");
+});
+
+test("Live Tennis history packages validate requests and protect raw archive downloads", async () => {
+  let requested = null;
+  workerSandbox.fetch = async (url, options) => {
+    requested = { url: String(url), headers: options.headers };
+    return new Response("csv-data", { status: 200, headers: { "Content-Type": "text/csv", "Content-Disposition": "attachment; filename=2022.csv" } });
+  };
+  const invalidKind = await call("/history/packages?kind=unknown");
+  assert.equal(invalidKind.status, 400);
+  assert.equal(requested, null);
+
+  const denied = await call("/history/packages/2022?kind=archive&format=csv");
+  assert.equal(denied.status, 403);
+  assert.equal(requested, null);
+
+  env.TVS_RESEARCH_ACCESS_TOKEN = "research-test-token";
+  const previewFlagMissing = new Request("https://worker.test/history/packages/2022?kind=archive&format=csv", {
+    headers: { "X-Research-Access": "research-test-token" }
+  });
+  const previewDenied = await worker.fetch(previewFlagMissing, env);
+  assert.equal(previewDenied.status, 403);
+  assert.equal(requested, null);
+
+  env.TVS_RESEARCH_PREVIEW_ONLY = "true";
+  const request = new Request("https://worker.test/history/packages/2022?kind=archive&format=csv", {
+    headers: { "X-Research-Access": "research-test-token" }
+  });
+  const downloaded = await worker.fetch(request, env);
+  assert.equal(downloaded.status, 200);
+  assert.equal(await downloaded.text(), "csv-data");
+  assert.match(requested.url, /\/history\/packages\/2022\?kind=archive&format=csv$/);
+  assert.equal(requested.headers["X-API-Key"], "test-key");
+  assert.equal(downloaded.headers.get("Cache-Control"), "private, no-store");
+});
+
+test("Live Tennis history coverage preserves upstream errors", async () => {
+  let requestedUrl = "";
+  workerSandbox.fetch = async url => {
+    requestedUrl = String(url);
+    return new Response(JSON.stringify({ error: "upgrade_required" }), { status: 403 });
+  };
+  const result = await call("/history/coverage");
+  assert.equal(result.status, 403);
+  assert.match(requestedUrl, /\/history\/coverage$/);
 });

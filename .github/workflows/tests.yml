@@ -2,9 +2,9 @@ name: Regression tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration/tvs2-pro-api]
   pull_request:
-    branches: [main]
+    branches: [main, feature/tvs2-editions-lab]
 
 jobs:
   worker-tests:

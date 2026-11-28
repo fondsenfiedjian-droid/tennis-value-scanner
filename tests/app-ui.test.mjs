@@ -35,7 +35,7 @@ function getOddsMatching(quotes) {
     playerName: value => String(value ?? ""),
     matchDate: match => new Date(match.startTime)
   };
-  vm.runInNewContext(oddsMatchingSource + "\nglobalThis.oddsMatching = { oddsForMatch, oddsSideForPlayer };", sandbox);
+  vm.runInNewContext(oddsMatchingSource + "\nglobalThis.oddsMatching = { oddsForMatch, oddsSideForPlayer, oddsMatchDiagnostic };", sandbox);
   return sandbox.oddsMatching;
 }
 function makeWinamaxQuote(overrides = {}) {
@@ -524,6 +524,10 @@ test("mandatory recommendations and additional opportunities are separate plan t
 
 test("approved bottom navigation contains Home, Matches, Compare, Statistics and Settings",()=>{
   for(const id of ["navHome","navMatches","navCompare","navStats","navSettings"])assert.match(html,new RegExp('id="'+id+'"'));
+  assert.equal((html.match(/<button id="nav(?:Home|Matches|Compare|Stats|Settings)"/g)||[]).length,5);
+  assert.doesNotMatch(html,/id="navTests"/);
+  assert.match(html,/id="statsOpenTests"/);
+  assert.match(html,/\$\('#statsOpenTests'\)\.onclick=showTests/);
   for(const id of ["navBalance","navHistory"])assert.doesNotMatch(html,new RegExp('id="'+id+'"'));
   assert.match(html,/function showMatches\(\)/);
   assert.match(html,/function showCompare\(\)/);
@@ -536,9 +540,10 @@ test("approved bottom navigation contains Home, Matches, Compare, Statistics and
 
 test("home screen follows the approved daily-pick reference order",()=>{
   const home=html.slice(html.indexOf('<div class="app">'),html.indexOf('<div class="compare-view"'));
-  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('class="plan-summary"'));
-  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBets"'));
-  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('id="additionalOpportunities"'));
+  assert.ok(home.indexOf('id="bestBet"')<home.indexOf('id="mandatoryBets"'));
+  assert.ok(home.indexOf('id="mandatoryBets"')<home.indexOf('class="plan-summary"'));
+  assert.ok(home.indexOf('class="plan-summary"')<home.indexOf('id="mandatoryBetsContent"'));
+  assert.ok(home.indexOf('id="mandatoryBetsContent"')<home.indexOf('id="additionalOpportunities"'));
   assert.ok(home.indexOf('id="additionalOpportunities"')<home.indexOf('class="quick-links"'));
   assert.match(home,/data-day="today"/);
   assert.match(home,/data-day="tomorrow"/);
@@ -604,8 +609,8 @@ test("top status shortcuts separate LIVE, today's upcoming matches and tomorrow"
   assert.match(html,/function showTomorrow\(\)/);
   assert.match(html,/id="liveRefreshPageBtn"/);
   assert.match(html,/\$\('#refreshBtn'\)\.onclick=\(\)=>loadMatches\(true\)/);
-  assert.match(html,/id="headerSettings"/);
-  assert.match(html,/\$\('#headerSettings'\)\.onclick=open/);
+  assert.match(html,/id="navSettings"/);
+  assert.match(html,/\$\('#navSettings'\)\.onclick=/);
   assert.match(html,/\$\('\.brand-lockup'\)\.onclick=showMain/);
 });
 
@@ -983,7 +988,7 @@ test("settings sliders use a fine custom track with visible scale ticks and a co
 });
 
 test("independent API diagnostics and status-tab navigation fallback are present", () => {
-  assert.ok(html.includes("const worker=location.hostname.startsWith('deploy-preview-')"));
+  assert.ok(html.includes("const isPreviewHost=location.hostname.startsWith('deploy-preview-')||location.hostname.includes('--tennis-value-scanner-developer.netlify.app')||location.hostname==='tennis-value-scanner-developer.netlify.app'"));
   assert.ok(html.includes("fetch(worker+'/health',{cache:'no-store'})"));
   assert.ok(html.includes("API: LIVE OK"));
   assert.ok(html.includes("APIFY_TOKEN. Источник коэффициентов недоступен."));
@@ -996,4 +1001,109 @@ test("screen-open layout hides non-screen app children but permits selected inde
   assert.ok(html.includes(".app.screen-open>:not(.main-header):not(.top-status-nav):not(.screen-view){display:none!important}"));
   assert.ok(html.includes(".screen-view{display:none;"));
   assert.match(html, /hideAllScreens\(\);\$\('#liveView'\)\.style\.display='block'/);
+});
+
+
+test("odds side mapping follows participant identity for both outcomes and either player order", () => {
+  const home = makeWinamaxQuote({ outcome: "home", homeTeam: "Carlos Alcaraz", awayTeam: "Novak Djokovic" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const matching = getOddsMatching([home, away]);
+  assert.equal(matching.oddsSideForPlayer(home, "Carlos Alcaraz"), "1");
+  assert.equal(matching.oddsSideForPlayer(away, "Carlos Alcaraz"), "2");
+  assert.equal(matching.oddsSideForPlayer(home, "Novak Djokovic"), "2");
+  assert.equal(matching.oddsSideForPlayer(away, "Novak Djokovic"), "1");
+  assert.equal(matching.oddsSideForPlayer(home, "Jannik Sinner"), null);
+});
+
+test("odds side mapping refuses ambiguous initial-only participant identity", () => {
+  const quote = makeWinamaxQuote({
+    homeTeam: "John Sinner",
+    awayTeam: "Jannik Sinner",
+    eventName: "John Sinner - Jannik Sinner",
+    outcome: "home"
+  });
+  const matching = getOddsMatching([quote]);
+  assert.equal(matching.oddsSideForPlayer(quote, "J. Sinner"), null);
+  assert.equal(matching.oddsSideForPlayer(quote, "Jannik Sinner"), "2");
+  assert.equal(matching.oddsSideForPlayer(quote, "John Sinner"), "1");
+});
+
+test("odds pair matching rejects a scheduled initial that matches both event participants", () => {
+  const home = makeWinamaxQuote({
+    homeTeam: "John Sinner",
+    awayTeam: "Jannik Sinner",
+    eventName: "John Sinner - Jannik Sinner",
+    outcome: "home"
+  });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = {
+    player1: "J. Sinner",
+    player2: "John Sinner",
+    startTime: home.startTime,
+    tournament_name: "ATP Finals"
+  };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
+
+
+test("odds diagnostics identify player, tournament, stale quote and incomplete-pair failures", () => {
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), tournament_name: "ATP Finals" };
+  const diagnostic = quotes => getOddsMatching(quotes).oddsMatchDiagnostic(match).code;
+  assert.equal(diagnostic([]), "no_provider_data");
+  assert.equal(diagnostic([makeWinamaxQuote({ homeTeam: "Jannik Sinner", awayTeam: "Daniil Medvedev", eventName: "Jannik Sinner - Daniil Medvedev" })]), "players_mismatch");
+  assert.equal(diagnostic([makeWinamaxQuote({ competition: "WTA Finals" })]), "tournament_mismatch");
+  assert.equal(diagnostic([makeWinamaxQuote({ scrapedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() })]), "stale_quotes");
+  assert.equal(diagnostic([makeWinamaxQuote({ outcome: "home" })]), "incomplete_pair");
+});
+
+test("odds diagnostics report a complete fresh pair as available", () => {
+  const home = makeWinamaxQuote({ outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsMatchDiagnostic(match).code, "available");
+});
+
+
+test("odds fallback grouping normalizes equivalent timestamps with different UTC offsets", () => {
+  const startA = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const startB = new Date(Date.parse(startA) + 60 * 60 * 1000).toISOString().replace("Z", "+01:00");
+  const home = makeWinamaxQuote({ eventId: "", startTime: startA, outcome: "home" });
+  const away = { ...makeWinamaxQuote({ eventId: "", startTime: startB, outcome: "away", oddsDecimal: 1.8 }) };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: startA, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 2);
+});
+
+test("odds fallback grouping rejects invalid timestamps instead of creating unstable keys", () => {
+  const home = makeWinamaxQuote({ eventId: "", startTime: "not-a-date", outcome: "home" });
+  const away = { ...home, outcome: "away", oddsDecimal: 1.8 };
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: home.startTime, tournament_name: "ATP Finals" };
+  assert.equal(getOddsMatching([home, away]).oddsForMatch(match).length, 0);
+});
+
+
+test("odds diagnostics identify a feed containing only Davis Cup team ties or doubles", () => {
+  const match = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), tournament_name: "ATP Finals" };
+  const teamHome = makeWinamaxQuote({
+    eventName: "Italie - Corée du Sud", homeTeam: "Italie", awayTeam: "Corée du Sud",
+    competition: "Coupe Davis Finals", outcome: "home"
+  });
+  const teamAway = { ...teamHome, outcome: "away", oddsDecimal: 1.8 };
+  assert.equal(getOddsMatching([teamHome, teamAway]).oddsMatchDiagnostic(match).code, "unsupported_draw");
+  const doublesHome = makeWinamaxQuote({
+    eventName: "A.Pavlasek / P.Rikl - F.Auger-Aliassime / D.Chan",
+    homeTeam: "A.Pavlasek / P.Rikl", awayTeam: "F.Auger-Aliassime / D.Chan",
+    competition: "Coupe Davis Finals, Doubles", outcome: "home"
+  });
+  const doublesAway = { ...doublesHome, outcome: "away", oddsDecimal: 1.8 };
+  assert.equal(getOddsMatching([doublesHome, doublesAway]).oddsMatchDiagnostic(match).code, "unsupported_draw");
+
+  const singlesHome = makeWinamaxQuote({
+    eventName: "Carlos Alcaraz - Novak Djokovic", homeTeam: "Carlos Alcaraz", awayTeam: "Novak Djokovic",
+    competition: "Coupe Davis Finals", outcome: "home"
+  });
+  const singlesAway = { ...singlesHome, outcome: "away", oddsDecimal: 1.8 };
+  const davisSinglesMatch = { player1: "Carlos Alcaraz", player2: "Novak Djokovic", startTime: singlesHome.startTime, tournament_name: "Coupe Davis Finals" };
+  const singlesAudit = getOddsMatching([singlesHome, singlesAway]);
+  assert.equal(singlesAudit.oddsMatchDiagnostic(davisSinglesMatch).code, "available");
+  assert.equal(singlesAudit.oddsForMatch(davisSinglesMatch).length, 2);
 });
