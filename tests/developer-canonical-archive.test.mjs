@@ -145,12 +145,51 @@ test("TennisMyLife annual ATP isolates can be safely reclassified in resumable b
   archive.ingestBatch("prepared","rev",[{position:1,record,locator}],{complete:true});
   assert.equal(archive.report().canonicalMatches,0);
   assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles(),
-    {mode:"preview",eligible:1,processed:0,linked:0,remaining:1});
+    {mode:"preview",eligible:1,processed:0,linked:0,created:0,isolated:0,remaining:1});
   assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:1}),
-    {mode:"apply",eligible:1,processed:1,linked:1,remaining:0});
+    {mode:"apply",eligible:1,processed:1,linked:0,created:1,isolated:0,remaining:0});
   assert.equal(archive.report().canonicalMatches,1);
   assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles({apply:true}),
-    {mode:"apply",eligible:0,processed:0,linked:0,remaining:0});
+    {mode:"apply",eligible:0,processed:0,linked:0,created:0,isolated:0,remaining:0});
+});
+
+test("TennisMyLife annual ATP composite match IDs recover missing tournament IDs", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const record = match({source:"tennismylife",discipline:undefined,matchDate:null,externalId:"2025-1536:7",
+    tournament:{name:"Madrid Masters",metadata:{surface:"Clay"}}});
+  const alreadyReclassified = match({source:"tennismylife",discipline:"singles",matchDate:null,externalId:"2025-1536:8",
+    sides:[[player("c","Another Player","1995-03-04")],[player("d","Fourth Player","1996-05-06")]],
+    tournament:{name:"Madrid Masters",metadata:{surface:"Clay"}}});
+  const locator = {file:"matches.sqlite",row:1,sourceFile:"TennisMyLife/archive/2025.csv",sourceRow:4};
+  archive.ingestBatch("prepared","rev",[{position:1,record,locator},
+    {position:2,record:alreadyReclassified,locator:{...locator,row:2,sourceRow:5}}],{complete:true});
+  assert.equal(archive.reclassifyTennisMyLifeAnnualSingles().eligible,2);
+  const applied = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:1});
+  assert.deepEqual(applied,{mode:"apply",eligible:1,processed:1,linked:0,created:1,isolated:0,remaining:1});
+  const resumed = archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:1});
+  assert.deepEqual(resumed,{mode:"apply",eligible:1,processed:1,linked:0,created:1,isolated:0,remaining:0});
+  assert.equal(archive.report().canonicalMatches,2);
+  assert.equal(archive.report().isolatedObservations,0);
+  assert.equal(archive.reclassifyTennisMyLifeAnnualSingles().eligible,0);
+});
+
+test("TennisMyLife reclassification skips rows without a safe tournament ID", t => {
+  const archive = openCanonicalArchive(":memory:");
+  t.after(() => archive.close());
+  const record = match({source:"tennismylife",discipline:undefined,matchDate:null,externalId:"annual-1",
+    tournament:{name:"Madrid Masters",metadata:{surface:"Clay"}}});
+  const wrongSeason = match({source:"tennismylife",discipline:undefined,matchDate:null,externalId:"2024-1536:7",
+    tournament:{name:"Madrid Masters",metadata:{surface:"Clay"}}});
+  const locator = {file:"matches.sqlite",row:1,sourceFile:"TennisMyLife/archive/2025.csv",sourceRow:4};
+  archive.ingestBatch("prepared","rev",[{position:1,record,locator},
+    {position:2,record:wrongSeason,locator:{...locator,row:2,sourceRow:5}}],{complete:true});
+  assert.equal(archive.reclassifyTennisMyLifeAnnualSingles().eligible,0);
+  assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles({apply:true,limit:1}),
+    {mode:"apply",eligible:0,processed:0,linked:0,created:0,isolated:0,remaining:0});
+  assert.equal(archive.report().canonicalMatches,0);
+  assert.deepEqual(archive.reclassifyTennisMyLifeAnnualSingles(),
+    {mode:"preview",eligible:0,processed:0,linked:0,created:0,isolated:0,remaining:0});
 });
 
 test("Termux command imports SQLite read-only, checkpoints reruns and hashes original files", t => {

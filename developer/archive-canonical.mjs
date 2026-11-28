@@ -191,7 +191,7 @@ export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false
         .run(kind, source, scope, code, origin, "conflicting_birth_date");
       return null;
     }
-    let evidence = "provider_id";
+    let evidence = reference.idEvidence ?? "provider_id";
     if (!entityId && kind === "player" && birth && normalized) {
       const candidates = query(`
         SELECT DISTINCT e.id FROM entity e JOIN entity_claim c ON c.entity_id=e.id
@@ -269,6 +269,7 @@ export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false
       .run(origin, source || "unknown", sourceKey, digest, matchId, JSON.stringify(locator), reason, payload);
     function isolate(reason) {
       insert(null, reason, JSON.stringify(record));
+      return { action:"isolated", reason };
     }
     if (record.isolateReason) return isolate(record.isolateReason);
     if (!source || !scope) return isolate("unknown_source_or_scope");
@@ -383,6 +384,7 @@ export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false
     }
     query("INSERT INTO decisions(origin,match_id,action,reason) VALUES(?,?,?,?)")
       .run(origin, matchId, current ? "link" : "create", current ? "compatible_identity_and_result" : "new_identity");
+    return { action:current ? "linked" : "created", matchId };
   }
 
   function ingestBatch(input, revision, rows, { complete = false, expectedPosition } = {}) {
@@ -519,18 +521,20 @@ export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false
     if (expectedRemaining != null && (!Number.isSafeInteger(expectedRemaining) || expectedRemaining < 0)) {
       throw Error("Expected a non-negative remaining row count");
     }
-    const eligible = "source='tennismylife' AND reason='unknown_discipline_or_sides' AND unlinked_payload IS NOT NULL AND lower(json_extract(locator,'$.sourceFile')) GLOB '*tennismylife/archive/[0-9][0-9][0-9][0-9].csv' AND json_extract(unlinked_payload,'$.scope')='ATP' AND json_extract(unlinked_payload,'$.discipline') IS NULL AND json_array_length(unlinked_payload,'$.sides')=2 AND json_array_length(unlinked_payload,'$.sides[0]')=1 AND json_array_length(unlinked_payload,'$.sides[1]')=1";
+    const annualAtp = "source='tennismylife' AND unlinked_payload IS NOT NULL AND lower(json_extract(locator,'$.sourceFile')) GLOB '*tennismylife/archive/[0-9][0-9][0-9][0-9].csv' AND json_extract(unlinked_payload,'$.scope')='ATP' AND json_array_length(unlinked_payload,'$.sides')=2 AND json_array_length(unlinked_payload,'$.sides[0]')=1 AND json_array_length(unlinked_payload,'$.sides[1]')=1";
+    const safeCompositeTournamentId = "json_extract(unlinked_payload,'$.externalId') GLOB '[0-9][0-9][0-9][0-9]-*:[0-9]*' AND substr(json_extract(unlinked_payload,'$.externalId'),1,4)=CAST(json_extract(unlinked_payload,'$.season') AS TEXT)";
+    const eligible = annualAtp + " AND ((reason='unknown_discipline_or_sides' AND json_extract(unlinked_payload,'$.discipline') IS NULL AND (json_extract(unlinked_payload,'$.tournament.id') IS NOT NULL OR (" + safeCompositeTournamentId + "))) OR (reason='incomplete_match_identity' AND json_extract(unlinked_payload,'$.discipline')='singles' AND json_extract(unlinked_payload,'$.tournament.id') IS NULL AND (" + safeCompositeTournamentId + ")))";
     const remaining = () => query("SELECT count(*) AS n FROM observations WHERE " + eligible).get().n;
-    if (!apply) return { mode:"preview",eligible:remaining(),processed:0,linked:0,remaining:remaining() };
-    const rows = query("SELECT origin,locator,unlinked_payload FROM observations WHERE " + eligible + " ORDER BY origin LIMIT ?").all(limit);
-    if (!rows.length) return { mode:"apply",eligible:0,processed:0,linked:0,remaining:0 };
-    const linked = transaction(() => {
-      let count = 0;
+    if (!apply) return { mode:"preview",eligible:remaining(),processed:0,linked:0,created:0,isolated:0,remaining:remaining() };
+    const rows = query("SELECT origin,locator,reason,unlinked_payload FROM observations WHERE " + eligible + " ORDER BY origin LIMIT ?").all(limit);
+    if (!rows.length) return { mode:"apply",eligible:0,processed:0,linked:0,created:0,isolated:0,remaining:0 };
+    const outcomes = transaction(() => {
+      const counts = { linked:0,created:0,isolated:0 };
       for (const row of rows) {
         const record = JSON.parse(row.unlinked_payload);
         const locator = JSON.parse(row.locator);
         const current = query("SELECT reason,locator FROM observations WHERE origin=?").get(row.origin);
-        if (!current || current.reason !== "unknown_discipline_or_sides" ||
+        if (!current || current.reason !== row.reason ||
             observationCoordinate(JSON.parse(current.locator)) !== observationCoordinate(locator) ||
             query("SELECT 1 FROM claims WHERE origin=? LIMIT 1").get(row.origin) ||
             query("SELECT 1 FROM decisions WHERE origin=? LIMIT 1").get(row.origin)) {
@@ -538,15 +542,26 @@ export function openCanonicalArchive(path, { readOnly = false, bulkWrite = false
         }
         query("DELETE FROM observations WHERE origin=?").run(row.origin);
         record.discipline = "singles";
-        ingest(record,row.origin,locator);
-        if (query("SELECT match_id FROM observations WHERE origin=?").get(row.origin)?.match_id) count++;
+        if (record.source === "tennismylife" && record.scope === "ATP" && !clean(record.tournament?.id)) {
+          const composite = /^(\d{4}-[^:]+):\d+$/.exec(String(record.externalId ?? ""));
+          if (!composite || composite[1].slice(0,4) !== String(record.season)) {
+            throw Error("TennisMyLife annual ATP row has no safe tournament ID in its composite match ID");
+          }
+          const tournament = record.tournament && typeof record.tournament === "object" && !Array.isArray(record.tournament)
+            ? record.tournament : { name:record.tournament ?? null };
+          record.tournament = { ...tournament, id:composite[1], idEvidence:"composite_match_id" };
+        }
+        const result = ingest(record,row.origin,locator);
+        if (result?.action === "linked") counts.linked++;
+        else if (result?.action === "created") counts.created++;
+        else counts.isolated++;
       }
-      return count;
+      return counts;
     });
     const pending = expectedRemaining == null
       ? (rows.length < limit ? 0 : remaining())
       : Math.max(0,expectedRemaining - rows.length);
-    return { mode:"apply",eligible:rows.length,processed:rows.length,linked,remaining:pending };
+    return { mode:"apply",eligible:rows.length,processed:rows.length,...outcomes,remaining:pending };
   }
 
   function fields(matchId, asOf) {
